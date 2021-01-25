@@ -131,7 +131,9 @@ a:visited {
 .gdoc-footer__link:hover {
   color: white;
 }
-
+span.gdoc-footer__item {
+  color: white;
+}
 /* custom shortcodes */
 /* button */
 .gdoc-button {
