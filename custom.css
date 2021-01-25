@@ -202,12 +202,8 @@ h3 {
   padding-left: 1em;
 }
 
-.gdoc-markdown h1:first-of-type {
-  padding-top: 0 !important;
-}
-
 .gdoc-page {
-  padding: 7rem 1rem 1rem 17rem;
+  padding: 5rem 1rem 1rem 17rem;
   max-width: 1200px;
 }
 @media screen and (max-width: 39rem) {
@@ -478,6 +474,13 @@ div.note.note-unhelpful ul li {
 }
 .gdoc-expand .gdoc-page__anchor {
   display: none;
+}
+
+.gdoc-page__anchorwrap h1,
+.gdoc-page__anchorwrap h2,
+.gdoc-page__anchorwrap h3 {
+  margin-top: -5rem;
+  padding-top: 6rem;
 }
 
 .gdoc-expand svg {
