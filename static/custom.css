@@ -3,7 +3,7 @@ html {
   font-family: Helvetica Neue LT, Helvetica Neue, Helvetica, Arial, sans-serif;
 }
 
-@media (min-width: 1100px) {
+@media (min-width: 1685px) {
   html {
     font-size: 20px;
   }
