@@ -1,11 +1,16 @@
 html {
-  font-size: 21px;
-  letter-spacing: initial;
+  font-size: 16px;
+  font-family: Helvetica Neue LT, Helvetica Neue, Helvetica, Arial, sans-serif;
+}
+
+@media (min-width: 1100px) {
+  html {
+    font-size: 20px;
+  }
 }
 
 body {
   font-weight: 500 !important;
-  font-size: 20px;
   line-height: 1.5rem;
   color: var(--tw-color-text-primary);
   letter-spacing: 0.02rem;
@@ -13,6 +18,31 @@ body {
 
 body p {
   margin-bottom: 1.2rem;
+}
+
+li,
+span,
+ol,
+p,
+ul {
+  font-family: Helvetica Neue LT, Helvetica Neue, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  letter-spacing: 0.025rem;
+  margin: 0;
+  padding: 0;
+  color: #657786;
+}
+
+code span {
+  font-family: monospace;
+  font-size: 0.85rem;
+  line-height: 1.25rem;
+}
+
+span.gdoc-brand {
+  color: var(--tw-color-text-primary);
 }
 
 body figure,
@@ -68,6 +98,7 @@ a:visited {
   font-family: var(--feather-font-family-base);
   font-weight: 700;
   font-size: 1rem;
+  letter-spacing: -0.01rem;
 }
 .gdoc-brand__img {
   margin-right: 0.5rem;
@@ -149,7 +180,7 @@ a:visited {
 
 article header h1,
 .gdoc-markdown h1 {
-  font-size: 2.3em;
+  font-size: 3em;
 }
 article header h1 a {
   line-height: 1em !important;
@@ -188,6 +219,11 @@ h3 {
     padding: 5rem 2rem 1rem 0rem;
     min-width: none;
   }
+  #menu-control:checked ~ main .gdoc-nav nav,
+  #menu-control:checked ~ main .gdoc-page {
+    transform: translateX(22.5rem);
+  }
+
   aside.gdoc-nav {
     border-right: 1px solid#eee;
     position: fixed;
@@ -256,7 +292,7 @@ h3 {
 }
 .gdoc-nav__entry {
   flex: 1;
-  color: var(--tw-color-text-primary) !important;
+  color: var(--tw-color-gray-deep) !important;
 }
 .gdoc-nav__entry.is-active,
 .gdoc-nav__entry:hover {
@@ -389,7 +425,7 @@ div.note ul li {
   background-repeat: no-repeat;
   background-size: 1rem;
   background-position: top 0.25rem left 0px;
-  font-size: 0.7rem;
+  font-size: 0.85rem;
 }
 
 div.note.note-helpful ul li {
@@ -418,10 +454,20 @@ div.note.note-unhelpful ul li {
   background: white;
   padding: 1rem 0rem;
   cursor: pointer;
+}
+
+.gdoc-button__link {
+  font-size: 1rem;
+}
+
+.gdoc-expand__head span {
   font-weight: bold;
   color: var(--tw-color-text-primary);
 }
 .gdoc-expand__content {
+  font-size: 1rem;
+  line-height: 1.5rem;
+  color: var(--tw-color-gray-deep);
   display: none;
   padding: 0rem 0rem 2rem;
 }
