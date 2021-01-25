@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on Birdwatch Guide</title>
+    <link>https://twitter.github.io/birdwatch/posts/</link>
+    <description>Recent content in Posts on Birdwatch Guide</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language><atom:link href="https://twitter.github.io/birdwatch/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Empowering the Twitter community to help with misleading information</title>
+      <link>https://twitter.github.io/birdwatch/posts/welcome-to-birdwatch/</link>
+      <pubDate>Mon, 06 Jan 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/posts/welcome-to-birdwatch/</guid>
+      <description>People come to Twitter to see what’s happening in the world. In addition to fun and entertainment, people on Twitter also want credible information that helps them stay informed. As the spread of misleading information continues to evolve, this has been harder to do.
+People should be able to easily come away from Twitter feeling well-informed so we are continuing to explore a number of ways to help us scale and tackle the challenges of misleading information.</description>
+    </item>
+    
+  </channel>
+</rss>

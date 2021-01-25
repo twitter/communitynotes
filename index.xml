@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Home on Birdwatch Guide</title>
+    <link>https://twitter.github.io/birdwatch/</link>
+    <description>Recent content in Home on Birdwatch Guide</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language><atom:link href="https://twitter.github.io/birdwatch/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Signing up</title>
+      <link>https://twitter.github.io/birdwatch/contributing/signing-up/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/contributing/signing-up/</guid>
+      <description>Signing up During the first phase of the pilot, Birdwatch is limited to a small test group in the US.
+Our goal is to expand Birdwatch to the global Twitter community. We want anyone to be able to participate and know that the more diverse the community, the better Birdwatch will be at effectively addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
+Sign up here   Eligibility To participate in the pilot, accounts must have:</description>
+    </item>
+    
+    <item>
+      <title>Empowering the Twitter community to help with misleading information</title>
+      <link>https://twitter.github.io/birdwatch/posts/welcome-to-birdwatch/</link>
+      <pubDate>Mon, 06 Jan 2020 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/posts/welcome-to-birdwatch/</guid>
+      <description>People come to Twitter to see what’s happening in the world. In addition to fun and entertainment, people on Twitter also want credible information that helps them stay informed. As the spread of misleading information continues to evolve, this has been harder to do.
+People should be able to easily come away from Twitter feeling well-informed so we are continuing to explore a number of ways to help us scale and tackle the challenges of misleading information.</description>
+    </item>
+    
+    <item>
+      <title>Challenges</title>
+      <link>https://twitter.github.io/birdwatch/about/challenges/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/about/challenges/</guid>
+      <description>Challenges We know there are many challenges involved in building a community-driven system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.
+Throughout our development process, we’ve conducted feedback sessions with Twitter customers and subject area experts to identify critical risks to monitor and mitigate. We will be closely focused on understanding and identifying solutions to prevent such risks during our initial pilot phase.</description>
+    </item>
+    
+    <item>
+      <title>Downloading data</title>
+      <link>https://twitter.github.io/birdwatch/contributing/download-data/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/contributing/download-data/</guid>
+      <description>Download data We can&amp;rsquo;t wait to learn with you! All Birdwatch contributions are publicly available on the Download Data page of the Birdwatch site so that anyone in the US has free access to analyze the data, identify problems, and spot opportunities to make Birdwatch better.
+If you have questions or feedback about the Birdwatch public data or would like to share your analyses of this data with us, please DM us at @Birdwatch.</description>
+    </item>
+    
+    <item>
+      <title>Examples</title>
+      <link>https://twitter.github.io/birdwatch/contributing/examples/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/contributing/examples/</guid>
+      <description>Examples Great Birdwatch notes follow the program&amp;rsquo;s values: They build understanding, are written in good faith, and are helpful even to those who disagree.
+   &amp;ldquo;Whales aren&amp;rsquo;t real&amp;rdquo;   Here&amp;rsquo;s a Tweet making misleading claims about whales, followed by helpful and unhelpful Birdwatch notes:
+Whales are not actually mammals. If Humans (land mammals) can’t drink seawater — just try it! — how can supposed sea mammals like whales stay hydrated?</description>
+    </item>
+    
+    <item>
+      <title>FAQs</title>
+      <link>https://twitter.github.io/birdwatch/about/faq/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/about/faq/</guid>
+      <description>FAQs Who is eligible to participate in the Birdwatch pilot? Is there an approval process?   The first phase of this pilot will be limited to a small test group in the US. Sign ups are open. Accounts must meet a few criteria to be eligible. Learn more here.   Are contributions anonymous? Or will my name be attached to my notes?   All Birdwatch contributions are associated with the Twitter account of the contributor.</description>
+    </item>
+    
+    <item>
+      <title>Note ranking</title>
+      <link>https://twitter.github.io/birdwatch/about/ranking-notes/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/about/ranking-notes/</guid>
+      <description>Note ranking Birdwatch initially shows notes in reverse-chronological order (most recent on top). In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be raised to the top of the list and highlighted with a header showing that they are “currently rated helpful.”
+To help people understand how Birdwatch works, this page and code snippet below explain how notes are identified as “currently rated helpful.</description>
+    </item>
+    
+    <item>
+      <title>Overview</title>
+      <link>https://twitter.github.io/birdwatch/about/overview/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/about/overview/</guid>
+      <description>Overview   Birdwatch is a community-driven approach to address misinformation on Twitter. Participants can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other participants’ notes. Through consensus from a broad and diverse set of contributors, our eventual goal is that community-written notes will be visible directly on Tweets, available to everyone on Twitter.
+How it works In this phase, Birdwatch has three core elements: notes, ratings, and the Birdwatch site.</description>
+    </item>
+    
+    <item>
+      <title>Submit Feedback</title>
+      <link>https://twitter.github.io/birdwatch/contributing/feedback/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/contributing/feedback/</guid>
+      <description>Submit feedback Birdwatch is early in its development, and our goal is to build it in the open with the public. We invite you on this journey to learn and shape Birdwatch alongside us. Feel free to reach out with:
+ Questions about the program Problems or issues you experience while contributing Risks and concerns we might not have considered Ideas for product updates or features for our roadmap Analyses done with our public data or feedback about the data.</description>
+    </item>
+    
+    <item>
+      <title>Values</title>
+      <link>https://twitter.github.io/birdwatch/contributing/values/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/contributing/values/</guid>
+      <description>Values Birdwatch aims to provide context on Tweets in a way that a broad set of people with diverse perspectives find helpful. We ask that all Birdwatch contributors agree to uphold three core values:
+  Contribute to build understanding   Birdwatch seeks to provide helpful context so people can stay better informed about Tweets they see. It’s not a place for quick dunks, personal opinions, or insults. Write clear, evidence-based notes to help everyone, even skeptics, better understand a Tweet and why it might be misleading.</description>
+    </item>
+    
+    <item>
+      <title>Writing and rating notes</title>
+      <link>https://twitter.github.io/birdwatch/contributing/writing-and-rating-notes/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/contributing/writing-and-rating-notes/</guid>
+      <description>Writing a Birdwatch note Anyone in the US can read Birdwatch notes, but only pilot participants can add new notes to Tweets. Here&amp;rsquo;s how to add a note:
+ Click or tap the ••• menu on the Tweet&amp;rsquo;s top right and then Contribute to Birdwatch.     Before starting, you’ll see a reminder about Birdwatch values — a prompt to promote helpful contributions.
+  Answer the required multiple choice questions.</description>
+    </item>
+    
+  </channel>
+</rss>
