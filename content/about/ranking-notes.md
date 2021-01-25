@@ -36,16 +36,16 @@ ratingsWithNotes = notes.set_index('noteId').join(ratings.set_index('noteId'), l
 ratingsWithNotes['numRatings'] = 1
 
 def getCurrentlyRatedHelpfulNotesForTweet(
-tweetId,
-noteScoreSmoothingParameter = 5,
-maxCurrentlyRatedHelpfulNotes = 3,
-minRatingsNeeded = 3,
-minSmoothedHelpfulnessScoreNeeded = 0.5
+  tweetId,
+  noteScoreSmoothingParameter = 5,
+  maxCurrentlyRatedHelpfulNotes = 3,
+  minRatingsNeeded = 3,
+  minSmoothedHelpfulnessScoreNeeded = 0.5
 ):
-ratingsWithNotesForTweet = ratingsWithNotes[ratingsWithNotes['tweetId']==tweetId]
-scoredNotes = ratingsWithNotesForTweet.groupby('noteId').sum()
-scoredNotes['smoothedHelpfulnessScore'] = scoredNotes['helpful']/(scoredNotes['numRatings'] + noteScoreSmoothingParameter)
-filteredNotes = scoredNotes[(scoredNotes['numRatings'] >= minRatingsNeeded) & (scoredNotes['smoothedHelpfulnessScore'] >= minSmoothedHelpfulnessScoreNeeded)]
-return filteredNotes.sort_values(by='smoothedHelpfulnessScore', ascending=False)[:maxCurrentlyRatedHelpfulNotes]
+  ratingsWithNotesForTweet = ratingsWithNotes[ratingsWithNotes['tweetId']==tweetId]
+  scoredNotes = ratingsWithNotesForTweet.groupby('noteId').sum()
+  scoredNotes['smoothedHelpfulnessScore'] = scoredNotes['helpful']/(scoredNotes['numRatings'] + noteScoreSmoothingParameter)
+  filteredNotes = scoredNotes[(scoredNotes['numRatings'] >= minRatingsNeeded) & (scoredNotes['smoothedHelpfulnessScore'] >= minSmoothedHelpfulnessScoreNeeded)]
+  return filteredNotes.sort_values(by='smoothedHelpfulnessScore', ascending=False)[:maxCurrentlyRatedHelpfulNotes]
 
 {{< / highlight >}}
