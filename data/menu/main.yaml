@@ -1,0 +1,28 @@
+---
+main:
+  - name: About
+    ref: ""
+    sub:
+      - name: Overview
+        ref: "/about/overview"
+      - name: Challenges
+        ref: "/about/challenges"
+      - name: FAQs
+        ref: "/about/faq"
+  - name: Contributing
+    ref: ""
+    sub:
+      - name: Signing Up
+        ref: "/contributing/signing-up"
+      - name: Values
+        ref: "/contributing/values"
+      - name: Writing and Rating notes
+        ref: "/contributing/writing-and-rating-notes"
+      - name: Examples
+        ref: "/contributing/examples"
+      - name: Note Ranking
+        ref: "about/ranking-notes"
+      - name: Download data
+        ref: "/contributing/download-data"
+      - name: Submit feedback
+        ref: "/contributing/feedback"

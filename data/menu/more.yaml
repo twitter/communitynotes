@@ -1,0 +1,14 @@
+---
+more:
+  # - name: "News"
+  #   ref: "/posts"
+  #   external: false
+  #   icon: "notification"
+  - name: "View source on GitHub"
+    ref: "https://github.com/twitter/birdwatch"
+    external: true
+    icon: "github"
+  - name: "Follow @Birdwatch"
+    ref: "https://twitter.com/birdwatch"
+    external: true
+    icon: "twitter"
