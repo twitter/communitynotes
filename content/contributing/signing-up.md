@@ -13,6 +13,9 @@ Our goal is to expand Birdwatch to the global Twitter community. We want anyone 
 
 {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
 
+<br>
+<br>
+
 # Eligibility
 
 To participate in the pilot, accounts must have:
