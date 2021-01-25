@@ -190,7 +190,7 @@ h3 {
   }
   aside.gdoc-nav {
     border-right: 1px solid#eee;
-    position: relative;
+    position: fixed;
     margin-top: 2rem;
     padding-top: 3rem;
     overflow: visible;
