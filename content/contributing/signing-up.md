@@ -22,7 +22,7 @@ To participate in the pilot, accounts must have:
 
 - ### **Verified phone and email**
 
-This makes it more likely that participants are real people instead of bots or adversary actors.
+This makes it more likely that participants are real people instead of bots or adversary actors. Learn how to [verify your email](https://help.twitter.com/managing-your-account/cant-confirm-my-email-address) and [phone number](https://help.twitter.com/managing-your-account/how-to-add-a-phone-number-to-your-account).
 
 - ### **A trusted U.S.-based phone carrier**
 
@@ -31,6 +31,7 @@ Intended to reduce the use of artificially created or virtual phone numbers
 - ### **Two-factor authentication enabled**
 
 Intended to reduce the chance of malicious attempts to hijack participant's accounts.
+Learn how to [enable two-factor authentication](https://help.twitter.com/managing-your-account/two-factor-authentication).
 
 - ### **No recent notice of Twitter Rules violations**
 
