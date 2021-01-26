@@ -315,6 +315,7 @@ h3 {
   margin: 1rem 0rem;
 }
 .gdoc-button {
+  text-align: center;
   margin: 2rem 0rem;
   font-size: 0.8rem;
   border-radius: 1000px;
@@ -328,7 +329,11 @@ h3 {
   background-color: var(--tw-color-blue-primary);
   border: 1px solid var(--tw-color-blue-primary);
 }
-
+@media (max-width: 600px) {
+  .gdoc-button {
+    width: 100%;
+  }
+}
 .gdoc-post__readmore,
 .gdoc-post__readmore:visited {
   color: var(--tw-color-blue-primary);
