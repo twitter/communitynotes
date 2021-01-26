@@ -232,7 +232,6 @@ h3 {
     border-right: none;
     height: calc(100vh - 5rem);
     z-index: 998;
-    width: 30rem;
   }
   .gdoc-header .container {
     padding: 0.5rem 1rem;
@@ -316,6 +315,7 @@ h3 {
   margin: 1rem 0rem;
 }
 .gdoc-button {
+  margin: 2rem 0rem;
   font-size: 0.8rem;
   border-radius: 1000px;
   padding: 0.5rem 1rem;

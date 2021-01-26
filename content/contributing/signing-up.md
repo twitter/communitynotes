@@ -11,7 +11,9 @@ During the first phase of the pilot, Birdwatch is limited to a small test group 
 
 Our goal is to expand Birdwatch to the global Twitter community. We want anyone to be able to participate and know that the more diverse the community, the better Birdwatch will be at effectively addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
 
-{{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
+## {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
+
+---
 
 <br>
 <br>
