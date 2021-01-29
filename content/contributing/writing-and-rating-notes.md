@@ -28,7 +28,7 @@ What makes a good Birdwatch note? [**See examples →**](../../examples)
 
 There are two ways to find Tweets with Birdwatch notes:
 
-1. Go to the Birdwatch site's **Recent notes** page and choose any Tweet to see notes that participants have added to it.
+1. Go to the [**Birdwatch site's Recent notes page**](https://birdwatch.twitter.com) and choose any Tweet to see notes that participants have added to it.
 
 {{< figure src="../../images/4-birdwatch-site.png">}}
 
@@ -44,7 +44,7 @@ There are two ways to find Tweets with Birdwatch notes:
 
 {{< figure src="../../images/5-good-notes.png">}}
 
-Learn how [Currently rated helpful](../../note-ranking) works.
+Learn how [**Currently rated helpful**](../../note-ranking) works.
 
 # Helpfulness ratings on your notes
 
