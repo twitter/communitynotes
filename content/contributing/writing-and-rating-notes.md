@@ -16,7 +16,7 @@ Anyone in the US can read Birdwatch notes, but only pilot participants can add n
 
 3. Answer the required multiple choice questions. These are designed to understand, in a structured way, why a Tweet might or might not be misleading.
 
-4. Finally, in the text field, write the context you feel would help others understand why that Tweet is or is not misleading. Citing sources is helpful.
+4. Finally, in the text field, write the context you feel would help others understand why that Tweet is or is not misleading. Citing sources is helpful. (Each URL counts as only 1 character towards the 280 character limit).
 
 5. After it’s submitted, the note will be available on the Birdwatch site for other participants to read and rate.
 
