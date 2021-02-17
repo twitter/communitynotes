@@ -47,6 +47,7 @@ def getCurrentlyRatedHelpfulNotesForTweet(
   return filteredNotes.sort_values(by='helpfulnessRatio', ascending=False)[:maxCurrentlyRatedHelpfulNotes]
 
 {{< / highlight >}}
+<br/>
 
 These notes that are labeled “currently rated helpful” are used to determine what Tweets are added to the “Rated helpful” tab on the [Birdwatch Home page](https://twitter.com/i/birdwatch/). For a Tweet to appear in that tab, it must have at least one note “currently rated helpful”, at least one of those “currently rated helpful” notes must have labeled the Tweet “misinformed or potentially misleading”, and a majority of those “currently rated helpful” notes had to have not labeled the Tweet as satire (either “It is a joke or satire that might be misinterpreted as a fact” or “It is clearly satirical/joking”). The Tweets that pass these filters are sorted chronologically by the timestamp of the Tweet’s first-created “currently rated helpful” note.
 
