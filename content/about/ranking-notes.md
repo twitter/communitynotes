@@ -12,17 +12,39 @@ geekdocBreadcrumb: false
 
 # Note ranking
 
-When displaying notes written on a Tweet, Birdwatch initially shows notes in reverse-chronological order (most recent on top). In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be raised to the top of the list and highlighted with a header showing that they are **“currently rated helpful.”**
+When displaying notes written on a Tweet, Birdwatch initially shows notes in reverse-chronological order (most recent on top), and displays them with a status indicator that the note “Needs More Ratings”.  In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be moved to the top or bottom of the list and annotated with a header showing that they are “Currently Rated Helpful” or “Currently Not Rated Helpful.” 
 
-To help people understand how Birdwatch works, this page and code snippet below explain how notes are identified as “currently rated helpful.”
+To help people understand how Birdwatch works, this page and code snippet below explain how notes are assigned these statuses and ranked.
 
-{{< figure src="../../images/5-good-notes.png">}}
+{{< figure src="../../images/note-statuses.png">}}
 
-In short, Birdwatch computes a “helpfulness ratio” for each note, which is simply the proportion of ratings that say the note is helpful. Then out of all notes that have received at least 5 ratings and a minimum helpfulness ratio of 0.84, the top 3 by “helpfulness ratio” are annotated as “currently rated helpful”. This ranking mechanism is knowingly basic, and we only intend to use it for a short time during the program’s earliest phase.
+All Birdwatch notes start out with the “Needs More Ratings” status until they receive at least 5 ratings. Then, Birdwatch computes a “helpfulness ratio” for each note, which is simply the proportion of ratings that say the note is helpful. To be assigned a status of “Currently Rated Helpful” or “Currently Not Rated Helpful”, two other criteria must be met. First, there is a minimum helpfulness rating of 0.84 to be “Currently Rated Helpful” and a maximum helpfulness rating of 0.29 to be “Currently Not Rated Helpful”. Second, raters must have selected at least two of the corresponding reasons why a note is (or isn’t) helpful — e.g. “cites high-quality sources,” “nonjudgmental and/or empathetic,” etc — at least twice each. Once a note receives at least 5 ratings and meets the helpfulness ratio threshold as well as receives two reasons why, the note is assigned the corresponding label and assigned the most commonly chosen reasons why. To break ties between reasons that are chosen an equal number of times by raters, we pick the reason that is used least frequently by Birdwatch raters in general (with the exception of Other, which loses all tiebreaks).
 
-During the pilot, “currently rated helpful” notes are only computed at periodic intervals, so there is a time delay from when a note meets the “currently rated helpful” criteria and when it rises to the top of the list. This delay allows Birdwatch to collect a set of independent ratings from people who haven’t yet been influenced by seeing the “currently rated helpful” flag on certain notes.
+While notes with the status “Needs More Ratings” are sorted reverse-chronologically (newest first), notes with a “Currently Rated Helpful” or “Currently Not Rated Helpful” status are sorted by their “helpfulness ratio”. This ranking mechanism is knowingly basic, and we only intend to use it for a short time during the program’s earliest phases.
 
-Here’s a Python code snippet one can run to reproduce how we compute our “Currently Rated Helpful” annotations. It uses as input the notes and ratings files made available on the Birdwatch [Data Download](https://twitter.com/i/birdwatch/download-data) page.
+During the pilot, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the “Currently Rated Helpful” or “Currently Not Rated Helpful” criteria and when it jumps to the top or bottom of the list. This delay allows Birdwatch to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.
+
+Priority Order of “Currently Rated Helpful” Reasons (For tie-breaking only):
+1. UniqueContext
+2. Empathetic
+3. GoodSources
+4. Clear
+5. Informative
+6. Other
+
+Priority Order of “Currently Not Rated Helpful” Reasons (For tie-breaking only):
+1. Outdated
+2. SpamHarassmentOrAbuse
+3. HardToUnderstand
+4. OffTopic
+5. Incorrect
+6. ArgumentativeOrInflammatory
+7. MissingKeyPoints
+8. SourcesMissingOrUnreliable
+9. OpinionSpeculationOrBias
+10 Other
+
+Here’s a Python code snippet one can run to reproduce how we compute notes’ rating statuses and sorting.  It uses as input the notes and ratings files made available on the Birdwatch [Data Download](https://twitter.com/i/birdwatch/download-data) page.
 
 {{< highlight python >}}
 
@@ -33,22 +55,59 @@ ratings = pd.read_csv('ratings-00000.tsv', sep='\t')
 ratingsWithNotes = notes.set_index('noteId').join(ratings.set_index('noteId'), lsuffix="_note", rsuffix="_rating", how='inner')
 ratingsWithNotes['numRatings'] = 1
 
-def getCurrentlyRatedHelpfulNotesForTweet(
+def getScoredNotesForTweet(
   tweetId,
-  maxCurrentlyRatedHelpfulNotes = 3,
   minRatingsNeeded = 5,
-  minHelpfulnessRatioNeeded = 0.84
+  minHelpfulnessRatioNeededHelpful = 0.84,
+  maxHelpfulnessRatioNeededNotHelpful = .29,
+  minRatingsToGetTag = 2,
 ):
-  ratingsWithNotesForTweet = ratingsWithNotes[ratingsWithNotes['tweetId']==tweetId]
-  scoredNotes = ratingsWithNotesForTweet.groupby('noteId').sum()
-  scoredNotes['helpfulnessRatio'] = scoredNotes['helpful']/scoredNotes['numRatings']
-  filteredNotes = scoredNotes[(scoredNotes['numRatings'] >= minRatingsNeeded) & (scoredNotes['helpfulnessRatio'] >= minHelpfulnessRatioNeeded)]
-  filteredNotes = filteredNotes.join(notes.set_index('noteId').drop('tweetId',axis=1), lsuffix="_note", rsuffix="_rating", how='inner')  # join in note info
-  return filteredNotes.sort_values(by='helpfulnessRatio', ascending=False)[:maxCurrentlyRatedHelpfulNotes]
+    ratingsWithNotesForTweet = ratingsWithNotes[ratingsWithNotes['tweetId']==tweetId]
+    scoredNotes = ratingsWithNotesForTweet.groupby('noteId').sum()
+    scoredNotes['helpfulnessRatio'] = scoredNotes['helpful']/scoredNotes['numRatings']
+    
+    helpfulWhys = ['helpfulOther', 'helpfulInformative', 'helpfulClear', 
+                   'helpfulGoodSources', 'helpfulEmpathetic', 'helpfulUniqueContext']
+    notHelpfulWhys = ['notHelpfulOther', 'notHelpfulOpinionSpeculationOrBias', 'notHelpfulSourcesMissingOrUnreliable', 
+                      'notHelpfulMissingKeyPoints', 'notHelpfulArgumentativeOrInflammatory', 'notHelpfulIncorrect', 
+                      'notHelpfulOffTopic', 'notHelpfulHardToUnderstand', 'notHelpfulSpamHarassmentOrAbuse', 'notHelpfulOutdated']
+    scoredNotes['ratingStatus'] = 'Needs More Ratings'
+    scoredNotes.loc[(scoredNotes['numRatings'] >= minRatingsNeeded) & (scoredNotes['helpfulnessRatio'] >= minHelpfulnessRatioNeededHelpful), 'ratingStatus'] = 'Currently Rated Helpful'
+    scoredNotes.loc[(scoredNotes['numRatings'] >= minRatingsNeeded) & (scoredNotes['helpfulnessRatio'] <= maxHelpfulnessRatioNeededNotHelpful), 'ratingStatus'] = 'Currently Not Rated Helpful'
+    scoredNotes['firstTag'] = np.nan
+    scoredNotes['secondTag'] = np.nan
+
+    def topWhys(row):
+        if row['ratingStatus']=='Currently Rated Helpful':
+            whyCounts = pd.DataFrame(row[helpfulWhys])
+        elif row['ratingStatus']=='Currently Not Rated Helpful':
+            whyCounts = pd.DataFrame(row[notHelpfulWhys])
+        else:
+            return row
+        whyCounts.columns = ['tagCounts']
+        whyCounts['tiebreakOrder'] = range(len(whyCounts))
+        whyCounts = whyCounts[whyCounts['tagCounts'] >= minRatingsToGetTag]
+        topTags = whyCounts.sort_values(by=['tagCounts','tiebreakOrder'], ascending=False)[:2]
+        if (len(topTags) < 2):
+            row['ratingStatus'] = 'Needs More Ratings'
+        else:
+            row['firstTag'] = topTags.index[0]
+            row['secondTag'] = topTags.index[1] 
+        return row
+    
+    scoredNotes = scoredNotes.apply(topWhys, axis=1)
+    
+    scoredNotes = scoredNotes.join(notes[['noteId','summary']].set_index('noteId'), lsuffix="_note", rsuffix="_rating", how='inner')
+
+    scoredNotes['orderWithinStatus'] = 'helpfulnessRatio'
+    scoredNotes.loc[scoredNotes['ratingStatus']=='Needs More Ratings', 'orderWithinStatus'] = 'createdAtMillis_note'
+    statusOrder = {'Currently Rated Helpful':2, 'Needs More Ratings':1, 'Currently Not Rated Helpful':0}
+    scoredNotes['statusOrder'] = scoredNotes.apply(lambda x: statusOrder[x['ratingStatus']], axis=1)
+    return scoredNotes.sort_values(by=['statusOrder','orderWithinStatus'], ascending=False)
 
 {{< / highlight >}}
 <br/>
 
-These notes that are labeled “currently rated helpful” are used to determine what Tweets are added to the “Rated helpful” tab on the [Birdwatch Home page](https://twitter.com/i/birdwatch/). For a Tweet to appear in that tab, it must have at least one note “currently rated helpful”, at least one of those “currently rated helpful” notes must have labeled the Tweet “misinformed or potentially misleading”, and a majority of those “currently rated helpful” notes had to have not labeled the Tweet as satire (either “It is a joke or satire that might be misinterpreted as a fact” or “It is clearly satirical/joking”). The Tweets that pass these filters are sorted chronologically by the timestamp of the Tweet’s first-created “currently rated helpful” note.
+The notes that are labeled “Currently Rated Helpful” are used to determine what Tweets are added to the “Rated helpful” tab on the Birdwatch Home page. For a Tweet to appear in that tab, it must have at least one note “Currently Rated Helpful”, at least one of those “Currently Rated Helpful” notes must have labeled the Tweet “misinformed or potentially misleading”, and a majority of those “Currently Rated Helpful” notes had to have not labeled the Tweet as satire (either “It is a joke or satire that might be misinterpreted as a fact” or “It is clearly satirical/joking”). The Tweets that pass these filters are sorted reverse-chronologically by the timestamp of the Tweet’s first-created “Currently Rated Helpful” note.
 
 {{< figure src="../../images/home-two-tabs.png">}}
