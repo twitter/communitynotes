@@ -498,16 +498,16 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 <p>While notes with the status “Needs More Ratings” are sorted reverse-chronologically (newest first), notes with a “Currently Rated Helpful” or “Currently Not Rated Helpful” status are sorted by their “helpfulness ratio”. This ranking mechanism is knowingly basic, and we only intend to use it for a short time during the program’s earliest phases.</p>
 <p>During the pilot, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the “Currently Rated Helpful” or “Currently Not Rated Helpful” criteria and when it jumps to the top or bottom of the list. This delay allows Birdwatch to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.</p>
 <p>Priority Order of “Currently Rated Helpful” Reasons (For tie-breaking only):</p>
-<ol>
+<ul>
 <li>UniqueContext</li>
 <li>Empathetic</li>
 <li>GoodSources</li>
 <li>Clear</li>
 <li>Informative</li>
 <li>Other</li>
-</ol>
+</ul>
 <p>Priority Order of “Currently Not Rated Helpful” Reasons (For tie-breaking only):</p>
-<ol>
+<ul>
 <li>Outdated</li>
 <li>SpamHarassmentOrAbuse</li>
 <li>HardToUnderstand</li>
@@ -518,7 +518,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 <li>SourcesMissingOrUnreliable</li>
 <li>OpinionSpeculationOrBias</li>
 <li>Other</li>
-</ol>
+</ul>
 <p>Here’s a Python code snippet one can run to reproduce how we compute notes’ rating statuses and sorting.  It uses as input the notes and ratings files made available on the Birdwatch <a href="https://twitter.com/i/birdwatch/download-data">Data Download</a> page.</p>
 <p><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
 <span class="n">notes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;notes-00000.tsv&#39;</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
