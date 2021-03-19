@@ -30,7 +30,7 @@ Priority Order of “Currently Rated Helpful” Reasons (For tie-breaking only):
 * GoodSources
 * Clear
 * Informative
-* Other
+* Other  
 
 
 Priority Order of “Currently Not Rated Helpful” Reasons (For tie-breaking only):
@@ -43,7 +43,7 @@ Priority Order of “Currently Not Rated Helpful” Reasons (For tie-breaking on
 * MissingKeyPoints
 * SourcesMissingOrUnreliable
 * OpinionSpeculationOrBias
-* Other
+* Other  
 
 
 Here’s a Python code snippet one can run to reproduce how we compute notes’ rating statuses and sorting.  It uses as input the notes and ratings files made available on the Birdwatch [Data Download](https://twitter.com/i/birdwatch/download-data) page.
