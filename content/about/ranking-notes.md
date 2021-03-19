@@ -25,25 +25,25 @@ While notes with the status “Needs More Ratings” are sorted reverse-chronolo
 During the pilot, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the “Currently Rated Helpful” or “Currently Not Rated Helpful” criteria and when it jumps to the top or bottom of the list. This delay allows Birdwatch to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.
 
 Priority Order of “Currently Rated Helpful” Reasons (For tie-breaking only):
-1. UniqueContext
-2. Empathetic
-3. GoodSources
-4. Clear
-5. Informative
-6. Other
+* UniqueContext
+* Empathetic
+* GoodSources
+* Clear
+* Informative
+* Other
 
 
 Priority Order of “Currently Not Rated Helpful” Reasons (For tie-breaking only):
-1. Outdated
-2. SpamHarassmentOrAbuse
-3. HardToUnderstand
-4. OffTopic
-5. Incorrect
-6. ArgumentativeOrInflammatory
-7. MissingKeyPoints
-8. SourcesMissingOrUnreliable
-9. OpinionSpeculationOrBias
-10. Other
+* Outdated
+* SpamHarassmentOrAbuse
+* HardToUnderstand
+* OffTopic
+* Incorrect
+* ArgumentativeOrInflammatory
+* MissingKeyPoints
+* SourcesMissingOrUnreliable
+* OpinionSpeculationOrBias
+* Other
 
 
 Here’s a Python code snippet one can run to reproduce how we compute notes’ rating statuses and sorting.  It uses as input the notes and ratings files made available on the Birdwatch [Data Download](https://twitter.com/i/birdwatch/download-data) page.
