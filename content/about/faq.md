@@ -89,4 +89,10 @@ Birdwatch will only be successful if the context it produces is found to be help
 
 {{< /expand >}}
 
+{{< expand "How do I opt-out of the pilot?" >}}
+
+If you join the pilot but later want to leave, just DM @birdwatch to let the team know.
+
+{{< /expand >}}
+
 Have more questions? Feel free to Tweet or message our team [@birdwatch](https://twitter.com/birdwatch)
