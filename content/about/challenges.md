@@ -38,7 +38,7 @@ Finally, to assess Birdwatch’s effectiveness, we will evaluate whether people 
 
 It’s crucial that people feel safe contributing to Birdwatch, and this is something to which we will be paying close attention throughout the pilot. While community moderation can be a powerful tool, it can also result in bias and harassment. One of the reasons Birdwatch is starting very small is so we can understand contributors’ experience and make changes if needed.
 
-Pilot participants have an open communication line with the Birdwatch team to report any issues they experience (they can reach us by DM [@Birdwatch](https://twitter.com/birdwatch)). Birdwatch will also have a dedicated community manager who will be gathering and responding to contributors’ feedback or concerns via this handle. Additionally, people have the option to participate in Birdwatch under any account, including secondary accounts that use a pseudonym.
+Pilot participants have an open communication line with the Birdwatch team to report any issues they experience (they can reach us by DM [@Birdwatch](https://twitter.com/birdwatch)). Birdwatch also has a dedicated community manager who gathers and responds to contributors’ feedback or concerns via this handle. Additionally, people have the option to participate in Birdwatch under any account, including secondary accounts that use a pseudonym.
 
 As Birdwatch grows and evolves, we will continue to iterate to ensure it remains a place for healthy conversation, where our contributors feel safe participating.
 
