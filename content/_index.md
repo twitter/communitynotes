@@ -13,7 +13,7 @@ Birdwatch participants can identify Tweets they believe are misleading, write no
 
 Currently, Birdwatch is in pilot mode for people in the US. We're building it in the open, with the public’s input, and we’re taking significant steps to make Birdwatch transparent.
 
-This Guide outlines how Birdwatch works, how one can access and work with Birdwatch transparent data and is also a place to follow updates to the product. We’ll be sharing how and why we’re making changes, how we came to those decisions, and what we hope to achieve.
+This Guide outlines how Birdwatch works, how one can access and work with Birdwatch's transparent data and is also a place to follow updates to the product. We’ll be sharing how and why we’re making changes, how we came to those decisions, and what we hope to achieve.
 
 We can't wait to learn with you.
 
