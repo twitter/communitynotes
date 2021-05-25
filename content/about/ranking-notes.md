@@ -131,7 +131,8 @@ scoredNotes['helpfulnessRatio'] = scoredNotes['helpful']/scoredNotes['numRatings
 
 {{< / highlight >}}
 
-{{< button href="https://raw.githubusercontent.com/twitter/birdwatch/main/content/about/ranking-notes.md" >}}See source file{{< /button >}}
+<br/>
+<br/>
 
 ## Tabs: Needs Your Help, New, and Rated Helpful
 
