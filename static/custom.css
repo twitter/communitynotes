@@ -34,7 +34,10 @@ ul {
   padding: 0;
   color: #657786;
 }
-
+code {
+  max-height: 20rem;
+  overflow: scroll;
+}
 code span {
   font-family: monospace;
   font-size: 0.85rem;
