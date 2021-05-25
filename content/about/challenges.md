@@ -10,7 +10,7 @@ We know there are many challenges involved in building a community-driven system
 
 Throughout our development process, we’ve conducted feedback sessions with Twitter customers and subject area experts to identify critical risks to monitor and mitigate. We will be closely focused on understanding and identifying solutions to prevent such risks during our initial pilot phase.
 
-We have intentionally designed our pilot to mitigate potential risks as we seek to learn about them and iterate on solutions carefully. We are starting with a small number of participants. Further, in this first phase, notes will **only** be visible on a separate [Birdwatch site](http://birdwatch.twitter.com) and will not affect Tweets or recommendations systems on Twitter.
+We have intentionally designed our pilot to mitigate potential risks as we seek to learn about them and iterate on solutions carefully. We are starting with a small number of participants. Further, in this first phase, notes will not affect Tweets or recommendations systems on Twitter, and are **only** visible within the app to people who are in the pilot — those not in the pilot can see notes on a separate [Birdwatch site](http://birdwatch.twitter.com).
 
 Here are a handful of particular challenges we are aware of as well as our thoughts on how we might address them over time:
 
