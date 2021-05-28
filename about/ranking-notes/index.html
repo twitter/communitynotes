@@ -488,26 +488,56 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 
 
 <div class="gdoc-page__anchorwrap"><h1 id="note-ranking">Note ranking<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#note-ranking" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Note ranking" href="#note-ranking"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h1></div>
-<p>When displaying notes written on a Tweet, Birdwatch initially shows notes in reverse-chronological order (most recent on top), and displays them with a status indicator that the note “Needs More Ratings”.  In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be moved to the top or bottom of the list and annotated with a header showing that they are “Currently Rated Helpful” or “Currently Not Rated Helpful.”</p>
+<p>When displaying notes written on a Tweet, Birdwatch initially shows most recent notes on top and displays them with a status indicator that the note <strong>Needs More Ratings</strong>. In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be moved to the top or bottom of the list and annotated with a header showing that they are <strong>Currently Rated Helpful</strong> or <strong>Currently Not Rated Helpful</strong>.</p>
 <p>To help people understand how Birdwatch works, this page and code snippet below explain how notes are assigned these statuses and ranked.</p>
 <figure>
     <img src="../../images/note-statuses.png"/> 
 </figure>
 
-<p>All Birdwatch notes start out with the “Needs More Ratings” status until they receive at least 5 ratings. Then, Birdwatch computes a “helpfulness ratio” for each note, which is simply the proportion of ratings that say the note is helpful. To be assigned a status of “Currently Rated Helpful” or “Currently Not Rated Helpful”, two other criteria must be met. First, there is a minimum helpfulness rating of 0.84 to be “Currently Rated Helpful” and a maximum helpfulness rating of 0.29 to be “Currently Not Rated Helpful”. Second, raters must have selected at least two of the corresponding reasons why a note is (or isn’t) helpful — e.g. “cites high-quality sources,” “nonjudgmental and/or empathetic,” etc — at least twice each. Once a note receives at least 5 ratings and meets the helpfulness ratio threshold as well as receives two reasons why, the note is assigned the corresponding label and assigned the most commonly chosen reasons why. To break ties between reasons that are chosen an equal number of times by raters, we pick the reason that is used least frequently by Birdwatch raters in general (with the exception of Other, which loses all tiebreaks).</p>
-<p>While notes with the status “Needs More Ratings” are sorted reverse-chronologically (newest first), notes with a “Currently Rated Helpful” or “Currently Not Rated Helpful” status are sorted by their “helpfulness ratio”. This ranking mechanism is knowingly basic, and we only intend to use it for a short time during the program’s earliest phases.</p>
-<p>During the pilot, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the “Currently Rated Helpful” or “Currently Not Rated Helpful” criteria and when it jumps to the top or bottom of the list. This delay allows Birdwatch to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.</p>
-<p>Priority Order of “Currently Rated Helpful” Reasons (For tie-breaking only):</p>
+<ol>
+<li>
+<p>All Birdwatch notes start out with the <strong>Needs More Ratings</strong> status until they receive at least 5 ratings.</p>
+</li>
+<li>
+<p>Then, Birdwatch computes a <strong>Helpfulness Ratio</strong> for each note, which is simply the proportion of ratings that say the note is helpful.</p>
+</li>
+<li>
+<p>For a note to be labeled as <strong>Currently Rated Helpful</strong> or <strong>Currently Not Rated Helpful</strong>, raters must have selected at least two of the corresponding
+reasons why a note is (or isn’t) helpful — e.g. “cites high-quality sources,” “nonjudgmental and/or empathetic,” etc — at least twice each.</p>
+</li>
+<li>
+<p>Notes with a <strong>Helpfulness Ratio</strong> of 0.29 and below are assigned <strong>Currently Not Rated Helpful</strong>, and notes with a ratio of 0.84 and above are assigned <strong>Currently Rated Helpful</strong>. Notes with scores in between 0.29 and 0.84 remain labeled as <strong>Needs more Ratings</strong>.</p>
+</li>
+<li>
+<p>In addition to <strong>Currently Rated / Not Rated Helpful</strong> status, labels also show the most commonly chosen reasons why it is helpful/unhelpful. To break ties between reasons that are chosen an equal number of times by raters, we pick the reason that is used least frequently by Birdwatch raters in general (with the exception of Other, which loses all tiebreaks).</p>
+</li>
+<li>
+<p>Notes with the status <strong>Needs More Ratings</strong> remain sorted by recency (newest first), and notes with a <strong>Currently Rated / Not Rated Helpful</strong> status are sorted by their <strong>Helpfulness Ratio</strong>.</p>
+</li>
+</ol>
+<p>This ranking mechanism is knowingly basic, and we only intend to use it for a short time during the program’s earliest phases.</p>
+<p>During the pilot, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the <strong>Currently Rated / Not Rated Helpful</strong> criteria and when it jumps to the top or bottom of the list. This delay allows Birdwatch to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.</p>
+<div class="gdoc-page__anchorwrap"><h3 id="tie-breaking">Tie breaking<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#tie-breaking" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Tie breaking" href="#tie-breaking"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>For tie-breaking, we use the following priority order of reasons:</p>
+<div class="gdoc-columns flex flex-wrap">
+  
+  <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
+     <!-- begin columns block -->
+<p><strong>Currently Rated Helpful Reasons</strong></p>
 <ul>
 <li>UniqueContext</li>
 <li>Empathetic</li>
 <li>GoodSources</li>
 <li>Clear</li>
 <li>Informative</li>
-<li>Other <br>
-<br/></li>
+<li>Other</li>
 </ul>
-<p>Priority Order of “Currently Not Rated Helpful” Reasons (For tie-breaking only):</p>
+
+  </div>
+  
+  <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
+     <!-- magic sparator, between columns -->
+<p><strong>Currently Not Rated Helpful Reasons</strong></p>
 <ul>
 <li>Outdated</li>
 <li>SpamHarassmentOrAbuse</li>
@@ -518,32 +548,98 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 <li>MissingKeyPoints</li>
 <li>SourcesMissingOrUnreliable</li>
 <li>OpinionSpeculationOrBias</li>
-<li>Other<br>
-<br/></li>
+<li>Other</li>
 </ul>
-<p>Here’s a Python code snippet one can run to reproduce how we compute notes’ rating statuses and sorting.  It uses as input the notes and ratings files made available on the Birdwatch <a href="https://twitter.com/i/birdwatch/download-data">Data Download</a> page.</p>
-<p><div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+
+  </div>
+  
+</div>
+
+<div class="gdoc-page__anchorwrap"><h3 id="ranking-code">Ranking Code<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#ranking-code" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Ranking Code" href="#ranking-code"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>Here’s a Python code snippet one can run to reproduce how we compute notes’ rating statuses and sorting. It uses as input the notes and ratings files made available on the Birdwatch <a href="https://twitter.com/i/birdwatch/download-data">Data Download</a> page.</p>
+
+<div class="gdoc-include"><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
 <span class="n">notes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;notes-00000.tsv&#39;</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
 <span class="n">ratings</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;ratings-00000.tsv&#39;</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
 
-<span class="n">ratingsWithNotes</span> <span class="o">=</span> <span class="n">notes</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;noteId&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ratings</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;noteId&#39;</span><span class="p">),</span> <span class="n">lsuffix</span><span class="o">=</span><span class="s2">&#34;_note&#34;</span><span class="p">,</span> <span class="n">rsuffix</span><span class="o">=</span><span class="s2">&#34;_rating&#34;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">)</span>
+<span class="n">ratingsWithNotes</span> <span class="o">=</span> <span class="n">notes</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;noteId&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ratings</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;noteId&#39;</span><span class="p">),</span> <span class="n">lsuffix</span><span class="o">=</span><span class="s2">&#34;\_note&#34;</span><span class="p">,</span> <span class="n">rsuffix</span><span class="o">=</span><span class="s2">&#34;\_rating&#34;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">)</span>
 <span class="n">ratingsWithNotes</span><span class="p">[</span><span class="s1">&#39;numRatings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
 
 <span class="k">def</span> <span class="nf">getScoredNotesForTweet</span><span class="p">(</span>
-  <span class="n">tweetId</span><span class="p">,</span>
-  <span class="n">minRatingsNeeded</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
-  <span class="n">minHelpfulnessRatioNeededHelpful</span> <span class="o">=</span> <span class="mf">0.84</span><span class="p">,</span>
-  <span class="n">maxHelpfulnessRatioNeededNotHelpful</span> <span class="o">=</span> <span class="o">.</span><span class="mi">29</span><span class="p">,</span>
-  <span class="n">minRatingsToGetTag</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+<span class="n">tweetId</span><span class="p">,</span>
+<span class="n">minRatingsNeeded</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+<span class="n">minHelpfulnessRatioNeededHelpful</span> <span class="o">=</span> <span class="mf">0.84</span><span class="p">,</span>
+<span class="n">maxHelpfulnessRatioNeededNotHelpful</span> <span class="o">=</span> <span class="o">.</span><span class="mi">29</span><span class="p">,</span>
+<span class="n">minRatingsToGetTag</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
 <span class="p">):</span>
-    <span class="n">ratingsWithNotesForTweet</span> <span class="o">=</span> <span class="n">ratingsWithNotes</span><span class="p">[</span><span class="n">ratingsWithNotes</span><span class="p">[</span><span class="s1">&#39;tweetId&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">tweetId</span><span class="p">]</span>
-    <span class="n">scoredNotes</span> <span class="o">=</span> <span class="n">ratingsWithNotesForTweet</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;noteId&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-    <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;helpfulnessRatio&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;helpful&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;numRatings&#39;</span><span class="p">]</span>
-    
-    <span class="n">helpfulWhys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;helpfulOther&#39;</span><span class="p">,</span> <span class="s1">&#39;helpfulInformative&#39;</span><span class="p">,</span> <span class="s1">&#39;helpfulClear&#39;</span><span class="p">,</span> 
+<span class="n">ratingsWithNotesForTweet</span> <span class="o">=</span> <span class="n">ratingsWithNotes</span><span class="p">[</span><span class="n">ratingsWithNotes</span><span class="p">[</span><span class="s1">&#39;tweetId&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">tweetId</span><span class="p">]</span>
+<span class="n">scoredNotes</span> <span class="o">=</span> <span class="n">ratingsWithNotesForTweet</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;noteId&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+<span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;helpfulnessRatio&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;helpful&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;numRatings&#39;</span><span class="p">]</span>
+
+    <span class="n">helpfulWhys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;helpfulOther&#39;</span><span class="p">,</span> <span class="s1">&#39;helpfulInformative&#39;</span><span class="p">,</span> <span class="s1">&#39;helpfulClear&#39;</span><span class="p">,</span>
                    <span class="s1">&#39;helpfulGoodSources&#39;</span><span class="p">,</span> <span class="s1">&#39;helpfulEmpathetic&#39;</span><span class="p">,</span> <span class="s1">&#39;helpfulUniqueContext&#39;</span><span class="p">]</span>
-    <span class="n">notHelpfulWhys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;notHelpfulOther&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulOpinionSpeculationOrBias&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulSourcesMissingOrUnreliable&#39;</span><span class="p">,</span> 
-                      <span class="s1">&#39;notHelpfulMissingKeyPoints&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulArgumentativeOrInflammatory&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulIncorrect&#39;</span><span class="p">,</span> 
+    <span class="n">notHelpfulWhys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;notHelpfulOther&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulOpinionSpeculationOrBias&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulSourcesMissingOrUnreliable&#39;</span><span class="p">,</span>
+                      <span class="s1">&#39;notHelpfulMissingKeyPoints&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulArgumentativeOrInflammatory&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulIncorrect&#39;</span><span class="p">,</span>
                       <span class="s1">&#39;notHelpfulOffTopic&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulHardToUnderstand&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulSpamHarassmentOrAbuse&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulOutdated&#39;</span><span class="p">]</span>
     <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;ratingStatus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Needs More Ratings&#39;</span>
     <span class="n">scoredNotes</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;numRatings&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">minRatingsNeeded</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;helpfulnessRatio&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">minHelpfulnessRatioNeededHelpful</span><span class="p">),</span> <span class="s1">&#39;ratingStatus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Currently Rated Helpful&#39;</span>
@@ -566,29 +662,55 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
             <span class="n">row</span><span class="p">[</span><span class="s1">&#39;ratingStatus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Needs More Ratings&#39;</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">row</span><span class="p">[</span><span class="s1">&#39;firstTag&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">topTags</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">row</span><span class="p">[</span><span class="s1">&#39;secondTag&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">topTags</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> 
+            <span class="n">row</span><span class="p">[</span><span class="s1">&#39;secondTag&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">topTags</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">row</span>
-    
+
     <span class="n">scoredNotes</span> <span class="o">=</span> <span class="n">scoredNotes</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">topWhys</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    
+
     <span class="n">scoredNotes</span> <span class="o">=</span> <span class="n">scoredNotes</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">notes</span><span class="p">[[</span><span class="s1">&#39;noteId&#39;</span><span class="p">,</span><span class="s1">&#39;summary&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;noteId&#39;</span><span class="p">),</span> <span class="n">lsuffix</span><span class="o">=</span><span class="s2">&#34;_note&#34;</span><span class="p">,</span> <span class="n">rsuffix</span><span class="o">=</span><span class="s2">&#34;_rating&#34;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">)</span>
 
     <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;orderWithinStatus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;helpfulnessRatio&#39;</span>
     <span class="n">scoredNotes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;ratingStatus&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;Needs More Ratings&#39;</span><span class="p">,</span> <span class="s1">&#39;orderWithinStatus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;createdAtMillis_note&#39;</span>
     <span class="n">statusOrder</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Currently Rated Helpful&#39;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;Needs More Ratings&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;Currently Not Rated Helpful&#39;</span><span class="p">:</span><span class="mi">0</span><span class="p">}</span>
     <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;statusOrder&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scoredNotes</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">statusOrder</span><span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;ratingStatus&#39;</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">scoredNotes</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;statusOrder&#39;</span><span class="p">,</span><span class="s1">&#39;orderWithinStatus&#39;</span><span class="p">],</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span></code></pre></div>
-<br/></p>
+    <span class="k">return</span> <span class="n">scoredNotes</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;statusOrder&#39;</span><span class="p">,</span><span class="s1">&#39;orderWithinStatus&#39;</span><span class="p">],</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span></code></pre></td></tr></table>
+</div>
+</div></div>
+
+
+
+
+
+  
+  
+
+
+
+
+<span class="gdoc-button">
+<a  href="/birdwatch/sourcecode/ranking-notes.py"   target="_blank"  class="gdoc-button__link">
+  See source file
+</a>
+</span>
+
 <div class="gdoc-page__anchorwrap"><h2 id="tabs-needs-your-help-new-and-rated-helpful">Tabs: Needs Your Help, New, and Rated Helpful<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#tabs-needs-your-help-new-and-rated-helpful" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Tabs: Needs Your Help, New, and Rated Helpful" href="#tabs-needs-your-help-new-and-rated-helpful"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <p>Birdwatch participants are able to view three different tabs on the Birdwatch <a href="https://twitter.com/i/birdwatch">Home</a> page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.</p>
 <figure>
     <img src="../../images/home-three-tabs.png"/> 
 </figure>
 
-<p>The “New” tab contains Tweets sorted by reverse chronological order of when its latest note was written (Tweets are bumped to the top of the list when a new note is written on them).</p>
-<p>The notes that are labeled “Currently Rated Helpful” are used to determine what Tweets are added to the “Rated helpful” tab. For a Tweet to appear in that tab, it must have at least one note labeled “Currently Rated Helpful”, at least one of those “Currently Rated Helpful” notes must have labeled the Tweet “misinformed or potentially misleading”, and a majority of those “Currently Rated Helpful” notes had to have not labeled the Tweet as satire (either “It is a joke or satire that might be misinterpreted as a fact” or “It is clearly satirical/joking”). The Tweets that pass these filters are sorted reverse-chronologically by the timestamp of the Tweet’s first-created “Currently Rated Helpful” note.</p>
-<p>The “Needs Your Help” tab is designed to increase the likelihood that people from diverse perspectives rate each note, so that Birdwatch can ultimately elevate notes that people from a wide range of perspectives will find helpful. It also gives Birdwatch contributors an easy way to have immediate impact. The tab contains a set of 5 Tweets that have notes that need more ratings (although there may be fewer than 5 Tweets if one of the Tweets was recently deleted by the author). Tweets in this tab are filtered to those that the contributor hasn’t rated any of the notes on, and Tweets with notes from the past day, unless no Tweets pass those filters for you (that will only happen if you’re a very active rater!). Tweets are sorted by a ranking score, where Tweets are ranked higher based on the proportion of notes on the Tweet that are labeled “Needs More Ratings”, and Tweets are ranked lower if your rating history is more similar to the other raters who’ve already rated notes on this Tweet: this is a mechanism to help increase the likelihood that people from diverse perspectives rate each note.  The tab is updated roughly every couple hours, so when the contributor has rated notes in the tab, they can come back later to see fresh Tweets.</p>
-<p>Specifically, the rater similarity score between a pair of raters is defined as the number of notes that both raters rated, divided by the minimum number of total notes each rater has rated(over each of the two raters). E.g. if rater A rated notes 1, 2, and 3, while rater B rated notes 1, 3, 4, 5, and 6, then the similarity score between A and B = 2 / min(3, 5) = 2/3, because they both rated notes 1 and 3, for a total of 2, and the minimum number of total notes either rater has rated is 3. If two raters haven’t rated any of the same notes, the score is defined as 0.01 instead of 0. Then, the average rater similarity between a contributor and each other rater who’s rated a particular Tweet is computed, in order to compute the average rater similarity between the contributor and the raters of that Tweet. Then, Tweets are ranked in the “Needs your help” tab using the following score: 0.3 * proportionOfNotesOnTweetThatNeedMoreRatings - averageRaterSimilarityScore. The factor of 0.3 is applied to help to balance between the two scores fairly equally. We may in the future experiment with using other forms of rater similarity, e.g. based on whether two contributors tend to agree when they rate the same notes. This version primarily reflects contributors’ interest in what they choose to rate.</p>
+<div class="gdoc-page__anchorwrap"><h3 id="new">New<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#new" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor New" href="#new"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>Contains Tweets sorted by reverse chronological order of when its latest note was written (Tweets are bumped to the top of the list when a new note is written on them).</p>
+<div class="gdoc-page__anchorwrap"><h3 id="rated-helpful">Rated Helpful<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#rated-helpful" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Rated Helpful" href="#rated-helpful"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>Tweets in this tab have at least one note labeled <strong>Currently Rated Helpful</strong>, at least one of those <strong>Currently Rated Helpful</strong> notes must have labeled the Tweet “misinformed or potentially misleading”, and a majority of those <strong>Currently Rated Helpful</strong> notes had to have not labeled the Tweet as satire (either “It is a joke or satire that might be misinterpreted as a fact” or “It is clearly satirical/joking”). The Tweets that pass these filters are sorted reverse-chronologically by the timestamp of the Tweet’s first-created <strong>Currently Rated Helpful</strong> note.</p>
+<div class="gdoc-page__anchorwrap"><h3 id="needs-your-help">Needs Your Help<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#needs-your-help" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Needs Your Help" href="#needs-your-help"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>This tab is only visible to pilot participants. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Birdwatch can ultimately elevate notes that people from a wide range of perspectives will find helpful. It also gives Birdwatch contributors an easy way to have immediate impact.</p>
+<p>It contains a set of 5 Tweets that have notes that need more ratings (although there may be fewer than 5 Tweets if one of the Tweets was recently deleted by the author). Tweets in this tab are filtered to those that the contributor hasn’t rated any of the notes on, and Tweets with notes from the past day, unless no Tweets pass those filters for you (that will only happen if you’re a very active rater!). The tab is updated roughly every couple hours, so when the contributor has rated notes in the tab, they can come back later to see fresh Tweets.</p>
+<div class="gdoc-page__anchorwrap"><h3 id="rater-similarity-score-for-needs-your-help">Rater similarity score for Needs Your Help<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#rater-similarity-score-for-needs-your-help" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Rater similarity score for Needs Your Help" href="#rater-similarity-score-for-needs-your-help"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>Tweets on the <strong>Needs Your Help</strong> tab are sorted by a ranking score, where Tweets are ranked higher based on the proportion of notes on the Tweet that are labeled <strong>Needs More Ratings</strong>, and Tweets are ranked lower if your rating history is more similar to the other raters who’ve already rated notes on this Tweet: this is a mechanism to help increase the likelihood that people from diverse perspectives rate each note.</p>
+<p>Specifically, the rater similarity score between a pair of raters is defined as the number of notes that both raters rated, divided by the minimum number of total notes each rater has rated(over each of the two raters).</p>
+<p>Example: if rater A rated notes 1, 2, and 3, while rater B rated notes 1, 3, 4, 5, and 6, then the similarity score between A and B = 2 / min(3, 5) = 2/3, because they both rated notes 1 and 3, for a total of 2, and the minimum number of total notes either rater has rated is 3. If two raters haven’t rated any of the same notes, the score is defined as 0.01 instead of 0. Then, the average rater similarity between a contributor and each other rater who’s rated a particular Tweet is computed, in order to compute the average rater similarity between the contributor and the raters of that Tweet. Then, Tweets are ranked in the “Needs your help” tab using the following score: 0.3 * proportionOfNotesOnTweetThatNeedMoreRatings - averageRaterSimilarityScore.</p>
+<p>The factor of 0.3 is applied to help to balance between the two scores fairly equally. We may in the future experiment with using other forms of rater similarity, e.g. based on whether two contributors tend to agree when they rate the same notes. This version primarily reflects contributors’ interest in what they choose to rate.</p>
 
 
     </article>

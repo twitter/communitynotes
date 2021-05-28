@@ -73,7 +73,7 @@ Whales are not actually mammals. If Humans (land mammals) can’t drink seawater
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/about/ranking-notes/</guid>
-      <description>Note ranking When displaying notes written on a Tweet, Birdwatch initially shows notes in reverse-chronological order (most recent on top), and displays them with a status indicator that the note “Needs More Ratings”. In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be moved to the top or bottom of the list and annotated with a header showing that they are “Currently Rated Helpful” or “Currently Not Rated Helpful.</description>
+      <description>Note ranking When displaying notes written on a Tweet, Birdwatch initially shows most recent notes on top and displays them with a status indicator that the note Needs More Ratings. In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be moved to the top or bottom of the list and annotated with a header showing that they are Currently Rated Helpful or Currently Not Rated Helpful.</description>
     </item>
     
     <item>
