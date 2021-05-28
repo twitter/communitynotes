@@ -3,7 +3,7 @@ title: Home
 # type: post
 ---
 
-{{< figure class="hero" src="images/hero-2.png">}}
+{{< figure class="hero" src="images/hero.png">}}
 
 # Empowering the Twitter community to create a better-informed world.
 
