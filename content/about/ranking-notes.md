@@ -107,23 +107,20 @@ Example: if rater A rated notes 1, 2, and 3, while rater B rated notes 1, 3, 4, 
 
 The factor of 0.3 is applied to help to balance between the two scores fairly equally. We may in the future experiment with using other forms of rater similarity, e.g. based on whether two contributors tend to agree when they rate the same notes. This version primarily reflects contributors’ interest in what they choose to rate.
 
-## Birdwatch labels on Tweets
+## Birdwatch cards on Tweets
 
-When browsing Twitter on Twitter for Android, Twitter for iOS, or Twitter.com, Birdwatch participants may see a label below Tweets which have Birdwatch notes. Tweet pivots appear across timelines (e.g. Home, Search, Lists) and link to the Birdwatch site. They may include a specific Birdwatch note or they may reference the number of Birdwatch notes which exist.
+When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch pilot participants may see cards on Tweets that have Birdwatch notes. Birdwatch cards may include a specific Birdwatch note or reference the number of Birdwatch notes on the Tweet, and link to the Birdwatch site where contributors can rate the notes.
 
-### Labels with a specific note
+### Cards showing a specific note
 
 {{< figure src="../../images/notes-on-twitter-specific.png">}}
 
-For a Birdwatch label to include a specific note, it must bear a **Currently rated helpful** status, computed by the algorithm defined above. If a Tweet has more than one note bearing the **Currently rated helpful** status, one will be selected at random and cycled through at a periodic interval. This random selection and periodic cycling will allow Birdwatch to collect additional ratings across a more diverse set of notes without further entrenching any one note with additional ratings.
+If a Tweet has a Birdwatch note deemed **Currently rated helpful** by contributors (determined as described above in **Note Ranking**) then the note will be shown in the card, along with a button to rate the note. If the Tweet has multiple notes with **Currently rated helpful** status, the card will show one note, randomly cycling between them at periodic intervals in order to gather additional rating inputs on each.
 
-Clicking this label will open the Birdwatch site and display the selected note and note rating form.
-
-### Labels with a count of notes
+### Cards showing a count of notes
 
 {{< figure src="../../images/notes-on-twitter-count.png">}}
 
-If a Tweet has notes but none currently bear a **Currently rated helpful** status, the Tweet pivot will request for the all notes to be rated.
-Clicking this pivot will open the Birdwatch site and display all notes currently on the Tweet.
+If a Tweet has notes but none yet have **Currently rated helpful** status, the card will show the number of notes, and allow people to tap to read and rate those notes on the Birdwatch site.
 
-In order to reduce the distribution of notes marked as unhelpful by Birdwatch pilot participants, a Tweet pivot will not be displayed on Tweets where all notes bear the **Currently rated not helpful** status. When this behavior occurs, pilot participants will still be able to access the notes via the Birdwatch icon displayed in the Tweet details page.
+If all notes on a Tweet have **Currently not rated helpful** status, no card will be shown. Pilot participants will still be able to access these notes via the Birdwatch icon displayed in the Tweet details page.
