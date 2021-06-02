@@ -26,28 +26,38 @@ What makes a good Birdwatch note? [**See examples →**](../../examples)
 
 # Rating Birdwatch notes
 
-There are two ways to find Tweets with Birdwatch notes:
+There are two ways to find Tweets with Birdwatch notes in order to rate their quality:
 
-1. Go to the [**Birdwatch site's Home page**](https://birdwatch.twitter.com) and choose any Tweet to see notes that participants have added to it.
+### Browsing the Birdwatch site
+
+Go to the [**Birdwatch site's Home page**](https://birdwatch.twitter.com) and choose any Tweet to see notes that participants have added to it. There are three main "tabs", or "views" on this page:
+
+- **Needs your help:** Contains Tweets with notes where you can have the most impact when rating. This tab is only visible to pilot participants.
+- **New:** Contains Tweets with the most recent notes.
+- **Rated Helpful:** Contains Tweets with at least one note rated helpful by the community.
 
 {{< figure src="../../images/4-birdwatch-site.png">}}
 
-2. Alternatively, you can find Tweets with Birdwatch notes by noticing the Birdwatch icon on the Tweet Details page. Tap the icon to read all notes on that Tweet.
+You can learn more about how Birdwatch chooses notes for each of these views on the [**Note Ranking**](../../note-ranking) page of the Guide.
 
-{{< figure src="../../images/2-finding-notes.png">}}
+### Browsing Twitter
 
-3. On the **Tweet with notes** page, you’ll see the Tweet and the notes others have written about it. On each note, answer the rating questions to provide your input.
+If you're a Birdwatch pilot participant, you may also see notes on Tweets while browsing Twitter. You can tap to rate those notes:
 
-4. Tap or click **Submit**. You can edit your ratings if you change your mind.
+{{< figure src="../../images/birdwatch-notes-on-twitter.png">}}
 
-5. Notes rated by the community to be particularly helpful will be surfaced at the top of the list with a **Currently rated helpful** badge:
+# Helpfulness status on notes
 
-{{< figure src="../../images/5-good-notes.png">}}
+Birdwatch initially shows most recent notes on top, and displays them with a status indicator that the note **Needs More Ratings**. In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be moved to the top or bottom of the list and annotated with a header showing that they are **Currently Rated Helpful** or **Currently Not Rated Helpful**.
 
-Learn how [**Currently rated helpful**](../../note-ranking) works.
+When notes are **Currently Rated Helpful** or **Currently Not Rated Helpful**, Birdwatch will also show the top two "reasons" selected by raters when rating that note.
+
+{{< figure src="../../images/note-statuses.png">}}
+
+Learn how [**Note ranking**](../../note-ranking) works.
 
 # Helpfulness ratings on your notes
 
-You can see how other participants have rated your notes on the "Your Notes" page, which shows an aggregate score of ratings you've received across all notes you’ve written.
+You can see how other participants have rated your notes on the **Your Notes** page, which shows an aggregate score of ratings you've received across all notes you’ve written.
 
 {{< figure src="../../images/3-your-notes.png">}}

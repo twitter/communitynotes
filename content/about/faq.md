@@ -13,7 +13,7 @@ The first phase of this pilot will be limited to a small test group in the US. [
 
 {{< expand "Are contributions anonymous? Or will my name be attached to my notes?" >}}
 
-All Birdwatch contributions are associated with the Twitter account of the contributor. For example, when someone writes a note, their Twitter handle appears above the note on the [Birdwatch site](http://birdwatch.twitter.com). In concept tests, people consistently told us that they found notes more helpful when they can see who wrote the note (vs it being anonymous). Like the rest of Twitter, accounts can use any display name. People can participate in Birdwatch under any account, including secondary accounts that use a pseudonym.
+All Birdwatch contributions are associated with the Twitter account of the contributor. For example, when someone writes a note, their Twitter handle is not immediately visible by others browsing the [Birdwatch site](http://birdwatch.twitter.com), but can be found via the "Note Details" option on each Note. In concept tests, people consistently told us that they found notes more helpful when they can see who wrote the note (vs it being anonymous). Like the rest of Twitter, accounts can use any display name. People can participate in Birdwatch under any account, including secondary accounts that use a pseudonym.
 
 {{< /expand >}}
 
@@ -25,7 +25,7 @@ Any Tweet can receive a Birdwatch note.
 
 {{< expand "Will Birdwatch contributions affect content on Twitter? Will it be used to label or remove Tweets? " >}}
 
-During our initial pilot phase, Birdwatch contributions will not impact the way people see Tweets or our recommendation systems. Currently, notes are **only** visible on a separate Birdwatch site. Birdwatch contributions are being intentionally kept separate from Twitter for now while we gain confidence that it produces context people find helpful and appropriate. Eventually, we aim to make notes visible directly on Tweets for the global Twitter audience when there is consensus from a broad and diverse set of contributors.
+During our initial pilot phase, Birdwatch contributions will not impact the way people outside of the pilot  see Tweets or our recommendation systems. Birdwatch contributions are being intentionally kept separate from Twitter for now while we gain confidence that it produces context people find helpful and appropriate. Eventually, we aim to make notes visible directly on Tweets for the global Twitter audience when there is consensus from a broad and diverse set of contributors.
 
 {{< /expand >}}
 
@@ -67,7 +67,7 @@ A wealth of relevant knowledge exists beyond Twitter’s virtual walls, so we ar
 
 Birdwatch is a pilot program that allows participants to identify information in Tweets they believe may be misleading and write notes that provide additional context. You can learn more about Birdwatch [here](../../).
 
-Currently, notes are only visible on a separate Birdwatch site and will not impact your account, or change the way your Tweets appear to anyone outside of the pilot. Birdwatch contributions are being intentionally kept separate from Twitter during this pilot phase while web build Birdwatch, and gain confidence that it produces context people find appropriate and helpful.
+Currently, notes are only visible to people in the pilot, or on a separate [Birdwatch site](http://birdwatch.twitter.com) for people outside of the pilot and will not impact your account, or change the way your Tweets appear to anyone outside of the pilot. Birdwatch contributions are being intentionally kept separate from Twitter during this pilot phase while we build Birdwatch, and gain confidence that it produces context people find appropriate and helpful.
 
 If you believe a note may have violated the Twitter Rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using [this form](https://help.twitter.com/en/forms/birdwatch).
 
