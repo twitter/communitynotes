@@ -187,6 +187,9 @@ article header h1,
 .gdoc-markdown h1 {
   font-size: 3em;
 }
+h1.article_title{
+  margin-top:2rem !important;
+}
 article header h1 a {
   line-height: 1em !important;
   color: var(--tw-color-text-primary);

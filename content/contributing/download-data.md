@@ -4,8 +4,6 @@ geekdocBreadcrumb: false
 aliases: ["/data"]
 ---
 
-# Download data
-
 ### We can't wait to learn with you!
 
 All Birdwatch contributions are publicly available on the [Download Data](https://twitter.com/i/birdwatch/download-data) page of the Birdwatch site so that anyone in the US has free access to analyze the data, identify problems, and spot opportunities to make Birdwatch better.

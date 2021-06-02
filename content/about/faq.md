@@ -3,8 +3,6 @@ title: FAQs
 geekdocBreadcrumb: false
 ---
 
-# FAQs
-
 {{< expand "Who is eligible to participate in the Birdwatch pilot? Is there an approval process?" >}}
 
 The first phase of this pilot will be limited to a small test group in the US. [Sign ups are open](https://twitter.com/i/flow/join-birdwatch). Accounts must meet a few criteria to be eligible. [Learn more here](../../join).
