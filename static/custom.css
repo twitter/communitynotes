@@ -29,7 +29,7 @@ ul {
   font-weight: 400;
   font-size: 1rem;
   line-height: 1.5rem;
-  letter-spacing: 0.025rem;
+  letter-spacing: -0.01rem;
   margin: 0;
   padding: 0;
   color: #657786;
@@ -43,7 +43,12 @@ code span {
   font-size: 0.85rem;
   line-height: 1.25rem;
 }
-
+.katex-display{
+  padding: 2rem 1rem;
+  border-radius: 12px;
+  background: aliceblue;
+  overflow: scroll;
+}
 span.gdoc-brand {
   color: var(--tw-color-text-primary);
 }
