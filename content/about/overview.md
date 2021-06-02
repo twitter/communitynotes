@@ -18,7 +18,7 @@ In this phase, Birdwatch has three core elements: notes, ratings, and the Birdwa
 
 1. ### Notes
 
-Participants in the pilot can add notes to any Tweet they come across and think might be misleading. Notes are composed of multiple-choice questions and an open text field where participants can explain why they believe a Tweet is misleading, as well as link to relevant sources. Birdwatch notes are public, and anyone in the US can browse the Birdwatch site to see them. At this phase of the pilot, notes appear only on the Birdwatch site. They are intentionally kept separate from Twitter for now, while we build Birdwatch and gain confidence that it produces context people find helpful and appropriate.
+Participants in the pilot can add notes to any Tweet they come across and think might be misleading. Notes are composed of multiple-choice questions and an open text field where participants can explain why they believe a Tweet is misleading, as well as link to relevant sources. Birdwatch notes are public, and anyone in the US can browse the Birdwatch site to see them. For those not in the pilot, notes currently appear only on the Birdwatch site. They are intentionally kept separate from Twitter for now, while we build Birdwatch and gain confidence that it produces context people find helpful and appropriate. People in the pilot may see notes directly on Tweets when browsing Twitter, and are able to rate those notes for helpfulness.
 
 [Learn more about writing notes →](../../contributing/writing-and-rating-notes)
 
@@ -32,7 +32,7 @@ Participants can rate the helpfulness of other's notes. Ratings help identify wh
 
 The Birdwatch site is the home for all Birdwatch notes and ratings, separate from the main Twitter apps, and is available at [birdwatch.twitter.com](https://birdwatch.twitter.com).
 
-During this phase, Birdwatch contributions will not affect the way people see Tweets or our system recommendations. Our priority is to understand how to build and adopt a community-based approach that takes input from a diverse set of contributors and identifies the context that people will find most helpful.
+During this phase of the pilot, Birdwatch contributions will not affect the way people outside of the pilot see Tweets or our system recommendations. Our priority is to understand how to build and adopt a community-based approach that takes input from a diverse set of contributors and identifies the context that people will find most helpful.
 
 [Visit Birdwatch →](https://birdwatch.twitter.com).
 
