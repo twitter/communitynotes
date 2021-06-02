@@ -22,4 +22,4 @@
     </span>
   </div>
 </footer>
-{{ partial "katex.html" . }}
+{{ if .Params.katex}}{{ partial "katex.html" . }}{{ end }}
