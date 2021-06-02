@@ -74,9 +74,6 @@ Here’s a Python code snippet one can run to reproduce how we compute notes’ 
 
 {{< button href="/birdwatch/sourcecode/ranking-notes.py" >}}See source file{{< /button >}}
 
-<br/>
-<br/>
-
 ## Tabs: Needs Your Help, New, and Rated Helpful
 
 Birdwatch participants are able to view three different tabs on the Birdwatch [Home](https://twitter.com/i/birdwatch) page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
