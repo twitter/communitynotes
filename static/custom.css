@@ -34,15 +34,21 @@ ul {
   padding: 0;
   color: #657786;
 }
-code {
+.highlight {
   max-height: 20rem;
   overflow: scroll;
+  padding-top: 0rem;
+}
+
+.highlight .chroma{
+  margin-top: 0px;
 }
 code span {
   font-family: monospace;
   font-size: 0.85rem;
   line-height: 1.25rem;
 }
+
 .katex-display{
   padding: 2rem 1rem;
   border-radius: 12px;
