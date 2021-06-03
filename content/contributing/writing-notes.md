@@ -1,7 +1,7 @@
 ---
 title: Writing notes
 geekdocBreadcrumb: false
-aliases: ["/writing-notes"]
+aliases: ["/writing-notes", "writing-and-rating-notes"]
 ---
 
 Anyone in the US can read Birdwatch notes, but only pilot participants can add new notes to Tweets. Here's how to add a note:
@@ -19,11 +19,3 @@ Anyone in the US can read Birdwatch notes, but only pilot participants can add n
 5. After it’s submitted, the note will be available on the Birdwatch site for other participants to read and rate.
 
 6. You can delete your notes at any time by clicking or tapping the ••• icon on a note.
-
-# Helpfulness ratings on your notes
-
-You can see how other participants have rated your notes on the **Your Notes** page, which shows an aggregate score of ratings you've received across all notes you’ve written.
-
-{{< figure src="../../images/3-your-notes.png">}}
-
-What makes a good Birdwatch note? [**See examples →**](../../examples)
