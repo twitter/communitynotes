@@ -6,7 +6,7 @@ aliases: ["/rating-notes"]
 
 There are two ways to find Tweets with Birdwatch notes in order to rate their quality:
 
-## Browsing the Birdwatch site
+## Rating notes on the Birdwatch site
 
 Go to the [**Birdwatch site's Home page**](https://birdwatch.twitter.com) and choose any Tweet to see notes that participants have added to it. There are three main "tabs", or "views" on this page:
 
@@ -18,13 +18,13 @@ Go to the [**Birdwatch site's Home page**](https://birdwatch.twitter.com) and ch
 
 You can learn more about how Birdwatch chooses notes for each of these views on the [**Note Ranking**](../../note-ranking) page of the Guide.
 
-## Browsing Twitter
+## Rating notes on Twitter
 
 If you're a Birdwatch pilot participant, you may also see notes on Tweets while browsing Twitter. You can tap to rate those notes:
 
 {{< figure src="../../images/birdwatch-notes-on-twitter.png">}}
 
-# Helpfulness status on notes
+## Helpfulness status on notes
 
 Birdwatch initially shows most recent notes on top, and displays them with a status indicator that the note **Needs More Ratings**. In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be moved to the top or bottom of the list and annotated with a header showing that they are **Currently Rated Helpful** or **Currently Not Rated Helpful**.
 
@@ -34,7 +34,7 @@ When notes are **Currently Rated Helpful** or **Currently Not Rated Helpful**, B
 
 Learn how [**Note ranking**](../../note-ranking) works under the hood.
 
-# Helpfulness ratings on your notes
+## Helpfulness ratings on your notes
 
 You can see how other participants have rated your notes on the **Your Notes** page, which shows an aggregate score of ratings you've received across all notes you’ve written.
 
