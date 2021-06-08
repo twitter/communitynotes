@@ -8,10 +8,12 @@ There are two ways to find Tweets with Birdwatch notes in order to rate their qu
 
 ## Rating notes on the Birdwatch site
 
-Go to the [**Birdwatch site's Home page**](https://birdwatch.twitter.com) and choose any Tweet to see notes that participants have added to it. There are three main "tabs", or "views" on this page:
+Go to the [**Birdwatch Site's Home page**](https://birdwatch.twitter.com) and choose any Tweet to see notes that participants have added to it. There are three main timelines on this page:
 
 - **Needs your help:** Contains Tweets with notes where you can have the most impact when rating. This tab is only visible to pilot participants.
+
 - **New:** Contains Tweets with the most recent notes.
+
 - **Rated Helpful:** Contains Tweets with at least one note rated helpful by the community.
 
 {{< figure src="../../images/4-birdwatch-site.png">}}
