@@ -40,7 +40,7 @@ ul {
   padding-top: 0rem;
 }
 
-.highlight .chroma{
+.highlight .chroma {
   margin-top: 0px;
 }
 code span {
@@ -49,7 +49,7 @@ code span {
   line-height: 1.25rem;
 }
 
-.katex-display{
+.katex-display {
   padding: 2rem 1rem;
   border-radius: 12px;
   background: aliceblue;
@@ -120,6 +120,19 @@ a:visited {
   margin-bottom: 0.1rem;
   width: 24px;
   height: 24px;
+}
+
+.gdoc-markdown .gdoc-toc {
+  margin-bottom: 2rem;
+}
+
+.gdoc-toc a,
+.gdoc-toc a:visited {
+  color: var(--tw-color-blue-primary);
+}
+
+.gdoc-markdown .gdoc-toc hr {
+  display: none;
 }
 
 /* page links */
@@ -198,8 +211,8 @@ article header h1,
 .gdoc-markdown h1 {
   font-size: 3em;
 }
-h1.article_title{
-  margin-top:2rem !important;
+h1.article_title {
+  margin-top: 2rem !important;
 }
 article header h1 a {
   line-height: 1em !important;
