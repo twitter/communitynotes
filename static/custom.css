@@ -40,6 +40,14 @@ ul {
   padding-top: 0rem;
 }
 
+.gdoc-markdown ul li {
+  margin-bottom: 1.5rem;
+}
+
+.gdoc-markdown nav#TableOfContents ul li {
+  margin-bottom: 0.5rem;
+}
+
 .highlight .chroma {
   margin-top: 0px;
 }
@@ -49,10 +57,15 @@ code span {
   line-height: 1.25rem;
 }
 
+.gdoc-markdown code {
+  background-color: #eee;
+  border-radius: 2px;
+}
+
 .katex-display {
   padding: 2rem 1rem;
   border-radius: 12px;
-  background: aliceblue;
+  background: #eee;
   overflow: scroll;
 }
 span.gdoc-brand {
@@ -404,7 +417,7 @@ h3 {
 
 ol li::marker,
 ul li::marker {
-  color: var(--tw-color-blue-primary);
+  color: var(--tw-color-text-secondary);
   font-weight: 700;
 }
 
@@ -558,8 +571,8 @@ div.note.note-unhelpful ul li {
 }
 
 .gdoc-markdown table {
-  border: 1px solid #eee;
   font-size: 14px;
+  width: 100%;
   box-shadow: inset -5px 0px 5px rgba(0, 0, 0, 0.1);
 }
 
@@ -569,15 +582,15 @@ div.note.note-unhelpful ul li {
   text-align: left;
   padding: 0.5rem;
   line-height: 1rem;
+  width: auto;
 }
-
+.gdoc-markdown table tbody {
+  width: 100%;
+  border: 1px solid #eee;
+}
 .gdoc-markdown table tr th {
   color: white;
   background-color: var(--tw-color-blue-primary);
-}
-
-.gdoc-markdown table tr td:first-of-type {
-  font-family: monospace;
 }
 
 .gdoc-markdown table tr:nth-child(2n) {

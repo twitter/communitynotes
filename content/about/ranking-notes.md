@@ -12,7 +12,7 @@ geekdocToc: 1
 katex: true
 ---
 
-Birdwatch notes are submitted and rated by contributors. Ratings are used to determine note status, which notes are displayed on each of the [Birdwatch Site's timelines](./#birdwatch-timelines), and which notes are displayed as [Birdwatch Cards](./#birdwatch-cards-on-tweets) on the Twitter timelines.
+Birdwatch notes are submitted and rated by contributors. Ratings are used to determine [Note Status](./#note-status) (e.g. “Currently Rated Helpful”), which notes are displayed on each of the [Birdwatch Site's timelines](./#birdwatch-timelines), and which notes are displayed as [Birdwatch Cards](./#birdwatch-cards-on-tweets) on the Twitter timelines.
 
 To help people understand how Birdwatch's ranking system works, the sections below explain how notes are assigned these statuses, ranked, and displayed.
 
@@ -22,139 +22,138 @@ To help people understand how Birdwatch's ranking system works, the sections bel
 
 {{< figure src="../../images/note-statuses.png">}}
 
-All Birdwatch notes start out with the **Needs More Ratings** status until they receive at least 5 total ratings and at least 2.5 weighted ratings (the sum of the Contributor Scores of the raters that rated the note, where Contributor Scores are between 0 and 1).
+All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings and at least 2 weighted ratings (the sum of the Combined Helpfulness Scores of the raters that rated the note, where Combined Helpfulness Scores are between `0` and `1`).
 
-All Birdwatch notes start out with the **Needs More Ratings** status until they receive at least 2 weighted ratings (the sum of the Contributor Scores that rated the note). Since contributor weights are between 0 and 1, and are around 0.5 on average for contributors with nonzero weights, this means in practice that about 4 contributors with nonzero weights will need to have rated the note.
+Then, Birdwatch computes a Note Helpfulness Score for each note, which is the proportion of ratings that say the note is helpful, where each rating is weighted by the Combined Helpfulness Scores of the rater.
 
-Then, Birdwatch computes a **Helpfulness Ratio** for each note, which is simply the proportion of ratings that say the note is helpful.
+Notes with a Note Helpfulness Score of `0.29` and below are assigned Currently Not Rated Helpful, and notes with a score of `0.84` and above are assigned Currently Rated Helpful. Notes with scores in between `0.29` and `0.84` remain labeled as Needs more Ratings.
 
-For a note to be labeled as **Currently Rated Helpful** or **Currently Not Rated Helpful**, raters must have selected at least two of the corresponding
-reasons why a note is (or isn’t) helpful — e.g. “cites high-quality sources,” “nonjudgmental and/or empathetic,” etc — at least twice each.
+In addition to Currently Rated / Not Rated Helpful status, labels also show the most commonly chosen reasons why it is helpful/unhelpful. To break ties between reasons that are chosen an equal number of times by raters, we pick the reason that is used least frequently by Birdwatch raters in general (with the exception of `other`, which loses all tiebreaks).
 
-Notes with a **Helpfulness Ratio** of 0.29 and below are assigned **Currently Not Rated Helpful**, and notes with a ratio of 0.84 and above are assigned **Currently Rated Helpful**. Notes with scores in between 0.29 and 0.84 remain labeled as **Needs more Ratings**.
+Notes with the status Needs More Ratings remain sorted by recency (newest first), and notes with a Currently Rated / Not Rated Helpful status are sorted by their Helpfulness Score.
 
-In addition to **Currently Rated / Not Rated Helpful** status, labels also show the most commonly chosen reasons why it is helpful/unhelpful. To break ties between reasons that are chosen an equal number of times by raters, we pick the reason that is used least frequently by Birdwatch raters in general (with the exception of Other, which loses all tiebreaks).
+This ranking mechanism is knowingly imperfect, and we are actively developing it with the aim that Birdwatch consistently identifies notes that are found helpful to people from a wide variety of perspectives.
 
-Notes with the status **Needs More Ratings** remain sorted by recency (newest first), and notes with a **Currently Rated / Not Rated Helpful** status are sorted by their **Helpfulness Ratio**.
+During the pilot, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the Currently Rated / Not Rated Helpful criteria and when that designation appears on the Birdwatch site. This delay allows Birdwatch to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.
 
-This ranking mechanism is knowingly basic, and we only intend to use it for a short time during the program’s earliest phases.
+## Combined Helpfulness Score
 
-During the pilot, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the **Currently Rated / Not Rated Helpful** criteria and when it jumps to the top or bottom of the list. This delay allows Birdwatch to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.
-
-## Contributor Scores
-
-For each contributor, we will compute two scores: the Author Helpfulness Score score, and the Contributor Ratings Score. These two scores, in turn, are averaged together into the Average Contributor Score, which is used to weight the ratings each contributor produces when evaluating notes. The purpose of using Contributor Scores is to give more influence to contributors who have a track record of helpful contributions.
-
-At a high level, Contributor Scores are a way to give more weight to people whose contributions are consistently found helpful by others:
+At a high level, Combined Helpfulness Scores are a way to give more weight to people whose contributions are consistently found helpful by others:
 
 - If you write notes that people consistently find helpful, the ratings you give other notes will have greater weight.
 - If the ratings you give often align with the ultimate rating outcome from the community, your ratings will have greater weight.
 
-<br>
+Each Birdwatch contributor earns an Author Helpfulness Score score, and a Rater Helpfulness Score. These two scores, in turn, are averaged together into a Combined Helpfulness Score, which is used to weight the ratings that each contributor gives to notes. The purpose of using Combined Helpfulness Score is to give more influence to contributors who have a track record of helpful contributions.
 
-This is a simple start to improve the quality of Birdwatch’s note scoring and ranking, and is a step towards making manipulation of Birdwatch more difficult.. More improvements are on their way, including factoring in not just how many ratings a note has received, but also how diverse the perspectives of those raters are — i.e. do they always agree with each other, or sometimes/often disagree?
+These scores are a simple first approach to improve the quality of Birdwatch’s note scoring and ranking, and a step towards making manipulation of Birdwatch more difficult. More improvements are on the way, including factoring in not just how many ratings a note has received, but also how diverse the perspectives of those raters are — i.e. do those raters always agree with each other, or sometimes/often disagree?
 
 ### Author Helpfulness Score
 
-Author Helpfulness Score
-Any contributor who has written at least one note that’s been rated by other participants receives an Author Helpfulness Score. This score is defined as the weighted average of ratings they’ve received from other contributors on the notes that they’ve authored, with 10 “pseudocounts” . We initially assign the Author Helpfulness Score of all contributors to be 1, then repeat the following reweighting update step defined below until the scores converge.
+Any contributor who has written at least one note that’s been rated by other participants receives an Author Helpfulness Score. The score starts out low, and can increase (or decrease) as the author receives ratings from more raters.
 
-Intuitively, the process starts off assuming all raters have equal weight, and calculates each note author’s Helpfulness Score solely based on the average of all the ratings they’ve received. That gives a starting point of which authors’ contributions are found most helpful by others. For the purpose of computing these scores, the process assumes those more helpful writers are also better raters, and re-computes all Author Helpfulness Scores, giving the ratings of helpful writers more weight. Repeat until this process hits a maximum number of iterations, at which point the helpfulness scores should have converged (stopped changing much between iterations):
+The score is based on the weighted average of ratings they’ve received from other contributors on the notes that they’ve authored. Each rater’s ratings of any particular author are only counted once in this weighted average, using the average helpfulness rating from that particular rater of the particular author. For example: if a rater rated 10 notes from the same author, those will count as 1 author-level rating instead of 10 ratings.
 
-\\[helpfulness_i(u) = \frac{\sum_{rater \in R(u)} helpfulness_{i-1}(rater) * rating(rater,u)}{\sum_{rater \in R(u)} helpfulness_{i-1} (rater)}\\]
+Then, the score is smoothed by adding 2 pseudocounts to the numerator and 6 pseudocounts to the denominator — this has the effect of scores starting out low and increasing over time as authors receive ratings from more raters. It also effectively means that the default score is ⅓. So we then transform the score with the function `max(0, 1.5\*s - .5)` in order to set ratios of ⅓ or less to 0 and then renormalize the range back to [0, 1].
+
+We initially assign the Author Helpfulness Score of all contributors to be 1, then repeat the following reweighting update step defined below until the scores converge. Intuitively, the process starts off assuming all raters have equal weight, and calculates each note author’s Helpfulness Score solely based on the average of the ratings they’ve received from each rater. That gives a starting point of which authors’ contributions are found most helpful by others. For the purpose of computing these scores, the process assumes those more helpful authors are also better raters, and re-computes all Author Helpfulness Scores, giving the ratings of helpful authors more weight. Repeat until this process hits a maximum number of iterations, at which point the author helpfulness scores should have converged (stopped changing much between iterations):
+
+\\[a_i(u) = max(0, \frac{3}{2} * \frac{2 + \sum*{rater \in R(u)} a*{i-1}(rater) _ rating(rater,u)}{6 + \sum*{rater \in R(u)} a*{i-1} (rater)} - \frac{1}{2})
+\\]
+
+In the update equation:
+
+- `a_i(u)` is the Author Helpfulness Score of contributor u at the i-th iteration.
+- `i` indicates the iteration number.
+- `R(u)` is the set of contributors that rated author u.
+- `Rating(v, u)` is contributor `v`’s average rating of contributor `u`, averaged over all notes that were authored by contributor `u` and rated by contributor `v`, with helpful ratings = 1 and not-helpful ratings = 0.
 
 ### Preliminary Note Scoring
 
-The next step is to compute preliminary Note Helpfulness Scores, which are only used to compute Contributor Rating Scores as defined below (they are not used as final Note Helpfulness Scores). The preliminary scores are computed by weighting each rater’s Author Helpfulness Scores from the previous section as in this equation here:
+The next step is to compute preliminary Note Helpfulness Scores, which are only used to compute Rater Helpfulness Scores as defined below (they are not used as final Note Helpfulness Scores). The preliminary Note Helpfulness Scores are computed by weighting each rater’s Author Helpfulness Scores from the previous section as in this equation here:
 
-\\[helpfulness_i(u) = \frac{\sum_{rater \in R(u)} helpfulness_{i-1}(rater) * rating(rater,u)}{\sum_{rater \in R(u)} helpfulness_{i-1} (rater)}\\]
+\\[preliminary\text{\textunderscore}note\text{\textunderscore}score(n) = \frac{\sum_{rater \in R(n)} a(rater) * rating(rater,n)}{\sum_{rater \in R(n)} a(rater)}\\]
 
-### Contributor Rating Score
+Where `a` is the Author Helpfulness Score.
 
-To determine Contributor Rating Score, we measure how similar the contributor’s ratings are to the ratings on notes that were eventually labeled “Currently Rated Helpful” or “Currently Not Rated Helpful” (indicating clear consensus among raters and they aren’t labeled “Needs More Ratings”).
+### Rater Helpfulness Score
 
-We currently only use the first 5 ratings on each note and within 48 hours of the note’s creation when evaluating a Contributor’s Rating Score (which we will call “valid ratings”), both as an incentive to reward quick rating but also so that retroactively rating old notes with clear labels doesn’t boost Contributor Rating Score.
+Rater Helpfulness Score reflects how similar a contributor’s ratings are to the ratings on notes that were eventually labeled “Currently Rated Helpful” or “Currently Not Rated Helpful” (indicating clear consensus among raters, and not labeled “Needs More Ratings”).
 
-Until a contributor has made valid ratings on at least 10 notes that aren’t labeled “Needs More Ratings” and they didn’t rate every note the exact same way, that contributor’s Contributor Rating Score is 0. Once they have, then the Contributor Rating Score is defined as the correlation of that rater’s ratings with the preliminary Note Helpfulness Scores for the notes that have labels besides “Needs More Ratings”, after excluding the rater’s own rating from the preliminary Note Helpfulness Score.
+Currently only the first 5 ratings on each note that were made within 48 hours of the note’s creation are used when evaluating a Contributor’s Rating Score (hereafter called “valid ratings”). This is done to both reward quick rating, and also so that retroactively rating old notes with clear labels doesn’t boost Rater Helpfulness Score.
 
-\\[helpfulness_i(u) = \frac{\sum_{rater \in R(u)} helpfulness_{i-1}(rater) * rating(rater,u)}{\sum_{rater \in R(u)} helpfulness_{i-1} (rater)}\\]
+Rater Helpfulness is initially 0 until the contributor has made at least one valid rating (one of the first 5 ratings within 48 hours on a note that got a label besides “Needs More Ratings”). Then the Rater Helpfulness Score is based on the fraction of their valid ratings that match the consensus label of whether the note was rated helpful or not rated helpful. When computing this fraction, we determine what the note’s label would’ve been without the rating from the rater whose score is being computed.
 
-Because it’s impossible to have a correlation of 1 if you ever rate notes with preliminary Note Helpfulness Scores that aren’t exactly 1.0, we then normalize this score by the maximum possible correlation from rating the set of notes that they chose to rate. This means raters aren’t unfairly penalized for rating notes where there isn’t perfect consensus.
+Then, this ratio is transformed in an identical way to how the Author Helpfulness Scores are smoothed: first by adding 2 pseudocounts to the numerator and 6 pseudocounts to the denominator (so that scores start out low and increase as raters make more valid ratings), and finally the score s is transformed with max(0, 1.5s - .5) in order to set ratios of ⅓ or less to 0 and then renormalize the range back to [0, 1].
+
+\\[r(u) = max(0, \frac{3}{2} * \frac{2 + num\text{\textunderscore}valid\text{\textunderscore}ratings\text{\textunderscore}that\text{\textunderscore}match\text{\textunderscore}consensus(u)}{6 + num\text{\textunderscore}valid\text{\textunderscore}ratings(u)} - \frac{1}{2})\\]
+
+Where `r` is the Rater Helpfulness Score of user `u`.
 
 ### Final Note Scoring
 
-Then, we average the Author Helpfulness Score and Contributor Rating Score to get a combined weight for each contributor (Average Contributor Score):
+Next, Author Helpfulness Score and Rater Helpfulness Score are averaged to get a combined weight for each contributor’s ratings, called Combined Helpfulness Score:
 
-Average Contributor Scores are then used to weight each contributor’s ratings when scoring and ranking notes:
+\\[c(u) = .5 * a(u) + .5 * r(u)\\]
 
-\\[helpfulness_i(u) = \frac{\sum_{rater \in R(u)} helpfulness_{i-1}(rater) * rating(rater,u)}{\sum_{rater \in R(u)} helpfulness_{i-1} (rater)}\\]
+Where `c` is the Combined Helpfulness Score, `a` is the Author Helpfulness Score, and `r` is the Rater Helpfulness Score of user `u`.
 
-Then, as long as notes received at least 5 ratings and 2.5 “weighted ratings” (the sum of the Average Contributor Scores of the contributors who rated the note), notes are given the “Currently Rated Helpful” label if their final score is at least 0.84, and “Currently Rated Not Helpful” if the final score is at most 0.29. Otherwise, they get the label “Needs More Ratings”.
-
-Helpfulness
-\\[helpfulness_i(u) = \frac{\sum_{rater \in R(u)} helpfulness_{i-1}(rater) * rating(rater,u)}{\sum_{rater \in R(u)} helpfulness_{i-1} (rater)}\\]
-
-Note Score
-\\[score(n) = \frac{\sum_{rater \in R(n)} weight(rater) * rating(rater,n)}{\sum_{rater \in R(n)} weight(rater)}\\]
-
-Preliminary Note Score
-\\[preliminary\_note\_score(n) = \frac{\sum_{rater \in R(n)} helpfulness(rater) * rating(rater,n)}{\sum_{rater \in R(n)} helpfulness(rater)}\\]
-
-Weight
-\\[
-weight(rater) = .5 * helpfulness(rater) + .5 * reliability(rater)
-\\]
-
-Reliability
-\\[
-reliability(u) = \rho(rating(u,n), preliminary\textunderscorenote\text{\textunderscore}score(n))
-\\]
-
-Reliability
-
+Combined Helpfulness Scores are then used to weight each contributor’s ratings when scoring and ranking notes:
 ​
+\\[note\text{\textunderscore}score(n) = \frac{\sum_{rater \in R(n)} c(rater) * rating(rater,n)}{\sum_{rater \in R(n)} c(rater)}\\]
 
-### Tie breaking
+Then, as long as notes received at least 5 ratings and 2 “weighted ratings” (the sum of the Combined Helpfulness Scores of the contributors who rated the note), notes are given the “Currently Rated Helpful” label if their final score is at least 0.84, and “Currently Rated Not Helpful” if the final score is at most 0.29. Otherwise, they get the label “Needs More Ratings”.
+
+### Tie breaking of reasons
 
 For tie-breaking, we use the following priority order of reasons:
 
-{{< columns >}} <!-- begin columns block -->
+Currently Rated Helpful Reasons:
 
-**Currently Rated Helpful Reasons**
+1. `UniqueContext`
+2. `Empathetic`
+3. `GoodSources`
+4. `Clear`
+5. `Informative`
+6. `Other`
 
-- UniqueContext
-- Empathetic
-- GoodSources
-- Clear
-- Informative
-- Other
+<br>
 
-<---> <!-- magic sparator, between columns -->
+Currently Not Rated Helpful Reasons:
 
-**Currently Not Rated Helpful Reasons**
+1. `Outdated`
+2. `SpamHarassmentOrAbuse`
+3. `HardToUnderstand`
+4. `OffTopic`
+5. `Incorrect`
+6. `ArgumentativeOrInflammatory`
+7. `MissingKeyPoints`
+8. `SourcesMissingOrUnreliable`
+9. `OpinionSpeculationOrBias`
+10. `Other`
 
-- Outdated
-- SpamHarassmentOrAbuse
-- HardToUnderstand
-- OffTopic
-- Incorrect
-- ArgumentativeOrInflammatory
-- MissingKeyPoints
-- SourcesMissingOrUnreliable
-- OpinionSpeculationOrBias
-- Other
-
-{{< /columns >}}
+<br>
 
 ## Ranking Code
 
+Here you can find links to the real code that we are using to determine contributor’s helpfulness scores currently in the pilot. Although the code is currently only runnable inside the Twitter environment, we are releasing this code in the spirit of transparency, and we hope to be able to release code that will be runnable outside of Twitter’s production environment in the near future.
+
+- [HelpfulnessScoresUtil.scala](/birdwatch/sourcecode/HelpfulnessScoresUtil.scala)
+
+- [HelpfulnessScoresJob.scala](/birdwatch/sourcecode/HelpfulnessScoresJob.scala)
+
+- [BirdwatchAggregateRating.scala](/birdwatch/sourcecode/BirdwatchAggregateRating.scala)
+
 Here’s a Python code snippet one can run to reproduce how we compute notes’ rating statuses and sorting. It uses as input the notes and ratings files made available on the Birdwatch [Data Download](https://twitter.com/i/birdwatch/download-data) page.
+
+<br>
 
 {{< include file="static/sourcecode/ranking-notes.py" language="python" markdown=false >}}
 
-{{< button href="/birdwatch/sourcecode/ranking-notes.py" >}}See source file{{< /button >}}
+<br>
 
-## Birdwatch timelines
+- [Ranking-notes.py](/birdwatch/sourcecode/ranking-notes.py)
+
+## Birdwatch Timelines
 
 Birdwatch participants are able to view three different tabs on the Birdwatch [Home](https://twitter.com/i/birdwatch) page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
 
@@ -180,11 +179,11 @@ Tweets on the **Needs Your Help** tab are sorted by a ranking score, where Tweet
 
 Specifically, the rater similarity score between a pair of raters is defined as the number of notes that both raters rated, divided by the minimum number of total notes each rater has rated(over each of the two raters).
 
-Example: if rater A rated notes 1, 2, and 3, while rater B rated notes 1, 3, 4, 5, and 6, then the similarity score between A and B = 2 / min(3, 5) = 2/3, because they both rated notes 1 and 3, for a total of 2, and the minimum number of total notes either rater has rated is 3. If two raters haven’t rated any of the same notes, the score is defined as 0.01 instead of 0. Then, the average rater similarity between a contributor and each other rater who’s rated a particular Tweet is computed, in order to compute the average rater similarity between the contributor and the raters of that Tweet. Then, Tweets are ranked in the **Needs your help** tab using the following score: 0.3 \* proportionOfNotesOnTweetThatNeedMoreRatings - averageRaterSimilarityScore.
+Example: if rater `A` rated notes 1, 2, and 3, while rater `B` rated notes 1, 3, 4, 5, and 6, then the `similarity score between A and B = 2 / min(3, 5) = 2/3`, because they both rated notes 1 and 3, for a total of 2, and the minimum number of total notes either rater has rated is 3. If two raters haven’t rated any of the same notes, the score is defined as 0.01 instead of 0. Then, the average rater similarity between a contributor and each other rater who’s rated a particular Tweet is computed, in order to compute the average rater similarity between the contributor and the raters of that Tweet. Then, Tweets are ranked in the **Needs your help** tab using the following score: `0.3 \* proportionOfNotesOnTweetThatNeedMoreRatings - averageRaterSimilarityScore`.
 
 The factor of 0.3 is applied to help to balance between the two scores fairly equally. We may in the future experiment with using other forms of rater similarity, e.g. based on whether two contributors tend to agree when they rate the same notes. This version primarily reflects contributors’ interest in what they choose to rate.
 
-## Birdwatch cards on Tweets
+## Birdwatch Cards on Tweets
 
 When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch pilot participants may see cards on Tweets that have Birdwatch notes. Birdwatch cards may include a specific Birdwatch note or reference the number of Birdwatch notes on the Tweet, and link to the Birdwatch site where contributors can rate the notes.
 
