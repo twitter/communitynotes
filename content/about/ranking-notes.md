@@ -22,9 +22,9 @@ To help people understand how Birdwatch's ranking system works, the sections bel
 
 {{< figure src="../../images/note-statuses.png">}}
 
-All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings and at least 2 weighted ratings (the sum of the Combined Helpfulness Scores of the raters that rated the note, where Combined Helpfulness Scores are between `0` and `1`).
+All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings and at least 2 weighted ratings (the sum of the [Combined Helpfulness Scores](./#combined-helpfulness-score) of the raters that rated the note, where [Combined Helpfulness Scores](./#combined-helpfulness-score) are between `0` and `1`).
 
-Then, Birdwatch computes a Note Helpfulness Score for each note, which is the proportion of ratings that say the note is helpful, where each rating is weighted by the Combined Helpfulness Scores of the rater.
+Then, Birdwatch computes a Note Helpfulness Score for each note, which is the proportion of ratings that say the note is helpful, where each rating is weighted by the [Combined Helpfulness Scores](./#combined-helpfulness-score) of the rater.
 
 Notes with a Note Helpfulness Score of `0.29` and below are assigned Currently Not Rated Helpful, and notes with a score of `0.84` and above are assigned Currently Rated Helpful. Notes with scores in between `0.29` and `0.84` remain labeled as Needs more Ratings.
 
@@ -43,7 +43,7 @@ At a high level, Combined Helpfulness Scores are a way to give more weight to pe
 - If you write notes that people consistently find helpful, the ratings you give other notes will have greater weight.
 - If the ratings you give often align with the ultimate rating outcome from the community, your ratings will have greater weight.
 
-Each Birdwatch contributor earns an Author Helpfulness Score score, and a Rater Helpfulness Score. These two scores, in turn, are averaged together into a Combined Helpfulness Score, which is used to weight the ratings that each contributor gives to notes. The purpose of using Combined Helpfulness Score is to give more influence to contributors who have a track record of helpful contributions.
+Each Birdwatch contributor earns an [Author Helpfulness Score](./#author-helpfulness-score) score, and a [Rater Helpfulness Score](./#rater-helpfulness-score). These two scores, in turn, are averaged together into a Combined Helpfulness Score, which is used to weight the ratings that each contributor gives to notes. The purpose of using Combined Helpfulness Score is to give more influence to contributors who have a track record of helpful contributions.
 
 These scores are a simple first approach to improve the quality of Birdwatch’s note scoring and ranking, and a step towards making manipulation of Birdwatch more difficult. More improvements are on the way, including factoring in not just how many ratings a note has received, but also how diverse the perspectives of those raters are — i.e. do those raters always agree with each other, or sometimes/often disagree?
 
@@ -69,17 +69,17 @@ In the update equation:
 
 ### Preliminary Note Scoring
 
-The next step is to compute preliminary Note Helpfulness Scores, which are only used to compute Rater Helpfulness Scores as defined below (they are not used as final Note Helpfulness Scores). The preliminary Note Helpfulness Scores are computed by weighting each rater’s Author Helpfulness Scores from the previous section as in this equation here:
+The next step is to compute preliminary Note Helpfulness Scores, which are only used to compute [Rater Helpfulness Score](./#rater-helpfulness-score) as defined below (they are not used as final Note Helpfulness Scores). The preliminary Note Helpfulness Scores are computed by weighting each rater’s [Author Helpfulness Scores](./#author-helpfulness-score) from the previous section as in this equation here:
 
 \\[preliminary\text{\textunderscore}note\text{\textunderscore}score(n) = \frac{\sum_{rater \in R(n)} a(rater) * rating(rater,n)}{\sum_{rater \in R(n)} a(rater)}\\]
 
-Where `a` is the Author Helpfulness Score.
+Where `a` is the [Author Helpfulness Score](./#author-helpfulness-score).
 
 ### Rater Helpfulness Score
 
 Rater Helpfulness Score reflects how similar a contributor’s ratings are to the ratings on notes that were eventually labeled “Currently Rated Helpful” or “Currently Not Rated Helpful” (indicating clear consensus among raters, and not labeled “Needs More Ratings”).
 
-Currently only the first 5 ratings on each note that were made within 48 hours of the note’s creation are used when evaluating a Contributor’s Rating Score (hereafter called “valid ratings”). This is done to both reward quick rating, and also so that retroactively rating old notes with clear labels doesn’t boost Rater Helpfulness Score.
+Currently only the first 5 ratings on each note that were made within 48 hours of the note’s creation are used when evaluating a Rater Helpfulness Score (hereafter called “valid ratings”). This is done to both reward quick rating, and also so that retroactively rating old notes with clear labels doesn’t boost Rater Helpfulness Score.
 
 Rater Helpfulness is initially 0 until the contributor has made at least one valid rating (one of the first 5 ratings within 48 hours on a note that got a label besides “Needs More Ratings”). Then the Rater Helpfulness Score is based on the fraction of their valid ratings that match the consensus label of whether the note was rated helpful or not rated helpful. When computing this fraction, we determine what the note’s label would’ve been without the rating from the rater whose score is being computed.
 
@@ -91,13 +91,13 @@ Where `r` is the Rater Helpfulness Score of user `u`.
 
 ### Final Note Scoring
 
-Next, Author Helpfulness Score and Rater Helpfulness Score are averaged to get a combined weight for each contributor’s ratings, called Combined Helpfulness Score:
+Next, [Author Helpfulness Score](./#author-helpfulness-score) and [Rater Helpfulness Score](./#rater-helpfulness-score) are averaged to get a combined weight for each contributor’s ratings, called [Combined Helpfulness Score](./#combined-helpfulness-score):
 
 \\[c(u) = .5 * a(u) + .5 * r(u)\\]
 
 Where `c` is the Combined Helpfulness Score, `a` is the Author Helpfulness Score, and `r` is the Rater Helpfulness Score of user `u`.
 
-Combined Helpfulness Scores are then used to weight each contributor’s ratings when scoring and ranking notes:
+Combined Helpfulness Scores](./#combined-helpfulness-score) are then used to weight each contributor’s ratings when scoring and ranking notes:
 ​
 \\[note\text{\textunderscore}score(n) = \frac{\sum_{rater \in R(n)} c(rater) * rating(rater,n)}{\sum_{rater \in R(n)} c(rater)}\\]
 
