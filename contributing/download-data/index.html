@@ -260,9 +260,34 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 
             <span class="flex">
                 
-                <a href="/birdwatch/contributing/writing-and-rating-notes/"
+                <a href="/birdwatch/contributing/writing-notes/"
                     class="gdoc-nav__entry ">
-                    Writing and Rating notes
+                    Writing notes
+                </a>
+            </span>
+        
+
+        
+        
+    </li>
+
+
+    
+    
+
+    <li>
+        
+        
+            
+            
+            
+            
+
+            <span class="flex">
+                
+                <a href="/birdwatch/contributing/rating-notes/"
+                    class="gdoc-nav__entry ">
+                    Rating notes
                 </a>
             </span>
         
@@ -310,6 +335,56 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 
             <span class="flex">
                 
+                <a href="/birdwatch/contributing/feedback/"
+                    class="gdoc-nav__entry ">
+                    Submit feedback
+                </a>
+            </span>
+        
+
+        
+        
+    </li>
+
+
+</ul>
+
+        
+    </li>
+
+
+    
+    
+
+    <li>
+        
+        
+            <span class="flex">
+                Under the Hood
+            </span>
+        
+
+        
+        
+            
+
+
+
+<ul class="gdoc-nav__list">
+
+    
+    
+
+    <li>
+        
+        
+            
+            
+            
+            
+
+            <span class="flex">
+                
                 <a href="/birdwatch/about/ranking-notes/"
                     class="gdoc-nav__entry ">
                     Note Ranking
@@ -338,31 +413,6 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
                 <a href="/birdwatch/contributing/download-data/"
                     class="gdoc-nav__entry is-active">
                     Download data
-                </a>
-            </span>
-        
-
-        
-        
-    </li>
-
-
-    
-    
-
-    <li>
-        
-        
-            
-            
-            
-            
-
-            <span class="flex">
-                
-                <a href="/birdwatch/contributing/feedback/"
-                    class="gdoc-nav__entry ">
-                    Submit feedback
                 </a>
             </span>
         
@@ -479,7 +529,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 </div>
 
     <article class="gdoc-markdown">
-        
+        <h1 class="article_title">Downloading data</h1> 
         
 
 
@@ -487,8 +537,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     
 
 
-<div class="gdoc-page__anchorwrap"><h1 id="download-data">Download data<a data-clipboard-text="https://twitter.github.io/birdwatch/contributing/download-data/#download-data" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Download data" href="#download-data"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h1></div>
-<div class="gdoc-page__anchorwrap"><h3 id="we-cant-wait-to-learn-with-you">We can&rsquo;t wait to learn with you!<a data-clipboard-text="https://twitter.github.io/birdwatch/contributing/download-data/#we-cant-wait-to-learn-with-you" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor We can&rsquo;t wait to learn with you!" href="#we-cant-wait-to-learn-with-you"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>We can&rsquo;t wait to learn with you!</p>
 <p>All Birdwatch contributions are publicly available on the <a href="https://twitter.com/i/birdwatch/download-data">Download Data</a> page of the Birdwatch site so that anyone in the US has free access to analyze the data, identify problems, and spot opportunities to make Birdwatch better.</p>
 <p>If you have questions or feedback about the Birdwatch public data or would like to share your analyses of this data with us, please DM us at <a href="http://twitter.com/birdwatch">@Birdwatch</a>.</p>
 <br>
@@ -512,127 +561,127 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 </thead>
 <tbody>
 <tr>
-<td>noteId</td>
+<td><code>noteId</code></td>
 <td>Long</td>
 <td>The unique ID of this note</td>
 <td></td>
 </tr>
 <tr>
-<td>participantId</td>
+<td><code>participantId</code></td>
 <td>String</td>
 <td>A Birdwatch-specific user identifier of the user who authored the note. This is a permanent id, which remains stable even if the user changes their username/handle.</td>
 <td></td>
 </tr>
 <tr>
-<td>createdAtMillis</td>
+<td><code>createdAtMillis</code></td>
 <td>Long</td>
 <td>Time the note was created, in milliseconds since epoch.</td>
 <td></td>
 </tr>
 <tr>
-<td>tweetId</td>
+<td><code>tweetId</code></td>
 <td>Long</td>
 <td>The tweetId number for the tweet that the note is about.</td>
 <td></td>
 </tr>
 <tr>
-<td>classification</td>
+<td><code>classification</code></td>
 <td>String</td>
 <td>User-entered multiple choice response to note writing question: “Given current evidence, I believe this tweet is:”</td>
 <td>&ldquo;NOT_MISLEADING&rdquo; &ldquo;MISINFORMED_OR_POTENTIALLY_MISLEADING&rdquo;</td>
 </tr>
 <tr>
-<td>believable</td>
+<td><code>believable</code></td>
 <td>String</td>
 <td>User-entered multiple choice response to note writing question: “If this tweet were widely spread, its message would likely be believed by:”</td>
 <td>&ldquo;BELIEVABLE_BY_FEW&rdquo;, &ldquo;BELIEVABLE_BY_MANY&rdquo;</td>
 </tr>
 <tr>
-<td>harmful</td>
+<td><code>harmful</code></td>
 <td>String</td>
 <td>User-entered multiple choice response to note writing question: “If many believed this tweet, it might cause:”</td>
 <td>&ldquo;LITTLE_HARM&rdquo;, &ldquo;CONSIDERABLE_HARM&rdquo;</td>
 </tr>
 <tr>
-<td>validationDifficulty</td>
+<td><code>validationDifficulty</code></td>
 <td>String</td>
 <td>User-entered multiple choice response to note writing question: “Finding and understanding the correct information would be:”</td>
 <td>&ldquo;EASY&rdquo;, &ldquo;CHALLENGING&rdquo;</td>
 </tr>
 <tr>
-<td>misleadingOther</td>
+<td><code>misleadingOther</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type).</td>
 <td>1 if “Other” is selected, else 0.</td>
 </tr>
 <tr>
-<td>misleadingFactualError</td>
+<td><code>misleadingFactualError</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type)</td>
 <td>1 if “It contains a factual error” selected, else 0.</td>
 </tr>
 <tr>
-<td>misleadingManipulatedMedia</td>
+<td><code>misleadingManipulatedMedia</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type)</td>
 <td>1 if “It contains a digitally altered photo or video” selected, else 0.</td>
 </tr>
 <tr>
-<td>misleadingOutdatedInformation</td>
+<td><code>misleadingOutdatedInformation</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type)</td>
 <td>1 if “It contains outdated information that may be misleading” is selected, else 0.</td>
 </tr>
 <tr>
-<td>misleadingMissingImportantContext</td>
+<td><code>misleadingMissingImportantContext</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type).</td>
 <td>1 if “It is a misrepresentation or missing important context” is selected, else 0.</td>
 </tr>
 <tr>
-<td>misleadingUnverifiedClaimAsFact</td>
+<td><code>misleadingUnverifiedClaimAsFact</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type).</td>
 <td>1 if “It presents an unverified claim as a fact” is selected, else 0.</td>
 </tr>
 <tr>
-<td>misleadingSatire</td>
+<td><code>misleadingSatire</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type).</td>
 <td>1 if “It is a joke or satire that might be misinterpreted as a fact” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notMisleadingOther</td>
+<td><code>notMisleadingOther</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet is not misleading?” (Check all that apply question type).</td>
 <td>1 if “Other” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notMisleadingFactuallyCorrect</td>
+<td><code>notMisleadingFactuallyCorrect</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet is not misleading?” (Check all that apply question type).</td>
 <td>1 if “It expresses a factually correct claim” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notMisleadingOutdatedButNotWhenWritten</td>
+<td><code>notMisleadingOutdatedButNotWhenWritten</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet is not misleading?” (Check all that apply question type).</td>
 <td>1 if “This Tweet was correct when written, but is out of date now” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notMisleadingClearlySatire</td>
+<td><code>notMisleadingClearlySatire</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet is not misleading?” (Check all that apply question type).</td>
 <td>1 if “ It is clearly satirical/joking” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notMisleadingPersonalOpinion</td>
+<td><code>notMisleadingPersonalOpinion</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “Why do you believe this tweet is not misleading?” (Check all that apply question type).</td>
 <td>1 if “It expresses a personal opinion” is selected, else 0.</td>
 </tr>
 <tr>
-<td>trustworthySources</td>
+<td><code>trustworthySources</code></td>
 <td>Int</td>
 <td>Binary indicator, based on user-entered multiple choice in response to note writing question “Did you link to sources you believe most people would consider trustworthy?”</td>
 <td>1 if “Yes” is selected, 0 if “No” is selected</td>
@@ -658,139 +707,139 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 </thead>
 <tbody>
 <tr>
-<td>noteId</td>
+<td><code>noteId</code></td>
 <td>Long</td>
 <td>The unique ID of the note being rated.</td>
 <td></td>
 </tr>
 <tr>
-<td>participantId</td>
+<td><code>participantId</code></td>
 <td>String</td>
 <td>A Birdwatch-specific user identifier of the user who authored the rating. This is a permanent id, which remains stable even if the user changes their username/handle.</td>
 <td></td>
 </tr>
 <tr>
-<td>createdAtMillis</td>
+<td><code>createdAtMillis</code></td>
 <td>Long</td>
 <td>Time the note was created, in milliseconds since epoch.</td>
 <td></td>
 </tr>
 <tr>
-<td>agree</td>
+<td><code>agree</code></td>
 <td>Int</td>
 <td>Binary indicator, based on user-entered multiple choice in response to note rating question “Do you agree with its conclusion?”</td>
 <td>1 if “Yes” is selected, 0 if “No” is selected</td>
 </tr>
 <tr>
-<td>disagree</td>
+<td><code>disagree</code></td>
 <td>Int</td>
 <td>Binary indicator, based on user-entered multiple choice in response to note rating question “Do you agree with its conclusion?”</td>
 <td>1 if “No” is selected, 0 if “Yes” is selected</td>
 </tr>
 <tr>
-<td>helpful</td>
+<td><code>helpful</code></td>
 <td>Int</td>
 <td>Binary indicator, based on user-entered multiple choice in response to note rating question “Is this note helpful?”</td>
 <td>1 if “Yes” is selected, 0 if “No” is selected</td>
 </tr>
 <tr>
-<td>notHelpful</td>
+<td><code>notHelpful</code></td>
 <td>Int</td>
 <td>Binary indicator, based on user-entered multiple choice in response to note rating question “Is this note helpful?”</td>
 <td>1 if “No” is selected, 0 if “Yes” is selected</td>
 </tr>
 <tr>
-<td>helpfulOther</td>
+<td><code>helpfulOther</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “What about this note was helpful to you?” (Check all that apply question type).</td>
 <td>1 if “Other” is selected, else 0.</td>
 </tr>
 <tr>
-<td>helpfulInformative</td>
+<td><code>helpfulInformative</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “What about this note was helpful to you?” (Check all that apply question type).</td>
 <td>1 if “Informative” is selected, else 0.</td>
 </tr>
 <tr>
-<td>helpfulClear</td>
+<td><code>helpfulClear</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “What about this note was helpful to you?” (Check all that apply question type).</td>
 <td>1 if “Clear and/or well-written” is selected, else 0.</td>
 </tr>
 <tr>
-<td>helpfulEmpathetic</td>
+<td><code>helpfulEmpathetic</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “What about this note was helpful to you?” (Check all that apply question type).</td>
 <td>1 if “Nonjudgmental and/or empathetic” is selected, else 0.</td>
 </tr>
 <tr>
-<td>helpfulGoodSources</td>
+<td><code>helpfulGoodSources</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “What about this note was helpful to you?” (Check all that apply question type).</td>
 <td>1 if “Cites high-quality sources” is selected, else 0.</td>
 </tr>
 <tr>
-<td>helpfulUniqueContext</td>
+<td><code>helpfulUniqueContext</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to question “What about this note was helpful to you?” (Check all that apply question type).</td>
 <td>1 if “Offers unique information or context” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notHelpfulOther</td>
+<td><code>notHelpfulOther</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to prompt “Help us understand why this note was unhelpful” (Check all that apply question type).</td>
 <td>1 if “Other” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notHelpfulIncorrect</td>
+<td><code>notHelpfulIncorrect</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to prompt “Help us understand why this note was unhelpful” (Check all that apply question type).</td>
 <td>1 if “Incorrect information” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notHelpfulSourcesMissingOrUnreliable</td>
+<td><code>notHelpfulSourcesMissingOrUnreliable</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to prompt “Help us understand why this note was unhelpful” (Check all that apply question type).</td>
 <td>1 if “Sources missing or unreliable” is selected, else 0.</td>
 </tr>
 <tr>
-<td>NotHelpfulOpinionSpeculationOrBias</td>
+<td><code>NotHelpfulOpinionSpeculationOrBias</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to prompt “Help us understand why this note was unhelpful” (Check all that apply question type).</td>
 <td>1 if “Opinion, speculation, or bias” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notHelpfulMissingKeyPoints</td>
+<td><code>notHelpfulMissingKeyPoints</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to prompt “Help us understand why this note was unhelpful” (Check all that apply question type).</td>
 <td>1 if “Misses key points” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notHelpfulOutdated</td>
+<td><code>notHelpfulOutdated</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to prompt “Help us understand why this note was unhelpful” (Check all that apply question type).</td>
 <td>1 if “Outdated information” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notHelpfulHardToUnderstand</td>
+<td><code>notHelpfulHardToUnderstand</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to prompt “Help us understand why this note was unhelpful” (Check all that apply question type).</td>
 <td>1 if “Hard to understand” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notHelpfulArgumentativeOrInflammatory</td>
+<td><code>notHelpfulArgumentativeOrInflammatory</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to prompt “Help us understand why this note was unhelpful” (Check all that apply question type).</td>
 <td>1 if “Argumentative or inflammatory” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notHelpfulOffTopic</td>
+<td><code>notHelpfulOffTopic</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to prompt “Help us understand why this note was unhelpful” (Check all that apply question type).</td>
 <td>1 if “Off topic” is selected, else 0.</td>
 </tr>
 <tr>
-<td>notHelpfulSpamHarassmentOrAbuse</td>
+<td><code>notHelpfulSpamHarassmentOrAbuse</code></td>
 <td>Int</td>
 <td>User-entered checkbox in response to prompt “Help us understand why this note was unhelpful” (Check all that apply question type).</td>
 <td>1 if “Spam, harassment, or abuse” is selected, else 0.</td>
@@ -1007,8 +1056,40 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
             
 
             
-                
-                
+
+            
+        
+
+        
+        
+    
+
+        
+    
+        
+        
+
+        
+        
+
+        
+        
+            
+    
+    
+
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
             
 
             
@@ -1027,10 +1108,10 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
             
 
             
-                
-                
-            
 
+            
+                
+                
             
 
             
@@ -1057,8 +1138,6 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
         </span>
         <span class="gdoc-page__nav">
             
-                <a class="gdoc-page__nav--next flex align-center" href="/birdwatch/contributing/feedback/" title="Submit feedback">Submit feedback </a>
-            
         </span>
     
 </div>
@@ -1067,21 +1146,30 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
         </main>
 
         <footer class="gdoc-footer">
-    <div class="container flex flex-wrap">
-        <span class="gdoc-footer__item">
-            &copy; 2021 Twitter, Inc.
-        </span>
-        <span class="gdoc-footer__item">
-            <a href="https://help.twitter.com/rules-and-policies/twitter-cookies" class="gdoc-footer__link">Cookies</a>
-        </span>
-        <span class="gdoc-footer__item">
-            <a href="https://twitter.com/privacy" class="gdoc-footer__link">Privacy</a>
-        </span>
-        <span class="gdoc-footer__item">
-            <a href="https://twitter.com/tos" class="gdoc-footer__link">Terms and Conditions</a>
-        </span>
-    </div>
+  <div class="container flex flex-wrap">
+    <span class="gdoc-footer__item">
+      &copy; 2021 Twitter, Inc.
+    </span>
+    <span class="gdoc-footer__item">
+      <a
+        href="https://help.twitter.com/rules-and-policies/twitter-cookies"
+        class="gdoc-footer__link"
+        >Cookies</a
+      >
+    </span>
+    <span class="gdoc-footer__item">
+      <a href="https://twitter.com/privacy" class="gdoc-footer__link"
+        >Privacy</a
+      >
+    </span>
+    <span class="gdoc-footer__item">
+      <a href="https://twitter.com/tos" class="gdoc-footer__link"
+        >Terms and Conditions</a
+      >
+    </span>
+  </div>
 </footer>
+
 
     </div>
 

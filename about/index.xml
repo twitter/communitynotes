@@ -12,7 +12,7 @@
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/about/challenges/</guid>
-      <description>Challenges We know there are many challenges involved in building a community-driven system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.
+      <description>We know there are many challenges involved in building a community-driven system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.
 Throughout our development process, we’ve conducted feedback sessions with Twitter customers and subject area experts to identify critical risks to monitor and mitigate. We will be closely focused on understanding and identifying solutions to prevent such risks during our initial pilot phase.</description>
     </item>
     
@@ -22,7 +22,7 @@ Throughout our development process, we’ve conducted feedback sessions with Twi
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/about/faq/</guid>
-      <description>FAQs Who is eligible to participate in the Birdwatch pilot? Is there an approval process?   The first phase of this pilot will be limited to a small test group in the US. Sign ups are open. Accounts must meet a few criteria to be eligible. Learn more here.   Are contributions anonymous? Or will my name be attached to my notes?   All Birdwatch contributions are associated with the Twitter account of the contributor.</description>
+      <description>Who is eligible to participate in the Birdwatch pilot? Is there an approval process?   The first phase of this pilot will be limited to a small test group in the US. Sign ups are open. Accounts must meet a few criteria to be eligible. Learn more here.   Are contributions anonymous? Or will my name be attached to my notes?   All Birdwatch contributions are associated with the Twitter account of the contributor.</description>
     </item>
     
     <item>
@@ -31,7 +31,9 @@ Throughout our development process, we’ve conducted feedback sessions with Twi
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/about/ranking-notes/</guid>
-      <description>Note ranking When displaying notes written on a Tweet, Birdwatch initially shows most recent notes on top and displays them with a status indicator that the note Needs More Ratings. In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be moved to the top or bottom of the list and annotated with a header showing that they are Currently Rated Helpful or Currently Not Rated Helpful.</description>
+      <description>Birdwatch notes are submitted and rated by contributors. Ratings are used to determine Note Status (e.g. “Currently Rated Helpful”), which notes are displayed on each of the Birdwatch Site&amp;rsquo;s timelines, and which notes are displayed as Birdwatch Cards on the Twitter timelines.
+To help people understand how Birdwatch&amp;rsquo;s ranking system works, the sections below explain how notes are assigned these statuses, ranked, and displayed.
+   Note Status Combined Helpfulness Score  Author Helpfulness Score Preliminary Note Scoring Rater Helpfulness Score Final Note Scoring Tie breaking of reasons   Ranking Code Birdwatch Timelines  New Rated Helpful Needs Your Help Rater similarity score for Needs Your Help   Birdwatch Cards on Tweets  Cards showing a specific note Cards showing a count of notes       Note Status   All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings and at least 2 weighted ratings (the sum of the Combined Helpfulness Scores of the raters that rated the note, where Combined Helpfulness Scores are between 0 and 1).</description>
     </item>
     
     <item>
@@ -40,7 +42,7 @@ Throughout our development process, we’ve conducted feedback sessions with Twi
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/about/overview/</guid>
-      <description>Overview   Birdwatch is a community-driven approach to address misinformation on Twitter. Participants can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other participants’ notes. Through consensus from a broad and diverse set of contributors, our eventual goal is that community-written notes will be visible directly on Tweets, available to everyone on Twitter.
+      <description>Birdwatch is a community-driven approach to address misinformation on Twitter. Participants can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other participants’ notes. Through consensus from a broad and diverse set of contributors, our eventual goal is that community-written notes will be visible directly on Tweets, available to everyone on Twitter.
 How it works In this phase, Birdwatch has three core elements: notes, ratings, and the Birdwatch site.</description>
     </item>
     

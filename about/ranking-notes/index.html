@@ -260,9 +260,34 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 
             <span class="flex">
                 
-                <a href="/birdwatch/contributing/writing-and-rating-notes/"
+                <a href="/birdwatch/contributing/writing-notes/"
                     class="gdoc-nav__entry ">
-                    Writing and Rating notes
+                    Writing notes
+                </a>
+            </span>
+        
+
+        
+        
+    </li>
+
+
+    
+    
+
+    <li>
+        
+        
+            
+            
+            
+            
+
+            <span class="flex">
+                
+                <a href="/birdwatch/contributing/rating-notes/"
+                    class="gdoc-nav__entry ">
+                    Rating notes
                 </a>
             </span>
         
@@ -310,6 +335,56 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 
             <span class="flex">
                 
+                <a href="/birdwatch/contributing/feedback/"
+                    class="gdoc-nav__entry ">
+                    Submit feedback
+                </a>
+            </span>
+        
+
+        
+        
+    </li>
+
+
+</ul>
+
+        
+    </li>
+
+
+    
+    
+
+    <li>
+        
+        
+            <span class="flex">
+                Under the Hood
+            </span>
+        
+
+        
+        
+            
+
+
+
+<ul class="gdoc-nav__list">
+
+    
+    
+
+    <li>
+        
+        
+            
+            
+            
+            
+
+            <span class="flex">
+                
                 <a href="/birdwatch/about/ranking-notes/"
                     class="gdoc-nav__entry is-active">
                     Note Ranking
@@ -338,31 +413,6 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
                 <a href="/birdwatch/contributing/download-data/"
                     class="gdoc-nav__entry ">
                     Download data
-                </a>
-            </span>
-        
-
-        
-        
-    </li>
-
-
-    
-    
-
-    <li>
-        
-        
-            
-            
-            
-            
-
-            <span class="flex">
-                
-                <a href="/birdwatch/contributing/feedback/"
-                    class="gdoc-nav__entry ">
-                    Submit feedback
                 </a>
             </span>
         
@@ -479,7 +529,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 </div>
 
     <article class="gdoc-markdown">
-        
+        <h1 class="article_title">Note ranking</h1> 
         
 
 
@@ -487,76 +537,135 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     
 
 
-<div class="gdoc-page__anchorwrap"><h1 id="note-ranking">Note ranking<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#note-ranking" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Note ranking" href="#note-ranking"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h1></div>
-<p>When displaying notes written on a Tweet, Birdwatch initially shows most recent notes on top and displays them with a status indicator that the note <strong>Needs More Ratings</strong>. In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be moved to the top or bottom of the list and annotated with a header showing that they are <strong>Currently Rated Helpful</strong> or <strong>Currently Not Rated Helpful</strong>.</p>
-<p>To help people understand how Birdwatch works, this page and code snippet below explain how notes are assigned these statuses and ranked.</p>
+<p>Birdwatch notes are submitted and rated by contributors. Ratings are used to determine <a href="./#note-status">Note Status</a> (e.g. “Currently Rated Helpful”), which notes are displayed on each of the <a href="./#birdwatch-timelines">Birdwatch Site&rsquo;s timelines</a>, and which notes are displayed as <a href="./#birdwatch-cards-on-tweets">Birdwatch Cards</a> on the Twitter timelines.</p>
+<p>To help people understand how Birdwatch&rsquo;s ranking system works, the sections below explain how notes are assigned these statuses, ranked, and displayed.</p>
+
+
+
+  <div class="gdoc-toc gdoc-toc__level--1"><nav id="TableOfContents"><ul>
+        <li><a href="#note-status">Note Status</a></li>
+        <li><a href="#combined-helpfulness-score">Combined Helpfulness Score</a>
+          <ul>
+            <li><a href="#author-helpfulness-score">Author Helpfulness Score</a></li>
+            <li><a href="#preliminary-note-scoring">Preliminary Note Scoring</a></li>
+            <li><a href="#rater-helpfulness-score">Rater Helpfulness Score</a></li>
+            <li><a href="#final-note-scoring">Final Note Scoring</a></li>
+            <li><a href="#tie-breaking-of-reasons">Tie breaking of reasons</a></li>
+          </ul>
+        </li>
+        <li><a href="#ranking-code">Ranking Code</a></li>
+        <li><a href="#birdwatch-timelines">Birdwatch Timelines</a>
+          <ul>
+            <li><a href="#new">New</a></li>
+            <li><a href="#rated-helpful">Rated Helpful</a></li>
+            <li><a href="#needs-your-help">Needs Your Help</a></li>
+            <li><a href="#rater-similarity-score-for-needs-your-help">Rater similarity score for Needs Your Help</a></li>
+          </ul>
+        </li>
+        <li><a href="#birdwatch-cards-on-tweets">Birdwatch Cards on Tweets</a>
+          <ul>
+            <li><a href="#cards-showing-a-specific-note">Cards showing a specific note</a></li>
+            <li><a href="#cards-showing-a-count-of-notes">Cards showing a count of notes</a></li>
+          </ul>
+        </li>
+      </ul></nav><hr></div>
+
+
+<div class="gdoc-page__anchorwrap"><h2 id="note-status">Note Status<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#note-status" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Note Status" href="#note-status"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <figure>
     <img src="../../images/note-statuses.png"/> 
 </figure>
 
-<ol>
-<li>
-<p>All Birdwatch notes start out with the <strong>Needs More Ratings</strong> status until they receive at least 5 ratings.</p>
-</li>
-<li>
-<p>Then, Birdwatch computes a <strong>Helpfulness Ratio</strong> for each note, which is simply the proportion of ratings that say the note is helpful.</p>
-</li>
-<li>
-<p>For a note to be labeled as <strong>Currently Rated Helpful</strong> or <strong>Currently Not Rated Helpful</strong>, raters must have selected at least two of the corresponding
-reasons why a note is (or isn’t) helpful — e.g. “cites high-quality sources,” “nonjudgmental and/or empathetic,” etc — at least twice each.</p>
-</li>
-<li>
-<p>Notes with a <strong>Helpfulness Ratio</strong> of 0.29 and below are assigned <strong>Currently Not Rated Helpful</strong>, and notes with a ratio of 0.84 and above are assigned <strong>Currently Rated Helpful</strong>. Notes with scores in between 0.29 and 0.84 remain labeled as <strong>Needs more Ratings</strong>.</p>
-</li>
-<li>
-<p>In addition to <strong>Currently Rated / Not Rated Helpful</strong> status, labels also show the most commonly chosen reasons why it is helpful/unhelpful. To break ties between reasons that are chosen an equal number of times by raters, we pick the reason that is used least frequently by Birdwatch raters in general (with the exception of Other, which loses all tiebreaks).</p>
-</li>
-<li>
-<p>Notes with the status <strong>Needs More Ratings</strong> remain sorted by recency (newest first), and notes with a <strong>Currently Rated / Not Rated Helpful</strong> status are sorted by their <strong>Helpfulness Ratio</strong>.</p>
-</li>
-</ol>
-<p>This ranking mechanism is knowingly basic, and we only intend to use it for a short time during the program’s earliest phases.</p>
-<p>During the pilot, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the <strong>Currently Rated / Not Rated Helpful</strong> criteria and when it jumps to the top or bottom of the list. This delay allows Birdwatch to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.</p>
-<div class="gdoc-page__anchorwrap"><h3 id="tie-breaking">Tie breaking<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#tie-breaking" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Tie breaking" href="#tie-breaking"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings and at least 2 weighted ratings (the sum of the <a href="./#combined-helpfulness-score">Combined Helpfulness Scores</a> of the raters that rated the note, where <a href="./#combined-helpfulness-score">Combined Helpfulness Scores</a> are between <code>0</code> and <code>1</code>).</p>
+<p>Then, Birdwatch computes a Note Helpfulness Score for each note, which is the proportion of ratings that say the note is helpful, where each rating is weighted by the <a href="./#combined-helpfulness-score">Combined Helpfulness Scores</a> of the rater.</p>
+<p>Notes with a Note Helpfulness Score of <code>0.29</code> and below are assigned Currently Not Rated Helpful, and notes with a score of <code>0.84</code> and above are assigned Currently Rated Helpful. Notes with scores in between <code>0.29</code> and <code>0.84</code> remain labeled as Needs more Ratings.</p>
+<p>In addition to Currently Rated / Not Rated Helpful status, labels also show the most commonly chosen reasons why it is helpful/unhelpful. To break ties between reasons that are chosen an equal number of times by raters, we pick the reason that is used least frequently by Birdwatch raters in general (with the exception of <code>other</code>, which loses all tiebreaks).</p>
+<p>Notes with the status Needs More Ratings remain sorted by recency (newest first), and notes with a Currently Rated / Not Rated Helpful status are sorted by their Helpfulness Score.</p>
+<p>This ranking mechanism is knowingly imperfect, and we are actively developing it with the aim that Birdwatch consistently identifies notes that are found helpful to people from a wide variety of perspectives.</p>
+<p>During the pilot, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the Currently Rated / Not Rated Helpful criteria and when that designation appears on the Birdwatch site. This delay allows Birdwatch to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.</p>
+<div class="gdoc-page__anchorwrap"><h2 id="combined-helpfulness-score">Combined Helpfulness Score<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#combined-helpfulness-score" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Combined Helpfulness Score" href="#combined-helpfulness-score"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p>At a high level, Combined Helpfulness Scores are a way to give more weight to people whose contributions are consistently found helpful by others:</p>
+<ul>
+<li>If you write notes that people consistently find helpful, the ratings you give other notes will have greater weight.</li>
+<li>If the ratings you give often align with the ultimate rating outcome from the community, your ratings will have greater weight.</li>
+</ul>
+<p>Each Birdwatch contributor earns an <a href="./#author-helpfulness-score">Author Helpfulness Score</a> score, and a <a href="./#rater-helpfulness-score">Rater Helpfulness Score</a>. These two scores, in turn, are averaged together into a Combined Helpfulness Score, which is used to weight the ratings that each contributor gives to notes. The purpose of using Combined Helpfulness Score is to give more influence to contributors who have a track record of helpful contributions.</p>
+<p>These scores are a simple first approach to improve the quality of Birdwatch’s note scoring and ranking, and a step towards making manipulation of Birdwatch more difficult. More improvements are on the way, including factoring in not just how many ratings a note has received, but also how diverse the perspectives of those raters are — i.e. do those raters always agree with each other, or sometimes/often disagree?</p>
+<div class="gdoc-page__anchorwrap"><h3 id="author-helpfulness-score">Author Helpfulness Score<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#author-helpfulness-score" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Author Helpfulness Score" href="#author-helpfulness-score"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>Any contributor who has written at least one note that’s been rated by other participants receives an Author Helpfulness Score. The score starts out low, and can increase (or decrease) as the author receives ratings from more raters.</p>
+<p>The way scores are computed is inspired by <a href="https://en.wikipedia.org/wiki/PageRank">PageRank</a>, where ratings from raters who have higher helpfulness scores are given larger weight, rather than weighting incoming ratings equally from all raters. The underlying assumption is that contributors who have written helpful notes themselves will make more accurate ratings about whether other notes will be found helpful.</p>
+<p>The score is based on the weighted average of ratings they’ve received from other contributors on the notes that they’ve authored. Each rater’s ratings of any particular author are only counted once in this weighted average, using the average helpfulness rating from that particular rater of the particular author. For example: if a rater rated 10 notes from the same author, those will count as 1 author-level rating instead of 10 ratings.</p>
+<p>Then, the score is smoothed by adding 2 pseudocounts to the numerator and 6 pseudocounts to the denominator — this has the effect of scores starting out low and increasing over time as authors receive ratings from more raters. It also effectively means that the default score is ⅓. So we then transform the score with the function <code>max(0, 1.5\*s - .5)</code> in order to set ratios of ⅓ or less to 0 and then renormalize the range back to [0, 1].</p>
+<p>We initially assign the Author Helpfulness Score of all contributors to be 1, then repeat the following reweighting update step defined below until the scores converge. Intuitively, the process starts off assuming all raters have equal weight, and calculates each note author’s Helpfulness Score solely based on the average of the ratings they’ve received from each rater. That gives a starting point of which authors’ contributions are found most helpful by others. For the purpose of computing these scores, the process assumes those more helpful authors are also better raters, and re-computes all Author Helpfulness Scores, giving the ratings of helpful authors more weight. Repeat until this process hits a maximum number of iterations, at which point the author helpfulness scores should have converged (stopped changing much between iterations):</p>
+<p>\[a_i(u) = max(0, \frac{3}{2} * \frac{2 + \sum*{rater \in R(u)} a*{i-1}(rater) _ rating(rater,u)}{6 + \sum*{rater \in R(u)} a*{i-1} (rater)} - \frac{1}{2})
+\]</p>
+<p>In the update equation:</p>
+<ul>
+<li><code>a_i(u)</code> is the Author Helpfulness Score of contributor u at the i-th iteration.</li>
+<li><code>i</code> indicates the iteration number.</li>
+<li><code>R(u)</code> is the set of contributors that rated author u.</li>
+<li><code>Rating(v, u)</code> is contributor <code>v</code>’s average rating of contributor <code>u</code>, averaged over all notes that were authored by contributor <code>u</code> and rated by contributor <code>v</code>, with helpful ratings = 1 and not-helpful ratings = 0.</li>
+</ul>
+<div class="gdoc-page__anchorwrap"><h3 id="preliminary-note-scoring">Preliminary Note Scoring<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#preliminary-note-scoring" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Preliminary Note Scoring" href="#preliminary-note-scoring"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>The next step is to compute preliminary Note Helpfulness Scores, which are only used to compute <a href="./#rater-helpfulness-score">Rater Helpfulness Score</a> as defined below (they are not used as final Note Helpfulness Scores). The preliminary Note Helpfulness Scores are computed by weighting each rater’s <a href="./#author-helpfulness-score">Author Helpfulness Scores</a> from the previous section as in this equation here:</p>
+<p>\[preliminary\text{\textunderscore}note\text{\textunderscore}score(n) = \frac{\sum_{rater \in R(n)} a(rater) * rating(rater,n)}{\sum_{rater \in R(n)} a(rater)}\]</p>
+<p>Where <code>a</code> is the <a href="./#author-helpfulness-score">Author Helpfulness Score</a>.</p>
+<div class="gdoc-page__anchorwrap"><h3 id="rater-helpfulness-score">Rater Helpfulness Score<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#rater-helpfulness-score" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Rater Helpfulness Score" href="#rater-helpfulness-score"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>Rater Helpfulness Score reflects how similar a contributor’s ratings are to the ratings on notes that were eventually labeled “Currently Rated Helpful” or “Currently Not Rated Helpful” (indicating clear consensus among raters, and not labeled “Needs More Ratings”).</p>
+<p>Currently only the first 5 ratings on each note that were made within 48 hours of the note’s creation are used when evaluating a Rater Helpfulness Score (hereafter called “valid ratings”). This is done to both reward quick rating, and also so that retroactively rating old notes with clear labels doesn’t boost Rater Helpfulness Score.</p>
+<p>Rater Helpfulness is initially 0 until the contributor has made at least one valid rating (one of the first 5 ratings within 48 hours on a note that got a label besides “Needs More Ratings”). Then the Rater Helpfulness Score is based on the fraction of their valid ratings that match the consensus label of whether the note was rated helpful or not rated helpful. When computing this fraction, we determine what the note’s label would’ve been without the rating from the rater whose score is being computed.</p>
+<p>Then, this ratio is transformed in an identical way to how the Author Helpfulness Scores are smoothed: first by adding 2 pseudocounts to the numerator and 6 pseudocounts to the denominator (so that scores start out low and increase as raters make more valid ratings), and finally the score s is transformed with max(0, 1.5s - .5) in order to set ratios of ⅓ or less to 0 and then renormalize the range back to [0, 1].</p>
+<p>\[r(u) = max(0, \frac{3}{2} * \frac{2 + num\text{\textunderscore}valid\text{\textunderscore}ratings\text{\textunderscore}that\text{\textunderscore}match\text{\textunderscore}consensus(u)}{6 + num\text{\textunderscore}valid\text{\textunderscore}ratings(u)} - \frac{1}{2})\]</p>
+<p>Where <code>r</code> is the Rater Helpfulness Score of user <code>u</code>.</p>
+<div class="gdoc-page__anchorwrap"><h3 id="final-note-scoring">Final Note Scoring<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#final-note-scoring" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Final Note Scoring" href="#final-note-scoring"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>Next, <a href="./#author-helpfulness-score">Author Helpfulness Score</a> and <a href="./#rater-helpfulness-score">Rater Helpfulness Score</a> are averaged to get a combined weight for each contributor’s ratings, called <a href="./#combined-helpfulness-score">Combined Helpfulness Score</a>:</p>
+<p>\[c(u) = .5 * a(u) + .5 * r(u)\]</p>
+<p>Where <code>c</code> is the Combined Helpfulness Score, <code>a</code> is the Author Helpfulness Score, and <code>r</code> is the Rater Helpfulness Score of user <code>u</code>.</p>
+<p>Combined Helpfulness Scores](./#combined-helpfulness-score) are then used to weight each contributor’s ratings when scoring and ranking notes:
+​
+\[note\text{\textunderscore}score(n) = \frac{\sum_{rater \in R(n)} c(rater) * rating(rater,n)}{\sum_{rater \in R(n)} c(rater)}\]</p>
+<p>Then, as long as notes received at least 5 ratings and 2 “weighted ratings” (the sum of the Combined Helpfulness Scores of the contributors who rated the note), notes are given the “Currently Rated Helpful” label if their final score is at least 0.84, and “Currently Rated Not Helpful” if the final score is at most 0.29. Otherwise, they get the label “Needs More Ratings”.</p>
+<div class="gdoc-page__anchorwrap"><h3 id="tie-breaking-of-reasons">Tie breaking of reasons<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#tie-breaking-of-reasons" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Tie breaking of reasons" href="#tie-breaking-of-reasons"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
 <p>For tie-breaking, we use the following priority order of reasons:</p>
-<div class="gdoc-columns flex flex-wrap">
-  
-  <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-     <!-- begin columns block -->
-<p><strong>Currently Rated Helpful Reasons</strong></p>
+<p>Currently Rated Helpful Reasons:</p>
+<ol>
+<li><code>UniqueContext</code></li>
+<li><code>Empathetic</code></li>
+<li><code>GoodSources</code></li>
+<li><code>Clear</code></li>
+<li><code>Informative</code></li>
+<li><code>Other</code></li>
+</ol>
+<br>
+<p>Currently Not Rated Helpful Reasons:</p>
+<ol>
+<li><code>Outdated</code></li>
+<li><code>SpamHarassmentOrAbuse</code></li>
+<li><code>HardToUnderstand</code></li>
+<li><code>OffTopic</code></li>
+<li><code>Incorrect</code></li>
+<li><code>ArgumentativeOrInflammatory</code></li>
+<li><code>MissingKeyPoints</code></li>
+<li><code>SourcesMissingOrUnreliable</code></li>
+<li><code>OpinionSpeculationOrBias</code></li>
+<li><code>Other</code></li>
+</ol>
+<br>
+<div class="gdoc-page__anchorwrap"><h2 id="ranking-code">Ranking Code<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#ranking-code" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Ranking Code" href="#ranking-code"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p>Here you can find links to the real code that we are using to determine contributor’s helpfulness scores currently in the pilot. Although the code is currently only runnable inside the Twitter environment, we are releasing this code in the spirit of transparency, and we hope to be able to release code that will be runnable outside of Twitter’s production environment in the near future.</p>
 <ul>
-<li>UniqueContext</li>
-<li>Empathetic</li>
-<li>GoodSources</li>
-<li>Clear</li>
-<li>Informative</li>
-<li>Other</li>
+<li>
+<p><a href="/birdwatch/sourcecode/HelpfulnessScoresUtil.scala">HelpfulnessScoresUtil.scala</a></p>
+</li>
+<li>
+<p><a href="/birdwatch/sourcecode/HelpfulnessScoresJob.scala">HelpfulnessScoresJob.scala</a></p>
+</li>
+<li>
+<p><a href="/birdwatch/sourcecode/BirdwatchAggregateRating.scala">BirdwatchAggregateRating.scala</a></p>
+</li>
 </ul>
-
-  </div>
-  
-  <div class="gdoc-columns__content gdoc-markdown--nested flex-even">
-     <!-- magic sparator, between columns -->
-<p><strong>Currently Not Rated Helpful Reasons</strong></p>
-<ul>
-<li>Outdated</li>
-<li>SpamHarassmentOrAbuse</li>
-<li>HardToUnderstand</li>
-<li>OffTopic</li>
-<li>Incorrect</li>
-<li>ArgumentativeOrInflammatory</li>
-<li>MissingKeyPoints</li>
-<li>SourcesMissingOrUnreliable</li>
-<li>OpinionSpeculationOrBias</li>
-<li>Other</li>
-</ul>
-
-  </div>
-  
-</div>
-
-<div class="gdoc-page__anchorwrap"><h3 id="ranking-code">Ranking Code<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#ranking-code" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Ranking Code" href="#ranking-code"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
 <p>Here’s a Python code snippet one can run to reproduce how we compute notes’ rating statuses and sorting. It uses as input the notes and ratings files made available on the Birdwatch <a href="https://twitter.com/i/birdwatch/download-data">Data Download</a> page.</p>
+<br>
 
 <div class="gdoc-include"><div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -677,23 +786,11 @@ reasons why a note is (or isn’t) helpful — e.g. “cites high-quality source
 </div>
 </div></div>
 
-
-
-
-
-  
-  
-
-
-
-
-<span class="gdoc-button">
-<a  href="/birdwatch/sourcecode/ranking-notes.py"   target="_blank"  class="gdoc-button__link">
-  See source file
-</a>
-</span>
-
-<div class="gdoc-page__anchorwrap"><h2 id="tabs-needs-your-help-new-and-rated-helpful">Tabs: Needs Your Help, New, and Rated Helpful<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#tabs-needs-your-help-new-and-rated-helpful" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Tabs: Needs Your Help, New, and Rated Helpful" href="#tabs-needs-your-help-new-and-rated-helpful"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<br>
+<ul>
+<li><a href="/birdwatch/sourcecode/ranking-notes.py">Ranking-notes.py</a></li>
+</ul>
+<div class="gdoc-page__anchorwrap"><h2 id="birdwatch-timelines">Birdwatch Timelines<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#birdwatch-timelines" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Birdwatch Timelines" href="#birdwatch-timelines"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <p>Birdwatch participants are able to view three different tabs on the Birdwatch <a href="https://twitter.com/i/birdwatch">Home</a> page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.</p>
 <figure>
     <img src="../../images/home-three-tabs.png"/> 
@@ -709,9 +806,9 @@ reasons why a note is (or isn’t) helpful — e.g. “cites high-quality source
 <div class="gdoc-page__anchorwrap"><h3 id="rater-similarity-score-for-needs-your-help">Rater similarity score for Needs Your Help<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#rater-similarity-score-for-needs-your-help" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Rater similarity score for Needs Your Help" href="#rater-similarity-score-for-needs-your-help"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
 <p>Tweets on the <strong>Needs Your Help</strong> tab are sorted by a ranking score, where Tweets are ranked higher based on the proportion of notes on the Tweet that are labeled <strong>Needs More Ratings</strong>, and Tweets are ranked lower if your rating history is more similar to the other raters who’ve already rated notes on this Tweet: this is a mechanism to help increase the likelihood that people from diverse perspectives rate each note.</p>
 <p>Specifically, the rater similarity score between a pair of raters is defined as the number of notes that both raters rated, divided by the minimum number of total notes each rater has rated(over each of the two raters).</p>
-<p>Example: if rater A rated notes 1, 2, and 3, while rater B rated notes 1, 3, 4, 5, and 6, then the similarity score between A and B = 2 / min(3, 5) = 2/3, because they both rated notes 1 and 3, for a total of 2, and the minimum number of total notes either rater has rated is 3. If two raters haven’t rated any of the same notes, the score is defined as 0.01 instead of 0. Then, the average rater similarity between a contributor and each other rater who’s rated a particular Tweet is computed, in order to compute the average rater similarity between the contributor and the raters of that Tweet. Then, Tweets are ranked in the <strong>Needs your help</strong> tab using the following score: 0.3 * proportionOfNotesOnTweetThatNeedMoreRatings - averageRaterSimilarityScore.</p>
+<p>Example: if rater <code>A</code> rated notes 1, 2, and 3, while rater <code>B</code> rated notes 1, 3, 4, 5, and 6, then the <code>similarity score between A and B = 2 / min(3, 5) = 2/3</code>, because they both rated notes 1 and 3, for a total of 2, and the minimum number of total notes either rater has rated is 3. If two raters haven’t rated any of the same notes, the score is defined as 0.01 instead of 0. Then, the average rater similarity between a contributor and each other rater who’s rated a particular Tweet is computed, in order to compute the average rater similarity between the contributor and the raters of that Tweet. Then, Tweets are ranked in the <strong>Needs your help</strong> tab using the following score: <code>0.3 \* proportionOfNotesOnTweetThatNeedMoreRatings - averageRaterSimilarityScore</code>.</p>
 <p>The factor of 0.3 is applied to help to balance between the two scores fairly equally. We may in the future experiment with using other forms of rater similarity, e.g. based on whether two contributors tend to agree when they rate the same notes. This version primarily reflects contributors’ interest in what they choose to rate.</p>
-<div class="gdoc-page__anchorwrap"><h2 id="birdwatch-cards-on-tweets">Birdwatch cards on Tweets<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#birdwatch-cards-on-tweets" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Birdwatch cards on Tweets" href="#birdwatch-cards-on-tweets"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<div class="gdoc-page__anchorwrap"><h2 id="birdwatch-cards-on-tweets">Birdwatch Cards on Tweets<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#birdwatch-cards-on-tweets" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Birdwatch Cards on Tweets" href="#birdwatch-cards-on-tweets"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <p>When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch pilot participants may see cards on Tweets that have Birdwatch notes. Birdwatch cards may include a specific Birdwatch note or reference the number of Birdwatch notes on the Tweet, and link to the Birdwatch site where contributors can rate the notes.</p>
 <div class="gdoc-page__anchorwrap"><h3 id="cards-showing-a-specific-note">Cards showing a specific note<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#cards-showing-a-specific-note" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Cards showing a specific note" href="#cards-showing-a-specific-note"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
 <figure>
@@ -917,6 +1014,60 @@ reasons why a note is (or isn’t) helpful — e.g. “cites high-quality source
             
 
             
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
+    
+
+        
+    
+        
+        
+
+        
+        
+
+        
+        
+            
+    
+    
+
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
                 
                 
             
@@ -939,25 +1090,6 @@ reasons why a note is (or isn’t) helpful — e.g. “cites high-quality source
             
                 
                 
-            
-
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
             
 
             
@@ -981,7 +1113,7 @@ reasons why a note is (or isn’t) helpful — e.g. “cites high-quality source
     
         <span class="gdoc-page__nav">
             
-                <a class="gdoc-page__nav--prev flex align-center" href="/birdwatch/contributing/examples/" title="Examples"> Examples</a>
+                <a class="gdoc-page__nav--prev flex align-center" href="/birdwatch/contributing/feedback/" title="Submit feedback"> Submit feedback</a>
             
         </span>
         <span class="gdoc-page__nav">
@@ -996,21 +1128,53 @@ reasons why a note is (or isn’t) helpful — e.g. “cites high-quality source
         </main>
 
         <footer class="gdoc-footer">
-    <div class="container flex flex-wrap">
-        <span class="gdoc-footer__item">
-            &copy; 2021 Twitter, Inc.
-        </span>
-        <span class="gdoc-footer__item">
-            <a href="https://help.twitter.com/rules-and-policies/twitter-cookies" class="gdoc-footer__link">Cookies</a>
-        </span>
-        <span class="gdoc-footer__item">
-            <a href="https://twitter.com/privacy" class="gdoc-footer__link">Privacy</a>
-        </span>
-        <span class="gdoc-footer__item">
-            <a href="https://twitter.com/tos" class="gdoc-footer__link">Terms and Conditions</a>
-        </span>
-    </div>
+  <div class="container flex flex-wrap">
+    <span class="gdoc-footer__item">
+      &copy; 2021 Twitter, Inc.
+    </span>
+    <span class="gdoc-footer__item">
+      <a
+        href="https://help.twitter.com/rules-and-policies/twitter-cookies"
+        class="gdoc-footer__link"
+        >Cookies</a
+      >
+    </span>
+    <span class="gdoc-footer__item">
+      <a href="https://twitter.com/privacy" class="gdoc-footer__link"
+        >Privacy</a
+      >
+    </span>
+    <span class="gdoc-footer__item">
+      <a href="https://twitter.com/tos" class="gdoc-footer__link"
+        >Terms and Conditions</a
+      >
+    </span>
+  </div>
 </footer>
+
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/katex@0.10.0-rc.1/dist/katex.min.css"
+  integrity="sha384-D+9gmBxUQogRLqvARvNLmA9hS2x//eK1FhVb9PiU86gmcrBrJAQT8okdJ4LMp2uv"
+  crossorigin="anonymous"
+/>
+
+
+<script
+  defer
+  src="https://cdn.jsdelivr.net/npm/katex@0.10.0-rc.1/dist/katex.min.js"
+  integrity="sha384-483A6DwYfKeDa0Q52fJmxFXkcPCFfnXMoXblOkJ4JcA8zATN6Tm78UNL72AKk+0O"
+  crossorigin="anonymous"
+></script>
+
+<script
+  defer
+  src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/contrib/auto-render.min.js"
+  integrity="sha384-vZTG03m+2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"
+  crossorigin="anonymous"
+  onload="renderMathInElement(document.body);"
+></script>
+
 
     </div>
 
