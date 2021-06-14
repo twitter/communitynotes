@@ -59,7 +59,7 @@ Then, the score is smoothed by adding 2 pseudocounts to the numerator and 6 pseu
 
 We initially assign the Author Helpfulness Score of all contributors to be 1, then repeat the following reweighting update step defined below until the scores converge. Intuitively, the process starts off assuming all raters have equal weight, and calculates each note author’s Helpfulness Score solely based on the average of the ratings they’ve received from each rater. That gives a starting point of which authors’ contributions are found most helpful by others. For the purpose of computing these scores, the process assumes those more helpful authors are also better raters, and re-computes all Author Helpfulness Scores, giving the ratings of helpful authors more weight. Repeat until this process hits a maximum number of iterations, at which point the author helpfulness scores should have converged (stopped changing much between iterations):
 
-\\[a_i(u) = max(0, \frac{3}{2} * \frac{2 + \sum*{rater \in R(u)} a*{i-1}(rater) _ rating(rater,u)}{6 + \sum*{rater \in R(u)} a*{i-1} (rater)} - \frac{1}{2})
+\\[a_i(u) = max(0, \frac{3}{2} * \frac{2 + \sum_{rater \in R(u)} a_{i-1}(rater) * rating(rater,u)}{6 + \sum_{rater \in R(u)} a_{i-1} (rater)} - \frac{1}{2})
 \\]
 
 In the update equation:
@@ -99,7 +99,7 @@ Next, [Author Helpfulness Score](./#author-helpfulness-score) and [Rater Helpful
 
 Where `c` is the Combined Helpfulness Score, `a` is the Author Helpfulness Score, and `r` is the Rater Helpfulness Score of user `u`.
 
-Combined Helpfulness Scores](./#combined-helpfulness-score) are then used to weight each contributor’s ratings when scoring and ranking notes:
+[Combined Helpfulness Scores](./#combined-helpfulness-score) are then used to weight each contributor’s ratings when scoring and ranking notes:
 ​
 \\[note\text{\textunderscore}score(n) = \frac{\sum_{rater \in R(n)} c(rater) * rating(rater,n)}{\sum_{rater \in R(n)} c(rater)}\\]
 
