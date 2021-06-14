@@ -51,6 +51,8 @@ These scores are a simple first approach to improve the quality of Birdwatch’s
 
 Any contributor who has written at least one note that’s been rated by other participants receives an Author Helpfulness Score. The score starts out low, and can increase (or decrease) as the author receives ratings from more raters.
 
+The way scores are computed is inspired by [PageRank](https://en.wikipedia.org/wiki/PageRank), where ratings from raters who have higher helpfulness scores are given larger weight, rather than weighting incoming ratings equally from all raters. The underlying assumption is that contributors who have written helpful notes themselves will make more accurate ratings about whether other notes will be found helpful.
+
 The score is based on the weighted average of ratings they’ve received from other contributors on the notes that they’ve authored. Each rater’s ratings of any particular author are only counted once in this weighted average, using the average helpfulness rating from that particular rater of the particular author. For example: if a rater rated 10 notes from the same author, those will count as 1 author-level rating instead of 10 ratings.
 
 Then, the score is smoothed by adding 2 pseudocounts to the numerator and 6 pseudocounts to the denominator — this has the effect of scores starting out low and increasing over time as authors receive ratings from more raters. It also effectively means that the default score is ⅓. So we then transform the score with the function `max(0, 1.5\*s - .5)` in order to set ratios of ⅓ or less to 0 and then renormalize the range back to [0, 1].
