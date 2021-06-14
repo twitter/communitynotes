@@ -16,13 +16,19 @@ main:
         ref: "/contributing/signing-up"
       - name: Values
         ref: "/contributing/values"
-      - name: Writing and Rating notes
-        ref: "/contributing/writing-and-rating-notes"
+      - name: Writing notes
+        ref: "/contributing/writing-notes"
+      - name: Rating notes
+        ref: "/contributing/rating-notes"
       - name: Examples
         ref: "/contributing/examples"
+      - name: Submit feedback
+        ref: "/contributing/feedback"
+  - name: Under the Hood
+    ref: ""
+    sub:
       - name: Note Ranking
         ref: "about/ranking-notes"
       - name: Download data
         ref: "/contributing/download-data"
-      - name: Submit feedback
-        ref: "/contributing/feedback"
+      

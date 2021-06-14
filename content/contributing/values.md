@@ -4,8 +4,6 @@ aliases: ["/values"]
 geekdocBreadcrumb: false
 ---
 
-# Values
-
 Birdwatch aims to provide context on Tweets in a way that a broad set of people with diverse perspectives find helpful. We ask that all Birdwatch contributors agree to uphold three core values:
 
 1. ### Contribute to build understanding

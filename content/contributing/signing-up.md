@@ -5,8 +5,6 @@ geekdocBreadcrumb: false
 weight: 1
 ---
 
-# Signing up
-
 During the first phase of the pilot, Birdwatch is limited to a small test group in the US.
 
 Our goal is to expand Birdwatch to the global Twitter community. We want anyone to be able to participate and know that the more diverse the community, the better Birdwatch will be at effectively addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.

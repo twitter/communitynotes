@@ -29,14 +29,27 @@ ul {
   font-weight: 400;
   font-size: 1rem;
   line-height: 1.5rem;
-  letter-spacing: 0.025rem;
+  letter-spacing: -0.01rem;
   margin: 0;
   padding: 0;
   color: #657786;
 }
-code {
+.highlight {
   max-height: 20rem;
   overflow: scroll;
+  padding-top: 0rem;
+}
+
+.gdoc-markdown ul li {
+  margin-bottom: 1.5rem;
+}
+
+.gdoc-markdown nav#TableOfContents ul li {
+  margin-bottom: 0.5rem;
+}
+
+.highlight .chroma {
+  margin-top: 0px;
 }
 code span {
   font-family: monospace;
@@ -44,6 +57,17 @@ code span {
   line-height: 1.25rem;
 }
 
+.gdoc-markdown code {
+  background-color: #eee;
+  border-radius: 2px;
+}
+
+.katex-display {
+  padding: 2rem 1rem;
+  border-radius: 12px;
+  background: #eee;
+  overflow: scroll;
+}
 span.gdoc-brand {
   color: var(--tw-color-text-primary);
 }
@@ -109,6 +133,19 @@ a:visited {
   margin-bottom: 0.1rem;
   width: 24px;
   height: 24px;
+}
+
+.gdoc-markdown .gdoc-toc {
+  margin-bottom: 2rem;
+}
+
+.gdoc-toc a,
+.gdoc-toc a:visited {
+  color: var(--tw-color-blue-primary);
+}
+
+.gdoc-markdown .gdoc-toc hr {
+  display: none;
 }
 
 /* page links */
@@ -186,6 +223,9 @@ span.gdoc-footer__item {
 article header h1,
 .gdoc-markdown h1 {
   font-size: 3em;
+}
+h1.article_title {
+  margin-top: 2rem !important;
 }
 article header h1 a {
   line-height: 1em !important;
@@ -377,7 +417,7 @@ h3 {
 
 ol li::marker,
 ul li::marker {
-  color: var(--tw-color-blue-primary);
+  color: var(--tw-color-text-secondary);
   font-weight: 700;
 }
 
@@ -531,8 +571,8 @@ div.note.note-unhelpful ul li {
 }
 
 .gdoc-markdown table {
-  border: 1px solid #eee;
   font-size: 14px;
+  width: 100%;
   box-shadow: inset -5px 0px 5px rgba(0, 0, 0, 0.1);
 }
 
@@ -542,15 +582,15 @@ div.note.note-unhelpful ul li {
   text-align: left;
   padding: 0.5rem;
   line-height: 1rem;
+  width: auto;
 }
-
+.gdoc-markdown table tbody {
+  width: 100%;
+  border: 1px solid #eee;
+}
 .gdoc-markdown table tr th {
   color: white;
   background-color: var(--tw-color-blue-primary);
-}
-
-.gdoc-markdown table tr td:first-of-type {
-  font-family: monospace;
 }
 
 .gdoc-markdown table tr:nth-child(2n) {
