@@ -185,6 +185,20 @@ span.gdoc-footer__item {
   color: #ffffff;
 }
 
+.gdoc-tabs__content {
+  padding: 0px !important;
+}
+
+.gdoc-tabs__label {
+  font-size: 1rem;
+  padding: 1.5rem;
+  font-weight: 600;
+}
+
+.gdoc-tabs__control:checked + .gdoc-tabs__label {
+  border-bottom: 2px black solid;
+}
+
 /* hint */
 .gdoc-markdown blockquote {
   padding: 1.5em;
@@ -200,6 +214,10 @@ span.gdoc-footer__item {
 .gdoc-hint.danger {
   background: var(--tw-color-red-primary);
   border-color: var(--tw-color-red-medium);
+}
+
+.gdoc-hint .gdoc-page__anchorwrap h3 {
+  padding-top: 0px;
 }
 
 .gdoc-markdown h1,
