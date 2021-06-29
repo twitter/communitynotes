@@ -191,14 +191,14 @@ span.gdoc-footer__item {
 }
 .gdoc-hint.info {
   background: var(--tw-color-gray-faint);
-  border-color: var(--tw-color-green-medium);
+  border-color: var(--tw-color-blue-primary);
 }
 .gdoc-hint.warning {
-  background: var(--tw-color-gray-faint);
+  background: var(--tw-color-orange-primary);
   border-color: #e4ba48;
 }
 .gdoc-hint.danger {
-  background: var(--tw-color-gray-faint);
+  background: var(--tw-color-red-primary);
   border-color: var(--tw-color-red-medium);
 }
 
@@ -489,6 +489,7 @@ div.note.note-unhelpful ul li {
   border-top: 1px solid #e9ecef;
   border-radius: 0px;
   overflow: hidden;
+  background-color: transparent;
 }
 
 .gdoc-expand:last-of-type {
@@ -497,7 +498,7 @@ div.note.note-unhelpful ul li {
 }
 
 .gdoc-expand__head {
-  background: white;
+  background: transparent;
   padding: 1rem 0rem;
   cursor: pointer;
 }

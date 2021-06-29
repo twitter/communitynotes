@@ -14,7 +14,7 @@ If you have questions or feedback about the Birdwatch public data or would like 
 
 ---
 
-# A guide to working with the Birdwatch data
+## Working with the Birdwatch data
 
 ### Data snapshots
 
@@ -26,7 +26,47 @@ A new snapshot of the Birdwatch public data is released daily, on a best-effort 
 
 Each data snapshot table is stored in `tsv` (tab-separated values) file format with a header row. This means that each row is separated by a newline, each column is separated by a tab, and the first row contains the column names instead of data. The note and note rating data is directly taken from the user-submitted note creation and note rating forms, with only minimal added metadata (like ids and timestamp). Below, we will describe each column’s data, including the question or source that generated the data, data type, and other relevant information.
 
-### Birdwatch Notes
+{{< hint info >}}
+
+**Updates to the Data**
+
+As we iterate and improve Birdwatch, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms. When we do this, some question fields and columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and data and when those changes were made.
+
+All Birdwatch contributions are associated with the Twitter account of the contributor. For example, when someone writes a note, their Twitter handle is not immediately visible by others browsing the [Birdwatch site](http://birdwatch.twitter.com), but can be found via the "Note Details" option on each Note. In concept tests, people consistently told us that they found notes more helpful when they can see who wrote the note (vs it being anonymous). Like the rest of Twitter, accounts can use any display name. People can participate in Birdwatch under any account, including secondary accounts that use a pseudonym.
+
+{{< expand "2021-06-18 - Updated Note Rating Questions" >}}
+
+- Note Helpfulness question now has 3 response categories (Yes, Somewhat, No), rather than 2 (originally: Yes, No)
+- We have removed the ‘Agree’ note rating question
+- We have updated the set of categories contributors can use to describe why a note is helpful or unhelpful. (Note: both helpful and unhelpful descriptors can be selected for notes that are rated as ‘Somewhat’ Helpful)
+
+<br>
+
+**Deprecated Columns**
+
+- `helpful` - Replaced with helpfulnessLevel
+- `notHelpful` - Replaced with helpfulnessLevel
+- `helpfulInformative`
+- `helpfulEmpathetic`
+- `helpfulUniqueContext`
+- `notHelpfulOpinionSpeculationOrBias`
+- `notHelpfulOutdated`
+- `notHelpfulOffTopic`
+
+<br>
+
+**Added Columns**
+
+- `helpfulnessLevel`
+- `helpfulAddressesClaim`
+- `helpfulImportantContext`
+- `notHelpfulIrrelevantSources`
+
+{{< / expand >}}
+
+{{< / hint >}}
+
+## Birdwatch Notes
 
 ### `notes-00000.tsv`
 
@@ -55,7 +95,7 @@ Each data snapshot table is stored in `tsv` (tab-separated values) file format w
 | `trustworthySources`                     | Int    | Binary indicator, based on user-entered multiple choice in response to note writing question “Did you link to sources you believe most people would consider trustworthy?”         | 1 if “Yes” is selected, 0 if “No” is selected                                                |
 | summary                                  | String | User-entered text, in response to the note writing prompt “Please explain the evidence behind your choices, to help others who see this tweet understand why it is not misleading” | User entered text explanation, with some characters escaped (e.g. tabs converted to spaces). |
 
-### Birdwatch Ratings
+## Birdwatch Ratings
 
 ### `ratings-0000.tsv`
 
