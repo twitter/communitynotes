@@ -543,6 +543,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 
 
   <div class="gdoc-toc gdoc-toc__level--1"><nav id="TableOfContents"><ul>
+        <li><a href="#helpful-ranking-mapping">Helpful Ranking Mapping</a></li>
         <li><a href="#note-status">Note Status</a></li>
         <li><a href="#combined-helpfulness-score">Combined Helpfulness Score</a>
           <ul>
@@ -571,13 +572,27 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
       </ul></nav><hr></div>
 
 
+<div class="gdoc-page__anchorwrap"><h2 id="helpful-ranking-mapping">Helpful Ranking Mapping<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#helpful-ranking-mapping" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Helpful Ranking Mapping" href="#helpful-ranking-mapping"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<figure>
+    <img src="../../images/helpful-ranking.png"/> 
+</figure>
+
+<p>When rating notes, Birdwatch contributors answer the question “Is this note helpful?” Answers to that question are then used to rank notes. When Birdwatch launched in January 2021, people could answer <code>yes</code> or <code>no</code> to that question. An update on June 30, 2021 allows people to choose between <code>yes</code>, <code>somewhat</code> and <code>no</code>. We map these responses to continuous values from 0.0 to 1.0, hereafter referred to as <code>helpful scores</code>:</p>
+<ul>
+<li><code>Yes</code> maps to <code>1.0</code></li>
+<li><code>Somewhat</code> maps to <code>0.5</code>.</li>
+<li><code>No</code> maps to <code>0.0</code>.</li>
+<li><code>Yes</code> from the original 2-option version of the rating form maps to <code>1.0</code>.</li>
+<li><code>No</code> from the original 2-option version of the rating form maps to <code>0.0</code>.</li>
+</ul>
+<p>Specific values in the mapping may change, particularly once the <code>somewhat</code> option has been available for a period of time, and data exists about how it’s used relative to <code>yes</code> and <code>no</code> responses.</p>
 <div class="gdoc-page__anchorwrap"><h2 id="note-status">Note Status<a data-clipboard-text="https://twitter.github.io/birdwatch/about/ranking-notes/#note-status" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Note Status" href="#note-status"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <figure>
     <img src="../../images/note-statuses.png"/> 
 </figure>
 
 <p>All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings and at least 2 weighted ratings (the sum of the <a href="./#combined-helpfulness-score">Combined Helpfulness Scores</a> of the raters that rated the note, where <a href="./#combined-helpfulness-score">Combined Helpfulness Scores</a> are between <code>0</code> and <code>1</code>).</p>
-<p>Then, Birdwatch computes a Note Helpfulness Score for each note, which is the proportion of ratings that say the note is helpful, where each rating is weighted by the <a href="./#combined-helpfulness-score">Combined Helpfulness Scores</a> of the rater.</p>
+<p>Then, Birdwatch computes a Note Helpfulness Score for each note, which is the average helpful score from ratings on that note, where each rating is weighted by the <a href="./#combined-helpfulness-score">Combined Helpfulness Scores</a> of the rater.</p>
 <p>Notes with a Note Helpfulness Score of <code>0.29</code> and below are assigned Currently Not Rated Helpful, and notes with a score of <code>0.84</code> and above are assigned Currently Rated Helpful. Notes with scores in between <code>0.29</code> and <code>0.84</code> remain labeled as Needs more Ratings.</p>
 <p>In addition to Currently Rated / Not Rated Helpful status, labels also show the most commonly chosen reasons why it is helpful/unhelpful. To break ties between reasons that are chosen an equal number of times by raters, we pick the reason that is used least frequently by Birdwatch raters in general (with the exception of <code>other</code>, which loses all tiebreaks).</p>
 <p>Notes with the status Needs More Ratings remain sorted by recency (newest first), and notes with a Currently Rated / Not Rated Helpful status are sorted by their Helpfulness Score.</p>
@@ -658,135 +673,10 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 <p><a href="/birdwatch/sourcecode/HelpfulnessScoresUtil.scala">HelpfulnessScoresUtil.scala</a></p>
 </li>
 <li>
-<p><a href="/birdwatch/sourcecode/HelpfulnessScoresJob.scala">HelpfulnessScoresJob.scala</a></p>
-</li>
-<li>
-<p><a href="/birdwatch/sourcecode/BirdwatchAggregateRating.scala">BirdwatchAggregateRating.scala</a></p>
+<p><a href="/birdwatch/sourcecode/RatingAggregate.scala">RatingAggregate.scala</a></p>
 </li>
 </ul>
 <p>Here’s a Python code snippet one can run to reproduce how we compute notes’ rating statuses and sorting. It uses as input the notes and ratings files made available on the Birdwatch <a href="https://twitter.com/i/birdwatch/download-data">Data Download</a> page.</p>
-<br>
-
-<div class="gdoc-include"><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span></code></pre></td>
-<td class="lntd">
-<pre class="chroma"><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
-<span class="n">notes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;notes-00000.tsv&#39;</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="n">ratings</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;ratings-00000.tsv&#39;</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="p">)</span>
-
-<span class="n">ratingsWithNotes</span> <span class="o">=</span> <span class="n">notes</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;noteId&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ratings</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;noteId&#39;</span><span class="p">),</span> <span class="n">lsuffix</span><span class="o">=</span><span class="s2">&#34;\_note&#34;</span><span class="p">,</span> <span class="n">rsuffix</span><span class="o">=</span><span class="s2">&#34;\_rating&#34;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">)</span>
-<span class="n">ratingsWithNotes</span><span class="p">[</span><span class="s1">&#39;numRatings&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-
-<span class="k">def</span> <span class="nf">getScoredNotesForTweet</span><span class="p">(</span>
-<span class="n">tweetId</span><span class="p">,</span>
-<span class="n">minRatingsNeeded</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
-<span class="n">minHelpfulnessRatioNeededHelpful</span> <span class="o">=</span> <span class="mf">0.84</span><span class="p">,</span>
-<span class="n">maxHelpfulnessRatioNeededNotHelpful</span> <span class="o">=</span> <span class="o">.</span><span class="mi">29</span><span class="p">,</span>
-<span class="n">minRatingsToGetTag</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
-<span class="p">):</span>
-<span class="n">ratingsWithNotesForTweet</span> <span class="o">=</span> <span class="n">ratingsWithNotes</span><span class="p">[</span><span class="n">ratingsWithNotes</span><span class="p">[</span><span class="s1">&#39;tweetId&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">tweetId</span><span class="p">]</span>
-<span class="n">scoredNotes</span> <span class="o">=</span> <span class="n">ratingsWithNotesForTweet</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;noteId&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-<span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;helpfulnessRatio&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;helpful&#39;</span><span class="p">]</span><span class="o">/</span><span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;numRatings&#39;</span><span class="p">]</span>
-
-    <span class="n">helpfulWhys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;helpfulOther&#39;</span><span class="p">,</span> <span class="s1">&#39;helpfulInformative&#39;</span><span class="p">,</span> <span class="s1">&#39;helpfulClear&#39;</span><span class="p">,</span>
-                   <span class="s1">&#39;helpfulGoodSources&#39;</span><span class="p">,</span> <span class="s1">&#39;helpfulEmpathetic&#39;</span><span class="p">,</span> <span class="s1">&#39;helpfulUniqueContext&#39;</span><span class="p">]</span>
-    <span class="n">notHelpfulWhys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;notHelpfulOther&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulOpinionSpeculationOrBias&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulSourcesMissingOrUnreliable&#39;</span><span class="p">,</span>
-                      <span class="s1">&#39;notHelpfulMissingKeyPoints&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulArgumentativeOrInflammatory&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulIncorrect&#39;</span><span class="p">,</span>
-                      <span class="s1">&#39;notHelpfulOffTopic&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulHardToUnderstand&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulSpamHarassmentOrAbuse&#39;</span><span class="p">,</span> <span class="s1">&#39;notHelpfulOutdated&#39;</span><span class="p">]</span>
-    <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;ratingStatus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Needs More Ratings&#39;</span>
-    <span class="n">scoredNotes</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;numRatings&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">minRatingsNeeded</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;helpfulnessRatio&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">minHelpfulnessRatioNeededHelpful</span><span class="p">),</span> <span class="s1">&#39;ratingStatus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Currently Rated Helpful&#39;</span>
-    <span class="n">scoredNotes</span><span class="o">.</span><span class="n">loc</span><span class="p">[(</span><span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;numRatings&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">minRatingsNeeded</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;helpfulnessRatio&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">maxHelpfulnessRatioNeededNotHelpful</span><span class="p">),</span> <span class="s1">&#39;ratingStatus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Currently Not Rated Helpful&#39;</span>
-    <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;firstTag&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-    <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;secondTag&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-
-    <span class="k">def</span> <span class="nf">topWhys</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;ratingStatus&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;Currently Rated Helpful&#39;</span><span class="p">:</span>
-            <span class="n">whyCounts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">helpfulWhys</span><span class="p">])</span>
-        <span class="k">elif</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;ratingStatus&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;Currently Not Rated Helpful&#39;</span><span class="p">:</span>
-            <span class="n">whyCounts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">notHelpfulWhys</span><span class="p">])</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">row</span>
-        <span class="n">whyCounts</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;tagCounts&#39;</span><span class="p">]</span>
-        <span class="n">whyCounts</span><span class="p">[</span><span class="s1">&#39;tiebreakOrder&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">whyCounts</span><span class="p">))</span>
-        <span class="n">whyCounts</span> <span class="o">=</span> <span class="n">whyCounts</span><span class="p">[</span><span class="n">whyCounts</span><span class="p">[</span><span class="s1">&#39;tagCounts&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">minRatingsToGetTag</span><span class="p">]</span>
-        <span class="n">topTags</span> <span class="o">=</span> <span class="n">whyCounts</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;tagCounts&#39;</span><span class="p">,</span><span class="s1">&#39;tiebreakOrder&#39;</span><span class="p">],</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)[:</span><span class="mi">2</span><span class="p">]</span>
-        <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">topTags</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">):</span>
-            <span class="n">row</span><span class="p">[</span><span class="s1">&#39;ratingStatus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Needs More Ratings&#39;</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">row</span><span class="p">[</span><span class="s1">&#39;firstTag&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">topTags</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">row</span><span class="p">[</span><span class="s1">&#39;secondTag&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">topTags</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">row</span>
-
-    <span class="n">scoredNotes</span> <span class="o">=</span> <span class="n">scoredNotes</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">topWhys</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-
-    <span class="n">scoredNotes</span> <span class="o">=</span> <span class="n">scoredNotes</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">notes</span><span class="p">[[</span><span class="s1">&#39;noteId&#39;</span><span class="p">,</span><span class="s1">&#39;summary&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;noteId&#39;</span><span class="p">),</span> <span class="n">lsuffix</span><span class="o">=</span><span class="s2">&#34;_note&#34;</span><span class="p">,</span> <span class="n">rsuffix</span><span class="o">=</span><span class="s2">&#34;_rating&#34;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">)</span>
-
-    <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;orderWithinStatus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;helpfulnessRatio&#39;</span>
-    <span class="n">scoredNotes</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;ratingStatus&#39;</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;Needs More Ratings&#39;</span><span class="p">,</span> <span class="s1">&#39;orderWithinStatus&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;createdAtMillis_note&#39;</span>
-    <span class="n">statusOrder</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Currently Rated Helpful&#39;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;Needs More Ratings&#39;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;Currently Not Rated Helpful&#39;</span><span class="p">:</span><span class="mi">0</span><span class="p">}</span>
-    <span class="n">scoredNotes</span><span class="p">[</span><span class="s1">&#39;statusOrder&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scoredNotes</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">statusOrder</span><span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="s1">&#39;ratingStatus&#39;</span><span class="p">]],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">scoredNotes</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;statusOrder&#39;</span><span class="p">,</span><span class="s1">&#39;orderWithinStatus&#39;</span><span class="p">],</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span></code></pre></td></tr></table>
-</div>
-</div></div>
-
-<br>
 <ul>
 <li><a href="/birdwatch/sourcecode/ranking-notes.py">Ranking-notes.py</a></li>
 </ul>

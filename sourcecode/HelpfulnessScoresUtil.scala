@@ -5,7 +5,8 @@ import com.twitter.birdwatch.thriftscala.{
   BirdwatchNoteRating,
   BirdwatchNoteRatingStatus,
   BirdwatchScoredNote,
-  BirdwatchUserReputation
+  BirdwatchUserReputation,
+  VisibleContributorStats
 }
 import com.twitter.conversions.DurationOps._
 import com.twitter.scalding.{DateOps, DateRange, Days}
@@ -67,14 +68,12 @@ object HelpfulnessScoresUtil {
 
   type RaterId = Long
   type AuthorId = Long
-  // Note: this function returns BirdwatchAggregateRating objects that still need to be aggregated.
+  // Note: this function returns RatingAggregate objects that still need to be aggregated.
   def weightRatingsByHelpfulnessScore(
     ratingsWithNotes: TypedPipe[(BirdwatchNoteRating, BirdwatchNote)],
     helpfulnessScores: TypedPipe[BirdwatchUserReputation],
-    helpfulnessScoreFunction: BirdwatchUserReputation => Double,
-    aggregateRatingConstructor: BirdwatchNoteRating => BirdwatchAggregateRating =
-      BirdwatchAggregateRating.fromNoteRatingThriftWithoutHelpfulQuestionAnswered
-  ): TypedPipe[(BirdwatchNote, (RaterId, BirdwatchAggregateRating))] = {
+    helpfulnessScoreFunction: BirdwatchUserReputation => Double
+  ): TypedPipe[(BirdwatchNote, (RaterId, RatingAggregate))] = {
     joinHelpfulnessScoreOfRaterWithRatings(
       ratingsWithNotes,
       helpfulnessScores,
@@ -86,9 +85,9 @@ object HelpfulnessScoresUtil {
               note,
               (
                 raterId,
-                BirdwatchAggregateRating.weightByHelpfulnessScore(
-                  aggregateRatingConstructor(rating),
-                  helpfulnessScoreOfRater
+                RatingAggregate(rating).weightedCopy(
+                  helpfulnessScoreOfRater,
+                  requireHelpfulnessIndicator = true
                 )
               )
             )
@@ -96,12 +95,12 @@ object HelpfulnessScoresUtil {
       }
   }
 
-  type UserScore = Double
+  type ContributorScore = Double
   def joinHelpfulnessScoreOfRaterWithRatings(
     ratingsWithNotes: TypedPipe[(BirdwatchNoteRating, BirdwatchNote)],
     helpfulnessScores: TypedPipe[BirdwatchUserReputation],
     helpfulnessFunction: BirdwatchUserReputation => Double
-  ): TypedPipe[(BirdwatchNote, (BirdwatchNoteRating, UserScore))] = {
+  ): TypedPipe[(BirdwatchNote, (BirdwatchNoteRating, ContributorScore))] = {
     ratingsWithNotes
       .flatMap {
         case (rating, note) =>
@@ -128,14 +127,12 @@ object HelpfulnessScoresUtil {
       .values
   }
 
-  // Note: this function returns BirdwatchAggregateRating objects that still need to be aggregated.
+  // Note: this function returns RatingAggregate objects that still need to be aggregated.
   def weightNotesByHelpfulnessScore(
     notesWithRatingOptions: TypedPipe[(BirdwatchNote, Option[BirdwatchNoteRating])],
     helpfulnessScores: TypedPipe[BirdwatchUserReputation],
-    helpfulnessScoreFunction: BirdwatchUserReputation => Double,
-    aggregateRatingConstructor: BirdwatchNoteRating => BirdwatchAggregateRating =
-      BirdwatchAggregateRating.fromNoteRatingThriftWithoutHelpfulQuestionAnswered
-  ): TypedPipe[(BirdwatchNote, BirdwatchAggregateRating)] = {
+    helpfulnessScoreFunction: BirdwatchUserReputation => Double
+  ): TypedPipe[(BirdwatchNote, RatingAggregate)] = {
     notesWithRatingOptions
       .map {
         case (note, ratingOption) =>
@@ -150,12 +147,12 @@ object HelpfulnessScoresUtil {
         case (_, ((ratingOption, note), helpfulnessScoreOfRaterOption)) =>
           val aggRating = ratingOption
             .map { rating =>
-              BirdwatchAggregateRating.weightByHelpfulnessScore(
-                aggregateRatingConstructor(rating),
+              RatingAggregate(rating).weightedCopy(
                 helpfulnessScoreOfRaterOption
-                  .map(helpfulnessScoreFunction(_)).getOrElse(0.0)
+                  .map(helpfulnessScoreFunction(_)).getOrElse(0.0),
+                requireHelpfulnessIndicator = true
               )
-            }.getOrElse(BirdwatchAggregateRating())
+            }.getOrElse(RatingAggregate())
           (note, aggRating)
       }
   }
@@ -166,9 +163,9 @@ object HelpfulnessScoresUtil {
     helpfulnessScoreFunction: BirdwatchUserReputation => Double
   ): TypedPipe[BirdwatchScoredNote] = {
     weightRatingsByHelpfulnessScore(ratingsWithNotes, helpfulnessScores, helpfulnessScoreFunction)
-      .map { case (note, (raterId, aggRating)) => (note, aggRating) }
+      .map { case (note, (_, aggRating)) => (note, aggRating) }
       .group(Ordering.by(_.noteId))
-      .sum(BirdwatchAggregateRating.ratingSemigroup)
+      .sum(RatingAggregate.ratingSemigroup)
       .map {
         case (note, aggRating) =>
           NoteScoringUtil.scoreNote(note, aggRating)
@@ -187,27 +184,34 @@ object HelpfulnessScoresUtil {
   }
 
   def getAuthorAggregateRatingsAveragedOverRaterAuthorPairs(
-    ratingsPerRaterAuthorPair: TypedPipe[((RaterId, AuthorId), BirdwatchAggregateRating)]
-  ): UnsortedGrouped[AuthorId, BirdwatchAggregateRating] = {
+    ratingsPerRaterAuthorPair: TypedPipe[((RaterId, AuthorId), RatingAggregate)]
+  ): UnsortedGrouped[AuthorId, RatingAggregate] = {
     ratingsPerRaterAuthorPair.group
-      .sum(BirdwatchAggregateRating.ratingSemigroup)
+      .sum(RatingAggregate.ratingSemigroup)
       .map { // average helpfulness rating for each rater author pair
-        case ((ratingUserId, noteAuthorId), aggregateRating) =>
-          val averageRating = aggregateRating.copy(
-            // total contains the actual number of ratings this rater has made on this author,
-            //  so we'll divide the weightedHelpful and weightedTotal sums by total in order
-            //  to get the average weighted values over all ratings of this rater on this author.
-            weightedHelpful = aggregateRating.weightedHelpful.map {
-              _ / aggregateRating.total.getOrElse(1L)
-            },
-            weightedTotal = aggregateRating.weightedTotal.map {
-              _ / aggregateRating.total.getOrElse(1L)
-            }
+        case ((_, noteAuthorId), ratingAggregate) =>
+          // total contains the actual number of ratings this rater has made on this author,
+          //  so we'll divide the weightedHelpful and weightedTotal sums by total in order
+          //  to get the average weighted values over all ratings of this rater on this author.
+          val total = ratingAggregate.rawTotal
+          val (weightedHelpful, weightedTotal) = if (total == 0) {
+            (0.0, 0.0)
+          } else {
+            (
+              ratingAggregate.weightedHelpful / total,
+              ratingAggregate.weightedTotal / total
+            )
+          }
+
+          val averageRating = ratingAggregate.copy(
+            weightedHelpful = weightedHelpful,
+            weightedTotal = weightedTotal
           )
+
           (noteAuthorId, averageRating)
       }
       .group
-      .sum(BirdwatchAggregateRating.ratingSemigroup)
+      .sum(RatingAggregate.ratingSemigroup)
   }
 
   def reweightAuthorHelpfulnessScores(
@@ -218,21 +222,20 @@ object HelpfulnessScoresUtil {
       weightRatingsByHelpfulnessScore(
         ratingsWithNotes,
         previousAuthorHelpfulnessScores,
-        getAuthorHelpfulnessScore,
-        BirdwatchAggregateRating.fromNoteRatingThriftWithoutHelpfulQuestionAnswered
+        getAuthorHelpfulnessScore
       ).map { case (note, (raterId, aggRating)) => ((raterId, note.userId), aggRating) }
     ).map {
       case (authorId, aggWeightedRatingsReceived) =>
         BirdwatchUserReputation(
           userId = authorId,
-          aggregateRatingReceived =
-            Some(BirdwatchAggregateRating.toAggregateRatingThrift(aggWeightedRatingsReceived)),
+          aggregateRatingReceived = Some(aggWeightedRatingsReceived.toThrift),
           authorHelpfulnessScore = Some(
             computeAuthorHelpfulnessScore(
-              aggWeightedRatingsReceived.weightedHelpful.getOrElse(0.0),
-              aggWeightedRatingsReceived.weightedTotal.getOrElse(0.0)
+              aggWeightedRatingsReceived.weightedHelpful,
+              aggWeightedRatingsReceived.weightedTotal
             )
-          )
+          ),
+          visibleStats = Some(aggWeightedRatingsReceived.contributorStats)
         )
     }
   }
@@ -246,25 +249,25 @@ object HelpfulnessScoresUtil {
           rating.userId.map { ratingUserId =>
             (
               (ratingUserId, note.userId),
-              BirdwatchAggregateRating.weightByHelpfulnessScore(
-                BirdwatchAggregateRating.fromNoteRatingThriftWithoutHelpfulQuestionAnswered(rating),
-                1.0 // give every author weight 1 at the start.
+              RatingAggregate(rating).weightedCopy(
+                1.0, // give every author weight 1 at start
+                requireHelpfulnessIndicator = true
               )
             )
           }
       }
     ).map {
-      case (userId, aggregateRating) =>
+      case (userId, ratingAggregate) =>
         BirdwatchUserReputation(
           userId = userId,
-          aggregateRatingReceived =
-            Some(BirdwatchAggregateRating.toAggregateRatingThrift(aggregateRating)),
+          aggregateRatingReceived = Some(ratingAggregate.toThrift),
           authorHelpfulnessScore = Some(
             computeAuthorHelpfulnessScore(
-              aggregateRating.weightedHelpful.getOrElse(0.0),
-              aggregateRating.weightedTotal.getOrElse(0.0)
+              ratingAggregate.weightedHelpful,
+              ratingAggregate.weightedTotal
             )
-          )
+          ),
+          visibleStats = Some(ratingAggregate.contributorStats)
         )
     }
   }
@@ -284,11 +287,11 @@ object HelpfulnessScoresUtil {
         case (rating, note) => ((note.noteId, note.createdAt), rating.createdAt)
       }
       .group
-      .sortedTake(NoteScoringUtil.minRatingsToGetRatingStatus)
+      .sortedTake(NoteScoringUtil.MinRatingsToGetRatingStatus)
       .map {
         case ((noteId, noteCreatedAt), earliestRatingTimestamps) =>
           val latestTimestampWhereRatingUpdatesRaterHelpfulnessScore =
-            if (earliestRatingTimestamps.size == NoteScoringUtil.minRatingsToGetRatingStatus) {
+            if (earliestRatingTimestamps.size == NoteScoringUtil.MinRatingsToGetRatingStatus) {
               math.min(
                 earliestRatingTimestamps.max,
                 noteCreatedAt + durationAfterNoteCreationWhenRatingsCountTowardsRaterHelpfulnessScore
@@ -299,12 +302,12 @@ object HelpfulnessScoresUtil {
           (noteId, latestTimestampWhereRatingUpdatesRaterHelpfulnessScore)
       }
 
-    val scoredNotesWithLabels = labeledNotes.flatMap { scoredNote =>
+    val aggRatingForNotesWithStatus = labeledNotes.flatMap { scoredNote =>
       for {
         ratingStatus <- scoredNote.birdwatchNoteRatingStatus
         aggRating <- scoredNote.aggregateRatingReceived
         if ratingStatus != BirdwatchNoteRatingStatus.NeedsMoreRatings
-      } yield (scoredNote.noteId, (aggRating, ratingStatus))
+      } yield (scoredNote.noteId, aggRating)
     }.group
 
     val ratingsWithWeights =
@@ -319,35 +322,35 @@ object HelpfulnessScoresUtil {
 
     // Join each scoredNote with each time it was rated and the author helpfulness score of the rater.
     MultiJoin(
-      scoredNotesWithLabels,
+      aggRatingForNotesWithStatus,
       ratingsWithWeights,
       latestTimestampWhereRatingUpdatesRaterHelpfulnessScorePerNote)
       .flatMap {
         case (
-              noteId,
+              _,
               (
-                (noteAggRating, ratingStatus),
+                noteAggRating,
                 (rating, authorHelpfulnessScore),
-                latestTimestampWhereRatingUpdatesRaterHelpfulnessScore
+                finalTimestampWhereRatingUpdatesRaterHelpfulnessScore
               )
             ) =>
-          val singleRatingsAsAggRating = BirdwatchAggregateRating.weightByHelpfulnessScore(
-            BirdwatchAggregateRating.fromNoteRatingThrift(rating),
-            authorHelpfulnessScore
+          val singleRatingAsWeightedAggRating = RatingAggregate(rating).weightedCopy(
+            authorHelpfulnessScore,
+            requireHelpfulnessIndicator = true
           )
           // Compute what the consensus helpfulRatio is from all other raters besides this rater
           val helpfulMinusRater = noteAggRating.weightedHelpful.getOrElse(0.0) -
-            singleRatingsAsAggRating.weightedHelpful.getOrElse(0.0)
+            singleRatingAsWeightedAggRating.weightedHelpful
           val totalMinusRater = noteAggRating.weightedTotal.getOrElse(0.0) -
-            singleRatingsAsAggRating.weightedTotal.getOrElse(0.0)
+            singleRatingAsWeightedAggRating.weightedTotal
           val helpfulRatioMinusRater =
             if (totalMinusRater == 0) 0 else helpfulMinusRater / totalMinusRater
 
           // Determine what the note's label would be without the current rater's rating.
-          val labelWithoutRaterOpt =
-            if (helpfulRatioMinusRater >= NoteScoringUtil.minRawHelpfulnessRatioToBeRatedHelpful) {
+          val ratedHelpfulWithoutRaterOpt =
+            if (helpfulRatioMinusRater >= NoteScoringUtil.MinRawHelpfulnessRatioToBeRatedHelpful) {
               Some(true)
-            } else if (helpfulRatioMinusRater <= NoteScoringUtil.maxRawHelpfulnessRatioToBeRatedUnhelpful) {
+            } else if (helpfulRatioMinusRater <= NoteScoringUtil.MaxRawHelpfulnessRatioToBeRatedUnhelpful) {
               Some(false)
             } else {
               // The note doesn't count towards rater helpfulness if it would lose its label
@@ -358,20 +361,18 @@ object HelpfulnessScoresUtil {
           // Input: an individual note rating
           // Output: what this rater rated the note, and the consensus ratio of all other raters
           for {
-            ratedHelpful <- singleRatingsAsAggRating.helpful
-            ratedNotHelpful <- singleRatingsAsAggRating.notHelpful
             raterId <- rating.userId
-            labelWithoutRater <- labelWithoutRaterOpt
+            ratedHelpfulWithoutRater <- ratedHelpfulWithoutRaterOpt
             // Throw out ratings that left the "helpful" question unanswered.
             // Also throw out ratings that happened too long after note creation time.
-            if (ratedHelpful == 1 || ratedNotHelpful == 1) &&
-              (rating.createdAt <= latestTimestampWhereRatingUpdatesRaterHelpfulnessScore)
+            if singleRatingAsWeightedAggRating.hasHelpfulnessIndicator &&
+              rating.createdAt <= finalTimestampWhereRatingUpdatesRaterHelpfulnessScore
           } yield {
-            val ratedHelpfulByRater = (ratedHelpful == 1)
+            val ratedHelpfulByRater = singleRatingAsWeightedAggRating.rawHelpful > 0
             (
               raterId,
               (
-                if (labelWithoutRater == ratedHelpfulByRater) 1L else 0L,
+                if (ratedHelpfulWithoutRater == ratedHelpfulByRater) 1L else 0L,
                 1L // Included so that the next .sum can compute total ratings
               )
             )
