@@ -2,19 +2,28 @@ import pandas as pd
 notes = pd.read_csv('notes-00000.tsv', sep='\t')
 ratings = pd.read_csv('ratings-00000.tsv', sep='\t')
 
+## Note: this code snippet's results won't match the results of Birdwatch in production, 
+##   because this code snippet doesn't weight ratings by contributors' helpfulness scores.
+
+ratings['helpfulScore'] = 0
+ratings.loc[ratings['helpful']==1,'helpfulScore'] = 1
+ratings.loc[ratings['helpfulnessLevel']=='SOMEWHAT_HELPFUL','helpfulScore'] = 0.5
+ratings.loc[ratings['helpfulnessLevel']=='HELPFUL','helpfulScore'] = 1
+
 ratingsWithNotes = notes.set_index('noteId').join(ratings.set_index('noteId'), lsuffix="\_note", rsuffix="\_rating", how='inner')
 ratingsWithNotes['numRatings'] = 1
 
+
 def getScoredNotesForTweet(
-tweetId,
-minRatingsNeeded = 5,
-minHelpfulnessRatioNeededHelpful = 0.84,
-maxHelpfulnessRatioNeededNotHelpful = .29,
-minRatingsToGetTag = 2,
+    tweetId,
+    minRatingsNeeded = 5,
+    minHelpfulnessRatioNeededHelpful = 0.84,
+    maxHelpfulnessRatioNeededNotHelpful = .29,
+    minRatingsToGetTag = 2,
 ):
-ratingsWithNotesForTweet = ratingsWithNotes[ratingsWithNotes['tweetId']==tweetId]
-scoredNotes = ratingsWithNotesForTweet.groupby('noteId').sum()
-scoredNotes['helpfulnessRatio'] = scoredNotes['helpful']/scoredNotes['numRatings']
+    ratingsWithNotesForTweet = ratingsWithNotes[ratingsWithNotes['tweetId']==tweetId]
+    scoredNotes = ratingsWithNotesForTweet.groupby('noteId').sum()
+    scoredNotes['helpfulnessRatio'] = scoredNotes['helpfulScore']/scoredNotes['numRatings']
 
     helpfulWhys = ['helpfulOther', 'helpfulInformative', 'helpfulClear',
                    'helpfulGoodSources', 'helpfulEmpathetic', 'helpfulUniqueContext']
@@ -54,3 +63,4 @@ scoredNotes['helpfulnessRatio'] = scoredNotes['helpful']/scoredNotes['numRatings
     statusOrder = {'Currently Rated Helpful':2, 'Needs More Ratings':1, 'Currently Not Rated Helpful':0}
     scoredNotes['statusOrder'] = scoredNotes.apply(lambda x: statusOrder[x['ratingStatus']], axis=1)
     return scoredNotes.sort_values(by=['statusOrder','orderWithinStatus'], ascending=False)
+    
