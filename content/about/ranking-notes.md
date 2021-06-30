@@ -18,13 +18,27 @@ To help people understand how Birdwatch's ranking system works, the sections bel
 
 {{< toc >}}
 
+## Helpful Ranking Mapping
+
+{{< figure src="../../images/helpful-ranking.png">}}
+
+When rating notes, Birdwatch contributors answer the question “Is this note helpful?” Answers to that question are then used to rank notes. When Birdwatch launched in January 2021, people could answer `yes` or `no` to that question. An update on June 30, 2021 allows people to choose between `yes`, `somewhat` and `no`. We map these responses to continuous values from 0.0 to 1.0, hereafter referred to as `helpful scores`:
+
+- `Yes` maps to `1.0`
+- `Somewhat` maps to `0.5`.
+- `No` maps to `0.0`.
+- `Yes` from the original 2-option version of the rating form maps to `1.0`.
+- `No` from the original 2-option version of the rating form maps to `0.0`.
+
+Specific values in the mapping may change, particularly once the `somewhat` option has been available for a period of time, and data exists about how it’s used relative to `yes` and `no` responses.
+
 ## Note Status
 
 {{< figure src="../../images/note-statuses.png">}}
 
 All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings and at least 2 weighted ratings (the sum of the [Combined Helpfulness Scores](./#combined-helpfulness-score) of the raters that rated the note, where [Combined Helpfulness Scores](./#combined-helpfulness-score) are between `0` and `1`).
 
-Then, Birdwatch computes a Note Helpfulness Score for each note, which is the proportion of ratings that say the note is helpful, where each rating is weighted by the [Combined Helpfulness Scores](./#combined-helpfulness-score) of the rater.
+Then, Birdwatch computes a Note Helpfulness Score for each note, which is the average helpful score from ratings on that note, where each rating is weighted by the [Combined Helpfulness Scores](./#combined-helpfulness-score) of the rater.
 
 Notes with a Note Helpfulness Score of `0.29` and below are assigned Currently Not Rated Helpful, and notes with a score of `0.84` and above are assigned Currently Rated Helpful. Notes with scores in between `0.29` and `0.84` remain labeled as Needs more Ratings.
 
@@ -141,17 +155,9 @@ Here you can find links to the real code that we are using to determine contribu
 
 - [HelpfulnessScoresUtil.scala](/birdwatch/sourcecode/HelpfulnessScoresUtil.scala)
 
-- [HelpfulnessScoresJob.scala](/birdwatch/sourcecode/HelpfulnessScoresJob.scala)
-
-- [BirdwatchAggregateRating.scala](/birdwatch/sourcecode/BirdwatchAggregateRating.scala)
+- [RatingAggregate.scala](/birdwatch/sourcecode/RatingAggregate.scala)
 
 Here’s a Python code snippet one can run to reproduce how we compute notes’ rating statuses and sorting. It uses as input the notes and ratings files made available on the Birdwatch [Data Download](https://twitter.com/i/birdwatch/download-data) page.
-
-<br>
-
-{{< include file="static/sourcecode/ranking-notes.py" language="python" markdown=false >}}
-
-<br>
 
 - [Ranking-notes.py](/birdwatch/sourcecode/ranking-notes.py)
 
