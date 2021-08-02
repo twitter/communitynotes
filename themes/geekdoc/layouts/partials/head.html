@@ -17,3 +17,18 @@ media="screen"> {{ with .OutputFormats.Get "rss" -}} {{ printf `<link
 />` .Rel .MediaType.Type .Permalink $.Site.Title | safeHTML }} {{ end -}} {{ "<!--" | safeHTML -}}
     Made with Geekdoc theme https://github.com/xoxys/hugo-geekdoc
 {{- "-->" | safeHTML }}
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=G-FJR6JCFM8Y"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+
+  gtag("config", "G-FJR6JCFM8Y");
+</script>
