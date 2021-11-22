@@ -16,6 +16,8 @@ main:
         ref: "/contributing/signing-up"
       - name: Values
         ref: "/contributing/values"
+      - name: Aliases
+        ref: "/contributing/aliases"
       - name: Writing notes
         ref: "/contributing/writing-notes"
       - name: Rating notes
@@ -31,4 +33,3 @@ main:
         ref: "about/ranking-notes"
       - name: Download data
         ref: "/contributing/download-data"
-      
