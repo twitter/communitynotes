@@ -201,6 +201,8 @@ When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch pilot partic
 
 If a Tweet has a Birdwatch note deemed **Currently rated helpful** by contributors (determined as described above in **Note Ranking**) then the note will be shown in the card, along with a button to rate the note. If the Tweet has multiple notes with **Currently rated helpful** status, the card will show one note, randomly cycling between them at periodic intervals in order to gather additional rating inputs on each.
 
+The one exception to this is if a **Currently rated helpful** note deems the Tweet **Not misleading**. In this case, since the Tweet was considered not misleading, the note will not be shown on the Tweet.
+
 ### Cards showing a count of notes
 
 {{< figure src="../../images/notes-on-twitter-count.png">}}
