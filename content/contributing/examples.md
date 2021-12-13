@@ -24,9 +24,9 @@ Here's a Tweet making misleading claims about whales, followed by helpful and un
 
 Whales are indeed mammals. Marine mammals are able to “stay hydrated” because their kidneys have evolved to excrete more salt + reclaim more water than humans and many other mammals can. They also obtain water from their food. This is widely documented, for example in http://reputable…
 
-- Is concise
-- Uses easy to understand and simple language
-- Cites source from reputable publication, which has robust information on the topic
+- Easy to understand
+- Directly addresses all of the Tweet’s claims
+- Cites high-quality source, which has robust information on the topic
 
 </div>
 

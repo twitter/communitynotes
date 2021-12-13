@@ -2,9 +2,9 @@
 
 ![](/static/images/hero.png)
 
-## Empowering the Twitter community to create a better-informed world.
+## Empowering people on Twitter to create a better-informed world.
 
-Birdwatch allows people to identify information in Tweets they believe are misleading and write notes that provide context. This program aims to build and test a community-based approach that considers a broad and diverse set of perspectives to information found on Twitter.
+Birdwatch aims to create a better informed world, by empowering people on Twitter to add helpful notes to Tweets that might be misleading.
 
 Currently, Birdwatch is in pilot mode for people in the US. We're building it in the open, with the public’s input, and we’re taking significant steps to make Birdwatch transparent.
 
@@ -14,7 +14,7 @@ This Guide outlines how Birdwatch works, how one can access and work with Birdwa
 
 ## How to contribute
 
-For this initial phase of the Birdwatch pilot, we’ve turned off public Github contribution tools on GitHub (Issues, Pull Requests, Discussions) while we explore the best ways to engage with the growing community.
+For this initial phase of the Birdwatch pilot, we’ve turned off public Github contribution tools on GitHub (Issues, Pull Requests, Discussions) while we explore the best ways to engage with the growing community who is interested in studying or contributing to Birdwatch.
 
 For now, this site is intended as a transparent source of information about Birdwatch, including version history of that information. As we develop algorithms that power Birdwatch — such as reputation, consensus, and ranking systems — we also aim to make them publicly available. Our current implementation is already available [here](https://twitter.github.io/birdwatch/ranking-notes).
 

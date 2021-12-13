@@ -8,7 +8,8 @@ aliases: ["/overview"]
 
 <br>
 
-Birdwatch is a community-driven approach to address misinformation on Twitter. Participants can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other participants’ notes. Through consensus from a broad and diverse set of contributors, our eventual goal is that community-written notes will be visible directly on Tweets, available to everyone on Twitter.
+Birdwatch aims to create a better informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
+Participants can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other participants’ notes. Through consensus from a broad and diverse set of contributors, our eventual goal is that the most helpful notes will be visible directly on Tweets, available to everyone on Twitter.
 
 # How it works
 
@@ -30,7 +31,7 @@ Participants can rate the helpfulness of other's notes. Ratings help identify wh
 
 The Birdwatch site is the home for all Birdwatch notes and ratings, separate from the main Twitter apps, and is available at [birdwatch.twitter.com](https://birdwatch.twitter.com).
 
-During this phase of the pilot, Birdwatch contributions will not affect the way people outside of the pilot see Tweets or our system recommendations. Our priority is to understand how to build and adopt a community-based approach that takes input from a diverse set of contributors and identifies the context that people will find most helpful.
+During this phase of the pilot, Birdwatch contributions will not affect the way people outside of the pilot see Tweets or our system recommendations. Our priority is to understand how to build and adopt an approach that takes input from a diverse set of contributors and identifies the context that people will find most helpful.
 
 [Visit the Birdwatch Site →](https://birdwatch.twitter.com)
 

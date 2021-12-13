@@ -23,7 +23,7 @@ Any Tweet can receive a Birdwatch note.
 
 {{< expand "Will Birdwatch contributions affect content on Twitter? Will it be used to label or remove Tweets? " >}}
 
-During our initial pilot phase, Birdwatch contributions will not impact the way people outside of the pilot  see Tweets or our recommendation systems. Birdwatch contributions are being intentionally kept separate from Twitter for now while we gain confidence that it produces context people find helpful and appropriate. Eventually, we aim to make notes visible directly on Tweets for the global Twitter audience when there is consensus from a broad and diverse set of contributors.
+During our initial pilot phase, Birdwatch contributions will not impact the way people outside of the pilot see Tweets or our recommendation systems. Birdwatch contributions are being intentionally kept separate from Twitter for now while we gain confidence that it produces context people find helpful and appropriate. Eventually, we aim to make notes visible directly on Tweets for the global Twitter audience when there is consensus from a broad and diverse set of contributors.
 
 {{< /expand >}}
 
@@ -57,7 +57,7 @@ All Birdwatch contributions data are made publicly available on the [Download Da
 
 {{< expand "Is Twitter working with any outside organizations to build this product?" >}}
 
-A wealth of relevant knowledge exists beyond Twitter’s virtual walls, so we are drawing on external research and collaborating with a variety of groups and organizations for their expertise and input. From having a member of the University of Chicago’s Center for RISC embedded on our team, to hosting feedback sessions with reporters and researchers, we’re integrating social science and academic perspectives like behavioral economics, social psychology, political science and procedural justice into our product development process.
+A wealth of relevant knowledge exists beyond Twitter’s virtual walls, so we are drawing on external research and collaborating with a variety of groups and organizations for their expertise and input. From having a member of the University of Chicago’s Center for RISC embedded on our team, to hosting feedback sessions with reporters and researchers, we’re integrating social science and academic perspectives like behavioral economics, social psychology, political science and procedural justice into our product development process. We’re also [collaborating with AP and Reuters](https://twitter.com/birdwatch/status/1422293696041603081) as part of our analysis of the helpfulness & quality of information elevated by Birdwatch.
 
 {{< /expand >}}
 

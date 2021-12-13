@@ -4,7 +4,7 @@ geekdocBreadcrumb: false
 aliases: ["/challenges", "/risks"]
 ---
 
-We know there are many challenges involved in building a community-driven system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.
+We know there are many challenges involved in building aan open, participatory system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.
 
 Throughout our development process, we’ve conducted feedback sessions with Twitter customers and subject area experts to identify critical risks to monitor and mitigate. We will be closely focused on understanding and identifying solutions to prevent such risks during our initial pilot phase.
 
@@ -14,7 +14,7 @@ Here are a handful of particular challenges we are aware of as well as our thoug
 
 ## Coordinated Manipulation Attempts
 
-Attempts at coordinated manipulation represent a crucial risk for community rating systems. We expect such attempts to occur, and for Birdwatch to be effective, it needs to be sufficiently resistant to them.
+Attempts at coordinated manipulation represent a crucial risk for open rating systems. We expect such attempts to occur, and for Birdwatch to be effective, it needs to be sufficiently resistant to them.
 
 During this initial phase, we are taking some steps to reduce this type of abuse in the pilot: First, people must meet [eligibility criteria](../../signup) to participate in the pilot. Additionally, we will prioritize admitting new participants who tend to follow and engage with different accounts and Tweets than existing participants do, so as to reduce the likelihood of bias from predominantly one ideology, background, or interest space.
 

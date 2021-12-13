@@ -7,7 +7,7 @@ weight: 1
 
 During the first phase of the pilot, Birdwatch is limited to a small test group in the US.
 
-Our goal is to expand Birdwatch to the global Twitter community. We want anyone to be able to participate and know that the more diverse the community, the better Birdwatch will be at effectively addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
+Our goal is to expand Birdwatch to the global Twitter community. We want anyone to be able to participate and know that having contributors with different points of view is essential to Birdwatch helpfully addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
 
 ## {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
 
@@ -32,7 +32,7 @@ Intended to reduce the use of artificially created or virtual phone numbers
 
 Intended to reduce the likelihood of abusive contributions.
 
-We want anyone to be able to contribute to Birdwatch, and may remove or modify some of these criteria as Birdwatch evolves and as we observe the community's ability to promote high quality context that people find helpful.
+We want anyone to be able to contribute to Birdwatch, and may remove or modify some of these criteria as Birdwatch evolves and as we observe contributor's ability to promote high quality context that people find helpful.
 
 # Admissions
 
