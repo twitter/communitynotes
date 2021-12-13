@@ -13,7 +13,7 @@
       
       <guid>https://twitter.github.io/birdwatch/contributing/signing-up/</guid>
       <description>During the first phase of the pilot, Birdwatch is limited to a small test group in the US.
-Our goal is to expand Birdwatch to the global Twitter community. We want anyone to be able to participate and know that the more diverse the community, the better Birdwatch will be at effectively addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
+Our goal is to expand Birdwatch to the global Twitter community. We want anyone to be able to participate and know that having contributors with different points of view is essential to Birdwatch helpfully addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
 Sign up here     Eligibility To participate in the pilot, accounts must have:</description>
     </item>
     
@@ -45,7 +45,7 @@ Further, we believe aliases have the potential to:
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/about/challenges/</guid>
-      <description>We know there are many challenges involved in building a community-driven system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.
+      <description>We know there are many challenges involved in building aan open, participatory system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.
 Throughout our development process, we’ve conducted feedback sessions with Twitter customers and subject area experts to identify critical risks to monitor and mitigate. We will be closely focused on understanding and identifying solutions to prevent such risks during our initial pilot phase.</description>
     </item>
     
@@ -97,8 +97,7 @@ To help people understand how Birdwatch&amp;rsquo;s ranking system works, the se
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/about/overview/</guid>
-      <description>Birdwatch is a community-driven approach to address misinformation on Twitter. Participants can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other participants’ notes. Through consensus from a broad and diverse set of contributors, our eventual goal is that community-written notes will be visible directly on Tweets, available to everyone on Twitter.
-How it works In this phase, Birdwatch has three core elements: notes, ratings, and the Birdwatch site.</description>
+      <description>Birdwatch aims to create a better informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading. Participants can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other participants’ notes. Through consensus from a broad and diverse set of contributors, our eventual goal is that the most helpful notes will be visible directly on Tweets, available to everyone on Twitter.</description>
     </item>
     
     <item>
