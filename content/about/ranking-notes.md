@@ -125,12 +125,15 @@ For tie-breaking, we use the following priority order of reasons:
 
 Currently Rated Helpful Reasons:
 
-1. `UniqueContext`
-2. `Empathetic`
-3. `GoodSources`
-4. `Clear`
-5. `Informative`
-6. `Other`
+1. `UnbiasedLanguage`
+2. `UniqueContext`
+3. `Empathetic`
+4. `GoodSources`
+5. `AddressesClaim`
+6. `ImportantContext`
+7. `Clear`
+8. `Informative`
+9. `Other`
 
 <br>
 
@@ -142,10 +145,12 @@ Currently Not Rated Helpful Reasons:
 4. `OffTopic`
 5. `Incorrect`
 6. `ArgumentativeOrInflammatory`
-7. `MissingKeyPoints`
-8. `SourcesMissingOrUnreliable`
-9. `OpinionSpeculationOrBias`
-10. `Other`
+7. `NoteNotNeeded`
+8. `MissingKeyPoints`
+9. `OpinionSpeculation`
+10. `SourcesMissingOrUnreliable`
+11. `OpinionSpeculationOrBias`
+12. `Other`
 
 <br>
 
