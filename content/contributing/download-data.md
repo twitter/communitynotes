@@ -36,12 +36,17 @@ As we iterate and improve Birdwatch, we will occasionally make changes to the qu
 
 {{< expand "2021-12-15 - Updated Note Rating Questions" >}}
 
-- Updated Columns
-  - notHelpfulArgumentativeOrInflammatory - Changed name to notHelpfulArgumentativeOrBiased
-- Added Columns
-  - helpfulUnbiasedLanguage
-  - notHelpfulOpinionSpeculation
-  - notHelpfulNoteNotNeeded
+**Updated Columns**
+
+- `notHelpfulArgumentativeOrInflammatory` - Changed name to `notHelpfulArgumentativeOrBiased`
+
+<br>
+
+**Added Columns**
+
+- `helpfulUnbiasedLanguage`
+- `notHelpfulOpinionSpeculation`
+- `notHelpfulNoteNotNeeded`
 
 {{< / expand >}}
 {{< expand "2021-06-30 - Updated Note Rating Questions" >}}
