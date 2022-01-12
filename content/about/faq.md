@@ -11,7 +11,9 @@ The first phase of this pilot will be limited to a small test group in the US. [
 
 {{< expand "Are contributions anonymous? Or will my name be attached to my notes?" >}}
 
-All Birdwatch contributions are associated with the Twitter account of the contributor. For example, when someone writes a note, their Twitter handle is not immediately visible by others browsing the [Birdwatch site](http://birdwatch.twitter.com), but can be found via the "Note Details" option on each Note. In concept tests, people consistently told us that they found notes more helpful when they can see who wrote the note (vs it being anonymous). Like the rest of Twitter, accounts can use any display name. People can participate in Birdwatch under any account, including secondary accounts that use a pseudonym.
+We want everyone to feel comfortable contributing to Birdwatch. Because of that, all participants get a new, auto-generated display name (or alias) when they join Birdwatch. These aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately. 
+
+You can learn more about aliases [here](../../aliases).
 
 {{< /expand >}}
 
