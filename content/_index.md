@@ -5,7 +5,7 @@ title: Home
 
 {{< figure class="hero" src="images/hero.png">}}
 
-# Empowering people on to create a better-informed world.
+# Empowering people on Twitter to create a better-informed world.
 
 People come to Twitter to stay informed, and they want credible information to help them do so. This isn’t always easy with the spread of misleading information online.
 
