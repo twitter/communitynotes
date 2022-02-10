@@ -4,7 +4,7 @@ geekdocBreadcrumb: false
 aliases: ["/overview"]
 ---
 
-{{< figure src="../../images/1-writing-notes.png">}}
+{{< figure src="../images/1-writing-notes.png">}}
 
 <br>
 
@@ -19,13 +19,13 @@ In this phase, Birdwatch has three core elements: notes, ratings, and the Birdwa
 
 Participants in the pilot can add notes to any Tweet they come across and think might be misleading. Notes are composed of multiple-choice questions and an open text field where participants can explain why they believe a Tweet is misleading, as well as link to relevant sources. Birdwatch notes are public, and anyone in the US can browse the Birdwatch site to see them. For those not in the pilot, notes currently appear only on the Birdwatch site. They are intentionally kept separate from Twitter for now, while we build Birdwatch and gain confidence that it produces context people find helpful and appropriate. People in the pilot may see notes directly on Tweets when browsing Twitter, and are able to rate those notes for helpfulness.
 
-[Learn more about writing notes →](../../contributing/writing-notes)
+[Learn more about writing notes →](../writing-notes/)
 
 2. ### Ratings
 
 Participants can rate the helpfulness of other's notes. Ratings help identify which notes are most helpful, and allow Birdwatch to raise the visibility of those found most helpful by a wide range of contributors. Ratings will also inform future reputation models that recognize those whose contributions are consistently found helpful by a diverse set of people.
 
-[Learn more about rating notes →](../../contributing/rating-notes)
+[Learn more about rating notes →](../rating-notes/)
 
 3. ### The Birdwatch site
 
@@ -41,6 +41,6 @@ We believe it’s important for people to understand how Birdwatch works, and to
 
 Even though only pilot participants can write and rate notes, anyone in the US can access the Birdwatch site to browse contributions. Additionally, all data contributed to Birdwatch will be publicly available and for [download in `tsv` files](https://twitter.com/i/birdwatch/download-data).
 
-As we develop algorithms that power Birdwatch — such as reputation, consensus, and ranking systems — we also aim to make them publicly available. Our current implementation is already [available here](../../about/note-ranking).
+As we develop algorithms that power Birdwatch — such as reputation, consensus, and ranking systems — we also aim to make them publicly available. Our current implementation is already [available here](../note-ranking).
 
 We hope that steps like these will enable experts, researchers, and the public to analyze or audit Birdwatch, identifying opportunities or flaws that can help us more quickly build an effective community-driven solution.

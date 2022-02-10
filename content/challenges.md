@@ -16,7 +16,7 @@ Here are a handful of particular challenges we are aware of as well as our thoug
 
 Attempts at coordinated manipulation represent a crucial risk for open rating systems. We expect such attempts to occur, and for Birdwatch to be effective, it needs to be sufficiently resistant to them.
 
-During this initial phase, we are taking some steps to reduce this type of abuse in the pilot: First, people must meet [eligibility criteria](../../signup) to participate in the pilot. Additionally, we will prioritize admitting new participants who tend to follow and engage with different accounts and Tweets than existing participants do, so as to reduce the likelihood of bias from predominantly one ideology, background, or interest space.
+During this initial phase, we are taking some steps to reduce this type of abuse in the pilot: First, people must meet [eligibility criteria](../signup) to participate in the pilot. Additionally, we will prioritize admitting new participants who tend to follow and engage with different accounts and Tweets than existing participants do, so as to reduce the likelihood of bias from predominantly one ideology, background, or interest space.
 
 As we iterate on Birdwatch, we plan to test new ways to address adversarial coordination. For example, Birdwatch can factor in not just a count of how many people said a note is helpful but also the diversity of those inputs. Additionally, we plan for Birdwatch to have a reputation system in which one earns reputation for contributions that people from a wide range of perspectives find helpful. We believe requiring a diverse range of inputs and giving more weight to inputs from contributors with consistent track records can reduce the impact of coordinated manipulation attempts.
 

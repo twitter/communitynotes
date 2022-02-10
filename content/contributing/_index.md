@@ -1,4 +1,0 @@
----
-title: Contributing
-geekdocBreadcrumb: false
----
