@@ -1,6 +1,7 @@
 ---
 title: Home
 # type: post
+aliases: ["/learn-more", "/intro"]
 ---
 
 {{< figure class="hero" src="images/hero.png">}}
