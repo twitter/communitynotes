@@ -22,6 +22,8 @@ main:
         ref: "writing-notes"
       - name: Rating notes
         ref: "rating-notes"
+      - name: Notes on Twitter
+        ref: "notes-on-twitter"
       - name: Examples
         ref: "examples"
       - name: Submit feedback
