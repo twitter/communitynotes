@@ -16,15 +16,15 @@ Go to the [**Birdwatch Site's Home page**](https://birdwatch.twitter.com) and ch
 
 - **Rated Helpful:** Contains Tweets with at least one note rated helpful by the community.
 
-{{< figure src="../../images/4-birdwatch-site.png">}}
+{{< figure src="../images/4-birdwatch-site.png">}}
 
-You can learn more about how Birdwatch chooses notes for each of these views on the [**Note Ranking**](../../note-ranking) page of the Guide.
+You can learn more about how Birdwatch chooses notes for each of these views on the [**Note Ranking**](../note-ranking) page of the Guide.
 
 ## Rating notes on Twitter
 
 If you're a Birdwatch pilot participant, you may also see notes on Tweets while browsing Twitter. You can tap to rate those notes:
 
-{{< figure src="../../images/birdwatch-notes-on-twitter.png">}}
+{{< figure src="../images/birdwatch-notes-on-twitter.png">}}
 
 ## Helpfulness status on notes
 
@@ -32,12 +32,12 @@ Birdwatch initially shows most recent notes on top, and displays them with a sta
 
 When notes are **Currently Rated Helpful** or **Currently Not Rated Helpful**, Birdwatch will also show the top two "reasons" selected by raters when rating that note.
 
-{{< figure src="../../images/note-statuses.png">}}
+{{< figure src="../images/note-statuses.png">}}
 
-Learn how [**Note ranking**](../../note-ranking) works under the hood.
+Learn how [**Note ranking**](../note-ranking) works under the hood.
 
 ## Helpfulness ratings on your notes
 
 You can see how other participants have rated your notes on the **Your Notes** page, which shows an aggregate score of ratings you've received across all notes you’ve written.
 
-{{< figure src="../../images/3-your-notes.png">}}
+{{< figure src="../images/3-your-notes.png">}}

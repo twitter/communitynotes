@@ -20,7 +20,7 @@ To help people understand how Birdwatch's ranking system works, the sections bel
 
 ## Helpful Ranking Mapping
 
-{{< figure src="../../images/helpful-ranking.png">}}
+{{< figure src="../images/helpful-ranking.png">}}
 
 When rating notes, Birdwatch contributors answer the question “Is this note helpful?” Answers to that question are then used to rank notes. When Birdwatch launched in January 2021, people could answer `yes` or `no` to that question. An update on June 30, 2021 allows people to choose between `yes`, `somewhat` and `no`. We map these responses to continuous values from 0.0 to 1.0, hereafter referred to as `helpful scores`:
 
@@ -34,7 +34,7 @@ Specific values in the mapping may change, particularly once the `somewhat` opti
 
 ## Note Status
 
-{{< figure src="../../images/note-statuses.png">}}
+{{< figure src="../images/note-statuses.png">}}
 
 All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings and at least 2 weighted ratings (the sum of the [Combined Helpfulness Scores](./#combined-helpfulness-score) of the raters that rated the note, where [Combined Helpfulness Scores](./#combined-helpfulness-score) are between `0` and `1`).
 
@@ -170,7 +170,7 @@ Here’s a Python code snippet one can run to reproduce how we compute notes’ 
 
 Birdwatch participants are able to view three different tabs on the Birdwatch [Home](https://twitter.com/i/birdwatch) page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
 
-{{< figure src="../../images/home-three-tabs.png">}}
+{{< figure src="../images/home-three-tabs.png">}}
 
 ### New
 
@@ -202,7 +202,7 @@ When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch pilot partic
 
 ### Cards showing a specific note
 
-{{< figure src="../../images/notes-on-twitter-specific.png">}}
+{{< figure src="../images/notes-on-twitter-specific.png">}}
 
 If a Tweet has a Birdwatch note deemed **Currently rated helpful** by contributors (determined as described above in **Note Ranking**) then the note will be shown in the card, along with a button to rate the note. If the Tweet has multiple notes with **Currently rated helpful** status, the card will show one note, randomly cycling between them at periodic intervals in order to gather additional rating inputs on each.
 
@@ -210,7 +210,7 @@ The one exception to this is if a **Currently rated helpful** note deems the Twe
 
 ### Cards showing a count of notes
 
-{{< figure src="../../images/notes-on-twitter-count.png">}}
+{{< figure src="../images/notes-on-twitter-count.png">}}
 
 If a Tweet has notes but none yet have **Currently rated helpful** status, the card will show the number of notes, and allow people to tap to read and rate those notes on the Birdwatch site.
 

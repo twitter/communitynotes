@@ -4,32 +4,32 @@ main:
     ref: ""
     sub:
       - name: Overview
-        ref: "/about/overview"
+        ref: "overview"
       - name: Challenges
-        ref: "/about/challenges"
+        ref: "challenges"
       - name: FAQs
-        ref: "/about/faq"
+        ref: "faq"
   - name: Contributing
     ref: ""
     sub:
       - name: Signing Up
-        ref: "/contributing/signing-up"
+        ref: "signing-up"
       - name: Values
-        ref: "/contributing/values"
+        ref: "values"
       - name: Aliases
-        ref: "/contributing/aliases"
+        ref: "aliases"
       - name: Writing notes
-        ref: "/contributing/writing-notes"
+        ref: "writing-notes"
       - name: Rating notes
-        ref: "/contributing/rating-notes"
+        ref: "rating-notes"
       - name: Examples
-        ref: "/contributing/examples"
+        ref: "examples"
       - name: Submit feedback
-        ref: "/contributing/feedback"
+        ref: "feedback"
   - name: Under the Hood
     ref: ""
     sub:
       - name: Note Ranking
-        ref: "about/ranking-notes"
+        ref: "ranking-notes"
       - name: Download data
-        ref: "/contributing/download-data"
+        ref: "download-data"

@@ -4,7 +4,7 @@ geekdocBreadcrumb: false
 aliases: ["/aliases"]
 ---
 
-{{< figure src="../../images/alias-01.png">}}
+{{< figure src="../images/alias-01.png">}}
 
 We want everyone to feel comfortable contributing to Birdwatch. Aliases let contributors write and rate notes without sharing their Twitter usernames.
 
@@ -23,11 +23,11 @@ It’s important that the benefits of aliases don’t come at the expense of acc
 
 Visit [this link](https://twitter.com/i/birdwatch/u/me) to choose your alias. You'll have 5 random options to pick from, and at this time choices cannot be changed.
 
-{{< figure src="../../images/alias-02.png">}}
+{{< figure src="../images/alias-02.png">}}
 
 ## Contributor profiles
 
-{{< figure src="../../images/alias-03.png">}}
+{{< figure src="../images/alias-03.png">}}
 
 With aliases, every contributor gets a public profile. On this page, everyone can see the notes people have written in the past, as well as the current rating status of those notes. On your own profile, you can also see how many Helpful, Unhelpful, and Somewhat helpful ratings you have received. We'll continue to add information and evolve the profile pages as we learn more about what's important to contributors when using Birdwatch.
 

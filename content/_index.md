@@ -25,7 +25,7 @@ We can't wait to learn with you.
 
 {{< figure src="images/overview.svg">}}
 
-**[Overview →](./about/overview)**
+**[Overview →](./overview)**
 
 Learn more about how Birdwatch works
 

@@ -9,7 +9,7 @@ Birdwatch is early in its development, and our goal is to build it in the open w
 - Problems or issues you experience while contributing
 - Risks and concerns we might not have considered
 - Ideas for product updates or features for our roadmap
-- Analyses done with our [public data](../../data) or feedback about the data.
+- Analyses done with our [public data](../data) or feedback about the data.
 
 <br>
 

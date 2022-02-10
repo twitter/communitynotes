@@ -8,9 +8,9 @@ Anyone in the US can read Birdwatch notes, but only pilot participants can add n
 
 1. Click or tap the ••• menu on the Tweet's top right and then **Contribute to Birdwatch**.
 
-{{< figure src="../../images/1-writing-notes.png">}}
+{{< figure src="../images/1-writing-notes.png">}}
 
-2. Before starting, you’ll see a reminder about [**Birdwatch values**](../../values) — a prompt to promote helpful contributions.
+2. Before starting, you’ll see a reminder about [**Birdwatch values**](../values) — a prompt to promote helpful contributions.
 
 3. Answer the required multiple choice questions. These are designed to understand, in a structured way, why a Tweet might or might not be misleading.
 
