@@ -26,6 +26,8 @@ main:
         ref: "notes-on-twitter"
       - name: Examples
         ref: "examples"
+      - name: Additional Review
+        ref: "additional-review"
       - name: Submit feedback
         ref: "feedback"
   - name: Under the Hood
