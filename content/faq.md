@@ -1,6 +1,7 @@
 ---
 title: FAQs
 geekdocBreadcrumb: false
+aliases: ["/faq", "/about/faq"]
 ---
 
 {{< expand "Who is eligible to participate in the Birdwatch pilot? Is there an approval process?" >}}

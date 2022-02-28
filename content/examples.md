@@ -1,7 +1,7 @@
 ---
 title: Examples
 geekdocBreadcrumb: false
-aliases: ["/note-examples", "/examples"]
+aliases: ["/note-examples", "/examples", "/contributing/examples"]
 ---
 
 Great Birdwatch notes follow the [program's values](../values): They build understanding, are written in good faith, and are helpful even to those who disagree.

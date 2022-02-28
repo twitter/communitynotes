@@ -1,7 +1,7 @@
 ---
 title: Downloading data
 geekdocBreadcrumb: false
-aliases: ["/data"]
+aliases: ["/data", "/about/data", "/contributing/data"]
 ---
 
 We can't wait to learn with you!

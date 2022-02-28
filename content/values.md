@@ -1,6 +1,6 @@
 ---
 title: Values
-aliases: ["/values"]
+aliases: ["/values", "/contributing/values"]
 geekdocBreadcrumb: false
 ---
 

@@ -7,6 +7,7 @@ aliases:
     "/cards-on-twitter",
     "notes-on-tweets",
     "cards-on-tweets",
+    "/contributing/notes-on-twitter",
   ]
 ---
 

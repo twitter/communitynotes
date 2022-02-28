@@ -1,7 +1,7 @@
 ---
 title: Birdwatch Aliases
 geekdocBreadcrumb: false
-aliases: ["/aliases"]
+aliases: ["/aliases", "/contributing/aliases"]
 ---
 
 {{< figure src="../images/alias-01.png">}}

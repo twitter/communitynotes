@@ -1,6 +1,13 @@
 ---
 title: Submit Feedback
 geekdocBreadcrumb: false
+aliases:
+  [
+    "/submit-feedback",
+    "feedback",
+    "/contributing/submit-feedback",
+    "/contributing/feedback",
+  ]
 ---
 
 Birdwatch is early in its development, and our goal is to build it in the open with the public. We invite you on this journey to learn and shape Birdwatch alongside us. Feel free to reach out with:

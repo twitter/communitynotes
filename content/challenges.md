@@ -1,7 +1,7 @@
 ---
 title: Challenges
 geekdocBreadcrumb: false
-aliases: ["/challenges", "/risks"]
+aliases: ["/challenges", "/risks", "/about/challenges"]
 ---
 
 We know there are many challenges involved in building aan open, participatory system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.

@@ -1,7 +1,8 @@
 ---
 title: Writing notes
 geekdocBreadcrumb: false
-aliases: ["/writing-notes", "writing-and-rating-notes"]
+aliases:
+  ["/writing-notes", "writing-and-rating-notes", "/contributing/writing-notes"]
 ---
 
 Anyone in the US can read Birdwatch notes, but only pilot participants can add new notes to Tweets. Here's how to add a note:

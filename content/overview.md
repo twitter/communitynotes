@@ -1,7 +1,7 @@
 ---
 title: Overview
 geekdocBreadcrumb: false
-aliases: ["/overview"]
+aliases: ["/overview", "/about/overview"]
 ---
 
 {{< figure src="../images/1-writing-notes.png">}}

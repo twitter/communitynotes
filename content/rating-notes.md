@@ -1,7 +1,7 @@
 ---
 title: Rating notes
 geekdocBreadcrumb: false
-aliases: ["/rating-notes"]
+aliases: ["/rating-notes", "/contributing/rating-notes", "/contributing/rating"]
 ---
 
 There are two ways to find Tweets with Birdwatch notes in order to rate their quality:
