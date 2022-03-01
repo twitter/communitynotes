@@ -18,19 +18,17 @@ Attempts at coordinated manipulation represent a crucial risk for open rating sy
 
 During this initial phase, we are taking some steps to reduce this type of abuse in the pilot: First, people must meet [eligibility criteria](../signup) to participate in the pilot. Additionally, we will prioritize admitting new participants who tend to follow and engage with different accounts and Tweets than existing participants do, so as to reduce the likelihood of bias from predominantly one ideology, background, or interest space.
 
-As we iterate on Birdwatch, we plan to test new ways to address adversarial coordination. For example, Birdwatch can factor in not just a count of how many people said a note is helpful but also the diversity of those inputs. Additionally, we plan for Birdwatch to have a reputation system in which one earns reputation for contributions that people from a wide range of perspectives find helpful. We believe requiring a diverse range of inputs and giving more weight to inputs from contributors with consistent track records can reduce the impact of coordinated manipulation attempts.
+As we iterate on Birdwatch, we plan to test new ways to address adversarial coordination. For example, Birdwatch factors in not just a count of how many people said a note is helpful but also the [diversity of those inputs](../diversity). Additionally, Birdwatch has a [reputation system](../contributor-scores/) in which one earns reputation for contributions that people from a wide range of perspectives find helpful. We believe requiring a diverse range of inputs and giving more weight to inputs from contributors with consistent track records can reduce the impact of coordinated manipulation attempts.
 
 ## Reflecting Diverse Perspectives, Avoiding Bias
 
-Birdwatch will only be effective if the Tweet context it produces is found to be helpful and appropriate by a wide range of people with diverse views. To achieve this, we’re designing Birdwatch to encourage contributions from people with diverse perspectives, and to reward contributions that are found helpful by a wide range of people.
+Birdwatch will only be effective if the Tweet context it produces is found to be helpful and appropriate by a wide range of people with diverse views. To achieve this, we’re designing Birdwatch to encourage contributions from people with [diverse perspectives](../diversity/), and to reward contributions that are found helpful by a wide range of people.
 
-For example, rather than ranking and selecting top notes by a simple majority vote, Birdwatch can consider how diverse a note’s set of ratings is and determine whether additional inputs are needed before a consensus is reached. Additionally, Birdwatch can proactively seek ratings from contributors who are likely to provide a different perspective based on their previous ratings.
+For example, rather than ranking and selecting top notes by a simple majority vote, Birdwatch considers how diverse a note’s set of ratings is and determine whether additional inputs are needed before a consensus is reached. Additionally, Birdwatch can proactively seek ratings from contributors who are likely to provide a different perspective based on their previous ratings.
 
-Further, we plan for Birdwatch to have a reputation system in which one earns reputation for contributions that people from a wide range of perspectives find helpful.
+Further, Birdwatch has a [reputation system](../contributor-scores/) in which one earns reputation for contributions that people from a wide range of perspectives find helpful.
 
-We are also focused on increasing the diversity of participants in our initial pilot phase. If we have more applicants than pilot slots, we will randomly admit accounts, prioritizing accounts that tend to follow and engage with different audiences and content than those of existing participants, so as to reduce the likelihood that participants would be predominantly from one ideology, background, or interest space. We will do the same for new sets of participants admitted after the initial pilot phase.
-
-Finally, to assess Birdwatch’s effectiveness, we will evaluate whether people find Birdwatch context to be helpful and appropriate. This can serve as an indicator of its ability to reflect and be of value to people from a wide range of perspectives.
+Finally, to assess Birdwatch’s effectiveness, we regularly evaluate whether people who use Twitter find Birdwatch context to be helpful and informative. This can serve as an indicator of its ability to reflect and be of value to people from a [wide range of perspectives](../diversity/).
 
 ## Avoiding Harassment
 
