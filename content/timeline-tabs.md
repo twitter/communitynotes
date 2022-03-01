@@ -7,6 +7,8 @@ geekdocToc: 1
 
 Birdwatch participants are able to view three different tabs on the [Birdwatch Home](http://birdwatch.twitter.com) page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
 
+{{< figure src="../images/home-three-tabs.png">}}
+
 ### New
 
 Contains Tweets sorted by reverse chronological order of when its latest note was written (Tweets are bumped to the top of the list when a new note is written on them).
