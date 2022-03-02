@@ -63,7 +63,7 @@ These scores are a simple first approach to improve the quality of Birdwatch’s
 
 ### Author Helpfulness Score
 
-Any contributor who has written at least one note that’s been rated by other participants receives an Author Helpfulness Score. The score starts out low, and can increase (or decrease) as the author receives ratings from more raters.
+Any contributor who has written at least one note that’s been rated by other contributors receives an Author Helpfulness Score. The score starts out low, and can increase (or decrease) as the author receives ratings from more raters.
 
 The way scores are computed is inspired by [PageRank](https://en.wikipedia.org/wiki/PageRank), where ratings from raters who have higher helpfulness scores are given larger weight, rather than weighting incoming ratings equally from all raters. The underlying assumption is that contributors who have written helpful notes themselves will make more accurate ratings about whether other notes will be found helpful.
 
@@ -168,7 +168,7 @@ Here’s a Python code snippet one can run to reproduce how we compute notes’ 
 
 ## Birdwatch Timelines
 
-Birdwatch participants are able to view three different tabs on the Birdwatch [Home](https://twitter.com/i/birdwatch) page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
+Birdwatch contributors are able to view three different tabs on the Birdwatch [Home](https://twitter.com/i/birdwatch) page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
 
 {{< figure src="../images/home-three-tabs.png">}}
 
@@ -182,7 +182,7 @@ Tweets in this tab have at least one note labeled **Currently Rated Helpful**, a
 
 ### Needs Your Help
 
-This tab is only visible to pilot participants. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Birdwatch can ultimately elevate notes that people from a wide range of perspectives will find helpful. It also gives Birdwatch contributors an easy way to have immediate impact.
+This tab is only visible to pilot contributors. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Birdwatch can ultimately elevate notes that people from a wide range of perspectives will find helpful. It also gives Birdwatch contributors an easy way to have immediate impact.
 
 It contains a set of 5 Tweets that have notes that need more ratings (although there may be fewer than 5 Tweets if one of the Tweets was recently deleted by the author). Tweets in this tab are filtered to those that the contributor hasn’t rated any of the notes on, and Tweets with notes from the past day, unless no Tweets pass those filters for you (that will only happen if you’re a very active rater!). The tab is updated roughly every couple hours, so when the contributor has rated notes in the tab, they can come back later to see fresh Tweets.
 
@@ -198,7 +198,7 @@ The factor of 0.3 is applied to help to balance between the two scores fairly eq
 
 ## Birdwatch Cards on Tweets
 
-When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch pilot participants may see cards on Tweets that have Birdwatch notes. Birdwatch cards may include a specific Birdwatch note or reference the number of Birdwatch notes on the Tweet, and link to the Birdwatch site where contributors can rate the notes.
+When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch contributors and small test groups may see cards on Tweets that have Birdwatch notes. Birdwatch cards may include a specific Birdwatch note or reference the number of Birdwatch notes on the Tweet, and link to the Birdwatch site where contributors can rate the notes.
 
 ### Cards showing a specific note
 
@@ -214,4 +214,4 @@ The one exception to this is if a **Currently rated helpful** note deems the Twe
 
 If a Tweet has notes but none yet have **Currently rated helpful** status, the card will show the number of notes, and allow people to tap to read and rate those notes on the Birdwatch site.
 
-If all notes on a Tweet have **Currently not rated helpful** status, no card will be shown. Pilot participants will still be able to access these notes via the Birdwatch icon displayed in the Tweet details page.
+If all notes on a Tweet have **Currently not rated helpful** status, no card will be shown. Birdwatch contributors will still be able to access these notes via the Birdwatch icon displayed in the Tweet details page.

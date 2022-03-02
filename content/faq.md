@@ -6,13 +6,17 @@ aliases: ["/faq", "/about/faq"]
 
 {{< expand "Who is eligible to participate in the Birdwatch pilot? Is there an approval process?" >}}
 
-The first phase of this pilot will be limited to a small test group in the US. [Sign ups are open](https://twitter.com/i/flow/join-birdwatch). Accounts must meet a few criteria to be eligible. [Learn more here](../join).
+People in the US can sign up to become contributors in the pilot. Accounts must meet a few criteria to be eligible. [Learn more here](../signup/).
+
+In addition, a small, randomized group of people in the US may see Helpful notes on Tweets, in order to help assess their quality.
+
+In addition to people who have signed up to become Birdwatch contributors, small test groups in the US may see Helpful notes on on Tweets, in order to help assess their quality.
 
 {{< /expand >}}
 
 {{< expand "Are contributions anonymous? Or will my name be attached to my notes?" >}}
 
-We want everyone to feel comfortable contributing to Birdwatch. Because of that, all participants get a new, auto-generated display name (or alias) when they join Birdwatch. These aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately.
+We want everyone to feel comfortable contributing to Birdwatch. Because of that, all contributors get a new, auto-generated display name (or alias) when they join Birdwatch. These aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately.
 
 You can learn more about aliases [here](../aliases).
 
@@ -26,7 +30,7 @@ Any Tweet can receive a Birdwatch note.
 
 {{< expand "Will Birdwatch contributions affect content on Twitter? Will it be used to label or remove Tweets? " >}}
 
-During our initial pilot phase, Birdwatch contributions will not impact the way people outside of the pilot see Tweets or our recommendation systems. Birdwatch contributions are being intentionally kept separate from Twitter for now while we gain confidence that it produces context people find helpful and appropriate. Eventually, we aim to make notes visible directly on Tweets for the global Twitter audience when there is consensus from a broad and diverse set of contributors.
+Birdwatch notes that have been rated helpful by enough contributors from [different points of view](../diversity/) will appear directly on Tweets for a small, randomized group of people in the US. They will also be able to rate notes for helpfulness. Beyond that, Birdwatch notes do not affect display of Tweets or enforcement of Twitter Rules. Our focus during this phase of the pilot is gaining confidence that Birdwatch produces context people from [different points of view](../diversity/) find helpful and informative.
 
 {{< /expand >}}
 
@@ -38,13 +42,20 @@ No. We believe there’s no single blanket tool or intervention that can solve t
 
 {{< expand "Why does Birdwatch allow anyone to write notes, rather than just experts?">}}
 
-We believe both experts and non-experts can valuably contribute to identifying and adding helpful context to misleading information. In concept testing, we’ve seen non-experts write concise, helpful and easy-to-understand notes, often citing valuable expert sources.
+We believe regular people can valuably contribute to identifying and adding helpful context to potentially misleading information. Many of the internet’s existing collaborative sites thrive with the help of non-expert contributions — Wikipedia, for example — and, while it’s not a cure-all, research has shown the potential of incorporating crowdsourced based approaches as part of a broader toolkit to address misleading information on the internet, for example:
 
-Many of the internet’s existing collaborative sites thrive with the help of non-expert contributions — Wikipedia, for example. Our approach also draws on recent external research that has shown the potential of a crowdsourced based approach to addressing misleading information on the internet, for example:
+- [Allen, Arechar, Pennycook, and Rand 2021](https://www.science.org/doi/10.1126/sciadv.abf4393)
+- [Resnick, Alfayez, Im, and Gilbert 2021](https://arxiv.org/abs/2108.07898)
+- [Bhuiyan, Zhang, Sehat, and Mitra 2020](https://arxiv.org/pdf/2008.09533.pdf)
+- [Kim and Walker 2020](https://misinforeview.hks.harvard.edu/article/leveraging-volunteer-fact-checking-to-identify-misinformation-about-covid-19-in-social-media/)
 
-- [Pennycook and Rand 2019](https://www.pnas.org/content/116/7/2521)
-- [Allen, Arechar, Pennycook, and Rand 2020](https://psyarxiv.com/9qdza)
-- [Micallef, He, Kumar, Ahamad, and Memon 2020](https://arxiv.org/abs/2011.05773)
+In our pilot test of Birdwatch, we evaluated notes that Birdwatch would show on Tweets, and have found:
+
+- The majority of people surveyed on Twitter found Birdwatch notes helpful
+- People in surveys were 20-40% less likely to agree with the substance of a potentially misleading Tweet after reading the note about it, compared to those who saw a Tweet without a note
+- Most notes have been rated highly on accuracy by professional reviewers; it has been rare to find a note that reviewers agree is inaccurate
+
+The people on Twitter span a wide gamut of backgrounds and experiences, and we believe that, working together, they can help create a better-informed world.
 
 <br>
 
@@ -60,25 +71,19 @@ All Birdwatch contributions data are made publicly available on the [Download Da
 
 {{< expand "Is Twitter working with any outside organizations to build this product?" >}}
 
-A wealth of relevant knowledge exists beyond Twitter’s virtual walls, so we are drawing on external research and collaborating with a variety of groups and organizations for their expertise and input. From having a member of the University of Chicago’s Center for RISC embedded on our team, to hosting feedback sessions with reporters and researchers, we’re integrating social science and academic perspectives like behavioral economics, social psychology, political science and procedural justice into our product development process. We’re also [collaborating with AP and Reuters](https://twitter.com/birdwatch/status/1422293696041603081) as part of our analysis of the helpfulness & quality of information elevated by Birdwatch.
+A wealth of relevant knowledge exists beyond Twitter’s virtual walls, so we are drawing on external research and collaborating with a variety of groups and organizations for their expertise and input. In building Birdwatch, we’ve drawn on input from academic advisors whose expertise includes crowdsourcing, online juries, political science, polarization and more. Their input has helped us shape what Birdwatch is today, and will going forward. We’re also [collaborating with AP and Reuters](https://twitter.com/birdwatch/status/1422293696041603081) as part of our analysis of the helpfulness & quality of information elevated by Birdwatch.
 
 {{< /expand >}}
 
 {{< expand "There’s a Birdwatch note on one of my Tweets. What does that mean?" >}}
 
-Birdwatch is a pilot program that allows participants to identify information in Tweets they believe may be misleading and write notes that provide additional context. You can learn more about Birdwatch [here](../).
-
-Currently, notes are only visible to people in the pilot, or on a separate [Birdwatch site](http://birdwatch.twitter.com) for people outside of the pilot and will not impact your account, or change the way your Tweets appear to anyone outside of the pilot. Birdwatch contributions are being intentionally kept separate from Twitter during this pilot phase while we build Birdwatch, and gain confidence that it produces context people find appropriate and helpful.
-
-If you believe a note may have violated the Twitter Rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using [this form](https://help.twitter.com/en/forms/birdwatch).
-
-If you’d like to contribute to Birdwatch, learn more about how to sign up for a future spot in our pilot [here](../join).
+Tweet authors with Birdwatch notes on their Tweets can request additional review or report notes. [Learn more](../additional-review/).
 
 {{< /expand >}}
 
 {{< expand "Can people be removed from the Birdwatch program? What if someone is writing harmful content in their notes?" >}}
 
-All participants and all Birdwatch contributions are subject to the Twitter Rules. Failure to abide by the rules can result in removal from the Birdwatch pilot, and/or other remediations.
+All contributors and all Birdwatch contributions are subject to the Twitter Rules. Failure to abide by the rules can result in removal from the Birdwatch pilot, and/or other remediations.
 
 If you believe a note may have violated the Twitter Rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using [this form](https://help.twitter.com/en/forms/birdwatch).
 

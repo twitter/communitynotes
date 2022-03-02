@@ -12,7 +12,7 @@ People come to Twitter to stay informed, and they want credible information to h
 
 Birdwatch aims to create a better informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
 
-Birdwatch participants can identify Tweets they believe are misleading, write notes that provide context on the Tweet, and rate the quality of other participants’ notes. Through consensus from a broad and diverse set of contributors, our eventual goal is that the most helpful notes will be visible directly on Tweets, available to everyone on Twitter.
+Birdwatch contributors can identify Tweets they believe are misleading, write notes that provide context on the Tweet, and rate the quality of other contributors’ notes. Through consensus from a broad and diverse set of contributors, our eventual goal is that the most helpful notes will be visible directly on Tweets, available to everyone on Twitter.
 
 Currently, Birdwatch is in pilot mode for people in the US. We're building it in the open, with the public’s input, and we’re taking significant steps to make Birdwatch transparent.
 
@@ -36,7 +36,7 @@ Learn more about how Birdwatch works
 
 **[Sign up →](https://twitter.com/i/flow/join-birdwatch)**
 
-Join the first group of contributors
+Become a Birdwatch contributor
 
 <---> <!-- magic sparator, between columns -->
 

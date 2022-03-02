@@ -27,11 +27,11 @@ Our goal is to expand Birdwatch to the global Twitter community. We want anyone 
 
 # Eligibility
 
-To participate in the pilot, accounts must have:
+To become a Birdwatch contributor, accounts must have:
 
 - ### **Verified phone number**
 
-This makes it more likely that participants are real people instead of bots or adversary actors. Learn how to [verify your phone number](https://help.twitter.com/managing-your-account/how-to-add-a-phone-number-to-your-account).
+This makes it more likely that contributors are real people instead of bots or adversary actors. Learn how to [verify your phone number](https://help.twitter.com/managing-your-account/how-to-add-a-phone-number-to-your-account).
 
 - ### **A trusted U.S.-based phone carrier**
 
@@ -45,11 +45,11 @@ We want anyone to be able to contribute to Birdwatch, and may remove or modify s
 
 # Admissions
 
-The pilot will start small and grow over time. Our goal is to admit applicants on a rolling, periodic basis. We will admit all participants who meet the required criteria, but if we have more applicants than pilot slots, we will randomly admit accounts, prioritizing accounts that are likely to participate due to having been recently active on Twitter, and those that tend to follow and engage with different Tweets than existing participants do — so as to reduce the likelihood that participants would be predominantly from one ideology, background, or interest space.
+Our goal is to admit applicants on a rolling, periodic basis. We will admit all contributors who meet the required criteria, but if we have more applicants than pilot slots, we will randomly admit accounts, prioritizing those more likely to participate due to having been recently active on Twitter, and those that tend to follow and engage with different tweets than existing contributors do — so as to reduce the likelihood that contributors would be predominantly from one ideology, background, or interest space.
 
 # Contributions are public
 
-To promote transparency, all contributions to Birdwatch are publicly visible on the Birdwatch site, **even if an account’s Tweets are protected**.
+To promote transparency, all contributions to Birdwatch are [anonymized](../aliases/) and publicly visible on the Birdwatch site, **even if an account’s Tweets are protected**.
 
 # Rules
 

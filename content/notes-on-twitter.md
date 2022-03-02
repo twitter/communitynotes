@@ -11,7 +11,7 @@ aliases:
   ]
 ---
 
-When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch pilot participants may see cards on Tweets that have Birdwatch notes. Birdwatch cards may include a specific Birdwatch note or reference the number of Birdwatch notes on the Tweet, and link to the Birdwatch site where contributors can rate the notes.
+When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch contributors and small test groups may see cards on Tweets that have Birdwatch notes. Birdwatch cards may include a specific Birdwatch note or reference the number of Birdwatch notes on the Tweet, and link to the Birdwatch site where contributors can rate the notes.
 
 ### Cards showing a specific note
 
@@ -27,4 +27,4 @@ The one exception to this is if a **Currently rated helpful** note deems the Twe
 
 If a Tweet has notes but none yet have **Currently rated helpful** status, the card will show the number of notes, and allow people to tap to read and rate those notes on the Birdwatch site.
 
-If all notes on a Tweet have **Currently not rated helpful** status, no card will be shown. Pilot participants will still be able to access these notes via the Birdwatch icon displayed in the Tweet details page.
+If all notes on a Tweet have **Currently not rated helpful** status, no card will be shown. Birdwatch contributors will still be able to access these notes via the Birdwatch icon displayed in the Tweet details page.
