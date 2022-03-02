@@ -11,7 +11,7 @@ aliases:
   ]
 ---
 
-When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch contributors and small test groups may see cards on Tweets that have Birdwatch notes. Birdwatch cards may include a specific Birdwatch note or reference the number of Birdwatch notes on the Tweet, and link to the Birdwatch site where contributors can rate the notes.
+When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch contributors and a small, randomized group of people in the US may see cards on Tweets that have Birdwatch notes. Birdwatch cards may include a specific Birdwatch note or link to the Birdwatch site where all notes on that Tweet can be rated.
 
 ### Cards showing a specific note
 

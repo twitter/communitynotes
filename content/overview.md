@@ -31,7 +31,7 @@ Contributors can rate the helpfulness of other's notes. Ratings help identify wh
 
 The Birdwatch site is the home for all Birdwatch notes and ratings, separate from the main Twitter apps, and is available at [birdwatch.twitter.com](https://birdwatch.twitter.com).
 
-During this phase of the pilot, Birdwatch contributions will not affect the way people outside of the pilot see Tweets or our system recommendations. Our priority is to understand how to build and adopt an approach that takes input from a diverse set of contributors and identifies the context that people will find most helpful.
+Birdwatch notes that have been rated helpful by enough contributors from different points of view [will appear directly on Tweets](../notes-on-twitter/) for a small, randomized group of people in the US. They will also be able to rate notes for helpfulness. Beyond that, Birdwatch notes do not affect display of Tweets or enforcement of Twitter Rules. Our focus during this phase of the pilot is gaining confidence that Birdwatch produces context people from different points of view find helpful and informative.
 
 [Visit the Birdwatch Site →](https://birdwatch.twitter.com)
 
