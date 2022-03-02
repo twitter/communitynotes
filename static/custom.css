@@ -41,7 +41,7 @@ ul {
 }
 
 .gdoc-markdown ul li {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .gdoc-markdown nav#TableOfContents ul li {
@@ -261,6 +261,7 @@ h3 {
 .gdoc-markdown ol,
 .gdoc-markdown ul {
   padding-left: 1em;
+  margin-bottom: 1.2rem;
 }
 
 .gdoc-page {
