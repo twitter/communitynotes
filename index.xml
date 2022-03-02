@@ -50,6 +50,27 @@ Throughout our development process, we’ve conducted feedback sessions with Twi
     </item>
     
     <item>
+      <title>Contributor helpfulness scores</title>
+      <link>https://twitter.github.io/birdwatch/contributor-scores/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/contributor-scores/</guid>
+      <description>Helpfulness scores are a way to give more influence to people with a track record of making high-quality contributions to Birdwatch. There are currently two types of author helpfulness scores and one rater helpfulness score.
+In order to get enough data from new raters to be able to assess how similarly they rate notes to others, we require a minimum of 10 ratings made before helpfulness scores are computed and ratings may be counted.</description>
+    </item>
+    
+    <item>
+      <title>Diversity of perspectives</title>
+      <link>https://twitter.github.io/birdwatch/diversity-of-perspectives/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/diversity-of-perspectives/</guid>
+      <description>Birdwatch aims to identify notes that many people on Twitter will find helpful, including people with different points of view.
+To find notes that are helpful to the broadest possible set of people, Birdwatch takes into account not only how many contributors rated a note as helpful or unhelpful, but also whether people who rated it seem to come from different perspectives.
+Birdwatch assesses &amp;ldquo;different perspectives&amp;rdquo; entirely based on how people have rated notes in the past; Birdwatch does not ask about or use any other information to do this (e.</description>
+    </item>
+    
+    <item>
       <title>Downloading data</title>
       <link>https://twitter.github.io/birdwatch/download-data/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -86,9 +107,18 @@ Whales are not actually mammals. If Humans (land mammals) can’t drink seawater
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/ranking-notes/</guid>
-      <description>Birdwatch notes are submitted and rated by contributors. Ratings are used to determine Note Status (e.g. “Currently Rated Helpful”), which notes are displayed on each of the Birdwatch Site&amp;rsquo;s timelines, and which notes are displayed as Birdwatch Cards on the Twitter timelines.
-To help people understand how Birdwatch&amp;rsquo;s ranking system works, the sections below explain how notes are assigned these statuses, ranked, and displayed.
-   Helpful Ranking Mapping Note Status Combined Helpfulness Score  Author Helpfulness Score Preliminary Note Scoring Rater Helpfulness Score Final Note Scoring Tie breaking of reasons   Ranking Code Birdwatch Timelines  New Rated Helpful Needs Your Help Rater similarity score for Needs Your Help   Birdwatch Cards on Tweets  Cards showing a specific note Cards showing a count of notes       Helpful Ranking Mapping   When rating notes, Birdwatch contributors answer the question “Is this note helpful?</description>
+      <description>Birdwatch notes are submitted and rated by contributors. Ratings are used to determine note status labels (“Currently Rated Helpful”, “Currently Rated Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the Birdwatch Site’s timelines, and which notes are displayed as Birdwatch Cards on Tweets.
+The sections below describe how notes are assigned statuses, which determines how notes are ranked and displayed in the product:</description>
+    </item>
+    
+    <item>
+      <title>Note ranking code</title>
+      <link>https://twitter.github.io/birdwatch/note-ranking-code/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/note-ranking-code/</guid>
+      <description>Here you can find links to code that reproduces the note scoring/ranking code that Birdwatch runs in production.
+If you download the notes and ratings files made available on the Birdwatch Data Download page and put them in the same directory as the following files, you can then run python score_notes.py to produce a scoredNotes.tsv file that contains note scores, statuses, and explanation tags that will match what’s running in production.</description>
     </item>
     
     <item>
@@ -129,6 +159,16 @@ Rating notes on the Birdwatch site Go to the Birdwatch Site&amp;rsquo;s Home pag
       <guid>https://twitter.github.io/birdwatch/feedback/</guid>
       <description>Birdwatch is early in its development, and our goal is to build it in the open with the public. We invite you on this journey to learn and shape Birdwatch alongside us. Feel free to reach out with:
  Questions about the program Problems or issues you experience while contributing Risks and concerns we might not have considered Ideas for product updates or features for our roadmap Analyses done with our public data or feedback about the data.</description>
+    </item>
+    
+    <item>
+      <title>Timeline Tabs</title>
+      <link>https://twitter.github.io/birdwatch/timeline-tabs/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/timeline-tabs/</guid>
+      <description>Birdwatch participants are able to view three different tabs on the Birdwatch Home page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
+  New Contains Tweets sorted by reverse chronological order of when its latest note was written (Tweets are bumped to the top of the list when a new note is written on them).</description>
     </item>
     
     <item>

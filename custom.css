@@ -13,8 +13,7 @@ html {
 body {
   font-weight: 400;
   line-height: 1.59;
-  letter-spacing: -0.1px;
-  color: var(--tw-color-text-primary);
+  color: var(--tw-color-text-secondary);
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif,
     Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
@@ -45,10 +44,10 @@ p,
 ul {
   font-size: 1rem;
   line-height: 1.537;
-  letter-spacing: -0.021em;
+  letter-spacing: -0.007em;
   margin: 0;
   padding: 0;
-  color: var(--tw-color-gray-deep);
+  color: var(--tw-color-text-secondary);
 }
 
 b,
@@ -70,7 +69,7 @@ a strong {
 }
 
 .gdoc-markdown ul li {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .gdoc-markdown nav#TableOfContents ul li {
@@ -290,6 +289,7 @@ h3 {
 .gdoc-markdown ol,
 .gdoc-markdown ul {
   padding-left: 1em;
+  margin-bottom: 1.2rem;
 }
 
 .gdoc-page {
@@ -570,7 +570,7 @@ div.note.note-unhelpful ul li {
 .gdoc-expand__content {
   font-size: 1rem;
   line-height: 1.5rem;
-  color: var(--tw-color-gray-deep);
+  color: var(--tw-color-text-secondary);
   display: none;
   padding: 0rem 0rem 2rem;
 }

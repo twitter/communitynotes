@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="description" content="Birdwatch Aliases">
+<meta name="description" content="Contributor helpfulness scores">
 
-<title>Birdwatch Aliases | Birdwatch Guide</title>
+<title>Contributor helpfulness scores | Birdwatch Guide</title>
 
 <link rel="icon" href="/birdwatch/favicon/favicon-32x32.png"
 type="image/x-icon"> <link rel="stylesheet" href="/birdwatch/main.min.css"
@@ -276,7 +276,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
             <span class="flex">
                 
                 <a href="/birdwatch/aliases/"
-                    class="gdoc-nav__entry is-active">
+                    class="gdoc-nav__entry ">
                     Aliases
                 </a>
             </span>
@@ -576,7 +576,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
             <span class="flex">
                 
                 <a href="/birdwatch/contributor-scores/"
-                    class="gdoc-nav__entry ">
+                    class="gdoc-nav__entry is-active">
                     Contributor Scores
                 </a>
             </span>
@@ -719,7 +719,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 </div>
 
     <article class="gdoc-markdown">
-        <h1 class="article_title">Birdwatch Aliases</h1> 
+        <h1 class="article_title">Contributor helpfulness scores</h1> 
         
 
 
@@ -727,34 +727,39 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     
 
 
-<figure>
-    <img src="../images/alias-01.png"/> 
-</figure>
-
-<p>We want everyone to feel comfortable contributing to Birdwatch. Aliases let contributors write and rate notes without sharing their Twitter usernames.</p>
-<p>A Birdwatch alias is a new, auto-generated display name that participants get when they join Birdwatch. Aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately.</p>
-<p>Further, we believe aliases have the potential to:</p>
+<p>Helpfulness scores are a way to give more influence to people with a track record of making high-quality contributions to Birdwatch. There are currently two types of author helpfulness scores and one rater helpfulness score.</p>
+<p>In order to get enough data from new raters to be able to assess how similarly they rate notes to others, we require a minimum of 10 ratings made before helpfulness scores are computed and ratings may be counted. Additionally, to help mitigate misuse of Birdwatch, contributors with helpfulness scores that are too low are filtered out, since those contributors are consistently not found helpful by a diverse set of raters.</p>
+<div class="gdoc-page__anchorwrap"><h2 id="author-helpfulness-scores">Author Helpfulness Scores<a data-clipboard-text="https://twitter.github.io/birdwatch/contributor-scores/#author-helpfulness-scores" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Author Helpfulness Scores" href="#author-helpfulness-scores"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<div class="gdoc-page__anchorwrap"><h3 id="author-crh-vs-crnh-ratio">Author CRH-vs. CRNH Ratio<a data-clipboard-text="https://twitter.github.io/birdwatch/contributor-scores/#author-crh-vs-crnh-ratio" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Author CRH-vs. CRNH Ratio" href="#author-crh-vs-crnh-ratio"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>This score is the proportion of notes you’ve written (that have gotten at least 5 ratings) that have been labeled Currently Rated Helpful (CRH), minus 5 times the proportion of notes you wrote that were labeled Currently Rated Not Helpful (CRNH). Contributors must have a ratio greater than 0.0 to be included in the second round of note scoring (contributors need to write at least 5 CRH notes for every 1 CRNH note they write in order for their ratings to count); this only filters out a very small percentage of raters.</p>
+<div class="gdoc-page__anchorwrap"><h3 id="author-mean-note-score">Author Mean Note Score<a data-clipboard-text="https://twitter.github.io/birdwatch/contributor-scores/#author-mean-note-score" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Author Mean Note Score" href="#author-mean-note-score"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>This score is the average score of notes you’ve written (that have gotten at least 5 ratings). Ratings are filtered out from the small percentage of users whose scores are less than 0.05.</p>
+<div class="gdoc-page__anchorwrap"><h2 id="rater-helpfulness-score">Rater Helpfulness Score<a data-clipboard-text="https://twitter.github.io/birdwatch/contributor-scores/#rater-helpfulness-score" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Rater Helpfulness Score" href="#rater-helpfulness-score"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p>The Rater Helpfulness Score reflects how similar a contributor’s ratings are to the ratings on notes that were eventually labeled “Currently Rated Helpful” or “Currently Not Rated Helpful” (indicating clear widespread consensus among raters, and not labeled “Needs More Ratings”).</p>
+<p>Only <a href="./#valid-ratings">Valid Ratings</a> are used in computing rater helpfulness scores. This is done to both reward quick rating, and also to prevent one form of artificially gaming this score (retroactively rating old notes with clear labels).</p>
+<p>Rater Helpfulness is not defined until the contributor has made at least one valid rating (one of the first 5 ratings within 48 hours on a note that ended up getting a Currently Rated Helpful or Not Helpful label. Then the Rater Helpfulness Score is the fraction of their valid ratings that match the final note status label of whether the note was rated helpful or not rated helpful.</p>
+<div class="gdoc-page__anchorwrap"><h2 id="valid-ratings">Valid Ratings<a data-clipboard-text="https://twitter.github.io/birdwatch/contributor-scores/#valid-ratings" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Valid Ratings" href="#valid-ratings"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p>A “valid” rating is a rating that’s eligible to be used in determining rater helpfulness scores. The idea is that to prevent manipulation, only ratings that were made before the rater could’ve possibly known what the final note status label is are eligible. To be specific, valid ratings must be:</p>
 <ul>
-<li><strong>Reduce bias</strong>. By keeping focus on the content of notes rather than who’s writing them, aliases have the potential to reduce bias that people might have around specific authors.</li>
-<li><strong>Reduce polarization</strong>. <a href="https://twitter.com/chris_bail/status/1379453587558952960?s=20">Recent research</a> indicates aliases might reduce polarization by helping people feel comfortable crossing partisan lines, or criticizing their own side without the prospect of peer pressure or retribution.</li>
+<li>Made within the first 48 hours of the note’s creation (because we publicly release all rating data after 48 hours)</li>
+<li>One of the first 5 ratings on the note (since note status labels aren’t computed until the note has at least 5 ratings)</li>
+<li>A rating on a note that eventually ended up getting a Currently Rated Helpful or Not Helpful note status label, so we can compute whether your rating matched the final note status</li>
 </ul>
-<div class="gdoc-page__anchorwrap"><h3 id="accountability">Accountability<a data-clipboard-text="https://twitter.github.io/birdwatch/aliases/#accountability" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Accountability" href="#accountability"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
-<p>It’s important that the benefits of aliases don’t come at the expense of accountability. To that end: all Birdwatch accounts have profile pages that make it easy to see one’s past contributions. Additionally, Birdwatch contributors are <a href="https://twitter.com/birdwatch/status/1404519791394758657">accountable to ratings their contributions receive</a>, giving weight to contributors whose notes and ratings are consistently found helpful by others.</p>
-<div class="gdoc-page__anchorwrap"><h2 id="how-to-choose-your-alias">How to choose your alias<a data-clipboard-text="https://twitter.github.io/birdwatch/aliases/#how-to-choose-your-alias" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor How to choose your alias" href="#how-to-choose-your-alias"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
-<p>Visit <a href="https://twitter.com/i/birdwatch/u/me">this link</a> to choose your alias. You&rsquo;ll have 5 random options to pick from, and at this time choices cannot be changed.</p>
-<figure>
-    <img src="../images/alias-02.png"/> 
-</figure>
-
-<div class="gdoc-page__anchorwrap"><h2 id="contributor-profiles">Contributor profiles<a data-clipboard-text="https://twitter.github.io/birdwatch/aliases/#contributor-profiles" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Contributor profiles" href="#contributor-profiles"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
-<figure>
-    <img src="../images/alias-03.png"/> 
-</figure>
-
-<p>With aliases, every contributor gets a public profile. On this page, everyone can see the notes people have written in the past, as well as the current rating status of those notes. On your own profile, you can also see how many Helpful, Unhelpful, and Somewhat helpful ratings you have received. We&rsquo;ll continue to add information and evolve the profile pages as we learn more about what&rsquo;s important to contributors when using Birdwatch.</p>
-<div class="gdoc-page__anchorwrap"><h3 id="aliases-are-new-did-you-contribute-before-the-launch-of-aliases">Aliases are new! Did you contribute before the launch of aliases?<a data-clipboard-text="https://twitter.github.io/birdwatch/aliases/#aliases-are-new-did-you-contribute-before-the-launch-of-aliases" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Aliases are new! Did you contribute before the launch of aliases?" href="#aliases-are-new-did-you-contribute-before-the-launch-of-aliases"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
-<p>Aliases launched on November 22, 2021. For those of you who were in the pilot and contributed under your Twitter username before that, your previous contributions will all now appear to come from your alias, not your Twitter username. Your Birdwatch profile page will show all the notes you’ve written, all attributed to your new alias. That said, if someone who previously read one of your notes happened to recall the username that wrote it, they could possibly infer your alias. The only way to completely prevent this is by deleting all of your prior contributions and starting fresh. If you want to do that, we’re happy to help, just DM <a href="http://twitter.com/birdwatch">@birdwatch</a>.</p>
-<p>Don&rsquo;t hesitate to <a href="http://twitter.com/birdwatch">send us feedback</a> at any time.</p>
+<p>To be clear: ratings have the same impact on the note’s final status label whether they are “valid” or not. Whether a rating is valid is only relevant for the computation of rater helpfulness scores.</p>
+<div class="gdoc-page__anchorwrap"><h2 id="filtering-ratings-based-on-helpfulness-scores">Filtering Ratings Based on Helpfulness Scores<a data-clipboard-text="https://twitter.github.io/birdwatch/contributor-scores/#filtering-ratings-based-on-helpfulness-scores" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Filtering Ratings Based on Helpfulness Scores" href="#filtering-ratings-based-on-helpfulness-scores"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p>Birdwatch gives more weight to contributors who are good at identifying which notes will be helpful (or unhelpful) to people from different points of view. This helps improve note scoring and ranking, and makes manipulation of Birdwatch slightly more difficult.</p>
+<p>Specifically, Birdwatch does this by incorporating a subset of ratings in a second round of note scoring. Contributors’ ratings are only included in the second round of note scoring if:</p>
+<ul>
+<li>They have made at least 10 total ratings and have made at least 1 <a href="./#valid-ratings">valid rating</a>.</li>
+<li>Their rater helpfulness score must be at least 0.66</li>
+<li>If they have written any notes that have received at least 5 ratings (contributors who haven’t written any such notes are included):
+<ul>
+<li>The CRH-vs.-CRNH ratio of notes they’ve authored must be at least 0.0</li>
+<li>The mean note score of all notes they’ve written must be at least 0.05</li>
+</ul>
+</li>
+</ul>
+<p>These scores are a simple first approach to improving quality and inhibiting manipulation, and more improvements are on the way.</p>
 
 
     </article>
@@ -908,6 +913,231 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
             
 
             
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
+    
+
+        
+    
+        
+        
+
+        
+        
+
+        
+        
+            
+    
+    
+
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
                 
                 
             
@@ -930,231 +1160,6 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
             
                 
                 
-            
-
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
-            
-
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
-            
-
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
-            
-
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
-            
-
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
-            
-
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
-            
-
-            
-
-            
-        
-
-        
-        
-    
-
-        
-    
-        
-        
-
-        
-        
-
-        
-        
-            
-    
-    
-
-    
-        
-        
-
-        
-        
-            
-            
-            
-
-            
-
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
-            
-
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
-            
-
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
-            
-
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
             
 
             
@@ -1178,12 +1183,12 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     
         <span class="gdoc-page__nav">
             
-                <a class="gdoc-page__nav--prev flex align-center" href="/birdwatch/values/" title="Values"> Values</a>
+                <a class="gdoc-page__nav--prev flex align-center" href="/birdwatch/note-ranking-code/" title="Note Ranking Code"> Note Ranking Code</a>
             
         </span>
         <span class="gdoc-page__nav">
             
-                <a class="gdoc-page__nav--next flex align-center" href="/birdwatch/writing-notes/" title="Writing notes">Writing notes </a>
+                <a class="gdoc-page__nav--next flex align-center" href="/birdwatch/timeline-tabs/" title="Timeline tabs">Timeline tabs </a>
             
         </span>
     
@@ -1216,6 +1221,29 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     </span>
   </div>
 </footer>
+
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/katex@0.10.0-rc.1/dist/katex.min.css"
+  integrity="sha384-D+9gmBxUQogRLqvARvNLmA9hS2x//eK1FhVb9PiU86gmcrBrJAQT8okdJ4LMp2uv"
+  crossorigin="anonymous"
+/>
+
+
+<script
+  defer
+  src="https://cdn.jsdelivr.net/npm/katex@0.10.0-rc.1/dist/katex.min.js"
+  integrity="sha384-483A6DwYfKeDa0Q52fJmxFXkcPCFfnXMoXblOkJ4JcA8zATN6Tm78UNL72AKk+0O"
+  crossorigin="anonymous"
+></script>
+
+<script
+  defer
+  src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/contrib/auto-render.min.js"
+  integrity="sha384-vZTG03m+2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl"
+  crossorigin="anonymous"
+  onload="renderMathInElement(document.body);"
+></script>
 
 
     </div>
