@@ -22,6 +22,8 @@ main:
         ref: "writing-notes"
       - name: Rating notes
         ref: "rating-notes"
+      - name: Diversity of perspectives
+        ref: "diversity-of-perspectives"
       - name: Notes on Twitter
         ref: "notes-on-twitter"
       - name: Examples
@@ -33,7 +35,13 @@ main:
   - name: Under the Hood
     ref: ""
     sub:
-      - name: Note Ranking
-        ref: "ranking-notes"
       - name: Download data
         ref: "download-data"
+      - name: Note Ranking
+        ref: "ranking-notes"
+      - name: Note Ranking Code
+        ref: "note-ranking-code"
+      - name: Contributor Scores
+        ref: "contributor-scores"
+      - name: "Timeline tabs"
+        ref: "timeline-tabs"

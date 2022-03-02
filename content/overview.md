@@ -23,7 +23,7 @@ Participants in the pilot can add notes to any Tweet they come across and think 
 
 2. ### Ratings
 
-Participants can rate the helpfulness of other's notes. Ratings help identify which notes are most helpful, and allow Birdwatch to raise the visibility of those found most helpful by a wide range of contributors. Ratings will also inform future reputation models that recognize those whose contributions are consistently found helpful by a diverse set of people.
+Contributors can rate the helpfulness of other's notes. Ratings help identify which notes are most helpful, and allow Birdwatch to raise the visibility of those found most helpful by people from [different perspectives](../diversity-of-perspectives). Ratings also inform our reputation models that recognize those whose contributions are consistently found helpful by a diverse set of people.
 
 [Learn more about rating notes →](../rating-notes/)
 
