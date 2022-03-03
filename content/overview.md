@@ -9,7 +9,7 @@ aliases: ["/overview", "/about/overview"]
 <br>
 
 Birdwatch aims to create a better informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
-Participants can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other participants’ notes. Through consensus from a broad and diverse set of contributors, our eventual goal is that the most helpful notes will be visible directly on Tweets, available to everyone on Twitter.
+Contributors can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other contributors’ notes. Through consensus from a broad and diverse set of people, our eventual goal is that the most helpful notes will be visible directly on Tweets, available to everyone on Twitter.
 
 # How it works
 
@@ -17,7 +17,7 @@ In this phase, Birdwatch has three core elements: notes, ratings, and the Birdwa
 
 1. ### Notes
 
-Participants in the pilot can add notes to any Tweet they come across and think might be misleading. Notes are composed of multiple-choice questions and an open text field where participants can explain why they believe a Tweet is misleading, as well as link to relevant sources. Birdwatch notes are public, and anyone in the US can browse the Birdwatch site to see them. For those not in the pilot, notes currently appear only on the Birdwatch site. They are intentionally kept separate from Twitter for now, while we build Birdwatch and gain confidence that it produces context people find helpful and appropriate. People in the pilot may see notes directly on Tweets when browsing Twitter, and are able to rate those notes for helpfulness.
+People who have signed up to be Contributors can add notes to any Tweet they think might be misleading. Notes are composed of multiple-choice questions and an open text field where contributors can explain why they believe a Tweet is misleading, as well as link to relevant sources. Birdwatch notes are public, and anyone in the US can browse the Birdwatch site to see them. For those not in the pilot, notes currently appear only on the Birdwatch site. They are intentionally kept separate from Twitter for now, while we build Birdwatch and gain confidence that it produces context people find helpful and appropriate. People in the pilot may see notes directly on Tweets when browsing Twitter, and are able to rate those notes for helpfulness.
 
 [Learn more about writing notes →](../writing-notes/)
 
@@ -31,7 +31,7 @@ Contributors can rate the helpfulness of other's notes. Ratings help identify wh
 
 The Birdwatch site is the home for all Birdwatch notes and ratings, separate from the main Twitter apps, and is available at [birdwatch.twitter.com](https://birdwatch.twitter.com).
 
-During this phase of the pilot, Birdwatch contributions will not affect the way people outside of the pilot see Tweets or our system recommendations. Our priority is to understand how to build and adopt an approach that takes input from a diverse set of contributors and identifies the context that people will find most helpful.
+Birdwatch notes that have been rated helpful by enough contributors from different points of view [will appear directly on Tweets](../notes-on-twitter/) for a small, randomized group of people in the US. They will also be able to rate notes for helpfulness. Beyond that, Birdwatch notes do not affect display of Tweets or enforcement of Twitter Rules. Our focus during this phase of the pilot is gaining confidence that Birdwatch produces context people from different points of view find helpful and informative.
 
 [Visit the Birdwatch Site →](https://birdwatch.twitter.com)
 
@@ -39,7 +39,7 @@ During this phase of the pilot, Birdwatch contributions will not affect the way 
 
 We believe it’s important for people to understand how Birdwatch works, and to be able to help shape it. To that end, we’re taking significant steps to make Birdwatch transparent.
 
-Even though only pilot participants can write and rate notes, anyone in the US can access the Birdwatch site to browse contributions. Additionally, all data contributed to Birdwatch will be publicly available and for [download in `tsv` files](https://twitter.com/i/birdwatch/download-data).
+Even though only Birdwatch contributors and people included in test groups can write and rate notes, anyone in the US can access the Birdwatch site to browse contributions. Additionally, all data contributed to Birdwatch will be publicly available and for [download in `tsv` files](https://twitter.com/i/birdwatch/download-data).
 
 As we develop algorithms that power Birdwatch — such as reputation, consensus, and ranking systems — we also aim to make them publicly available. Our current implementation is already [available here](../note-ranking).
 
