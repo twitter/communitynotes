@@ -85,4 +85,4 @@ The people on Twitter span a wide gamut of backgrounds and experiences, and we b
 
 ### I have a note on my Tweet. What can I do?
 
-As a Tweet author, if you disagree that a Birdwatch note provides important context about your Tweet, you can request an [additional review](../additional-review/).
+As a Tweet author, if you disagree that a Birdwatch note provides important context about your Tweet, you can request [additional review](../additional-review/).
