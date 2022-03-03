@@ -138,7 +138,7 @@ For not-helpful notes:
 
 ## What’s New?
 
-**Feb 28, 2022**
+**Mar 1, 2022**
 
 - Launched entirely new algorithm to compute note statuses (Currently Rated Helpful, Currently Not Rated Helpful), which looks for agreement across different viewpoints using a matrix factorization method. Updates contributor helpfulness scores to reflect helpfulness so that contributors whose contributions are helpful to people from a wide range of viewpoints earn higher scores. Uses helpfulness scores to identify a subset of contributor ratings to include in a final round of note scoring. This entirely replaces the previous algorithm which weighted ratings by raters’ helpfulness scores.
 
