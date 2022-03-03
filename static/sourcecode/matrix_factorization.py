@@ -60,6 +60,7 @@ def run_mf(
   n_users = noteRatingIds[raterIndexKey].nunique()
   n_items = noteRatingIds[noteIndexKey].nunique()
   if logging:
+    print("------------------")
     print(f"Users: {n_users}, Notes: {n_items}")
 
   criterion = torch.nn.MSELoss()

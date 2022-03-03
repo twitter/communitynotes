@@ -2,13 +2,11 @@ import numpy as np
 import pandas as pd
 from constants import *
 
+
 def compute_general_helpfulness_scores(
   noteParams,
   notes,
   ratings,
-  thresholdCRH,
-  thresholdCRNH,
-  minRatingsNeeded,
   CRNHMultiplier=5.0,
   logging=True,
 ):
@@ -21,19 +19,19 @@ def compute_general_helpfulness_scores(
 
   scoredNotes[currentlyRatedHelpfulBoolKey] = False
   scoredNotes[currentlyRatedNotHelpfulBoolKey] = False
-  scoredNotes.loc[(scoredNotes[noteInterceptKey] >= thresholdCRH), currentlyRatedHelpfulBoolKey] = True
-  scoredNotes.loc[(scoredNotes[noteInterceptKey] <= thresholdCRNH), currentlyRatedNotHelpfulBoolKey] = True
+  scoredNotes.loc[(scoredNotes[noteInterceptKey] >= crhThreshold), currentlyRatedHelpfulBoolKey] = True
+  scoredNotes.loc[(scoredNotes[noteInterceptKey] <= crnhThreshold), currentlyRatedNotHelpfulBoolKey] = True
   scoredNotes[noteCountKey] = 1
 
   if logging:
     print(
-      f"With threshold {thresholdCRH}, {scoredNotes[currentlyRatedHelpfulBoolKey].sum()} notes are CRH " +
-       f"({100*scoredNotes[currentlyRatedHelpfulBoolKey].sum()/len(scoredNotes)}%)"
-    )
+      f"With threshold {crhThreshold}, {scoredNotes[currentlyRatedHelpfulBoolKey].sum()} notes are CRH " +
+        f"({100*scoredNotes[currentlyRatedHelpfulBoolKey].sum()/len(scoredNotes)}%)"
+      )
     print(
-      f"With threshold {thresholdCRNH}, {scoredNotes[currentlyRatedNotHelpfulBoolKey].sum()} notes are CRNH " +
-       f"({100*scoredNotes[currentlyRatedNotHelpfulBoolKey].sum()/len(scoredNotes)}%)"
-    )
+      f"With threshold {crnhThreshold}, {scoredNotes[currentlyRatedNotHelpfulBoolKey].sum()} notes are CRNH " +
+        f"({100*scoredNotes[currentlyRatedNotHelpfulBoolKey].sum()/len(scoredNotes)}%)"
+      )
 
   # Author Helpfulness
   authorCounts = scoredNotes.groupby(noteAuthorParticipantIdKey).sum()[[currentlyRatedHelpfulBoolKey, currentlyRatedNotHelpfulBoolKey, noteCountKey, noteInterceptKey]]
@@ -106,7 +104,7 @@ def filter_ratings_by_helpfulness_scores(
 
   if logging:
     print("Unique Raters: ", len(np.unique(ratingsForTraining[raterParticipantIdKey])))
-    print("Raters With Helpfulness Scores: ", len(helpfulnessScores))
+    print("People (Authors or Raters) With Helpfulness Scores: ", len(helpfulnessScores))
     print("Raters Included Based on Helpfulness Scores: ", len(includedUsers))
     print("Number of Ratings Used For 1st Training: ", len(ratingsForTraining))
     print("Number of Ratings for Final Training: ", len(ratingsHelpfulnessScoreFiltered))

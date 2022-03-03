@@ -34,6 +34,7 @@ helpfulKey = "helpful"
 notHelpfulKey = "notHelpful"
 helpfulnessLevelKey = "helpfulnessLevel"
 createdAtMillisKey = "createdAtMillis"
+summaryKey = "summary"
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
@@ -58,6 +59,7 @@ raterFactor1Key = "raterFactor1"
 
 # Ids and Indexes
 noteIdKey = "noteId"
+tweetIdKey = "tweetId"
 classificationKey = "classification"
 noteAuthorParticipantIdKey = "noteAuthorParticipantId"
 raterParticipantIdKey = "raterParticipantId"
@@ -85,3 +87,30 @@ needsMoreRatings = "Needs More Ratings"
 # Boolean Note Status Labels
 currentlyRatedHelpfulBoolKey = "crhBool"
 currentlyRatedNotHelpfulBoolKey = "crnhBool"
+
+helpfulTags = [
+  "helpfulOther",
+  "helpfulUnbiasedLanguage",
+  "helpfulUniqueContext",
+  "helpfulEmpathetic",
+  "helpfulGoodSources",
+  "helpfulAddressesClaim",
+  "helpfulImportantContext",
+  "helpfulClear",
+  "helpfulInformative",
+]
+
+nothelpfulTags = [
+  "notHelpfulOther",
+  "notHelpfulIrrelevantSources",
+  "notHelpfulSourcesMissingOrUnreliable",
+  "notHelpfulOpinionSpeculationOrBias",
+  "notHelpfulMissingKeyPoints",
+  "notHelpfulNoteNotNeeded",
+  "notHelpfulArgumentativeOrBiased",
+  "notHelpfulIncorrect",
+  "notHelpfulOffTopic",
+  "notHelpfulHardToUnderstand",
+  "notHelpfulSpamHarassmentOrAbuse",
+  "notHelpfulOutdated",
+]
