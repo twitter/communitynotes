@@ -2,32 +2,6 @@ import numpy as np
 import pandas as pd
 from constants import *
 
-helpfulTags = [
-  "helpfulOther",
-  "helpfulUnbiasedLanguage",
-  "helpfulUniqueContext",
-  "helpfulEmpathetic",
-  "helpfulGoodSources",
-  "helpfulAddressesClaim",
-  "helpfulImportantContext",
-  "helpfulClear",
-  "helpfulInformative",
-]
-
-nothelpfulTags = [
-  "notHelpfulOther",
-  "notHelpfulIrrelevantSources",
-  "notHelpfulSourcesMissingOrUnreliable",
-  "notHelpfulOpinionSpeculationOrBias",
-  "notHelpfulMissingKeyPoints",
-  "notHelpfulNoteNotNeeded",
-  "notHelpfulArgumentativeOrBiased",
-  "notHelpfulIncorrect",
-  "notHelpfulOffTopic",
-  "notHelpfulHardToUnderstand",
-  "notHelpfulSpamHarassmentOrAbuse",
-  "notHelpfulOutdated",
-]
 
 def top_tags(row, minRatingsToGetTag, minTagsNeededForStatus):
   if row[ratingStatusKey] == currentlyRatedHelpful:
@@ -47,7 +21,6 @@ def top_tags(row, minRatingsToGetTag, minTagsNeededForStatus):
     row[secondTagKey] = topTags.index[1]
   return row
 
-
 def get_rating_status_and_explanation_tags(
   notes,
   ratings,
@@ -60,11 +33,11 @@ def get_rating_status_and_explanation_tags(
   logging=True,
 ):
   ratingsWithNotes = notes.set_index(noteIdKey).join(
-    ratings.set_index(noteIdKey), lsuffix="\_note", rsuffix="\_rating", how="inner"
+    ratings.set_index(noteIdKey), lsuffix="_note", rsuffix="_rating", how="inner"
   )
   ratingsWithNotes[numRatingsKey] = 1
   scoredNotes = ratingsWithNotes.groupby(noteIdKey).sum()
-  scoredNotes = scoredNotes.merge(noteParams[[noteIdKey, noteInterceptKey]], on=noteIdKey)
+  scoredNotes = scoredNotes.merge(noteParams[[noteIdKey, noteInterceptKey, noteFactor1Key]], on=noteIdKey)
 
   scoredNotes[ratingStatusKey] = needsMoreRatings
   scoredNotes.loc[

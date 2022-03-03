@@ -6,6 +6,10 @@ def get_data(logging=True):
   notes = pd.read_csv(notesInputPath, sep="\t")
   ratings = pd.read_csv(ratingsInputPath, sep="\t")
 
+  if logging:
+    print("Timestamp of latest rating in data: ", pd.to_datetime(ratings[createdAtMillisKey], unit='ms').max())
+    print("Timestamp of latest note in data: ", pd.to_datetime(notes[createdAtMillisKey], unit='ms').max())
+
   ratings = ratings.rename({participantIdKey: raterParticipantIdKey}, axis=1)
   ratings[helpfulNumKey] = np.nan
   ratings.loc[ratings[helpfulKey] == 1, helpfulNumKey] = 1
@@ -14,6 +18,8 @@ def get_data(logging=True):
   ratings.loc[ratings[helpfulnessLevelKey] == somewhatHelpfulValueTsv, helpfulNumKey] = 0.5
   ratings.loc[ratings[helpfulnessLevelKey] == helpfulValueTsv, helpfulNumKey] = 1
   ratings = ratings.loc[~pd.isna(ratings[helpfulNumKey])]
+
+  notes[tweetIdKey] = notes[tweetIdKey].astype(np.str)
 
   if logging:
     print(

@@ -5,7 +5,6 @@ import process_data
 from constants import *
 
 
-
 ratings, notes = process_data.get_data()
 ratingsForTraining = process_data.filter_ratings(ratings)
 
@@ -22,10 +21,7 @@ noteParamsUnfiltered, raterParamsUnfiltered, globalBias = matrix_factorization.r
 helpfulnessScores = helpfulness_scores.compute_general_helpfulness_scores(
   noteParamsUnfiltered,
   notes,
-  ratings,
-  crhThreshold,
-  crnhThreshold,
-  minRatingsNeeded,
+  ratings
 )
 
 ratingsHelpfulnessScoreFiltered = helpfulness_scores.filter_ratings_by_helpfulness_scores(
@@ -52,7 +48,23 @@ scoredNotes = explanation_tags.get_rating_status_and_explanation_tags(
   crnhThreshold,
 )
 
-scoredNotes = scoredNotes.set_index(noteIdKey).join(
-  notes[[noteIdKey, "summary"]].set_index(noteIdKey), lsuffix="_note", rsuffix="_rating", how="inner"
-)
-scoredNotes.to_csv("scoredNotes.tsv", sep="\t", index=False)
+scoredNotes = scoredNotes.merge(notes[[noteIdKey, summaryKey, tweetIdKey]], on=noteIdKey, how="inner")
+
+numCRH = (scoredNotes[ratingStatusKey]==currentlyRatedHelpful).sum()
+numCRNH = (scoredNotes[ratingStatusKey]==currentlyRatedNotHelpful).sum()
+print(f"With threshold {crhThreshold}, {numCRH} notes are CRH ({100*numCRH/len(scoredNotes)}%)")
+print(f"With threshold {crnhThreshold}, {numCRNH} notes are CRNH ({100*numCRNH/len(scoredNotes)}%)")
+
+scoredNotes[[
+  noteIdKey,
+  tweetIdKey,
+  numRatingsKey,
+  noteInterceptKey,
+  noteFactor1Key,
+  ratingStatusKey,
+  firstTagKey,
+  secondTagKey,
+  summaryKey
+] + helpfulTags + nothelpfulTags] \
+  .sort_values(by=noteInterceptKey, ascending=False) \
+  .to_csv(scoredNotesOutputPath, sep="\t", index=False)
