@@ -19,7 +19,7 @@ If you believe a note rated “helpful” on your Tweet doesn’t add helpful co
 ## How additional reviews work:
 
 - Tweet authors can request additional contributor review of notes that are rated helpful and are being shown on their Tweet.
-  W- hen an author requests additional review, the note is shown to contributors on the Birdwatch site, which is separate from the Twitter apps and where they may then rate the note.
+- When an author requests additional review, the note is shown to contributors on the Birdwatch site, which is separate from the Twitter apps and where they may then rate the note.
 - All ratings are done by Birdwatch contributors, who voluntarily review notes, so there’s no guarantee that more contributors will review it or that the note's rating will change.
 - Twitter does not determine the outcome of reviews. The aim of Birdwatch is to empower people on Twitter to determine what additional context is helpful.
 - If the additional ratings change a note's status such that it is no longer rated "helpful", the note will stop being shown on the Tweet.
