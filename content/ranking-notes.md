@@ -14,6 +14,8 @@ katex: true
 
 Birdwatch notes are submitted and rated by contributors. Ratings are used to determine note status labels (“Currently Rated Helpful”, “Currently Rated Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the [Birdwatch Site’s timelines](../birdwatch-timelines/), and which notes are displayed as [Birdwatch Cards](../notes-on-twitter/) on Tweets.
 
+Only notes that indicate the Tweet as “potentially misleading” are eligible to be displayed as Birdwatch Cards on Tweets; notes that indicate the Tweet is “not misleading” are not displayed as Birdwatch Cards on Tweets. As of March 9, 2022, we have temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading.” Why? People have been confused about how to rate them. As these notes are effectively making the case that the Tweet does not need a note, raters often rated them as “Unhelpful - Tweet doesn’t need a note” so as to indicate the note should not appear on the Tweet. We are planning an improvement to the rating form to resolve this confusion, and plan to resume assigning statuses to “not misleading” notes once that’s in place.
+
 The sections below describe how notes are assigned statuses, which determines how notes are ranked and displayed in the product:
 
 {{< toc >}}
@@ -24,7 +26,7 @@ The sections below describe how notes are assigned statuses, which determines ho
 
 All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings. Once a note has received at least 5 ratings, it is assigned a Note Helpfulness Score according to the algorithm described below.
 
-Notes with a Note Helpfulness Score of 0.00 and below are assigned Currently Not Rated Helpful, and notes with a score of 0.43 and above are assigned Currently Rated Helpful. Notes with scores in between 0.00 and 0.43 remain labeled as Needs more Ratings.
+Notes with a Note Helpfulness Score of –0.08 and below are assigned Currently Not Rated Helpful, and notes with a score of 0.40 and above are assigned Currently Rated Helpful. Notes with scores in between –0.08 and 0.40 remain labeled as Needs more Ratings.
 
 In addition to Currently Rated / Not Rated Helpful status, labels also show the two most commonly chosen explanation tags which describe the reason the note was rated helpful/unhelpful.
 
@@ -68,7 +70,7 @@ Where lambda_i (0.03), the regularization on the intercept terms, is currently 5
 
 The resulting scores that we use for each note are the note intercept terms i_n. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.
 
-We currently set the thresholds to achieve a “Currently Rated Helpful” label at 0.43, including less than 10% of the notes, and our threshold to achieve a “Currently Rated Not Helpful” label at 0.00, including close to 20% of the notes. However, these are far from set in stone and the way we generate status labels from note scores will evolve over time.
+We currently set the thresholds to achieve a “Currently Rated Helpful” label at 0.40, including less than 10% of the notes, and our threshold to achieve a “Currently Rated Not Helpful” label at –0.08. However, these are far from set in stone and the way we generate status labels from note scores will evolve over time.
 
 This approach has a few nice properties:
 
@@ -137,6 +139,11 @@ For not-helpful notes:
 <br/>
 
 ## What’s New?
+
+**March 09, 2022**
+
+- Temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading”
+- Adjusted thresholds for notes statuses
 
 **Mar 1, 2022**
 
