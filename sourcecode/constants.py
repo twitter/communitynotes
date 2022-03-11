@@ -1,7 +1,7 @@
 # Note Status Requirements
 minRatingsNeeded = 5
-crhThreshold = 0.43
-crnhThreshold = 0.00
+crhThreshold = 0.40
+crnhThreshold = -0.08
 
 # Explanation Tags
 minRatingsToGetTag = 2
@@ -40,6 +40,7 @@ summaryKey = "summary"
 notHelpfulValueTsv = "NOT_HELPFUL"
 somewhatHelpfulValueTsv = "SOMEWHAT_HELPFUL"
 helpfulValueTsv = "HELPFUL"
+notesSaysTweetIsMisleadingKey = 'MISINFORMED_OR_POTENTIALLY_MISLEADING'
 
 # Fields Transformed From the Raw Data
 helpfulNumKey = "helpfulNum"

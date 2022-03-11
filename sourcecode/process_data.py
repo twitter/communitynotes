@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from constants import *
 
-def get_data(logging=True):
+def get_data(filterNotMisleadingNotes=True, logging=True):
   notes = pd.read_csv(notesInputPath, sep="\t")
   ratings = pd.read_csv(ratingsInputPath, sep="\t")
 
@@ -20,6 +20,10 @@ def get_data(logging=True):
   ratings = ratings.loc[~pd.isna(ratings[helpfulNumKey])]
 
   notes[tweetIdKey] = notes[tweetIdKey].astype(np.str)
+
+  if filterNotMisleadingNotes:
+    notes = notes[notes[classificationKey]==notesSaysTweetIsMisleadingKey]
+    ratings = ratings.merge(notes[[noteIdKey]], on=noteIdKey)
 
   if logging:
     print(

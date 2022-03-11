@@ -121,7 +121,7 @@ In addition to people who have signed up to become Birdwatch contributors, small
       
       <guid>https://twitter.github.io/birdwatch/ranking-notes/</guid>
       <description>Birdwatch notes are submitted and rated by contributors. Ratings are used to determine note status labels (“Currently Rated Helpful”, “Currently Rated Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the Birdwatch Site’s timelines, and which notes are displayed as Birdwatch Cards on Tweets.
-The sections below describe how notes are assigned statuses, which determines how notes are ranked and displayed in the product:</description>
+Only notes that indicate the Tweet as “potentially misleading” are eligible to be displayed as Birdwatch Cards on Tweets; notes that indicate the Tweet is “not misleading” are not displayed as Birdwatch Cards on Tweets.</description>
     </item>
     
     <item>

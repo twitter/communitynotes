@@ -728,6 +728,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 
 
 <p>Birdwatch notes are submitted and rated by contributors. Ratings are used to determine note status labels (“Currently Rated Helpful”, “Currently Rated Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the <a href="../birdwatch-timelines/">Birdwatch Site’s timelines</a>, and which notes are displayed as <a href="../notes-on-twitter/">Birdwatch Cards</a> on Tweets.</p>
+<p>Only notes that indicate the Tweet as “potentially misleading” are eligible to be displayed as Birdwatch Cards on Tweets; notes that indicate the Tweet is “not misleading” are not displayed as Birdwatch Cards on Tweets. As of March 9, 2022, we have temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading.” Why? People have been confused about how to rate them. As these notes are effectively making the case that the Tweet does not need a note, raters often rated them as “Unhelpful - Tweet doesn’t need a note” so as to indicate the note should not appear on the Tweet. We are planning an improvement to the rating form to resolve this confusion, and plan to resume assigning statuses to “not misleading” notes once that’s in place.</p>
 <p>The sections below describe how notes are assigned statuses, which determines how notes are ranked and displayed in the product:</p>
 
 
@@ -751,7 +752,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 </figure>
 
 <p>All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings. Once a note has received at least 5 ratings, it is assigned a Note Helpfulness Score according to the algorithm described below.</p>
-<p>Notes with a Note Helpfulness Score of 0.00 and below are assigned Currently Not Rated Helpful, and notes with a score of 0.43 and above are assigned Currently Rated Helpful. Notes with scores in between 0.00 and 0.43 remain labeled as Needs more Ratings.</p>
+<p>Notes with a Note Helpfulness Score of –0.08 and below are assigned Currently Not Rated Helpful, and notes with a score of 0.40 and above are assigned Currently Rated Helpful. Notes with scores in between –0.08 and 0.40 remain labeled as Needs more Ratings.</p>
 <p>In addition to Currently Rated / Not Rated Helpful status, labels also show the two most commonly chosen explanation tags which describe the reason the note was rated helpful/unhelpful.</p>
 <p>Notes with the status Needs More Ratings remain sorted by recency (newest first), and notes with a Currently Rated / Not Rated Helpful status are sorted by their Helpfulness Score.</p>
 <p>This ranking mechanism is subject to continuous development and improvement with the aim that Birdwatch consistently identifies notes that are found helpful to people from a wide variety of perspectives.</p>
@@ -780,7 +781,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 <p>\[\sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2)\]</p>
 <p>Where lambda_i (0.03), the regularization on the intercept terms, is currently 5 times higher than lambda_f (0.15), the regularization on the factors.</p>
 <p>The resulting scores that we use for each note are the note intercept terms i_n. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.</p>
-<p>We currently set the thresholds to achieve a “Currently Rated Helpful” label at 0.43, including less than 10% of the notes, and our threshold to achieve a “Currently Rated Not Helpful” label at 0.00, including close to 20% of the notes. However, these are far from set in stone and the way we generate status labels from note scores will evolve over time.</p>
+<p>We currently set the thresholds to achieve a “Currently Rated Helpful” label at 0.40, including less than 10% of the notes, and our threshold to achieve a “Currently Rated Not Helpful” label at –0.08. However, these are far from set in stone and the way we generate status labels from note scores will evolve over time.</p>
 <p>This approach has a few nice properties:</p>
 <ul>
 <li>Extra regularization on the intercept terms in practice requires that notes are rated by raters with diverse factors before a note gets a label (the note intercept term becomes very large or very small)</li>
@@ -843,6 +844,11 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 <hr>
 <br/>
 <div class="gdoc-page__anchorwrap"><h2 id="whats-new">What’s New?<a data-clipboard-text="https://twitter.github.io/birdwatch/ranking-notes/#whats-new" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor What’s New?" href="#whats-new"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p><strong>March 09, 2022</strong></p>
+<ul>
+<li>Temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading”</li>
+<li>Adjusted thresholds for notes statuses</li>
+</ul>
 <p><strong>Mar 1, 2022</strong></p>
 <ul>
 <li>Launched entirely new algorithm to compute note statuses (Currently Rated Helpful, Currently Not Rated Helpful), which looks for agreement across different viewpoints using a matrix factorization method. Updates contributor helpfulness scores to reflect helpfulness so that contributors whose contributions are helpful to people from a wide range of viewpoints earn higher scores. Uses helpfulness scores to identify a subset of contributor ratings to include in a final round of note scoring. This entirely replaces the previous algorithm which weighted ratings by raters’ helpfulness scores.</li>
