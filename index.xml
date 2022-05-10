@@ -140,8 +140,8 @@ If you download the notes and ratings files made available on the Birdwatch Data
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/notes-on-twitter/</guid>
-      <description>When browsing Twitter on Android, iOS, or at Twitter.com, Birdwatch contributors and a small, randomized group of people in the US may see cards on Tweets that have Birdwatch notes. Birdwatch cards may include a specific Birdwatch note or link to the Birdwatch site where all notes on that Tweet can be rated.
-Cards showing a specific note   If a Tweet has a Birdwatch note deemed Currently rated helpful by contributors then the note content will be shown in the card, along with a button to rate the note.</description>
+      <description>Birdwatch&amp;rsquo;s goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. During this pilot phase, only a small group of people in the US can see these notes, but our goal is to eventually show them to everyone. Here&amp;rsquo;s how they show up:
+  Note views Note authors can see how many times their note has been viewed on Twitter, by looking at their Birdwatch profile page, or anywhere else they see their own note.</description>
     </item>
     
     <item>
