@@ -230,16 +230,20 @@ span.gdoc-footer__item {
 /* hint */
 .gdoc-markdown blockquote {
   padding: 1.5em;
+  line-height: 1.537;
 }
 .gdoc-hint.info {
+  font-size: 1rem;
   background: var(--tw-color-gray-faint);
   border-color: var(--tw-color-blue-primary);
 }
 .gdoc-hint.warning {
+  font-size: 1rem;
   background: var(--tw-color-orange-primary);
   border-color: #e4ba48;
 }
 .gdoc-hint.danger {
+  font-size: 1rem;
   background: var(--tw-color-red-primary);
   border-color: var(--tw-color-red-medium);
 }
