@@ -23,6 +23,12 @@ Note authors can see how many times their note has been viewed on Twitter, by lo
 
 This number only appears after the first 1000 views, and only reflects the small test group of people who can currently see Birdwatch notes. Contributors can expect the number of views on their notes to increase significantly as we expand Birdwatch's notes to more people on Twitter.
 
+{{< hint info >}}
+
+Views began being counted mid-day May 3, 2022, so notes before then are very unlikely to show any counts, and certainly not accurate counts. Notes written on or after May 4, 2022 should show correct counts.
+
+{{< / hint >}}
+
 ### Increase the reach and impact of Birdwatch notes
 
 Many Tweets are seen by most people who will see them in a matter of hours. Notes have the greatest visibility, and potential for impact, when:
