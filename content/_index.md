@@ -4,45 +4,84 @@ title: Home
 aliases: ["/learn-more", "/intro"]
 ---
 
-{{< figure class="hero" src="images/hero.png">}}
+{{< figure class="hero" src="./images/hero.png">}}
 
-# Empowering people on Twitter to create a better-informed world.
+## Birdwatch is a collaborative way to add helpful context to Tweets and keep people better informed
 
-People come to Twitter to stay informed, and they want credible information to help them do so. This isn’t always easy with the spread of misleading information online.
+Birdwatch is a pilot program that aims to create a better-informed world. It empowers people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
 
-Birdwatch aims to create a better informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
+<br/>
 
-Birdwatch contributors can identify Tweets they believe are misleading, write notes that provide context on the Tweet, and rate the quality of other contributors’ notes. Through consensus from a broad and diverse set of contributors, our eventual goal is that the most helpful notes will be visible directly on Tweets, available to everyone on Twitter.
+<div class="info-item">
+<img src="./images/write.svg">
+<div>
 
-Currently, Birdwatch is in pilot mode for people in the US. We're building it in the open, with the public’s input, and we’re taking significant steps to make Birdwatch transparent.
+**Contributors write and rate notes**
 
-This Guide outlines how Birdwatch works, how one can access and work with Birdwatch's transparent data and is also a place to follow updates to the product. We’ll be sharing how and why we’re making changes, how we came to those decisions, and what we hope to achieve.
+Contributors are people on Twitter, just like you, who chose to enroll in the pilot to write and rate notes. The more people that participate, the better the program becomes. Learn more about [how Birdwatch works](./overview/).
 
-We can't wait to learn with you.
+</div>
+</div>
 
-<br>
+<div class="info-item">
+<img src="./images/rate.svg">
+<div>
 
-{{< columns >}} <!-- begin columns block -->
+**Only notes that people find helpful appear on a Tweet**
 
-{{< figure src="images/overview.svg">}}
+Birdwatch doesn't work by majority rules. To identify notes that are helpful to a wide range of people, Birdwatch ratings requires agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings. Learn more about how Birdwatch [identifies helpful notes](./diversity/).
 
-**[Overview →](./overview)**
+</div>
+</div>
 
-Learn more about how Birdwatch works
+<div class="info-item">
+<img src="./images/people.svg">
+<div>
 
-<---> <!-- magic sparator, between columns -->
+**Twitter doesn’t choose what shows up, the people do**
 
-{{< figure src="images/signup.svg">}}
+Twitter doesn’t write, rate or moderate notes (unless they break the Twitter rules.) We believe giving people a voice to make these choices together is a fair and effective way to add information that helps people stay better informed.
 
-**[Sign up →](https://twitter.com/i/flow/join-birdwatch)**
+</div>
+</div>
 
-Become a Birdwatch contributor
+<div class="info-box">
 
-<---> <!-- magic sparator, between columns -->
+### Become a Birdwatch contributor
 
-{{< figure src="images/talk.svg">}}
+{{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
 
-**[Follow us →](https://twitter.com/birdwatch)**
+</div>
 
-Join the conversation about Birdwatch, and talk directly with the team
-{{< /columns >}}
+## Frequently asked questions
+
+### How does a Tweet get a note?
+
+Contributors can suggest a note on any Tweet. Notes are then rated for helpfulness by other contributors. Notes are only shown on Tweets if they are rated helpful by enough people from different perspectives. See how Birdwatch defines and uses [differences of perspectives here](../diversity-of-perspectives/).
+
+### How does Birdwatch prevent abuse?
+
+Birdwatch works differently than the rest of Twitter. It is not a popularity contest. It aims to find notes that many people from different points of view will find helpful. It takes into account not only how many ratings a note has received, but also whether people who rated it helpful seem to come from different perspectives. Because notes need to genuinely be found helpful by people who tend to disagree, Birdwatch is more likely to identify notes that many people find helpful. Read the full details of [how this works](../diversity-of-perspectives/).
+
+Notes are also subject to Twitter rules and can be reported.
+
+### Can regular people really be trusted to do this?
+
+We believe regular people can valuably contribute to identifying and adding helpful context to potentially misleading information. Many of the internet’s existing collaborative sites thrive with the help of non-expert contributions — Wikipedia, for example — and, while it’s not a cure-all, research has shown the potential of incorporating crowdsourced based approaches as part of a broader toolkit to address misleading information on the internet, for example:
+
+- [Allen, Arechar, Pennycook, and Rand 2021](https://www.science.org/doi/10.1126/sciadv.abf4393)
+- [Resnick, Alfayez, Im, and Gilbert 2021](https://arxiv.org/abs/2108.07898)
+- [Bhuiyan, Zhang, Sehat, and Mitra 2020](https://arxiv.org/pdf/2008.09533.pdf)
+- [Kim and Walker 2020](https://misinforeview.hks.harvard.edu/article/leveraging-volunteer-fact-checking-to-identify-misinformation-about-covid-19-in-social-media/)
+
+In our pilot test of Birdwatch, we evaluated notes that Birdwatch would show on Tweets, and have found:
+
+- The majority of people surveyed on Twitter found Birdwatch notes helpful.
+- People in surveys were 20-40% less likely to agree with the substance of a potentially misleading Tweet after reading the note about it, compared to those who saw a Tweet without a note.
+- Most notes have been rated highly on accuracy by professional reviewers; it has been rare to find a note that reviewers agree is inaccurate.
+
+The people on Twitter span a wide gamut of backgrounds and experiences, and we believe that, working together, they can help create a better-informed world.
+
+### I have a note on my Tweet. What can I do?
+
+As a Tweet author, if you disagree that a Birdwatch note provides important context about your Tweet, you can request [additional review](../additional-review/).
