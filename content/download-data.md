@@ -18,13 +18,17 @@ If you have questions or feedback about the Birdwatch public data or would like 
 
 ### Data snapshots
 
-The Birdwatch data is released as two separate files: one containing a table representing all Birdwatch notes and one containing a table representing all Birdwatch note ratings. These tables can be joined together on the `noteId` field to create a combined dataset with information about notes and their ratings. The data is released in two separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model). Currently, we release one cumulative file each for notes and note ratings. However, in the future, if the data ever grows too large, we will split the data into multiple files as needed.
+The [Birdwatch data](https://twitter.com/i/birdwatch/download-data) is released as three separate files: one containing a table representing all Birdwatch notes, one containing a table representing all Birdwatch note ratings, and one containing a table with metadata about notes including what statuses they received and when. These tables can be joined together on the noteId field to create a combined dataset with information about notes and their ratings. The data is released in three separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model).
 
-A new snapshot of the Birdwatch public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshot is a cumulative file and contains all non-deleted notes and note ratings ever contributed to Birdwatch, as of 48 hours before the dataset release time. The data download page displays a date stamp indicating the most recent date of data included in the downloadable files.
+Currently, we release one cumulative file each for notes, notes status history, and note ratings. However, in the future, if the data ever grows too large, we will split the data into multiple files as needed.
+
+A new snapshot of the Birdwatch public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshots are cumulative files, but only contain notes and ratings that were created as of 48 hours before the dataset release time. When notes and ratings are deleted, they will no longer be released in any future versions of the data downloads, although the note status history dataset will continue to contain metadata about all scored notes even after they’ve been deleted, which includes noteId, creation time, the hashed participant ID of the note’s author, and a history of which statuses each notes received and when; however, all of the content of the note itself e.g. the note’s text will no longer be available.
+
+The [data download page in Birdwatch](https://twitter.com/i/birdwatch/download-data) displays a date stamp indicating the most recent date of data included in the downloadable files.
 
 ### File structure
 
-Each data snapshot table is stored in `tsv` (tab-separated values) file format with a header row. This means that each row is separated by a newline, each column is separated by a tab, and the first row contains the column names instead of data. The note and note rating data is directly taken from the user-submitted note creation and note rating forms, with only minimal added metadata (like ids and timestamp). Below, we will describe each column’s data, including the question or source that generated the data, data type, and other relevant information.
+Each data snapshot table is stored in tsv (tab-separated values) file format with a header row. This means that each row is separated by a newline, each column is separated by a tab, and the first row contains the column names instead of data. The note and note rating data is directly taken from the user-submitted note creation and note rating forms, with only minimal added metadata (like ids and timestamp). The note status history file contains metadata derived from the raw notes and ratings, and contains the outputs of the [note scoring algorithm](../ranking-notes). Below, we will describe each column’s data, including the question or source that generated the data, data type, and other relevant information.
 
 <br>
 
@@ -32,7 +36,13 @@ Each data snapshot table is stored in `tsv` (tab-separated values) file format w
 
 ### Updates to the Data
 
-As we iterate and improve Birdwatch, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms. When we do this, some question fields and columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and data and when those changes were made.
+As we iterate and improve Birdwatch, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms, or additional metadata shared about notes and rating. When we do this, some question fields / columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and other updates we have made to the data, as well as when those changes were made.
+
+{{< expand "2022-06-15 - New Note Status History dataset " >}}
+
+- Added entirely new note status history dataset
+
+{{< / expand >}}
 
 {{< expand "2021-12-15 - Updated Note Rating Questions" >}}
 
@@ -84,7 +94,7 @@ As we iterate and improve Birdwatch, we will occasionally make changes to the qu
 <br>
 
 {{< tabs "uniqueid" >}}
-{{< tab "Notes table" >}}
+{{< tab "Notes" >}}
 | Field | Type | Descripton | Response values |
 | ---------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `noteId` | Long | The unique ID of this note | |
@@ -111,7 +121,24 @@ As we iterate and improve Birdwatch, we will occasionally make changes to the qu
 | `summary` | String | User-entered text, in response to the note writing prompt “Please explain the evidence behind your choices, to help others who see this tweet understand why it is not misleading” | User entered text explanation, with some characters escaped (e.g. tabs converted to spaces). |
 
 {{< /tab >}}
-{{< tab "Ratings Table" >}}
+
+{{< tab "Note Status History" >}}
+
+| Field                                 | Type   | Descripton                                                                                                                                                                                                                                                                                                                                                                                           | Response values                                                                |
+| ------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `noteId`                              | Long   | The unique ID of this note.                                                                                                                                                                                                                                                                                                                                                                          |                                                                                |
+| `participantId`                       | String | A Birdwatch-specific user identifier of the user who authored the rating. This is a permanent id, which remains stable even if the user changes their username/handle.                                                                                                                                                                                                                               |                                                                                |
+| `createdAtMillis`                     | Long   | Time the note was created, in milliseconds since epoch.                                                                                                                                                                                                                                                                                                                                              |                                                                                |
+| `timestampMillisOfFirstNonNMRStatus`  | String | The timestamp, in milliseconds since epoch, of when the note got its first status besides “Needs More Ratings”. Contains -1 if the note never left “Needs More Ratings” status.                                                                                                                                                                                                                      | 1 if “Yes” is selected, 0 if “No” is selected                                  |
+| `firstNonNMRStatus`                   | String | The first status the note received when it got a status besides “Needs More Ratings”. Contains -1 if the note never left “Needs More Ratings” status.                                                                                                                                                                                                                                                | "", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL"                   |
+| `timestampMillisOfCurrentStatus`      | String | The timestamp, in milliseconds since epoch, of when the note got its current status, including “Needs More Ratings”.                                                                                                                                                                                                                                                                                 | 1 if “Yes” is selected, 0 if “No” is selected                                  |
+| `currentStatus`                       | String | The current status of the note.                                                                                                                                                                                                                                                                                                                                                                      | "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |
+| `timestampMillisOfLatestNonNMRStatus` | String | The timestamp, in milliseconds since epoch, of when the note most recently received a status of either “Currently Rated Helpful” or “Currently Rated Not Helpful”. This value will be the same as timestampMillisOfFirstNonNMRStatus if the note has never switched status after receiving its first non-”Needs More Rating” status. Value is -1 if the note never left “Needs More Ratings” status. | "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |
+| `latestNonNMRStatus`                  | String | The latest status the note received, when it got a status besides “Needs More Ratings”. Value is -1 if the note never left “Needs More Ratings” status.                                                                                                                                                                                                                                              | "", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL"                   |
+
+{{< /tab >}}
+
+{{< tab "Ratings" >}}
 
 | Field                                    | Type   | Descripton                                                                                                                                                                                                          | Response values                                                  |
 | ---------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -147,4 +174,5 @@ As we iterate and improve Birdwatch, we will occasionally make changes to the qu
 | `notHelpfulNoteNotNeeded`                | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Note not needed on this Tweet” is selected, else 0.        |
 
 {{< /tab >}}
+
 {{< /tabs >}}
