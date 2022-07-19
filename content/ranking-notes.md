@@ -26,7 +26,9 @@ The sections below describe how notes are assigned statuses, which determines ho
 
 All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings. Once a note has received at least 5 ratings, it is assigned a Note Helpfulness Score according to the algorithm described below.
 
-Notes with a Note Helpfulness Score of –0.08 and below are assigned Currently Not Rated Helpful, and notes with a score of 0.40 and above are assigned Currently Rated Helpful. Notes with scores in between –0.08 and 0.40 remain labeled as Needs more Ratings.
+If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on Twitter even if its status is Currently Rated Helpful.
+
+Notes with a Note Helpfulness Score of 0.40 and above are assigned Currently Rated Helpful. Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Currently Rated Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Notes with scores in between remain labeled as Needs more Ratings.
 
 In addition to Currently Rated / Not Rated Helpful status, labels also show the two most commonly chosen explanation tags which describe the reason the note was rated helpful/unhelpful.
 
@@ -129,7 +131,6 @@ For not-helpful notes:
 3. Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](../contributor-scores/#filtering-ratings-based-on-helpfulness-scores)
 4. Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3
 5. Assign final note status labels to notes based on whether their intercept terms (scores) are above or below thresholds
-
 6. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](./#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
    <br/>
    <br/>
@@ -140,12 +141,18 @@ For not-helpful notes:
 
 ## What’s New?
 
-**March 09, 2022**
+**July 13, 2022**
+
+- To prevent manipulation of helpfulness scores through deletion of notes, notes that are deleted will continue to be assigned note statuses based on the ratings they received. These statuses are factored into author helpfulness scores.
+- Valid Ratings Definition Update: instead of just the first 5 ratings on a note, all ratings will be valid if they are within the first 48 hours after note creation and were created before the note first received its status of Currently Rated Helpful or Currently Rated Not Helpful (or if its status flipped between Currently Rated Helpful and Currently Rated Not Helpful, then all ratings will be valid up until that flip occurred).
+- To make the above two changes possible, we are releasing a new dataset, note status history, which contains timestamps for when each note received statuses, and the timestamp and hashed participant ID of the author of a note. This data file is being populated now and will be available on the Birdwatch [Data Download](https://twitter.com/i/birdwatch/download-data) page beginning Monday July 18, 2022.
+
+**Mar 09, 2022**
 
 - Temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading”
 - Adjusted thresholds for notes statuses
 
-**Mar 1, 2022**
+**Feb 28, 2022**
 
 - Launched entirely new algorithm to compute note statuses (Currently Rated Helpful, Currently Not Rated Helpful), which looks for agreement across different viewpoints using a matrix factorization method. Updates contributor helpfulness scores to reflect helpfulness so that contributors whose contributions are helpful to people from a wide range of viewpoints earn higher scores. Uses helpfulness scores to identify a subset of contributor ratings to include in a final round of note scoring. This entirely replaces the previous algorithm which weighted ratings by raters’ helpfulness scores.
 
