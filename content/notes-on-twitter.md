@@ -17,11 +17,9 @@ Birdwatch's goal is to show helpful context to people when they come across pote
 
 ## Note views
 
-Note authors can see how many times their note has been viewed on Twitter, by looking at their Birdwatch profile page, or anywhere else they see their own note.
+Birdwatch contributors can see how many times a note has been viewed on Twitter. This number only appears after the first 1000 views, and only reflects the small test group of people who can currently see Birdwatch notes. Contributors can expect the number of views on their notes to increase significantly as we expand Birdwatch's notes to more people on Twitter.
 
 {{< figure src="../images/views-on-twitter.png">}}
-
-This number only appears after the first 1000 views, and only reflects the small test group of people who can currently see Birdwatch notes. Contributors can expect the number of views on their notes to increase significantly as we expand Birdwatch's notes to more people on Twitter.
 
 {{< hint info >}}
 
