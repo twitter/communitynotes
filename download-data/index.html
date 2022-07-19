@@ -734,22 +734,38 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 <hr>
 <div class="gdoc-page__anchorwrap"><h2 id="working-with-the-birdwatch-data">Working with the Birdwatch data<a data-clipboard-text="https://twitter.github.io/birdwatch/download-data/#working-with-the-birdwatch-data" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Working with the Birdwatch data" href="#working-with-the-birdwatch-data"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <div class="gdoc-page__anchorwrap"><h3 id="data-snapshots">Data snapshots<a data-clipboard-text="https://twitter.github.io/birdwatch/download-data/#data-snapshots" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Data snapshots" href="#data-snapshots"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
-<p>The Birdwatch data is released as two separate files: one containing a table representing all Birdwatch notes and one containing a table representing all Birdwatch note ratings. These tables can be joined together on the <code>noteId</code> field to create a combined dataset with information about notes and their ratings. The data is released in two separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model). Currently, we release one cumulative file each for notes and note ratings. However, in the future, if the data ever grows too large, we will split the data into multiple files as needed.</p>
-<p>A new snapshot of the Birdwatch public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshot is a cumulative file and contains all non-deleted notes and note ratings ever contributed to Birdwatch, as of 48 hours before the dataset release time. The data download page displays a date stamp indicating the most recent date of data included in the downloadable files.</p>
+<p>The <a href="https://twitter.com/i/birdwatch/download-data">Birdwatch data</a> is released as three separate files: one containing a table representing all Birdwatch notes, one containing a table representing all Birdwatch note ratings, and one containing a table with metadata about notes including what statuses they received and when. These tables can be joined together on the noteId field to create a combined dataset with information about notes and their ratings. The data is released in three separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model).</p>
+<p>Currently, we release one cumulative file each for notes, notes status history, and note ratings. However, in the future, if the data ever grows too large, we will split the data into multiple files as needed.</p>
+<p>A new snapshot of the Birdwatch public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshots are cumulative files, but only contain notes and ratings that were created as of 48 hours before the dataset release time. When notes and ratings are deleted, they will no longer be released in any future versions of the data downloads, although the note status history dataset will continue to contain metadata about all scored notes even after they’ve been deleted, which includes noteId, creation time, the hashed participant ID of the note’s author, and a history of which statuses each notes received and when; however, all of the content of the note itself e.g. the note’s text will no longer be available.</p>
+<p>The <a href="https://twitter.com/i/birdwatch/download-data">data download page in Birdwatch</a> displays a date stamp indicating the most recent date of data included in the downloadable files.</p>
 <div class="gdoc-page__anchorwrap"><h3 id="file-structure">File structure<a data-clipboard-text="https://twitter.github.io/birdwatch/download-data/#file-structure" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor File structure" href="#file-structure"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
-<p>Each data snapshot table is stored in <code>tsv</code> (tab-separated values) file format with a header row. This means that each row is separated by a newline, each column is separated by a tab, and the first row contains the column names instead of data. The note and note rating data is directly taken from the user-submitted note creation and note rating forms, with only minimal added metadata (like ids and timestamp). Below, we will describe each column’s data, including the question or source that generated the data, data type, and other relevant information.</p>
+<p>Each data snapshot table is stored in tsv (tab-separated values) file format with a header row. This means that each row is separated by a newline, each column is separated by a tab, and the first row contains the column names instead of data. The note and note rating data is directly taken from the user-submitted note creation and note rating forms, with only minimal added metadata (like ids and timestamp). The note status history file contains metadata derived from the raw notes and ratings, and contains the outputs of the <a href="../ranking-notes">note scoring algorithm</a>. Below, we will describe each column’s data, including the question or source that generated the data, data type, and other relevant information.</p>
 <br>
 <blockquote class="gdoc-hint info">
   <div class="gdoc-page__anchorwrap"><h3 id="updates-to-the-data">Updates to the Data<a data-clipboard-text="https://twitter.github.io/birdwatch/download-data/#updates-to-the-data" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Updates to the Data" href="#updates-to-the-data"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
-<p>As we iterate and improve Birdwatch, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms. When we do this, some question fields and columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and data and when those changes were made.</p>
+<p>As we iterate and improve Birdwatch, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms, or additional metadata shared about notes and rating. When we do this, some question fields / columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and other updates we have made to the data, as well as when those changes were made.</p>
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="ebddede1-0">
+  <label class="gdoc-expand__head flex justify-between" for="fd5ce9ea-0">
+    <span>2022-06-15 - New Note Status History dataset </span>
+    <svg width="18" height="11" viewBox="0 0 18 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.2069 1.04299C16.8169 0.652988 16.1839 0.652988 15.7929 1.04299L8.99988 7.83599L2.20688 1.04299C1.81688 0.652988 1.18388 0.652988 0.792875 1.04299C0.401875 1.43299 0.402875 2.06599 0.792875 2.45699L8.29288 9.95699C8.48788 10.152 8.74288 10.25 8.99988 10.25C9.25688 10.25 9.51187 10.152 9.70687 9.95699L17.2069 2.45699C17.5969 2.06699 17.5969 1.43399 17.2069 1.04299Z" fill="#AAB8C2"/>
+      </svg>
+  </label>
+  <input id="fd5ce9ea-0" type="checkbox" class="gdoc-expand__control hidden" />
+  <div class="gdoc-markdown--nested gdoc-expand__content">
+    <ul>
+<li>Added entirely new note status history dataset</li>
+</ul>
+  </div>
+</div>
+<div class="gdoc-expand">
+  <label class="gdoc-expand__head flex justify-between" for="ebddede1-1">
     <span>2021-12-15 - Updated Note Rating Questions</span>
     <svg width="18" height="11" viewBox="0 0 18 11" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M17.2069 1.04299C16.8169 0.652988 16.1839 0.652988 15.7929 1.04299L8.99988 7.83599L2.20688 1.04299C1.81688 0.652988 1.18388 0.652988 0.792875 1.04299C0.401875 1.43299 0.402875 2.06599 0.792875 2.45699L8.29288 9.95699C8.48788 10.152 8.74288 10.25 8.99988 10.25C9.25688 10.25 9.51187 10.152 9.70687 9.95699L17.2069 2.45699C17.5969 2.06699 17.5969 1.43399 17.2069 1.04299Z" fill="#AAB8C2"/>
       </svg>
   </label>
-  <input id="ebddede1-0" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="ebddede1-1" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <p><strong>Updated Columns</strong></p>
 <ul>
@@ -765,13 +781,13 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
   </div>
 </div>
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="aecb918f-1">
+  <label class="gdoc-expand__head flex justify-between" for="aecb918f-2">
     <span>2021-06-30 - Updated Note Rating Questions</span>
     <svg width="18" height="11" viewBox="0 0 18 11" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M17.2069 1.04299C16.8169 0.652988 16.1839 0.652988 15.7929 1.04299L8.99988 7.83599L2.20688 1.04299C1.81688 0.652988 1.18388 0.652988 0.792875 1.04299C0.401875 1.43299 0.402875 2.06599 0.792875 2.45699L8.29288 9.95699C8.48788 10.152 8.74288 10.25 8.99988 10.25C9.25688 10.25 9.51187 10.152 9.70687 9.95699L17.2069 2.45699C17.5969 2.06699 17.5969 1.43399 17.2069 1.04299Z" fill="#AAB8C2"/>
       </svg>
   </label>
-  <input id="aecb918f-1" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="aecb918f-2" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <ul>
 <li>Note Helpfulness question now has 3 response categories (Yes, Somewhat, No), rather than 2 (originally: Yes, No)</li>
@@ -813,7 +829,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     <input type="radio" class="gdoc-tabs__control hidden" name="tabs-uniqueid" id="tabs-uniqueid-0"
       checked="checked"  />
     <label for="tabs-uniqueid-0" class="gdoc-tabs__label">
-      Notes table
+      Notes
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <table>
@@ -966,7 +982,82 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     <input type="radio" class="gdoc-tabs__control hidden" name="tabs-uniqueid" id="tabs-uniqueid-1"
        />
     <label for="tabs-uniqueid-1" class="gdoc-tabs__label">
-      Ratings Table
+      Note Status History
+    </label>
+    <div class="gdoc-markdown--nested gdoc-tabs__content">
+      <table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Descripton</th>
+<th>Response values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>noteId</code></td>
+<td>Long</td>
+<td>The unique ID of this note.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>participantId</code></td>
+<td>String</td>
+<td>A Birdwatch-specific user identifier of the user who authored the rating. This is a permanent id, which remains stable even if the user changes their username/handle.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>createdAtMillis</code></td>
+<td>Long</td>
+<td>Time the note was created, in milliseconds since epoch.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>timestampMillisOfFirstNonNMRStatus</code></td>
+<td>String</td>
+<td>The timestamp, in milliseconds since epoch, of when the note got its first status besides “Needs More Ratings”. Contains -1 if the note never left “Needs More Ratings” status.</td>
+<td>1 if “Yes” is selected, 0 if “No” is selected</td>
+</tr>
+<tr>
+<td><code>firstNonNMRStatus</code></td>
+<td>String</td>
+<td>The first status the note received when it got a status besides “Needs More Ratings”. Contains -1 if the note never left “Needs More Ratings” status.</td>
+<td>&ldquo;&rdquo;, &ldquo;CURRENTLY_RATED_HELPFUL&rdquo;, &ldquo;CURRENTLY_RATED_NOT_HELPFUL&rdquo;</td>
+</tr>
+<tr>
+<td><code>timestampMillisOfCurrentStatus</code></td>
+<td>String</td>
+<td>The timestamp, in milliseconds since epoch, of when the note got its current status, including “Needs More Ratings”.</td>
+<td>1 if “Yes” is selected, 0 if “No” is selected</td>
+</tr>
+<tr>
+<td><code>currentStatus</code></td>
+<td>String</td>
+<td>The current status of the note.</td>
+<td>&ldquo;NEEDS_MORE_RATINGS&rdquo;, &ldquo;CURRENTLY_RATED_HELPFUL&rdquo;, &ldquo;CURRENTLY_RATED_NOT_HELPFUL&rdquo;</td>
+</tr>
+<tr>
+<td><code>timestampMillisOfLatestNonNMRStatus</code></td>
+<td>String</td>
+<td>The timestamp, in milliseconds since epoch, of when the note most recently received a status of either “Currently Rated Helpful” or “Currently Rated Not Helpful”. This value will be the same as timestampMillisOfFirstNonNMRStatus if the note has never switched status after receiving its first non-”Needs More Rating” status. Value is -1 if the note never left “Needs More Ratings” status.</td>
+<td>&ldquo;NEEDS_MORE_RATINGS&rdquo;, &ldquo;CURRENTLY_RATED_HELPFUL&rdquo;, &ldquo;CURRENTLY_RATED_NOT_HELPFUL&rdquo;</td>
+</tr>
+<tr>
+<td><code>latestNonNMRStatus</code></td>
+<td>String</td>
+<td>The latest status the note received, when it got a status besides “Needs More Ratings”. Value is -1 if the note never left “Needs More Ratings” status.</td>
+<td>&ldquo;&rdquo;, &ldquo;CURRENTLY_RATED_HELPFUL&rdquo;, &ldquo;CURRENTLY_RATED_NOT_HELPFUL&rdquo;</td>
+</tr>
+</tbody>
+</table>
+
+    </div>
+  
+    <input type="radio" class="gdoc-tabs__control hidden" name="tabs-uniqueid" id="tabs-uniqueid-2"
+       />
+    <label for="tabs-uniqueid-2" class="gdoc-tabs__label">
+      Ratings
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <table>
