@@ -38,7 +38,7 @@ Each data snapshot table is stored in tsv (tab-separated values) file format wit
 
 As we iterate and improve Birdwatch, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms, or additional metadata shared about notes and rating. When we do this, some question fields / columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and other updates we have made to the data, as well as when those changes were made.
 
-{{< expand "2022-06-15 - New Note Status History dataset " >}}
+{{< expand "2022-07-19 - New Note Status History dataset " >}}
 
 - Added entirely new note status history dataset
 
