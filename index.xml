@@ -88,8 +88,9 @@ If you have questions or feedback about the Birdwatch public data or would like 
       
       <guid>https://twitter.github.io/birdwatch/examples/</guid>
       <description>Great Birdwatch notes follow the program&amp;rsquo;s values: They build understanding, are written in good faith, and are helpful even to those who disagree.
-   &amp;ldquo;Whales aren&amp;rsquo;t real&amp;rdquo;   Here&amp;rsquo;s a Tweet making misleading claims about whales, followed by helpful and unhelpful Birdwatch notes:
-Whales are not actually mammals. If Humans (land mammals) can’t drink seawater — just try it! — how can supposed sea mammals like whales stay hydrated?</description>
+ &amp;ldquo;Whales aren&amp;rsquo;t real&amp;rdquo; Here&amp;rsquo;s a Tweet making misleading claims about whales, followed by helpful and unhelpful Birdwatch notes:
+Whales are not actually mammals. If Humans (land mammals) can’t drink seawater — just try it! — how can supposed sea mammals like whales stay hydrated?
+&amp;mdash; Birdwatch Example (@bwatchexample) January 25, 2021  Helpful Birdwatch note Whales are indeed mammals.</description>
     </item>
     
     <item>
@@ -139,7 +140,8 @@ If you download the notes, ratings, and note status history files made available
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/overview/</guid>
-      <description>Birdwatch aims to create a better informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading. Contributors can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other contributors’ notes. Through consensus from a broad and diverse set of people, our eventual goal is that the most helpful notes will be visible directly on Tweets, available to everyone on Twitter.</description>
+      <description>Birdwatch aims to create a better informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
+Contributors can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other contributors’ notes. Through consensus from a broad and diverse set of people, our eventual goal is that the most helpful notes will be visible directly on Tweets, available to everyone on Twitter.</description>
     </item>
     
     <item>
@@ -180,7 +182,7 @@ Rating notes on the Birdwatch site Go to the Birdwatch Site&amp;rsquo;s Home pag
       
       <guid>https://twitter.github.io/birdwatch/values/</guid>
       <description>Birdwatch aims to provide context on Tweets in a way that a broad set of people with diverse perspectives find helpful. We ask that all Birdwatch contributors agree to uphold three core values:
-  Contribute to build understanding   Birdwatch seeks to provide helpful context so people can stay better informed about Tweets they see. It’s not a place for quick dunks, personal opinions, or insults. Write clear, evidence-based notes to help everyone, even skeptics, better understand a Tweet and why it might be misleading.</description>
+    Contribute to build understanding  Birdwatch seeks to provide helpful context so people can stay better informed about Tweets they see. It’s not a place for quick dunks, personal opinions, or insults. Write clear, evidence-based notes to help everyone, even skeptics, better understand a Tweet and why it might be misleading.</description>
     </item>
     
     <item>
@@ -190,8 +192,7 @@ Rating notes on the Birdwatch site Go to the Birdwatch Site&amp;rsquo;s Home pag
       
       <guid>https://twitter.github.io/birdwatch/writing-notes/</guid>
       <description>Anyone in the US can read Birdwatch notes, but only Birdwatch contributors can add new notes to Tweets. Here&amp;rsquo;s how to add a note:
- Click or tap the ••• menu on the Tweet&amp;rsquo;s top right and then Write a Birdwatch note.     Before starting, you’ll see a reminder about Birdwatch values — a prompt to promote helpful contributions.
-  Answer the required multiple choice questions. These are designed to understand, in a structured way, why a Tweet might or might not be misleading.</description>
+   Click or tap the ••• menu on the Tweet&#39;s top right and then **Write a Birdwatch note**.       Before starting, you’ll see a reminder about Birdwatch values, — a prompt to promote helpful contributions.    Answer the required multiple choice questions.</description>
     </item>
     
   </channel>

@@ -819,18 +819,28 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 10. SourcesMissingOrUnreliable
 11. OpinionSpeculationOrBias
 12. Other
-</code></pre></div><div class="gdoc-page__anchorwrap"><h3 id="complete-algorithm-steps">Complete Algorithm Steps:<a data-clipboard-text="https://twitter.github.io/birdwatch/ranking-notes/#complete-algorithm-steps" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Complete Algorithm Steps:" href="#complete-algorithm-steps"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+</code></pre></div></br>
+<div class="gdoc-page__anchorwrap"><h3 id="complete-algorithm-steps">Complete Algorithm Steps:<a data-clipboard-text="https://twitter.github.io/birdwatch/ranking-notes/#complete-algorithm-steps" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Complete Algorithm Steps:" href="#complete-algorithm-steps"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
 <ol>
-<li>Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence)</li>
-<li>Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.</li>
-<li>Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in <a href="../contributor-scores/#filtering-ratings-based-on-helpfulness-scores">Filtering Ratings Based on Helpfulness Scores</a></li>
-<li>Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3</li>
-<li>Assign final note status labels to notes based on whether their intercept terms (scores) are above or below thresholds</li>
-<li>Assign the top two explanation tags that match the note’s final status label as in <a href="./#determining-note-status-explanation-tags">Determining Note Status Explanation Tags</a>, or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
-<br/>
-<br/></li>
+<li>
+<div>Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence)</div>
+</li>
+<li>
+<div>Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.</div>
+</li>
+<li>
+<div>Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in <a href="../contributor-scores/#filtering-ratings-based-on-helpfulness-scores">Filtering Ratings Based on Helpfulness Scores</a></div>
+</li>
+<li>
+<div>Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3</div>
+</li>
+<li>
+<div>Assign final note status labels to notes based on whether their intercept terms (scores) are above or below thresholds</div>
+</li>
+<li>
+<div>Assign the top two explanation tags that match the note’s final status label as in <a href="./#determining-note-status-explanation-tags">Determining Note Status Explanation Tags</a>, or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.</div>
+</li>
 </ol>
-<hr>
 <br/>
 <div class="gdoc-page__anchorwrap"><h2 id="whats-new">What’s New?<a data-clipboard-text="https://twitter.github.io/birdwatch/ranking-notes/#whats-new" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor What’s New?" href="#whats-new"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <p><strong>July 13, 2022</strong></p>
