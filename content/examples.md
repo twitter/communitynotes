@@ -12,7 +12,7 @@ Great Birdwatch notes follow the [program's values](../values): They build under
 
 <br>
 
-1. ### "Whales aren't real"
+### "Whales aren't real"
 
 Here's a Tweet making misleading claims about whales, followed by helpful and unhelpful Birdwatch notes:
 
@@ -48,7 +48,7 @@ Just another conspiracy theory from another terrible TV host.
 
 <br />
 
-2. ### "Nutrition labels are lying"
+### "Nutrition labels are lying"
 
 Here's a Tweet making misleading claims about nutrition labels, followed by helpful and unhelpful Birdwatch notes:
 
