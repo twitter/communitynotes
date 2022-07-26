@@ -57,11 +57,11 @@ Twitter doesn’t write, rate or moderate notes (unless they break the Twitter r
 
 ### How does a Tweet get a note?
 
-Contributors can suggest a note on any Tweet. Notes are then rated for helpfulness by other contributors. Notes are only shown on Tweets if they are rated helpful by enough people from different perspectives. See how Birdwatch defines and uses [differences of perspectives here](../diversity-of-perspectives/).
+Contributors can suggest a note on any Tweet. Notes are then rated for helpfulness by other contributors. Notes are only shown on Tweets if they are rated helpful by enough people from different perspectives. See how Birdwatch defines and uses [differences of perspectives here](diversity-of-perspectives/).
 
 ### How does Birdwatch prevent abuse?
 
-Birdwatch works differently than the rest of Twitter. It is not a popularity contest. It aims to find notes that many people from different points of view will find helpful. It takes into account not only how many ratings a note has received, but also whether people who rated it helpful seem to come from different perspectives. Because notes need to genuinely be found helpful by people who tend to disagree, Birdwatch is more likely to identify notes that many people find helpful. Read the full details of [how this works](../diversity-of-perspectives/).
+Birdwatch works differently than the rest of Twitter. It is not a popularity contest. It aims to find notes that many people from different points of view will find helpful. It takes into account not only how many ratings a note has received, but also whether people who rated it helpful seem to come from different perspectives. Because notes need to genuinely be found helpful by people who tend to disagree, Birdwatch is more likely to identify notes that many people find helpful. Read the full details of [how this works](diversity-of-perspectives/).
 
 Notes are also subject to Twitter rules and can be reported.
 

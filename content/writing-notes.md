@@ -21,7 +21,7 @@ Anyone in the US can read Birdwatch notes, but only Birdwatch contributors can a
 
 6. <div> If your note gets the status of "Helpful", it will be <a href="../notes-on-twitter/">shown on Twitter as context</a>.</div>
 
-7. You can delete your notes at any time by clicking or tapping the ••• icon on a note.
+7. <div> You can delete your notes at any time by clicking or tapping the ••• icon on a note. </div>
 
 <div class="info-box">
 
