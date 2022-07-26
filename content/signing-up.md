@@ -25,7 +25,7 @@ Our goal is to expand Birdwatch to the global Twitter community. We want anyone 
 <br>
 <br>
 
-# Eligibility
+## Eligibility
 
 To become a Birdwatch contributor, accounts must have:
 
@@ -44,15 +44,15 @@ To become a Birdwatch contributor, accounts must have:
 
 We want anyone to be able to contribute to Birdwatch, and may remove or modify some of these criteria as Birdwatch evolves and as we observe contributor's ability to promote high quality context that people find helpful.
 
-# Admissions
+## Admissions
 
 Our goal is to admit applicants on a rolling, periodic basis. We will admit all contributors who meet the required criteria, but if we have more applicants than pilot slots, we will randomly admit accounts, prioritizing those more likely to participate due to having been recently active on Twitter, and those that tend to follow and engage with different tweets than existing contributors do — so as to reduce the likelihood that contributors would be predominantly from one ideology, background, or interest space.
 
-# Contributions are public
+## Contributions are public
 
 To promote transparency, all contributions to Birdwatch are [anonymized](../aliases/) and publicly visible on the Birdwatch site, **even if an account’s Tweets are protected**.
 
-# Rules
+## Rules
 
 Contributions are also subject to Twitter [Rules](https://help.twitter.com/rules-and-policies/twitter-rules), [Terms of Service](https://twitter.com/tos) and [Privacy Policy](https://twitter.com/privacy). Failure to abide by the rules can result in removal from the Birdwatch pilot, and/or other remediations.
 
