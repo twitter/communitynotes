@@ -224,7 +224,8 @@ span.gdoc-footer__item {
 }
 
 .gdoc-tabs__control:checked + .gdoc-tabs__label {
-  border-bottom: 2px black solid;
+  border-bottom: 4px black solid;
+  color: black;
 }
 
 /* hint */
@@ -472,13 +473,54 @@ h3 {
   border-top: none;
   border-bottom: 1px solid var(--tw-color-gray-light);
 }
-
-ol li::marker,
+.gdoc-markdown ol {
+  list-style: none;
+  counter-reset: my-awesome-counter;
+  margin-left: 0px;
+  padding-left: 0px;
+}
+li {
+  counter-increment: my-awesome-counter;
+  margin-left: 0rem;
+}
 ul li::marker {
   color: var(--tw-color-text-secondary);
   font-weight: 700;
 }
+ol li::before {
+  content: counter(my-awesome-counter);
+  background: var(--tw-color-blue-primary);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: inline-block;
+  line-height: 2rem;
+  color: white;
+  text-align: center;
+  margin-right: 0.5rem;
+  font-weight: bold;
+}
 
+ol li {
+  margin-bottom: 2rem;
+}
+
+ol li:first-child {
+  margin-top: 2rem;
+}
+
+ol li div {
+  margin-top: -1.75rem;
+  margin-left: 3rem;
+  /* display: flex; */
+  /* flex-direction: column; */
+}
+ol li strong {
+  display: block;
+}
+ol li p {
+  display: inline;
+}
 .custom-menu-wrapper {
   display: flex;
   align-items: center;

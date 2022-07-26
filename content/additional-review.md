@@ -29,13 +29,13 @@ If you believe a note rated “helpful” on your Tweet doesn’t add helpful co
 
 ## Request additional review
 
-1. Copy your Tweet's link. It should look like this: `https://twitter.com/{{yourdisplayname}}/status/123456789`
+1. <div><strong> Copy your Tweet's link.</strong><label> It should look like this: <code>https://twitter.com/{{yourdisplayname}}/status/123456789</code> </label></div>
 
-2. Paste the link into the form below.
+2. <div><strong> Paste the link into the form below.</strong></div>
 
-3. Click the `Go to Birdwatch` button.
+3. <div><strong> Click the `Go to Birdwatch` button.</strong></div>
 
-4. In Birdwatch, look for the note that you believe requires additional review and click "Request additional review".
+4. <div><strong> In Birdwatch, look for the note that you believe requires additional review and click "Request additional review".</strong></div>
 
 <form style="display: flex; flex-direction: column;">
 <label for="Tweet URL">Tweet URL</label>
