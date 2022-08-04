@@ -17,7 +17,7 @@ Further, we believe aliases have the potential to:
 
 ### Accountability
 
-It’s important that the benefits of aliases don’t come at the expense of accountability. To that end: all Birdwatch accounts have profile pages that make it easy to see one’s past contributions. Additionally, Birdwatch contributors are [accountable to ratings their contributions receive](https://twitter.com/birdwatch/status/1404519791394758657), giving weight to contributors whose notes and ratings are consistently found helpful by others.
+It’s important that the benefits of aliases don’t come at the expense of accountability. To that end: all Birdwatch accounts have profile pages that make it easy to see one’s past contributions and their [Writing and Rating Impact](../impact). Additionally, Birdwatch contributors are [accountable to ratings their contributions receive](https://twitter.com/birdwatch/status/1404519791394758657), giving weight to contributors whose notes and ratings are consistently found helpful by others.
 
 ## How to choose your alias
 
@@ -29,7 +29,7 @@ Contributors can visit [this link](https://twitter.com/i/birdwatch/u/me) to choo
 
 {{< figure src="../images/alias-03.png">}}
 
-With aliases, every contributor gets a public profile. On this page, everyone can see the notes people have written in the past, as well as the current rating status of those notes. On your own profile, you can also see how many Helpful, Unhelpful, and Somewhat helpful ratings you have received. We'll continue to add information and evolve the profile pages as we learn more about what's important to contributors when using Birdwatch.
+With aliases, every contributor gets a public profile. On this page, everyone can see the notes people have written in the past, as well as their [Writing and Rating Impact](../impact). We'll continue to add information and evolve the profile pages as we learn more about what's important to contributors when using Birdwatch.
 
 ### Aliases are new! Did you contribute before the launch of aliases?
 
