@@ -15,7 +15,7 @@ Contains Tweets sorted by reverse chronological order of when its latest note wa
 
 ### Rated Helpful
 
-Tweets in this tab have at least one note labeled Currently Rated Helpful, at least one of those Currently Rated Helpful notes must have labeled the Tweet “misinformed or potentially misleading” The Tweets that pass these filters are sorted reverse-chronologically by the timestamp of the Tweet’s first-created Currently Rated Helpful note.
+Tweets in this tab have at least one note with the status of Helpful, at least one of those Helpful notes must have labeled the Tweet “misinformed or potentially misleading”. The Tweets that pass these filters are sorted reverse-chronologically by the timestamp of the Tweet’s first-created Helpful note.
 
 ### Needs Your Help
 

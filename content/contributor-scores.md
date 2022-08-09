@@ -12,9 +12,9 @@ In order to get enough data from new raters to be able to assess how similarly t
 
 ## Author Helpfulness Scores
 
-### Author CRH-vs. CRNH Ratio
+### Author Helpful vs. Not Helpful Ratio
 
-This score is the proportion of notes you’ve written (that have gotten at least 5 ratings) that have been labeled Currently Rated Helpful (CRH), minus 5 times the proportion of notes you wrote that were labeled Currently Rated Not Helpful (CRNH).
+This score is the proportion of notes you’ve written (that have gotten at least 5 ratings) that have reached the status of Helpful ("Currently Rated Helpful", or CRH), minus 5 times the proportion of notes you wrote that reached the status of Not Helpful ("Currently Rated Not Helpful", or CRNH).
 
 Contributors must have a ratio greater than 0.0 to be included in the [second round of note scoring](../ranking-notes/#complete-algorithm-steps) (contributors need to write at least 5 CRH notes for every 1 CRNH note they write in order for their ratings to count); this only filters out a very small percentage of raters. Labels on notes that have been deleted after May 19, 2022 continue to affect this score, so that the score can’t be trivially changed by deleting CRNH notes.
 
@@ -24,7 +24,7 @@ This score is the average score of notes you’ve written (that have gotten at l
 
 ## Rater Helpfulness Score
 
-The Rater Helpfulness Score reflects how similar a contributor’s ratings are to the ratings on notes that were eventually labeled “Currently Rated Helpful” or “Currently Not Rated Helpful” (indicating clear widespread consensus among raters, and not labeled “Needs More Ratings”).
+The Rater Helpfulness Score reflects how similar a contributor’s ratings are to the ratings on notes that eventually reached the status of “Helpful” or "Not Helpful” (indicating clear widespread consensus among raters, and not labeled “Needs More Ratings”).
 
 Only [Valid Ratings](./#valid-ratings) are used in computing rater helpfulness scores. This is done to both reward quick rating, and also to prevent one form of artificially gaming this score (retroactively rating old notes with clear labels).
 
@@ -35,11 +35,11 @@ Rater Helpfulness is not defined until the contributor has made at least one val
 A “valid” rating is a rating that’s eligible to be used in determining rater helpfulness scores. The idea is that to prevent manipulation, only ratings that were made before the rater could’ve possibly known what the final note status label is are eligible. To be specific, valid ratings must be:
 
 - Made within the first 48 hours of the note’s creation (because we publicly release all rating data after 48 hours)
-- A rating on a note that eventually ended up getting a Currently Rated Helpful or Not Helpful note status label, so we can compute whether your rating matched the final note status
+- A rating on a note that eventually ended up getting a Helpful or Not Helpful status, so we can compute whether your rating matched the final note status
 - If the note being rated was created before May 18, 2022:
   - Only the first 5 ratings on the note are valid (since note status labels aren’t computed until the note has at least 5 ratings)
 - If the note being rated was created on or after May 18, 2022:
-  - To be valid, the rating must be made before the time of when the note received its first status besides Needs More Ratings. Or, if the note’s status changed from Currently Rated Helpful to Currently Rated Not Helpful or vice versa, then all ratings will be valid as long as they are made before the timestamp of when that most recent status change occurred.
+  - To be valid, the rating must be made before the time of when the note received its first status besides Needs More Ratings. Or, if the note’s status changed from Helpful to Not Helpful or vice versa, then all ratings will be valid as long as they are made before the timestamp of when that most recent status change occurred.
 
 Ratings have the same impact on the note’s final status label whether they are “valid” or not. Whether a rating is valid is only relevant for the computation of rater helpfulness scores.
 
