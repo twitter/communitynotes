@@ -19,7 +19,7 @@ Anyone in the US can read Birdwatch notes, but only Birdwatch contributors can a
 
 5. <div>After it’s submitted, the note will be available on the Birdwatch site for other contributors to read and rate. </div>
 
-6. <div> If your note gets the status of "Helpful", it will be <a href="../notes-on-twitter/">shown on Twitter as context</a>.</div>
+6. <div> If your note earns the status of Helpful, it will be <a href="../notes-on-twitter/">shown on Twitter as context</a> and you'll earn <a href="../impact">Writing Impact</a>.</div>
 
 7. <div> You can delete your notes at any time by clicking or tapping the ••• icon on a note. </div>
 

@@ -22,6 +22,8 @@ main:
         ref: "writing-notes"
       - name: Rating notes
         ref: "rating-notes"
+      - name: Rating and Writing Impact
+        ref: "writing-and-rating-impact"
       - name: Diversity of perspectives
         ref: "diversity-of-perspectives"
       - name: Notes on Twitter

@@ -26,18 +26,18 @@ Birdwatch contributors and people in small test groups may also see cards to rat
 
 {{< figure src="../images/birdwatch-notes-on-twitter.png">}}
 
-## Helpfulness status on notes
+## Note statuses
 
-Birdwatch initially shows most recent notes on top, and displays them with a status indicator that the note **Needs More Ratings**. In some cases — if notes have received enough ratings from other contributors, and certain criteria are met — notes might be moved to the top or bottom of the list and annotated with a header showing that they are **Currently Rated Helpful** or **Currently Not Rated Helpful**.
+All notes start with the status of **Needs More Ratings**.
 
-When notes are **Currently Rated Helpful** or **Currently Not Rated Helpful**, Birdwatch will also show the top two "reasons" selected by raters when rating that note.
+If notes have received enough ratings from other contributors, and [certain criteria are met](../diversity) — notes might reach the status of Helpful or Not Helpful.
+
+When notes reach one of these two statuses, Birdwatch will also show the top two "reasons" selected by raters when rating that note.
 
 {{< figure src="../images/note-statuses.png">}}
 
 Learn how [**Note ranking**](../note-ranking) works under the hood.
 
-## Helpfulness ratings on your notes
+## Rating Impact
 
-You can see how other contributors have rated your notes on the **Your Notes** page, which shows an aggregate score of ratings you've received across all notes you’ve written.
-
-{{< figure src="../images/3-your-notes.png">}}
+When your ratings help a note reach a status of Helpful or Not Helpful, you'll earn Rating Impact. [Learn more here](../impact)
