@@ -1,81 +1,239 @@
 ---
-title: Examples
+title: Note-writing tips
 geekdocBreadcrumb: false
-aliases: ["/note-examples", "/examples", "/contributing/examples"]
+aliases:
+  [
+    "/note-examples",
+    "/examples",
+    "/contributing/examples",
+    "/tips/",
+    "/note-writing-tips/",
+  ]
 ---
 
-Great Birdwatch notes follow the [program's values](../values): They build understanding, are written in good faith, and are helpful even to those who disagree.
+Great Birdwatch notes provide helpful context to Tweets and leave people better informed. But what makes a Birdwatch note helpful?
 
-<br>
+## Helpful attributes
 
----
+<div class="noteAttributeList helpful">
 
-<br>
-
-### "Whales aren't real"
-
-Here's a Tweet making misleading claims about whales, followed by helpful and unhelpful Birdwatch notes:
-
-<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Whales are not actually mammals. If Humans (land mammals) can’t drink seawater — just try it! — how can supposed sea mammals like whales stay hydrated?</p>&mdash; Birdwatch Example (@bwatchexample) <a href="https://twitter.com/bwatchexample/status/1353736772459532293?ref_src=twsrc%5Etfw">January 25, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-
-<div class="note note-helpful">
-
-### Helpful Birdwatch note
-
-Whales are indeed mammals. Marine mammals are able to “stay hydrated” because their kidneys have evolved to excrete more salt + reclaim more water than humans and many other mammals can. They also obtain water from their food. This is widely documented, for example in http://reputable…
-
+- Cites high-quality sources
 - Easy to understand
-- Directly addresses all of the Tweet’s claims
-- Cites high-quality source, which has robust information on the topic
+- Directly addresses the Tweet’s claim
+- Provides important context
+- Neutral or unbiased language
 
 </div>
 
-<div class="note note-unhelpful">
+</br>
 
-### Unhelpful Birdwatch note
+## Unhelpful attributes
 
-Just another conspiracy theory from another terrible TV host.
+Helpful Birdwatch notes steer clear of all of these unhelpful attributes:
 
-- Uses inflammatory language
-- Attacks author instead of addressing content of tweet
-- Does not provide additional information about central points made in tweet
+<div class="noteAttributeList unhelpful">
 
-</div>
-
-<br />
-
----
-
-<br />
-
-### "Nutrition labels are lying"
-
-Here's a Tweet making misleading claims about nutrition labels, followed by helpful and unhelpful Birdwatch notes:
-
-<blockquote class="twitter-tweet"><p lang="en" dir="ltr">The nutrition labels on my food are lying! Using an at-home science kit, the food I expected to be 100 calories is actually 100,000!!! <br><br>We’re being lied to!</p>&mdash; Birdwatch Example (@bwatchexample) <a href="https://twitter.com/bwatchexample/status/1353416445296668673?ref_src=twsrc%5Etfw">January 24, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-
-<div class="note note-helpful">
-
-### Helpful Birdwatch note
-
-This Tweet is misleading and contains an honest error due to unit conversions. Lowercase c calories are not the same as uppercase C Calories. 1 Calorie = 1000 calories, so 100 Calories = 100k calories. An official table of energy units and conversions can be found here: http://reputable...
-
-- Explains a complex topic using clear language
-- Points out where the misleading info likely originated while being respectful to the author
-- Provides a link to reliable information
+- Sources not included or unreliable
+- Sources do not support note
+- Incorrect information
+- Opinion or speculation
+- Typos or unclear language
+- Misses key points or irrelevant
+- Argumentative or biased language
+- Note not needed on this Tweet
+- Harassment or abuse
 
 </div>
 
-<div class="note note-unhelpful">
+</br>
+</br>
 
-### Unhelpful Birdwatch note
+The following are examples of Birdwatch notes that illustrate what makes a note helpful (versus unhelpful):
 
-Did you not take high school chemistry????
-This is literally the most basic unit conversion ever. I can’t believe you fell for something so simple.
-EVERYONE knows that!
+## Example 1
 
-- Attacks author, instead of addressing the content of Tweet
-- Does not provide information about the points made in the Tweet
-- Does not include evidence to show why the Tweet may be misleading
+<div class="tweet">
+    <h3> Tweet </h3>
+    <div class="tweetBodyWrapper">
+        <div class="tweetUserWrapper">
+            <img class="userAvatar"src="../images/user-avatar.jpeg"/>
+            <div class="tweetNameWrapper">
+                <div class="userName">Kian</div>
+                <div class="userHandle">@naurelvr49</div>
+            </div>
+        </div>
+        <div class="tweetContentWrapper">
+            <p>Another big day at the Supreme Court ending with a police car being lit on fire. 😨</p>
+            <img alt="White police car being consumed by flames and smoke" src="../images/tweet-example-1.png"/>
+        </div>
+    </div>
+</div>
 
+<div class="note helpful">
+
+<h3> Helpful Birdwatch note </h3>
+<div class="noteBody">
+
+This photo was taken in Toronto at a protest of the 2010 G20 summit where G20 officials met to discuss the world economy, not at the Supreme Court in Washington D.C. You can see the car in this photo being lit on fire via a local Toronto news broadcast: https://www.youtube.com/watch...
+
+<div class="noteAttributeList helpful">
+
+- Cites high-quality sources
+- Easy to understand
+- Directly addresses the Tweet’s claim
+- Provides important context
+- Neutral or unbiased language
+
+</div>
+</div>
+</div>
+
+<div class="note helpful">
+
+<h3> Helpful Birdwatch note </h3>
+<div class="noteBody">
+
+The last time it was reported that a police car was lit on fire outside the Supreme Court was on 7/15/2020. This photo is not from that incident. This photo was taken in Toronto at a protest of the 2010 G20 summit. https://www.cbsnews.com/news/..., https://www.cp24.com/breaking/...
+
+<div class="noteAttributeList helpful">
+
+- Cites high-quality sources
+- Easy to understand
+- Directly addresses the Tweet’s claim
+- Provides important context
+- Neutral or unbiased language
+
+</div>
+</div>
+</div>
+
+<div class="note unhelpful">
+<h3> Unhelpful Birdwatch note </h3>
+<div class="noteBody">
+
+Unhelpful Birdwatch note:
+
+Wow, people really hate cops. They just park there car to go into the office and it’s suddenly fair game to be torched. Some of you need to relax.
+
+<div class="noteAttributeList unhelpful">
+
+- Sources not included or unreliable
+- Opinion or speculation
+- Typos or unclear language
+- Misses key points or irrelevant
+- Argumentative or biased language
+
+</div>
+</div>
+</div>
+
+<div class="note unhelpful">
+<h3> Unhelpful Birdwatch note </h3>
+<div class="noteBody">
+
+This is totally made up. There are no reports of a fire outside the Supreme Court today. Twitter should ban this account for spreading lies. https://www.supremecourt.gov/
+
+<div class="noteAttributeList unhelpful">
+
+- Sources do not support note
+- Incorrect information
+- Opinion or speculation
+- Misses key points or irrelevant
+
+</div>
+</div>
+</div>
+
+## Example 2
+
+<div class="tweet">
+    <h3> Tweet </h3>
+    <div class="tweetBodyWrapper">
+        <div class="tweetUserWrapper">
+            <img class="userAvatar"src="../images/user-avatar.jpeg"/>
+            <div class="tweetNameWrapper">
+                <div class="userName">Kian</div>
+                <div class="userHandle">@naurelvr49</div>
+            </div>
+        </div>
+        <div class="tweetContentWrapper">
+            <p>Protesters in Medyka, Poland, a small town that borders Ukraine, respond to the number of Ukrainian refugees who have relocated to Poland since Russia invaded. They say that the extension of Ukrainian work visas is starting to limit job opportunities for native Poles.</p>
+            <img src="../images/tweet-example-2.png" alt="protesting crowd gathered in and around a brige in a rainy day"/>
+        </div>
+    </div>
+</div>
+
+<div class="note helpful">
+
+<h3> Helpful Birdwatch note </h3>
+<div class="noteBody">
+
+Medkya is the largest crossing point for Ukrainian refugees into Poland but there have been no protests reported. In fact, the Poles have welcomed refugees and called for more resources to support the Ukrainian people. https://www.unhcr.org/en-us/news/stories...
+
+<div class="noteAttributeList helpful">
+
+- Cites high-quality sources
+- Easy to understand
+- Directly addresses the Tweet’s claim
+- Provides important context
+- Neutral or unbiased language
+
+</div>
+</div>
+</div>
+
+<div class="note helpful">
+
+<h3> Helpful Birdwatch note </h3>
+<div class="noteBody">
+
+A reverse image search places this photo at the 2/21/17 Women’s March in Portland, Oregon. And there are no recorded protests in response to Ukrainian refugees crossing into Medyka, Poland. https://www.npr.org/2022/05/19/...
+
+<div class="noteAttributeList helpful">
+
+- Cites high-quality sources
+- Easy to understand
+- Directly addresses the Tweet’s claim
+- Provides important context
+- Neutral or unbiased language
+
+</div>
+</div>
+</div>
+
+<div class="note unhelpful">
+
+<h3> Unhelpful Birdwatch note </h3>
+<div class="noteBody">
+
+One of the protes signs is in English?! Unlikely this protest is in small Polish town where few people can speak English. https://en.wikipedia.org/wiki/...
+
+<div class="noteAttributeList unhelpful">
+
+- Sources not included or unreliable
+- Opinion or speculation
+- Typos or unclear language
+- Misses key points or irrelevant
+- Argumentative or biased language
+
+</div>
+</div>
+</div>
+
+<div class="note unhelpful">
+
+<h3> Unhelpful Birdwatch note </h3>
+<div class="noteBody">
+
+There’s no protests. No one wants to keep people seeking asylum out. This isn’t America!
+
+<div class="noteAttributeList unhelpful">
+
+- Sources do not support note
+- Opinion or speculation
+- Misses key points or irrelevant
+- Argumentative or biased language
+
+</div>
+</div>
 </div>
