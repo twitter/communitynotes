@@ -42,11 +42,6 @@
   </url>
   
   <url>
-    <loc>https://twitter.github.io/birdwatch/examples/</loc>
-    <lastmod>2022-07-26T19:35:51-04:00</lastmod>
-  </url>
-  
-  <url>
     <loc>https://twitter.github.io/birdwatch/faq/</loc>
     <lastmod>2022-03-02T11:44:16-05:00</lastmod>
   </url>
@@ -64,6 +59,11 @@
   <url>
     <loc>https://twitter.github.io/birdwatch/note-ranking-code/</loc>
     <lastmod>2022-07-19T13:36:40-04:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://twitter.github.io/birdwatch/examples/</loc>
+    <lastmod>2022-08-10T13:31:04-04:00</lastmod>
   </url>
   
   <url>

@@ -82,18 +82,6 @@ If you have questions or feedback about the Birdwatch public data or would like 
     </item>
     
     <item>
-      <title>Examples</title>
-      <link>https://twitter.github.io/birdwatch/examples/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://twitter.github.io/birdwatch/examples/</guid>
-      <description>Great Birdwatch notes follow the program&amp;rsquo;s values: They build understanding, are written in good faith, and are helpful even to those who disagree.
- &amp;ldquo;Whales aren&amp;rsquo;t real&amp;rdquo; Here&amp;rsquo;s a Tweet making misleading claims about whales, followed by helpful and unhelpful Birdwatch notes:
-Whales are not actually mammals. If Humans (land mammals) can’t drink seawater — just try it! — how can supposed sea mammals like whales stay hydrated?
-&amp;mdash; Birdwatch Example (@bwatchexample) January 25, 2021  Helpful Birdwatch note Whales are indeed mammals.</description>
-    </item>
-    
-    <item>
       <title>FAQs</title>
       <link>https://twitter.github.io/birdwatch/faq/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -122,6 +110,17 @@ Only notes that indicate the Tweet as “potentially misleading” are eligible 
       <guid>https://twitter.github.io/birdwatch/note-ranking-code/</guid>
       <description>Here you can find links to code that reproduces the note scoring/ranking code that Birdwatch runs in production.
 If you download the notes, ratings, and note status history files made available on the Birdwatch Data Download page and put them in the same directory as the following files, you can then run python main.py to produce a scoredNotes.tsv file that contains note scores, statuses, and explanation tags that will match what’s running in production (as of the time the data was from).</description>
+    </item>
+    
+    <item>
+      <title>Note-writing tips</title>
+      <link>https://twitter.github.io/birdwatch/examples/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/examples/</guid>
+      <description>Great Birdwatch notes provide helpful context to Tweets and leave people better informed. But what makes a Birdwatch note helpful?
+Helpful attributes  Cites high-quality sources Easy to understand Directly addresses the Tweet’s claim Provides important context Neutral or unbiased language    Unhelpful attributes Helpful Birdwatch notes steer clear of all of these unhelpful attributes:
+ Sources not included or unreliable Sources do not support note Incorrect information Opinion or speculation Typos or unclear language Misses key points or irrelevant Argumentative or biased language Note not needed on this Tweet Harassment or abuse     The following are examples of Birdwatch notes that illustrate what makes a note helpful (versus unhelpful):</description>
     </item>
     
     <item>
