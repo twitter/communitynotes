@@ -526,60 +526,105 @@ ol li p {
   align-items: center;
 }
 
-div.note {
-  margin-top: 1rem;
-  padding: 0rem 0.75rem 0.75rem;
-  font-size: 0.85rem;
-  border: 1px solid #ddd;
-  border-radius: 16px;
-  max-width: 550px;
+div.noteAttributeList ul {
+  list-style-type: none;
+  padding-left: 0px;
+  margin-bottom: 2px;
+  font-size: 1rem;
 }
 
-div.note p {
-  font-size: 19px;
-  line-height: 1.3125;
-  color: var(--tw-color-text-primary);
-}
-
-div.note h3 {
-  font-size: 0.75rem;
-}
-
-div.note p:first-of-type:before {
-  display: block;
-}
-
-div.note.note-tweet {
-  border-top: 4px solid var(--tw-color-gray-light);
-}
-
-div.note ul {
-  list-style: none;
-  padding-left: 0;
-  padding-top: 0.5rem;
-  padding-bottom: 0rem;
-  margin-bottom: 0;
-  border-top: 2px solid #eee;
-}
-
-div.note a {
-  color: var(--tw-color-gray-deep);
-}
-
-div.note ul li {
+div.noteAttributeList ul li {
   padding-left: 1.5rem;
   background-repeat: no-repeat;
   background-size: 1rem;
   background-position: top 0.25rem left 0px;
-  font-size: 0.85rem;
+  font-size: 1rem;
 }
 
-div.note.note-helpful ul li {
+div.noteAttributeList ul li:last-of-type {
+  margin-bottom: 0px;
+}
+
+div.noteAttributeList.helpful ul li {
   background-image: url(images/circle-check.png);
 }
 
-div.note.note-unhelpful ul li {
+div.noteAttributeList.unhelpful ul li {
   background-image: url(images/circle-close.png);
+}
+
+div.note,
+div.tweet {
+  border: 1px solid var(--tw-color-gray-medium);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+div.tweet .tweetBodyWrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+div.tweet .tweetUserWrapper {
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+}
+div.tweet .tweetUserWrapper img {
+  width: 44px;
+  height: 44px;
+  border-radius: 44px;
+  overflow: hidden;
+  margin: 0 0.5rem 0 0;
+}
+
+div.tweet .tweetNameWrapper .userName {
+  font-weight: bolder;
+}
+
+div.tweet .tweetContentWrapper p {
+  font-size: 1.25rem;
+  color: var(--tw-color-text-primary);
+  margin: 1rem 0px;
+}
+
+div.tweet .tweetContentWrapper img {
+  border-radius: 13px;
+  overflow: hidden;
+  margin: 0px;
+}
+
+div.note div.noteAttributeList ul li {
+  font-size: 0.85rem;
+}
+
+div.note .noteBody,
+div.tweet .tweetBodyWrapper,
+div.tweet h3,
+div.note h3 {
+  margin: 0px;
+  padding: 1rem;
+}
+
+div.note a {
+  pointer-events: none;
+}
+
+div.note .noteBody p {
+  font-size: 1.2rem;
+  color: var(--tw-color-text-primary);
+}
+
+div.tweet h3 {
+  background-color: var(--tw-color-gray-faint);
+}
+
+div.note.helpful h3 {
+  background-color: var(--tw-color-green-faded);
+}
+
+div.note.unhelpful h3 {
+  background-color: var(--tw-color-red-faded);
 }
 
 .gdoc-expand {
