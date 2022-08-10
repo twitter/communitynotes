@@ -111,8 +111,6 @@ The last time it was reported that a police car was lit on fire outside the Supr
 <h3> Unhelpful Birdwatch note </h3>
 <div class="noteBody">
 
-Unhelpful Birdwatch note:
-
 Wow, people really hate cops. They just park there car to go into the office and it’s suddenly fair game to be torched. Some of you need to relax.
 
 <div class="noteAttributeList unhelpful">
@@ -210,7 +208,7 @@ One of the protes signs is in English?! Unlikely this protest is in small Polish
 
 <div class="noteAttributeList unhelpful">
 
-- Sources not included or unreliable
+- Sources do not support note
 - Opinion or speculation
 - Typos or unclear language
 - Misses key points or irrelevant
@@ -229,7 +227,7 @@ There’s no protests. No one wants to keep people seeking asylum out. This isn�
 
 <div class="noteAttributeList unhelpful">
 
-- Sources do not support note
+- Sources not included or unreliable
 - Opinion or speculation
 - Misses key points or irrelevant
 - Argumentative or biased language
