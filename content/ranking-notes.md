@@ -30,7 +30,7 @@ If a note is deleted, the algorithm will still score it (using all non-deleted r
 
 Notes with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Notes with scores in between remain with a status of Needs more Ratings.
 
-In addition to Helpful / Not Helpful statuses, labels also show the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
+When a note reaches a status of Helpful / Not Helpful, Birdwatch also shows the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
 
 Notes with the status Needs More Ratings remain sorted by recency (newest first), and notes with a Helpful or Not Helpful status are sorted by their Helpfulness Score.
 
