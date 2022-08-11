@@ -85,7 +85,7 @@ Note: for now, to avoid overfitting on our very small dataset, we only use 1-dim
 
 ### Determining Note Status Explanation Tags
 
-When notes are labeled with a status (either Helpful or Not Helpful), we display the top two explanation tags that were given by raters to explain why they rated the note helpful or not.
+When notes reach a status of Helpful or Not Helpful, Birdwatch displays the top two explanation tags that were given by raters to explain why they rated the note helpful or not.
 
 This is done by simply counting the number of times each explanation tag was given filtered to explanation tags that match the final note status label (e.g., if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status label is reverted back to “Needs More Ratings” (this is very rare).
 
