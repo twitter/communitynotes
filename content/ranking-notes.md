@@ -12,7 +12,7 @@ geekdocToc: 1
 katex: true
 ---
 
-Birdwatch notes are submitted and rated by contributors. Ratings are used to determine note status labels (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the [Birdwatch Site’s timelines](../birdwatch-timelines/), and which notes are displayed as [Birdwatch Cards](../notes-on-twitter/) on Tweets.
+Birdwatch notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the [Birdwatch Site’s timelines](../birdwatch-timelines/), and which notes are displayed as [Birdwatch Cards](../notes-on-twitter/) on Tweets.
 
 Only notes that indicate the Tweet as “potentially misleading” are eligible to be displayed as Birdwatch Cards on Tweets; notes that indicate the Tweet is “not misleading” are not displayed as Birdwatch Cards on Tweets. As of March 9, 2022, we have temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading.” Why? People have been confused about how to rate them. As these notes are effectively making the case that the Tweet does not need a note, raters often rated them as “Unhelpful - Tweet doesn’t need a note” so as to indicate the note should not appear on the Tweet. We are planning an improvement to the rating form to resolve this confusion, and plan to resume assigning statuses to “not misleading” notes once that’s in place.
 
