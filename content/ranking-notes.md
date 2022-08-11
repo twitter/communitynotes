@@ -28,7 +28,7 @@ All Birdwatch notes start out with the Needs More Ratings status until they rece
 
 If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on Twitter even if its status is Helpful.
 
-Notes with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Notes with scores in between remain labeled as Needs more Ratings.
+Notes with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Notes with scores in between remain with a status of Needs more Ratings.
 
 In addition to Helpful / Not Helpful statuses, labels also show the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
 
