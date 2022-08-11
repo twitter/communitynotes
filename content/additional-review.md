@@ -24,7 +24,7 @@ If you believe a note rated “helpful” on your Tweet doesn’t add helpful co
 - Twitter does not determine the outcome of reviews. The aim of Birdwatch is to empower people on Twitter to determine what additional context is helpful.
 - If the additional ratings change a note's status such that it is no longer rated "helpful", the note will stop being shown on the Tweet.
 - Most additional ratings will likely come in within 24 hours following an author's request, but status can change at any time as ratings are received.
-- A review of one note does not impact the status of other existing notes or newly written notes on the Tweet. If new notes are added and become currently rated helpful, they may be shown on the Tweet.
+- A review of one note does not impact the status of other existing notes or newly written notes on the Tweet. If new notes are added and earn the status of Helpful, they may be shown on the Tweet.
 - Notes are subject to the Twitter Rules, so if you believe a note violates them, you can report it to Twitter.
 
 ## Request additional review

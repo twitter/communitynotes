@@ -35,20 +35,20 @@ Many Tweets are seen by most people who will see them in a matter of hours. Note
 - They’re written **on Tweets that have higher visibility**
 - They **quickly receive enough ratings from other contributors**. As a contributor, you can help make this happen by rating notes on the "Needs your help" timeline on Birdwatch.
 
-If a Tweet has a Birdwatch note deemed **Currently rated helpful** by contributors then the note content will be shown in the card, along with a button to rate the note. If the Tweet has multiple notes with **Currently rated helpful** status, the card will show one note, randomly cycling between them at periodic intervals in order to gather additional rating inputs on each.
+If a Tweet has a Birdwatch note that earned a status of Helpful after being rated by enough contributors then the note content will be shown in the card, along with a button to rate the note. If the Tweet has multiple notes that earned a status of Helpful, the card will show one note, randomly cycling between them at periodic intervals in order to gather additional rating inputs on each.
 
-The one exception to this is if a **Currently rated helpful** note deems the Tweet **Not misleading**. In this case, since the Tweet was considered not misleading, the note will not be shown on the Tweet.
+The one exception to this is if a note with a status of Helpful deems the Tweet **Not misleading**. In this case, since the Tweet was considered not misleading, the note will not be shown on the Tweet.
 
 ### Details about which notes are shown
 
-If a Tweet has a Birdwatch note that is “Currently rated helpful” by contributors then the note will be shown in a card on the Tweet, along with a button to rate the note. If the Tweet has multiple notes with “Currently rated helpful” status, the card randomly cycles between the notes at periodic intervals in order to gather additional rating inputs on each.
+If a Tweet has a Birdwatch note that earned a status of Helpful after being rated by enough contributors then the note will be shown in a card on the Tweet, along with a button to rate the note. If the Tweet has multiple notes with a status of Helpful, the card randomly cycles between the notes at periodic intervals in order to gather additional rating inputs on each.
 
-The one exception to this is if a “Currently rated helpful” note deems the Tweet “Not misleading.” In this case, since the Tweet was considered not misleading, the note will not be shown on the Tweet.
+The one exception to this is if a note with a status of Helpful deems the Tweet “Not misleading.” In this case, since the Tweet was considered not misleading, the note will not be shown on the Tweet.
 
 ### Cards only visible to Birdwatch contributors
 
 {{< figure src="../images/notes-on-twitter-count.png">}}
 
-If a Tweet has notes but none yet have “Currently rated helpful” status, the card will show the number of notes, and allow people to tap to read and rate those notes on the Birdwatch site.
+If a Tweet has notes but none yet have earned a status of Helpful, the card will show the number of notes, and allow people to tap to read and rate those notes on the Birdwatch site.
 
-If all notes on a Tweet have “Currently not rated helpful” status, no card will be shown. Birdwatch contributors will still be able to access these notes via the Birdwatch icon displayed in the Tweet details page.
+If all notes on a Tweet have earned a status of Helpful, no card will be shown. Birdwatch contributors will still be able to access these notes via the Birdwatch icon displayed in the Tweet details page.
