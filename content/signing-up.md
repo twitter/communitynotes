@@ -41,6 +41,10 @@ To become a Birdwatch contributor, accounts must have:
 3.  <div><strong>No recent notice of Twitter Rules violations</strong>
     <label>Intended to reduce the likelihood of abusive contributions.</label>
     </div>
+    
+4.  <div><strong>Joined Twitter at least 6 months ago</strong>
+    <label>Intended to reduce spam.</label>
+    </div>
 
 We want anyone to be able to contribute to Birdwatch, and may remove or modify some of these criteria as Birdwatch evolves and as we observe contributor's ability to promote high quality context that people find helpful.
 
