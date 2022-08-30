@@ -4,7 +4,7 @@ geekdocBreadcrumb: false
 aliases: ["/challenges", "/risks", "/about/challenges"]
 ---
 
-We know there are many challenges involved in building aan open, participatory system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.
+We know there are many challenges involved in building an open, participatory system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.
 
 Throughout our development process, we’ve conducted feedback sessions with Twitter customers and subject area experts to identify critical risks to monitor and mitigate. We will be closely focused on understanding and identifying solutions to prevent such risks during our initial pilot phase.
 
