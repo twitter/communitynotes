@@ -5,7 +5,7 @@ aliases:
   ["/writing-notes", "writing-and-rating-notes", "/contributing/writing-notes"]
 ---
 
-Anyone in the US can read Birdwatch notes, but only Birdwatch contributors can add new notes to Tweets. Here's how to add a note:
+Anyone in the US can read Birdwatch notes, but only Birdwatch contributors who've [unlocked the ability to write](../writing-ability) can add new notes to Tweets. Here's how to add a note:
 
 1. <div> Click or tap the ••• menu on the Tweet's top right and then **Write a Birdwatch note**.
       {{< figure src="../images/1-writing-notes.png">}}
