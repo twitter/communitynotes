@@ -22,7 +22,7 @@ You can learn more about how Birdwatch chooses notes for each of these views on 
 
 ## Rating notes on Twitter
 
-Birdwatch contributors and people in small test groups may also see cards to rate notes when browsing Twitter. You can tap to rate those notes.
+Birdwatch contributors and people in limited test groups may also see cards to rate notes when browsing Twitter. You can tap to rate those notes.
 
 {{< figure src="../images/birdwatch-notes-on-twitter.png">}}
 

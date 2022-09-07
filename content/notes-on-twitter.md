@@ -11,13 +11,13 @@ aliases:
   ]
 ---
 
-Birdwatch's goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. During this pilot phase, only a small group of people in the US can see these notes, but our goal is to eventually show them to everyone. Here's how they show up:
+Birdwatch's goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. During this pilot phase, only a limited group of people in the US can see these notes, but our goal is to eventually show them to everyone. Here's how they show up:
 
 {{< figure src="../images/notes-on-twitter-specific.png">}}
 
 ## Note views
 
-Birdwatch contributors can see how many times a note has been viewed on Twitter. This number only appears after the first 1000 views, and only reflects the small test group of people who can currently see Birdwatch notes. Contributors can expect the number of views on their notes to increase significantly as we expand Birdwatch's notes to more people on Twitter.
+Birdwatch contributors can see how many times a note has been viewed on Twitter. This number only appears after the first 1000 views, and only reflects the limited test group of people who can currently see Birdwatch notes. Contributors can expect the number of views on their notes to increase significantly as we expand Birdwatch's notes to more people on Twitter.
 
 {{< figure src="../images/views-on-twitter.png">}}
 
