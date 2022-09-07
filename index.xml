@@ -24,7 +24,7 @@ Sign up here     Eligibility To become a Birdwatch contributor, accounts must ha
       
       <guid>https://twitter.github.io/birdwatch/additional-review/</guid>
       <description>What are Birdwatch notes? Birdwatch is a pilot program that allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading. The aim is to keep people on Twitter better informed by showing notes that people from different points of view will find helpful.
-Notes are only shown to a small set of people in the pilot program, and notes only appear on Tweets when they’ve been rated helpful by enough people from different points of view.</description>
+Notes are only shown to a limited set of people in the pilot program, and notes only appear on Tweets when they’ve been rated helpful by enough people from different points of view.</description>
     </item>
     
     <item>
@@ -88,8 +88,17 @@ If you have questions or feedback about the Birdwatch public data or would like 
       
       <guid>https://twitter.github.io/birdwatch/faq/</guid>
       <description>Who is eligible to participate in the Birdwatch pilot? Is there an approval process?   People in the US can sign up to become contributors in the pilot. Accounts must meet a few criteria to be eligible. Learn more here.
-In addition, a small, randomized group of people in the US may see Helpful notes on Tweets, in order to help assess their quality.
-In addition to people who have signed up to become Birdwatch contributors, small test groups in the US may see Helpful notes on on Tweets, in order to help assess their quality.</description>
+In addition to people who have signed up to become Birdwatch contributors, limited test groups in the US may see Helpful notes on on Tweets, in order to help assess their quality.</description>
+    </item>
+    
+    <item>
+      <title>Locking and unlocking the ability to write notes</title>
+      <link>https://twitter.github.io/birdwatch/writing-ability/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/writing-ability/</guid>
+      <description>To keep the quality of Birdwatch notes high, Birdwatch contributors earn (and can lose) the ability to write notes.
+Everyone who joins Birdwatch can rate notes. They can unlock the ability to write notes by helping to identify helpful and unhelpful notes. If notes they write are found helpful, they’ll continue to have greater impact. If notes they write are consistently found not helpful, their ability to write notes will be temporarily locked, and they’ll have to earn it back.</description>
     </item>
     
     <item>
@@ -129,7 +138,7 @@ Helpful attributes  Cites high-quality sources Easy to understand Directly addre
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/notes-on-twitter/</guid>
-      <description>Birdwatch&amp;rsquo;s goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. During this pilot phase, only a small group of people in the US can see these notes, but our goal is to eventually show them to everyone. Here&amp;rsquo;s how they show up:
+      <description>Birdwatch&amp;rsquo;s goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. During this pilot phase, only a limited group of people in the US can see these notes, but our goal is to eventually show them to everyone. Here&amp;rsquo;s how they show up:
   Note views Birdwatch contributors can see how many times a note has been viewed on Twitter.</description>
     </item>
     
