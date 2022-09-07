@@ -20,6 +20,8 @@ main:
         ref: "aliases"
       - name: Writing notes
         ref: "writing-notes"
+      - name: Locking and unlocking the ability to write notes
+        ref: "writing-ability"
       - name: Rating notes
         ref: "rating-notes"
       - name: Rating and Writing Impact

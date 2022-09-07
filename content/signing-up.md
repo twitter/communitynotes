@@ -16,7 +16,7 @@ weight: 1
 
 During the first phase of the pilot, Birdwatch is limited to a small test group in the US.
 
-Our goal is to expand Birdwatch to the global Twitter community. We want anyone to be able to participate and know that having contributors with different points of view is essential to Birdwatch helpfully addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
+Our goal is to expand Birdwatch to the global Twitter community. We want anyone to be able to participate and know that having contributors with [different points of view](../diversity) is essential to Birdwatch helpfully addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
 
 ## {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
 
@@ -41,7 +41,6 @@ To become a Birdwatch contributor, accounts must have:
 3.  <div><strong>No recent notice of Twitter Rules violations</strong>
     <label>Intended to reduce the likelihood of abusive contributions.</label>
     </div>
-    
 4.  <div><strong>Joined Twitter at least 6 months ago</strong>
     <label>Intended to reduce spam.</label>
     </div>

@@ -8,9 +8,7 @@ aliases: ["/faq", "/about/faq"]
 
 People in the US can sign up to become contributors in the pilot. Accounts must meet a few criteria to be eligible. [Learn more here](../signup/).
 
-In addition, a small, randomized group of people in the US may see Helpful notes on Tweets, in order to help assess their quality.
-
-In addition to people who have signed up to become Birdwatch contributors, small test groups in the US may see Helpful notes on on Tweets, in order to help assess their quality.
+In addition to people who have signed up to become Birdwatch contributors, limited test groups in the US may see Helpful notes on on Tweets, in order to help assess their quality.
 
 {{< /expand >}}
 
@@ -30,7 +28,7 @@ Any Tweet can receive a Birdwatch note.
 
 {{< expand "Will Birdwatch contributions affect content on Twitter? Will it be used to label or remove Tweets? " >}}
 
-Birdwatch notes that have been rated helpful by enough contributors from [different points of view](../diversity/) will appear directly on Tweets for a small, randomized group of people in the US. They will also be able to rate notes for helpfulness. Beyond that, Birdwatch notes do not affect display of Tweets or enforcement of Twitter Rules. Our focus during this phase of the pilot is gaining confidence that Birdwatch produces context people from [different points of view](../diversity/) find helpful and informative.
+Birdwatch notes that have been rated helpful by enough contributors from [different points of view](../diversity/) will appear directly on Tweets for a limited, randomized group of people in the US. They will also be able to rate notes for helpfulness. Beyond that, Birdwatch notes do not affect display of Tweets or enforcement of Twitter Rules. Our focus during this phase of the pilot is gaining confidence that Birdwatch produces context people from [different points of view](../diversity/) find helpful and informative.
 
 {{< /expand >}}
 
@@ -86,6 +84,8 @@ Tweet authors with Birdwatch notes on their Tweets can request additional review
 All contributors and all Birdwatch contributions are subject to the Twitter Rules. Failure to abide by the rules can result in removal from the Birdwatch pilot, and/or other remediations.
 
 If you believe a note may have violated the Twitter Rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using [this form](https://help.twitter.com/en/forms/birdwatch).
+
+Contributors who consistently write unhelpful notes may also have their [ability to write new notes temporarily locked](../writing-ability).
 
 {{< /expand >}}
 
