@@ -32,7 +32,7 @@ minNumRatersPerNote = 5
 scoredNotesOutputPath = "scoredNotes.tsv"
 notesInputPath = "notes-00000.tsv"
 ratingsInputPath = "ratings-00000.tsv"
-noteStatusHistoryInputPath = "note_status_history-00000.tsv"
+noteStatusHistoryInputPath = "noteStatusHistory-00000.tsv"
 
 # TSV Column Names
 participantIdKey = "participantId"
