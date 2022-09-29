@@ -30,3 +30,17 @@ Anyone in the US can read Birdwatch notes, but only Birdwatch contributors who'v
 {{< button href="../examples" >}}See examples{{< /button >}}
 
 </div>
+<hr>
+<br>
+
+There are two categories of Birdwatch notes contributors can write:
+
+**Notes suggesting context to be shown with the Tweet**
+
+These notes are added by Birdwatch contributors who believe the Tweet is potentially misleading, and would benefit from additional context.
+
+Notes are only shown in Birdwatch, until they reach a status of Helpful when rated by other contributors. If these notes are rated Helpful by enough contributors, including those who typically disagree in their past ratings, they start showing publicly with the Tweet as added context.
+
+**Notes explaining why added context isn’t needed**
+
+These notes are added by contributors who believe the Tweet isn't misleading and does not need additional context. They are only shown in Birdwatch as additional information to raters, and are not shown as context with the Tweet, even if they earn the status of Helpful.
