@@ -139,7 +139,7 @@ Helpful attributes  Cites high-quality sources Easy to understand Directly addre
       
       <guid>https://twitter.github.io/birdwatch/notes-on-twitter/</guid>
       <description>Birdwatch&amp;rsquo;s goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. During this pilot phase, only a limited group of people in the US can see these notes, but our goal is to eventually show them to everyone. Here&amp;rsquo;s how they show up:
-  Note views Birdwatch contributors can see how many times a note has been viewed on Twitter.</description>
+  If a Tweet has a Birdwatch note that earned a status of Helpful after being rated by enough contributors then the note will be shown in a card on the Tweet, along with a button to rate the note.</description>
     </item>
     
     <item>
