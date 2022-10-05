@@ -29,21 +29,23 @@ Our goal is to expand Birdwatch to the global Twitter community. We want anyone 
 
 To become a Birdwatch contributor, accounts must have:
 
-1.  <div>
-    <strong>Verified phone number</strong>
-    <label>This makes it more likely that contributors are real people instead of bots or adversary actors. Learn how to <a href="https://help.twitter.com/managing-your-account/how-to-add-a-phone-number-to-your-account">verify your phone number</a>.</label>
-    </div>
+1. <div><strong>No recent notice of Twitter Rules violations</strong>
+   <label>Intended to reduce the likelihood of abusive contributions.</label>
+   </div>
+2. <div><strong>Joined Twitter at least 6 months ago</strong>
+   <label>Intended to reduce spam.</label>
+   </div>
+3. <div><strong>A verified phone number</strong>
+   </div>
 
-2.  <div><strong>A trusted U.S.-based phone carrier</strong>
-    <label>Intended to reduce the use of artificially created or virtual phone numbers</label>
-    </div>
+That phone number must be:
 
-3.  <div><strong>No recent notice of Twitter Rules violations</strong>
-    <label>Intended to reduce the likelihood of abusive contributions.</label>
-    </div>
-4.  <div><strong>Joined Twitter at least 6 months ago</strong>
-    <label>Intended to reduce spam.</label>
-    </div>
+- **From a trusted U.S.-based phone carrier**
+- **Not associated with other Birdwatch accounts**
+
+These make it more likely that contributors are real people instead of bots or adversary actors.
+
+If you're having issues with signup due to your phone number, see [Phone number troubleshooting](../phone-faq)
 
 We want anyone to be able to contribute to Birdwatch, and may remove or modify some of these criteria as Birdwatch evolves and as we observe contributor's ability to promote high quality context that people find helpful.
 
