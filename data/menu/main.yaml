@@ -49,3 +49,5 @@ main:
         ref: "contributor-scores"
       - name: "Timeline tabs"
         ref: "timeline-tabs"
+      - name: "Guardrails and Circuit breakers"
+        ref: "guardrails"
