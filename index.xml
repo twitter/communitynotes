@@ -45,8 +45,8 @@ Further, we believe aliases have the potential to:
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/birdwatch/challenges/</guid>
-      <description>We know there are many challenges involved in building an open, participatory system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.
-Throughout our development process, we’ve conducted feedback sessions with Twitter customers and subject area experts to identify critical risks to monitor and mitigate. We will be closely focused on understanding and identifying solutions to prevent such risks during our initial pilot phase.</description>
+      <description>We know there are many challenges involved in building an open, participatory system like Birdwatch — from making it resistant to manipulation attempts, to ensuring it isn’t dominated by a simple majority or biased because of the distribution of contributors.
+We&amp;rsquo;ve been building Birdwatch in public since January 2021, and have intentionally designed it to mitigate potential risks. We&amp;rsquo;ve seen encouraging results, but we&amp;rsquo;re constantly designing for challenges that could arise.</description>
     </item>
     
     <item>
@@ -89,6 +89,17 @@ If you have questions or feedback about the Birdwatch public data or would like 
       <guid>https://twitter.github.io/birdwatch/faq/</guid>
       <description>Who is eligible to participate in the Birdwatch pilot? Is there an approval process?   People in the US can sign up to become contributors in the pilot. Accounts must meet a few criteria to be eligible. Learn more here.
 In addition to people who have signed up to become Birdwatch contributors, limited test groups in the US may see Helpful notes on on Tweets, in order to help assess their quality.</description>
+    </item>
+    
+    <item>
+      <title>Guardrails and Circuit Breakers</title>
+      <link>https://twitter.github.io/birdwatch/guardrails/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/guardrails/</guid>
+      <description>Birdwatch aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful context to Tweets that might be misleading or missing important context.
+It’s important that the context that is elevated to viewers from Birdwatch be helpful, informative, and accurate.
+Birdwatch’s note ranking algorithm is designed to help meet these quality standards, along with a number of additional safeguards built over the course of the program’s development.</description>
     </item>
     
     <item>
@@ -214,6 +225,21 @@ Rating notes on the Birdwatch site Go to the Birdwatch Site&amp;rsquo;s Home pag
       <guid>https://twitter.github.io/birdwatch/values/</guid>
       <description>Birdwatch aims to provide context on Tweets in a way that a broad set of people with diverse perspectives find helpful. We ask that all Birdwatch contributors agree to uphold three core values:
     Contribute to build understanding  Birdwatch seeks to provide helpful context so people can stay better informed about Tweets they see. It’s not a place for quick dunks, personal opinions, or insults. Write clear, evidence-based notes to help everyone, even skeptics, better understand a Tweet and why it might be misleading.</description>
+    </item>
+    
+    <item>
+      <title>Video transcript</title>
+      <link>https://twitter.github.io/birdwatch/video-transcript/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/birdwatch/video-transcript/</guid>
+      <description>Introducing Birdwatch.
+Sometimes, Tweets can be misleading or miss important context.
+[Cleve @All_the_sportz 1hr ago tweeted, “Police are reporting that 3 ostriches are loose in Central Station 😲”]
+And you aren&amp;rsquo;t sure whether to trust the Tweet…
+Birdwatch empowers people to share helpful context. Here&amp;rsquo;s how it works:
+Contributors propose notes that add context to Tweets. Notes are then rated by other contributors.
+Decisions aren&amp;rsquo;t made by majority rules or popularity…So one group alone can&amp;rsquo;t determine what notes get shown.</description>
     </item>
     
     <item>

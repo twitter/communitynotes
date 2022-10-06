@@ -662,6 +662,31 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     </li>
 
 
+    
+    
+
+    <li>
+        
+        
+            
+            
+            
+            
+
+            <span class="flex">
+                
+                <a href="/birdwatch/guardrails/"
+                    class="gdoc-nav__entry ">
+                    Guardrails and Circuit breakers
+                </a>
+            </span>
+        
+
+        
+        
+    </li>
+
+
 </ul>
 
         
@@ -777,26 +802,74 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     
 
 
-<p>We know there are many challenges involved in building an open, participatory system like Birdwatch — from making it resistant to manipulation attempts to ensuring it isn’t dominated by a simple majority or biased based on its distribution of contributors.</p>
-<p>Throughout our development process, we’ve conducted feedback sessions with Twitter customers and subject area experts to identify critical risks to monitor and mitigate. We will be closely focused on understanding and identifying solutions to prevent such risks during our initial pilot phase.</p>
-<p>We have intentionally designed our pilot to mitigate potential risks as we seek to learn about them and iterate on solutions carefully. We are starting with a small number of contributors. Further, in this first phase, notes will not affect Tweets or recommendations systems on Twitter, and are <strong>only</strong> visible within the app to Birdwatch contributors and small test groups — those not in the pilot can see notes on a separate <a href="http://birdwatch.twitter.com">Birdwatch site</a>.</p>
-<p>Here are a handful of particular challenges we are aware of as well as our thoughts on how we might address them over time:</p>
-<div class="gdoc-page__anchorwrap"><h2 id="coordinated-manipulation-attempts">Coordinated Manipulation Attempts<a data-clipboard-text="https://twitter.github.io/birdwatch/challenges/#coordinated-manipulation-attempts" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Coordinated Manipulation Attempts" href="#coordinated-manipulation-attempts"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
-<p>Attempts at coordinated manipulation represent a crucial risk for open rating systems. We expect such attempts to occur, and for Birdwatch to be effective, it needs to be sufficiently resistant to them.</p>
-<p>During this initial phase, we are taking some steps to reduce this type of abuse in the pilot: First, people must meet <a href="../signup">eligibility criteria</a> to become a Birdwatch contributor. Additionally, we will prioritize admitting new contributors who tend to follow and engage with different accounts and Tweets than existing contributors do, so as to reduce the likelihood of bias from predominantly one ideology, background, or interest space.</p>
-<p>As we iterate on Birdwatch, we plan to test new ways to address adversarial coordination. For example, Birdwatch factors in not just a count of how many people said a note is helpful but also the <a href="../diversity">diversity of those inputs</a>. Additionally, Birdwatch has a <a href="../contributor-scores/">reputation system</a> in which one earns reputation for contributions that people from a wide range of perspectives find helpful. We believe requiring a diverse range of inputs and giving more weight to inputs from contributors with consistent track records can reduce the impact of coordinated manipulation attempts.</p>
-<div class="gdoc-page__anchorwrap"><h2 id="reflecting-diverse-perspectives-avoiding-bias">Reflecting Diverse Perspectives, Avoiding Bias<a data-clipboard-text="https://twitter.github.io/birdwatch/challenges/#reflecting-diverse-perspectives-avoiding-bias" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Reflecting Diverse Perspectives, Avoiding Bias" href="#reflecting-diverse-perspectives-avoiding-bias"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
-<p>Birdwatch will only be effective if the Tweet context it produces is found to be helpful and appropriate by a wide range of people with diverse views. To achieve this, we’re designing Birdwatch to encourage contributions from people with <a href="../diversity/">diverse perspectives</a>, and to reward contributions that are found helpful by a wide range of people.</p>
-<p>For example, rather than ranking and selecting top notes by a simple majority vote, Birdwatch considers how diverse a note’s set of ratings is and determine whether additional inputs are needed before a consensus is reached. Additionally, Birdwatch can proactively seek ratings from contributors who are likely to provide a different perspective based on their previous ratings.</p>
-<p>Further, Birdwatch has a <a href="../contributor-scores/">reputation system</a> in which one earns reputation for contributions that people from a wide range of perspectives find helpful.</p>
-<p>Finally, to assess Birdwatch’s effectiveness, we regularly evaluate whether people who use Twitter find Birdwatch context to be helpful and informative. This can serve as an indicator of its ability to reflect and be of value to people from a <a href="../diversity/">wide range of perspectives</a>.</p>
-<div class="gdoc-page__anchorwrap"><h2 id="avoiding-harassment">Avoiding Harassment<a data-clipboard-text="https://twitter.github.io/birdwatch/challenges/#avoiding-harassment" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Avoiding Harassment" href="#avoiding-harassment"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
-<p>It’s crucial that people feel safe contributing to Birdwatch. Because of that, all Birdwatch contributors
-get a new, auto-generated display name (or alias) when they join Birdwatch. These aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately.</p>
-<p>You can learn more about <a href="../aliases">aliases here</a>.</p>
-<p>Contributors also have an open communication line with the Birdwatch team to report any issues they experience (they can reach us by DM <a href="https://twitter.com/birdwatch">@Birdwatch</a>). Birdwatch has a dedicated community manager who gathers and responds to contributors’ feedback or concerns via this handle.</p>
-<p>As Birdwatch grows and evolves, we will continue to iterate to ensure it remains a place for healthy conversation, where our contributors feel safe participating.</p>
-<p>Finally, all Birdwatch contributions are subject to Twitter <a href="https://help.twitter.com/rules-and-policies/twitter-rules">Rules</a>, <a href="https://twitter.com/tos">Terms of Service</a> and <a href="https://twitter.com/privacy">Privacy Policy</a>. If you think a Birdwatch note might not abide by the rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting &ldquo;Report”, or by using <a href="https://help.twitter.com/en/forms/birdwatch">this form</a>.</p>
+<p>We know there are many challenges involved in building an open, participatory system like Birdwatch — from making it resistant to manipulation attempts, to ensuring it isn’t dominated by a simple majority or biased because of the distribution of contributors.</p>
+<p>We&rsquo;ve been building Birdwatch in <a href="https://blog.twitter.com/en_us/topics/product/2021/introducing-birdwatch-a-community-based-approach-to-misinformation">public since January 2021</a>, and have intentionally designed it to mitigate potential risks. We&rsquo;ve seen <a href="https://blog.twitter.com/en_us/topics/product/2022/birdwatch-getting-new-onboarding-process-more-visible-notes">encouraging results</a>, but we&rsquo;re constantly designing for challenges that could arise.</p>
+<p>Here are a handful of particular challenges we are aware of as well as steps we are taking to address them:</p>
+<div class="gdoc-page__anchorwrap"><h3 id="preventing-coordinated-manipulation-attempts">Preventing Coordinated Manipulation Attempts<a data-clipboard-text="https://twitter.github.io/birdwatch/challenges/#preventing-coordinated-manipulation-attempts" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Preventing Coordinated Manipulation Attempts" href="#preventing-coordinated-manipulation-attempts"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>Attempts at coordinated manipulation represent a crucial risk for open rating systems. We expect such attempts to occur, and for Birdwatch to be effective, it needs to be resistant to them.</p>
+<p>Birdwatch currently takes multiple steps to reduce the potential for this type of manipulation:</p>
+<ul>
+<li>
+<p>First, all Twitter accounts must meet the <a href="../signup">eligibility criteria</a> to become a Birdwatch contributor. For example, having a unique, verified phone number. These criteria are designed to help prevent the creation of large numbers of fake or sock puppet contributor accounts that could be used for inauthentic rating.</p>
+</li>
+<li>
+<p>Second, Birdwatch doesn&rsquo;t work like many engagement-based ranking systems, where popular content gains the most visibility and people can simply coordinate to mass upvote or downvote content they don&rsquo;t like or agree with. Instead, Birdwatch uses a bridging algorithm — for a note to be shown on a Tweet, it needs to be found helpful by people who have tended to <a href="../diversity">disagree in their past ratings</a>.</p>
+<p><a href="https://www.belfercenter.org/publication/bridging-based-ranking">Academic</a> <a href="https://www.google.com/books/edition/Breaking_the_Social_Media_Prism/ORMCEAAAQBAJ?hl=en&amp;gbpv=0">research</a> indicates this sort of bridging based ranking can help to identify content that is healthier and higher quality, and reduce the risk of elevating polarizing content.</p>
+</li>
+<li>
+<p>In addition to requiring ratings from a diversity of contributors, Birdwatch has a <a href="../contributor-scores/">reputation system</a> in which contributors earn helpfulness scores for contributions that people from a wide range of perspectives find helpful.</p>
+<p>Helpfulness scores give more influence to people with a track record of making high-quality contributions to Birdwatch, and lower influence to new accounts that have yet to demonstrate a track record of helpful ratings and contributions.</p>
+</li>
+<li>
+<p>Lastly, Birdwatch tracks metrics that alert the team if suspicious activity is detected, and has a set of <a href="../guardrails">guardrails and procedures</a> to identify if contribution quality falls below set thresholds. This helps Birdwatch to proactively detect potential coordination attempts and impacts to note quality.</p>
+</li>
+</ul>
+<div class="gdoc-page__anchorwrap"><h3 id="reflecting-diverse-perspectives-avoiding-biased-outcomes">Reflecting Diverse Perspectives, Avoiding Biased Outcomes<a data-clipboard-text="https://twitter.github.io/birdwatch/challenges/#reflecting-diverse-perspectives-avoiding-biased-outcomes" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Reflecting Diverse Perspectives, Avoiding Biased Outcomes" href="#reflecting-diverse-perspectives-avoiding-biased-outcomes"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>Birdwatch will most be effective if the context it produces can be found to be helpful by people of multiple points of view–not just people from one group or another. To work towards this goal, Birdwatch currently takes the following steps:</p>
+<ul>
+<li>
+<p>First, as described above, Birdwatch uses a <a href="../note-ranking">bridging based algorithm</a> to identify notes that are likely to be helpful to people from many points of view. This helps to prevent one-sided ratings and to prevent a single group from being able to engage in mass voting to determine what notes are shown.</p>
+</li>
+<li>
+<p>Second, Birdwatch can proactively seek ratings from contributors who are likely to provide a different perspective based on their rating history. This is currently done in the <a href="../rating-notes">Needs Your Help tab</a>, and we are exploring new ways to quickly collect ratings on notes from a wide range of contributors.</p>
+</li>
+<li>
+<p>Third, to help ensure that people of diverse backgrounds and viewpoints feel safe and empowered to participate, Birdwatch has implemented program <a href="../aliases">aliases</a> that aren’t publicly associated with contributors’ Twitter accounts. This can help prevent one-sided-ness by providing more diverse contributors with a voice in the system.</p>
+</li>
+<li>
+<p>Finally, we regularly survey representative samples of Twitter customers who are not Birdwatch contributors to assess whether a broad range of people on Twitter are likely to find the context in Birdwatch notes to be helpful, and whether the notes can be informative to people of different points of view.</p>
+<p>This is one indicator of Birdwatch’s ability to be of value to people from a <a href="../diversity/">wide range of perspectives</a> vs. to be biased towards one group or viewpoint. Twitter customers who aren’t enrolled Birdwatch contributors can also provide rating feedback on notes they see on Twitter. This provides an additional indicator of note helpfulness observed over time.</p>
+</li>
+</ul>
+<div class="gdoc-page__anchorwrap"><h3 id="avoiding-harassment">Avoiding Harassment<a data-clipboard-text="https://twitter.github.io/birdwatch/challenges/#avoiding-harassment" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Avoiding Harassment" href="#avoiding-harassment"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>It’s crucial that people feel safe contributing to Birdwatch and aren’t harassed for their contributions. It’s also important that Birdwatch itself does not become a vector for harassment. Here are some measures Birdwatch takes to keep everyone safe:</p>
+<ul>
+<li>
+<p>First, as described above, all contributors get a new, auto-generated <a href="../aliases">display name (or alias)</a> when they join Birdwatch. These aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately. This inhibits public identification and harassment of contributors.</p>
+</li>
+<li>
+<p>Second, contributors have an open communication line with the Birdwatch team to report any issues they experience (they can reach us by DM <a href="https://twitter.com/birdwatch">@Birdwatch</a>). Birdwatch has a dedicated community manager who gathers and responds to contributors’ feedback or concerns via this handle. This provides a way for contributors to flag potential issues to the Birdwatch team.</p>
+</li>
+<li>
+<p>Finally, all Birdwatch contributions are subject to Twitter <a href="https://help.twitter.com/rules-and-policies/twitter-rules">Rules</a>, <a href="https://twitter.com/tos">Terms of Service</a> and <a href="https://twitter.com/privacy">Privacy Policy</a>. If you think a Birdwatch note might not abide by the rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting &ldquo;Report”, or by using the <a href="https://help.twitter.com/en/forms/birdwatch">Report a Birdwatch Note</a> form. This provides a mechanism to address violating content in Birdwatch notes.</p>
+</li>
+</ul>
+<div class="gdoc-page__anchorwrap"><h3 id="reducing-the-impacts-of-low-quality-contributions-on-the-system">Reducing the impacts of low quality contributions on the system<a data-clipboard-text="https://twitter.github.io/birdwatch/challenges/#reducing-the-impacts-of-low-quality-contributions-on-the-system" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Reducing the impacts of low quality contributions on the system" href="#reducing-the-impacts-of-low-quality-contributions-on-the-system"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>As Birdwatch expands and grows, there&rsquo;s an increasing need to mitigate contributor rater burden and ranking system impacts that can be caused by high volumes of low quality notes or ratings. This could occur as more well-intentioned new contributors onboard to Birdwatch and go through a period of learning how to write and identify helpful notes, or through bad faith attempts to overwhelm Birdwatch with spammy, low quality notes or ratings.</p>
+<p>Birdwatch currently takes the following steps to reduce impact of low quality contributions:</p>
+<ul>
+<li>
+<p>First, Birdwatch has implemented an <a href="../writing-ability">onboarding system</a>, which requires new contributors to begin by rating notes before they unlock the ability to write new notes. This helps to ensure new contributors have ample opportunity to understand what makes notes Helpful and Not Helpful before they begin writing.</p>
+</li>
+<li>
+<p>Second, as a part of the system described above, contributors can also have their note writing ability temporarily locked if they write too many notes that reach a status of Not Helpful after being rated by other Birdwatch contributors.</p>
+<p>Contributors receive warnings when they are at risk of having note writing ability locked, as well as after it is locked, to help them understand how to improve. To unlock the ability to write again, they must repeat the process of successfully rating and identifying helpful notes. This can help well-intentioned contributors learn to improve their note writing, and prevents bad actors from continuing to write high volumes of Not Helpful notes over time.</p>
+</li>
+<li>
+<p>Finally, to reduce impacts of spammy or low quality ratings, Birdwatch has a note rating reputation system (described above in <a href="#preventing-coordinated-manipulation-attempts">preventing coordinated manipulation</a>). This gives lower influence to new accounts that have yet to demonstrate a track record of helpful ratings and contributions, making it more difficult for an account to join and spam the system with low quality ratings.</p>
+</li>
+</ul>
+<p>As Birdwatch grows and evolves, we will continue to iterate to ensure it remains a place for healthy contributions, where our contributors always feel safe participating.</p>
 <div class="gdoc-page__anchorwrap"><h2 id="feedback-ideas">Feedback? Ideas?<a data-clipboard-text="https://twitter.github.io/birdwatch/challenges/#feedback-ideas" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Feedback? Ideas?" href="#feedback-ideas"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <p>We welcome feedback on these or additional risks and challenges, as well as ideas for addressing them. Please DM us at <a href="http://twitter.com/birdwatch">@Birdwatch</a>.</p>
 
@@ -1151,6 +1224,25 @@ get a new, auto-generated display name (or alias) when they join Birdwatch. Thes
     
     
 
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+
+            
+        
+
+        
+        
     
         
         

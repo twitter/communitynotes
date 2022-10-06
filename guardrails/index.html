@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="description" content="Note ranking code">
+<meta name="description" content="Guardrails and Circuit Breakers">
 
-<title>Note ranking code | Birdwatch Guide</title>
+<title>Guardrails and Circuit Breakers | Birdwatch Guide</title>
 
 <link rel="icon" href="/birdwatch/favicon/favicon-32x32.png"
 type="image/x-icon"> <link rel="stylesheet" href="/birdwatch/main.min.css"
@@ -601,7 +601,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
             <span class="flex">
                 
                 <a href="/birdwatch/note-ranking-code/"
-                    class="gdoc-nav__entry is-active">
+                    class="gdoc-nav__entry ">
                     Note Ranking Code
                 </a>
             </span>
@@ -676,7 +676,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
             <span class="flex">
                 
                 <a href="/birdwatch/guardrails/"
-                    class="gdoc-nav__entry ">
+                    class="gdoc-nav__entry is-active">
                     Guardrails and Circuit breakers
                 </a>
             </span>
@@ -794,7 +794,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 </div>
 
     <article class="gdoc-markdown">
-        <h1 class="article_title">Note ranking code</h1> 
+        <h1 class="article_title">Guardrails and Circuit Breakers</h1> 
         
 
 
@@ -802,18 +802,47 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     
 
 
-<p>Here you can find links to code that reproduces the note scoring/ranking code that Birdwatch runs in production.</p>
-<p>If you download the notes, ratings, and note status history files made available on the <a href="https://twitter.com/i/birdwatch/download-data">Birdwatch Data Download</a> page and put them in the same directory as the following files, you can then run <code>python main.py</code> to produce a <code>scoredNotes.tsv</code> file that contains note scores, statuses, and explanation tags that will match what’s running in production (as of the time the data was from).</p>
+<p>Birdwatch aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful context to Tweets that might be misleading or missing important context.</p>
+<p>It’s important that the context that is <a href="../notes-on-twitter">elevated to viewers from Birdwatch</a> be helpful, informative, and accurate.</p>
+<p>Birdwatch’s <a href="../note-ranking">note ranking algorithm</a> is designed to help meet these quality standards, along with a number of <a href="../challenges">additional safeguards</a> built over the course of the program’s development. Of course, as Birdwatch and its approach are novel, we expect there will be challenges and bumps in the road that could impact note quality.</p>
+<p>To identify potential problems, Birdwatch tracks a number of quality measures, with a corresponding set of operational “guardrails” and “circuit breaker” thresholds and procedures to respond to issues. We anticipate that we may need to occasionally trigger these mechanisms as we learn and grow. Here’s how they work:</p>
+<div class="gdoc-page__anchorwrap"><h2 id="quality-measures">Quality Measures<a data-clipboard-text="https://twitter.github.io/birdwatch/guardrails/#quality-measures" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Quality Measures" href="#quality-measures"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p>Birdwatch measures and monitors three topline metrics to understand the quality of Birdwatch notes and identify potential issues to mitigate along the way. These measures are used only for monitoring purposes, and do not impact the note status outcomes or visibility for individual Birdwatch notes. At present, these measures focus on notes that earn the status of Helpful (i.e., those that are <a href="../notes-on-twitter">shown to viewers on Twitter</a>, beyond enrolled contributors).</p>
+<p>Evidence of consistent or systematic problems in top rated Birdwatch notes that earn the status of Helpful on any of the following measures can trigger a guardrail or circuit breaker procedure:</p>
+<ol>
+<li>
+<div> <strong>Accuracy: Whether notes that earn the status of Helpful contain accurate, high-quality information</strong><label>
+<br/>This is measured via partnerships with <a href="https://blog.twitter.com/en_us/topics/company/2021/bringing-more-reliable-context-to-conversations-on-twitter" target="_blank">professional reviewers</a> who provide evaluations of note accuracy. These evaluations provide a tracking measure of how often Helpful notes that are rated as accurate vs. inaccurate by reviewers over time; they don't impact Birdwatch notes’ ratings/status. <br/> <br/>We don't expect perfect consensus among expert reviewers that all notes are accurate, nor do professionals always <a href="https://www.science.org/doi/10.1126/sciadv.abf4393" target="_blank">agree with one another on accuracy ratings</a>. However, this gives us an indicator of whether there might be broad or consistent issues emerging with note accuracy.</label></div>
+</li>
+<li>
+<div> <strong>Informativeness: Whether notes that earn the status of Helpful help inform people’s understanding of the subject matter in Tweets</strong><label>
+<br/> This is measured via survey experiments of random samples of Twitter users in the US, comparing whether people who see potentially misleading Tweets with notes tend to have a different view of the Tweet’s main claim vs those who see Tweets without notes. </br><br/> While notes may vary in their ability to inform, we want to ensure that on average notes that earn the status of Helpful are effective at helping people understand the topics in Tweets (vs having no impact or an adverse effect).</label></div>
+</li>
+<li>
+<div> <strong>Helpfulness: Whether Twitter users beyond the pilot tend to find notes that earn the status of Helpful to be helpful</strong><label>
+<br/> This is measured via surveys of random samples of Twitter users in the US. The surveys allow these Twitter users to give feedback on the helpfulness of Birdwatch notes.</br><br/> We don’t expect all notes to be perceived as helpful by all people all of the time. Instead, the goal is to ensure that on average notes that earn the status of Helpful are likely to be seen as helpful by a wide range of people from different points of view, and not only be seen as helpful by people from one viewpoint.</label></div>
+</li>
+</ol>
+<p>In addition to the three topline metrics listed above, Birdwatch monitors additional operational quality metrics, like whether any notes violate Twitter Rules.</p>
+<div class="gdoc-page__anchorwrap"><h2 id="thresholds">Thresholds<a data-clipboard-text="https://twitter.github.io/birdwatch/guardrails/#thresholds" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Thresholds" href="#thresholds"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p>For each of these measures and metrics, there are thresholds to trigger ‘guardrails’ and ‘circuit breakers’.</p>
+<p><strong>Guardrails</strong> are an alert threshold that indicates to the Birdwatch team there may be low or declining quality in notes that earn the status of Helpful. A guardrail alert indicates that the Birdwatch team should conduct an investigation to determine causes of the metric change, and identify whether there are systemic issues to be addressed. If an investigation uncovers a systemic or urgent problem, a “circuit breaker” trip can occur.</p>
+<p><strong>Circuit breakers</strong> are an alert threshold that indicates to the Birdwatch team that there may be significant emerging issues with notes that earn the status of Helpful. For example: a number of notes with the status of Helpful are evaluated as low Accuracy or identified as having low helpfulness ratings from diverse audiences in a short period of time. If a circuit breaker is tripped, our policy is to temporarily turn off display of notes for viewers beyond enrolled contributors, then to investigate and to pursue a remediation. A temporary Remediation (see more on this below) may be enacted while a more permanent solution is built.</p>
+<div class="gdoc-page__anchorwrap"><h2 id="remediations">Remediations<a data-clipboard-text="https://twitter.github.io/birdwatch/guardrails/#remediations" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Remediations" href="#remediations"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p>Birdwatch context is intended to be community driven. Birdwatch notes are written and selected by people on Twitter, for people on Twitter. Except in the case of a Twitter Rule violation, Twitter employees do not make decisions about which individual notes do or do not display on Twitter, even in cases when a guardrail or circuit breaker condition is triggered.</p>
+<p>Instead, the goal is to build a <em>system</em> that consistently elevates helpful, informative, and accurate information. In case of a serious note quality problem, Birdwatch policy and operating procedure is to take system-wide actions, fix the problem, then resume normal service.</p>
+<p>Examples of system-wide actions Birdwatch may take in the case of a guardrail or circuit breaker situation may include:</p>
 <ul>
-<li><a href="../sourcecode/main.py">main.py</a></li>
-<li><a href="../sourcecode/algorithm.py">algorithm.py</a></li>
-<li><a href="../sourcecode/constants.py">constants.py</a></li>
-<li><a href="../sourcecode/explanation_tags.py">explanation_tags.py</a></li>
-<li><a href="../sourcecode/helpfulness_scores.py">helpfulness_scores.py</a></li>
-<li><a href="../sourcecode/matrix_factorization.py">matrix_factorization.py</a></li>
-<li><a href="../sourcecode/process_data.py">process_data</a></li>
+<li>Temporarily raising the <a href="../note-ranking">threshold</a> required for notes to be publicly visible on a Tweet</li>
+<li>Temporarily pausing the scoring of newly created notes</li>
+<li>Temporarily pausing the display of all notes on Tweets for viewers outside of enrolled Birdwatch contributors</li>
 </ul>
-<p>You can also see this code on <a href="https://github.com/twitter/birdwatch/tree/main/static/sourcecode">Github</a>.</p>
+<p>These actions allow Birdwatch to mitigate potential risk of inaccurate or low quality notes, while the internal team conducts an investigation and builds an appropriate fix, if needed. When selecting which remediation to use, we aim to take the smallest corrective action possible to balance mitigating the risk of showing low quality notes with the risk of failing to show helpful, informative notes on potentially misleading Tweets.</p>
+<p><em>Note: Birdwatch contributors and notes are subject to the Twitter Rules. Failure to abide by rules can result in removal from the Birdwatch program.</em></p>
+<div class="gdoc-page__anchorwrap"><h2 id="feedback-ideas">Feedback? Ideas?<a data-clipboard-text="https://twitter.github.io/birdwatch/guardrails/#feedback-ideas" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Feedback? Ideas?" href="#feedback-ideas"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p>We will continue to evolve our approach as we grow the program, conduct additional analyses, and learn. We welcome feedback and ideas to improve. Please DM us at <a href="https://twitter.com/birdwatch">@Birdwatch</a>.</p>
+<div class="gdoc-page__anchorwrap"><h2 id="current-status">Current Status<a data-clipboard-text="https://twitter.github.io/birdwatch/guardrails/#current-status" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Current Status" href="#current-status"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p>Birdwatch is operating normally. This page will be updated if Birdwatch is operating with a system-wide remediation in place as a result of triggering a guardrail or circuit breaker.</p>
 
 
     </article>
@@ -1211,31 +1240,6 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
             
 
             
-                
-                
-            
-
-            
-        
-
-        
-        
-    
-        
-        
-
-        
-        
-            
-            
-            
-
-            
-                
-                
-            
-
-            
 
             
         
@@ -1273,6 +1277,28 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 
             
 
+            
+
+            
+        
+
+        
+        
+    
+        
+        
+
+        
+        
+            
+            
+            
+
+            
+
+            
+                
+                
             
 
             
@@ -1294,12 +1320,10 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     
         <span class="gdoc-page__nav">
             
-                <a class="gdoc-page__nav--prev flex align-center" href="/birdwatch/ranking-notes/" title="Note Ranking"> Note Ranking</a>
+                <a class="gdoc-page__nav--prev flex align-center" href="/birdwatch/timeline-tabs/" title="Timeline tabs"> Timeline tabs</a>
             
         </span>
         <span class="gdoc-page__nav">
-            
-                <a class="gdoc-page__nav--next flex align-center" href="/birdwatch/contributor-scores/" title="Contributor Scores">Contributor Scores </a>
             
         </span>
     
