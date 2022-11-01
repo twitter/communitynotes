@@ -111,9 +111,9 @@ As we iterate and improve Birdwatch, we will occasionally make changes to the qu
 | `createdAtMillis` | Long | Time the note was created, in milliseconds since epoch. | |
 | `tweetId` | Long | The tweetId number for the tweet that the note is about. | |
 | `classification` | String | User-entered multiple choice response to note writing question: “Given current evidence, I believe this tweet is:” | "NOT\*MISLEADING" "MISINFORMED*OR*POTENTIALLY_MISLEADING" |
-| ~~`believable`~~ | String | User-entered multiple choice response to note writing question: “If this tweet were widely spread, its message would likely be believed by:” - **Deprecated as of 2021-10-27**. | "BELIEVABLE*BY*FEW", "BELIEVABLE_BY_MANY" |
-| ~~`harmful`~~ | String | User-entered multiple choice response to note writing question: “If many believed this tweet, it might cause:” **Deprecated as of 2021-10-27**. | "LITTLE\*HARM", "CONSIDERABLE\*HARM" |
-| ~~`validationDifficulty`~~ | String | User-entered multiple choice response to note writing question: “Finding and understanding the correct information would be:” **Deprecated as of 2021-10-27**. | "EASY", "CHALLENGING" |
+| ~~`believable`~~ | String | User-entered multiple choice response to note writing question: “If this tweet were widely spread, its message would likely be believed by:” - **Deprecated as of 2022-10-27**. | "BELIEVABLE*BY*FEW", "BELIEVABLE_BY_MANY" |
+| ~~`harmful`~~ | String | User-entered multiple choice response to note writing question: “If many believed this tweet, it might cause:” **Deprecated as of 2022-10-27**. | "LITTLE\*HARM", "CONSIDERABLE\*HARM" |
+| ~~`validationDifficulty`~~ | String | User-entered multiple choice response to note writing question: “Finding and understanding the correct information would be:” **Deprecated as of 2022-10-27**. | "EASY", "CHALLENGING" |
 | `misleadingOther` | Int | User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type). | 1 if “Other” is selected, else 0. |
 | `misleadingFactualError` | Int | User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type) | 1 if “It contains a factual error” selected, else 0. |
 | `misleadingManipulatedMedia` | Int | User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type) | 1 if “It contains a digitally altered photo or video” selected, else 0. |
