@@ -38,6 +38,15 @@ Each data snapshot table is stored in tsv (tab-separated values) file format wit
 
 As we iterate and improve Birdwatch, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms, or additional metadata shared about notes and rating. When we do this, some question fields / columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and other updates we have made to the data, as well as when those changes were made.
 
+{{< expand "2022-10-27 - Deprecated fields in note writing form " >}}
+
+- Deprecated Columns
+  - `believable`
+  - `harmful`
+  - `validationDifficulty`
+
+{{< / expand >}}
+
 {{< expand "2022-07-19 - New Note Status History dataset " >}}
 
 - Added entirely new note status history dataset
@@ -101,10 +110,10 @@ As we iterate and improve Birdwatch, we will occasionally make changes to the qu
 | `participantId` | String | A Birdwatch-specific user identifier of the user who authored the note. This is a permanent id, which remains stable even if the user changes their username/handle. | |
 | `createdAtMillis` | Long | Time the note was created, in milliseconds since epoch. | |
 | `tweetId` | Long | The tweetId number for the tweet that the note is about. | |
-| `classification` | String | User-entered multiple choice response to note writing question: “Given current evidence, I believe this tweet is:” | "NOT_MISLEADING" "MISINFORMED_OR_POTENTIALLY_MISLEADING" |
-| `believable` | String | User-entered multiple choice response to note writing question: “If this tweet were widely spread, its message would likely be believed by:” | "BELIEVABLE_BY_FEW", "BELIEVABLE_BY_MANY" |
-| `harmful` | String | User-entered multiple choice response to note writing question: “If many believed this tweet, it might cause:” | "LITTLE_HARM", "CONSIDERABLE_HARM" |
-| `validationDifficulty` | String | User-entered multiple choice response to note writing question: “Finding and understanding the correct information would be:” | "EASY", "CHALLENGING" |
+| `classification` | String | User-entered multiple choice response to note writing question: “Given current evidence, I believe this tweet is:” | "NOT\*MISLEADING" "MISINFORMED*OR*POTENTIALLY_MISLEADING" |
+| ~~`believable`~~ | String | User-entered multiple choice response to note writing question: “If this tweet were widely spread, its message would likely be believed by:” - **Deprecated as of 2021-10-27**. | "BELIEVABLE*BY*FEW", "BELIEVABLE_BY_MANY" |
+| ~~`harmful`~~ | String | User-entered multiple choice response to note writing question: “If many believed this tweet, it might cause:” **Deprecated as of 2021-10-27**. | "LITTLE\*HARM", "CONSIDERABLE\*HARM" |
+| ~~`validationDifficulty`~~ | String | User-entered multiple choice response to note writing question: “Finding and understanding the correct information would be:” **Deprecated as of 2021-10-27**. | "EASY", "CHALLENGING" |
 | `misleadingOther` | Int | User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type). | 1 if “Other” is selected, else 0. |
 | `misleadingFactualError` | Int | User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type) | 1 if “It contains a factual error” selected, else 0. |
 | `misleadingManipulatedMedia` | Int | User-entered checkbox in response to question “Why do you believe this tweet may be misleading?” (Check all that apply question type) | 1 if “It contains a digitally altered photo or video” selected, else 0. |
