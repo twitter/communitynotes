@@ -4,13 +4,13 @@ geekdocBreadcrumb: false
 aliases: ["/writing-ability"]
 ---
 
-To keep the quality of Birdwatch notes high, Birdwatch contributors earn (and can lose) the ability to write notes.
+To keep the quality of Community Notes high, contributors earn (and can lose) the ability to write notes.
 
-Everyone who joins Birdwatch can rate notes. They can unlock the ability to write notes by helping to identify helpful and unhelpful notes. If notes they write are found helpful, they’ll continue to have greater impact. If notes they write are consistently found not helpful, their ability to write notes will be temporarily locked, and they’ll have to earn it back.
+Everyone who joins Community Notes can rate notes. They can unlock the ability to write notes by helping to identify helpful and unhelpful notes. If notes they write are found helpful, they’ll continue to have greater impact. If notes they write are consistently found not helpful, their ability to write notes will be temporarily locked, and they’ll have to earn it back.
 
 ## New contributors
 
-**New Birdwatch contributors start with the ability to rate notes, and must unlock the ability to write** before they can write their own notes.
+**New contributors start with the ability to rate notes, and must unlock the ability to write** before they can write their own notes.
 
 To unlock the ability to write, new contributors need to earn a [Rating Impact](../impact) of at least 5. One way to get started is [rating notes that need help](../rating-notes).
 
@@ -18,11 +18,11 @@ Rating notes is a great way for new contributors to better understand [what make
 
 ## All contributors
 
-**A contributor’s ability to write new notes is locked if they write too many notes that reach a status of Not Helpful** after being rated by other Birdwatch contributors.
+**A contributor’s ability to write new notes is locked if they write too many notes that reach a status of Not Helpful** after being rated by other contributors.
 
 To determine if a contributor is eligible to keep writing notes:
 
-- Birdwatch considers a contributor's five most recent notes that have reached a status of Helpful or Not Helpful.
+- Community Notes considers a contributor's five most recent notes that have reached a status of Helpful or Not Helpful.
 - Notes with the status of Needs More Ratings aren't considered.
 - If 3 or more of these 5 most recent notes have reached the status of Not Helpful, the contributor’s ability to write new notes is temporarily locked.
 
@@ -34,8 +34,8 @@ For example: If a contributor's Rating Impact was 22 when their ability to write
 
 ### How can I avoid having my ability to write notes temporarily locked?
 
-You'll receive notifications from Birdwatch about how your notes have been rated by other contributors, and get alerts if you're at risk of having your ability to write locked. Additionally, all notes with the status of Helpful or Not Helpful show the top feedback tags selected by raters with the status title. Keep an eye out for that feedback, and make sure to read our tips for writing helpful notes.
+You'll receive notifications about how your notes have been rated by other contributors, and get alerts if you're at risk of having your ability to write locked. Additionally, all notes with the status of Helpful or Not Helpful show the top feedback tags selected by raters with the status title. Keep an eye out for that feedback, and make sure to read our tips for writing helpful notes.
 
-### How does Birdwatch prevent raters from intentionally trying to lock someone else's ability to write?
+### How does Community Notes prevent raters from intentionally trying to lock someone else's ability to write?
 
-Note statuses in Birdwatch aren't achieved by popularity or majority rules. For a note to reach a status of Helpful or Not Helpful, Birdwatch requires agreement between contributors who have sometimes disagreed in their past ratings. Ratings are also weighted based on how helpful a contributor has been in the past. This helps reduce one-sided ratings and helps to prevent manipulation. Learn more here.
+Note statuses in Community Notes aren't achieved by popularity or majority rules. For a note to reach a status of Helpful or Not Helpful, the system requires agreement between contributors who have sometimes disagreed in their past ratings. Ratings are also weighted based on how helpful a contributor has been in the past. This helps reduce one-sided ratings and helps to prevent manipulation. Learn more here.

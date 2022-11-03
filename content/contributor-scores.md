@@ -6,9 +6,9 @@ geekdocToc: 1
 katex: true
 ---
 
-Helpfulness scores are a way to give more influence to people with a track record of making high-quality contributions to Birdwatch. There are currently two types of author helpfulness scores and one rater helpfulness score.
+Helpfulness scores are a way to give more influence to people with a track record of making high-quality contributions to Community Notes. There are currently two types of author helpfulness scores and one rater helpfulness score.
 
-In order to get enough data from new raters to be able to assess how similarly they rate notes to others, we require a minimum of 10 ratings made before helpfulness scores are computed and ratings may be counted. Additionally, to help mitigate misuse of Birdwatch, contributors with helpfulness scores that are too low are filtered out, since those contributors are consistently not found helpful by a [diverse set of raters](../diversity).
+In order to get enough data from new raters to be able to assess how similarly they rate notes to others, we require a minimum of 10 ratings made before helpfulness scores are computed and ratings may be counted. Additionally, to help mitigate misuse of Community Notes, contributors with helpfulness scores that are too low are filtered out, since those contributors are consistently not found helpful by a [diverse set of raters](../diversity).
 
 ## Author Helpfulness Scores
 
@@ -45,9 +45,9 @@ Ratings have the same impact on the note’s final status label whether they are
 
 ## Filtering Ratings Based on Helpfulness Scores
 
-Birdwatch gives more weight to contributors who are good at identifying which notes will be helpful (or unhelpful) to people from different points of view. This helps improve note scoring and ranking, and makes manipulation of Birdwatch slightly more difficult.
+Community Notes gives more weight to contributors who are good at identifying which notes will be helpful (or unhelpful) to people from different points of view. This helps improve note scoring and ranking, and makes manipulation of Community Notes slightly more difficult.
 
-Specifically, Birdwatch does this by incorporating a subset of ratings in a second round of note scoring. Contributors’ ratings are only included in the second round of note scoring if:
+Specifically, Community Notes does this by incorporating a subset of ratings in a second round of note scoring. Contributors’ ratings are only included in the second round of note scoring if:
 
 - They have made at least 10 total ratings (on notes that have at least 5 ratings) and have made at least 1 [valid rating](./#valid-ratings).
 - Their rater helpfulness score must be at least 0.66

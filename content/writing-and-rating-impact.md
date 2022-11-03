@@ -10,9 +10,9 @@ aliases:
   ]
 ---
 
-The two most important activities in Birdwatch are [writing notes](../writing-notes) and [rating notes](../rating-notes). Contributors can see the history of their past Writing Impact and Rating Impact on their profiles.
+The two most important activities in Community Notes are [writing notes](../writing-notes) and [rating notes](../rating-notes). Contributors can see the history of their past Writing Impact and Rating Impact on their profiles.
 
-In the future, newly admitted Birdwatch contributors will need to earn enough Rating Impact to unlock the ability to write notes.
+In the future, newly admitted contributors will need to earn enough Rating Impact to unlock the ability to write notes.
 
 {{< figure src="../images/writing-and-rating-impact.png">}}
 
@@ -42,13 +42,13 @@ Note statuses can change any time as more ratings come in, and can be overturned
 
 ### How do I increase my Rating Impact?
 
-To increase this impact, you should look for notes that still need more ratings, and rate them. The best ways to do this are by browsing the [Needs Your Help](https://twitter.com/i/birdwatch/needs_your_help) tab in Birdwatch, and by looking out for alerts from Birdwatch that a note needs your rating.
+To increase this impact, you should look for notes that still need more ratings, and rate them. The best ways to do this are by browsing the [Needs Your Help](https://twitter.com/i/birdwatch/needs_your_help) tab in Community Notes, and by looking out for alerts when a note needs your rating.
 
 1. <div><strong> Help identify notes as Helpful</strong>
    <label>When you help a note earn the status of Helpful, it gets shown on Twitter as context, helping keep people informed.</label></div>
 
 2. <div><strong> Help identify notes as Not Helpful</strong>
-   <label>When you help a note reach a status of Not Helpful, you're also improving Birdwatch. Note authors get feedback based on your rating, and other raters can more easily focus on the most promising notes.</label></div>
+   <label>When you help a note reach a status of Not Helpful, you're also improving Community Notes. Note authors get feedback based on your rating, and other raters can more easily focus on the most promising notes.</label></div>
 
 Here are [tips on how to identify Helpful and Not Helpful notes](../examples).
 
@@ -60,7 +60,7 @@ Here are [tips on how to identify Helpful and Not Helpful notes](../examples).
 
 ## Frequently asked questions
 
-### How does Birdwatch prevent bias and one-sided ratings?
+### How does Community Notes prevent bias and one-sided ratings?
 
 Note statuses [aren’t reached by majority rule](../diversity). A note will reach a status of Helpful or Not Helpful only when there's some agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings.
 

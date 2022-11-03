@@ -11,7 +11,7 @@ aliases:
   ]
 ---
 
-Great Birdwatch notes provide helpful context to Tweets and leave people better informed. But what makes a Birdwatch note helpful?
+Great notes provide helpful context to Tweets and leave people better informed. But what makes a note helpful?
 
 ## Helpful attributes
 
@@ -29,7 +29,7 @@ Great Birdwatch notes provide helpful context to Tweets and leave people better 
 
 ## Unhelpful attributes
 
-Helpful Birdwatch notes steer clear of all of these unhelpful attributes:
+Helpful notes steer clear of all of these unhelpful attributes:
 
 <div class="noteAttributeList unhelpful">
 
@@ -48,7 +48,7 @@ Helpful Birdwatch notes steer clear of all of these unhelpful attributes:
 </br>
 </br>
 
-The following are examples of Birdwatch notes that illustrate what makes a note helpful (versus unhelpful):
+The following are examples of notes that illustrate what makes a note helpful (versus unhelpful):
 
 ## Example 1
 
@@ -71,7 +71,7 @@ The following are examples of Birdwatch notes that illustrate what makes a note 
 
 <div class="note helpful">
 
-<h3> Helpful Birdwatch note </h3>
+<h3> Helpful note </h3>
 <div class="noteBody">
 
 This photo was taken in Toronto at a protest of the 2010 G20 summit where G20 officials met to discuss the world economy, not at the Supreme Court in Washington D.C. You can see the car in this photo being lit on fire via a local Toronto news broadcast: https://www.youtube.com/watch...
@@ -90,7 +90,7 @@ This photo was taken in Toronto at a protest of the 2010 G20 summit where G20 of
 
 <div class="note helpful">
 
-<h3> Helpful Birdwatch note </h3>
+<h3> Helpful note </h3>
 <div class="noteBody">
 
 The last time it was reported that a police car was lit on fire outside the Supreme Court was on 7/15/2020. This photo is not from that incident. This photo was taken in Toronto at a protest of the 2010 G20 summit. https://www.cbsnews.com/news/..., https://www.cp24.com/breaking/...
@@ -108,7 +108,7 @@ The last time it was reported that a police car was lit on fire outside the Supr
 </div>
 
 <div class="note unhelpful">
-<h3> Unhelpful Birdwatch note </h3>
+<h3> Unhelpful note </h3>
 <div class="noteBody">
 
 Wow, people really hate cops. They just park there car to go into the office and it’s suddenly fair game to be torched. Some of you need to relax.
@@ -126,7 +126,7 @@ Wow, people really hate cops. They just park there car to go into the office and
 </div>
 
 <div class="note unhelpful">
-<h3> Unhelpful Birdwatch note </h3>
+<h3> Unhelpful note </h3>
 <div class="noteBody">
 
 This is totally made up. There are no reports of a fire outside the Supreme Court today. Twitter should ban this account for spreading lies. https://www.supremecourt.gov/
@@ -163,7 +163,7 @@ This is totally made up. There are no reports of a fire outside the Supreme Cour
 
 <div class="note helpful">
 
-<h3> Helpful Birdwatch note </h3>
+<h3> Helpful note </h3>
 <div class="noteBody">
 
 Medkya is the largest crossing point for Ukrainian refugees into Poland but there have been no protests reported. In fact, the Poles have welcomed refugees and called for more resources to support the Ukrainian people. https://www.unhcr.org/en-us/news/stories...
@@ -182,7 +182,7 @@ Medkya is the largest crossing point for Ukrainian refugees into Poland but ther
 
 <div class="note helpful">
 
-<h3> Helpful Birdwatch note </h3>
+<h3> Helpful note </h3>
 <div class="noteBody">
 
 A reverse image search places this photo at the 2/21/17 Women’s March in Portland, Oregon. And there are no recorded protests in response to Ukrainian refugees crossing into Medyka, Poland. https://www.npr.org/2022/05/19/...
@@ -201,7 +201,7 @@ A reverse image search places this photo at the 2/21/17 Women’s March in Portl
 
 <div class="note unhelpful">
 
-<h3> Unhelpful Birdwatch note </h3>
+<h3> Unhelpful note </h3>
 <div class="noteBody">
 
 One of the protes signs is in English?! Unlikely this protest is in small Polish town where few people can speak English. https://en.wikipedia.org/wiki/...
@@ -220,7 +220,7 @@ One of the protes signs is in English?! Unlikely this protest is in small Polish
 
 <div class="note unhelpful">
 
-<h3> Unhelpful Birdwatch note </h3>
+<h3> Unhelpful note </h3>
 <div class="noteBody">
 
 There’s no protests. No one wants to keep people seeking asylum out. This isn’t America!

@@ -1,14 +1,14 @@
 ---
-title: Birdwatch Aliases
+title: Community Notes Aliases
 geekdocBreadcrumb: false
 aliases: ["/aliases", "/contributing/aliases"]
 ---
 
 {{< figure src="../images/alias-01.png">}}
 
-We want everyone to feel comfortable contributing to Birdwatch. Aliases let contributors write and rate notes without sharing their Twitter usernames.
+We want everyone to feel comfortable contributing to Community Notes. Aliases let contributors write and rate notes without sharing their Twitter usernames.
 
-A Birdwatch alias is a new, auto-generated display name that contributors get when they join Birdwatch. Aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately.
+A Community Notes alias is a new, auto-generated display name that contributors get when they join Community Notes. Aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately.
 
 Further, we believe aliases have the potential to:
 
@@ -17,7 +17,7 @@ Further, we believe aliases have the potential to:
 
 ### Accountability
 
-It’s important that the benefits of aliases don’t come at the expense of accountability. To that end: all Birdwatch accounts have profile pages that make it easy to see one’s past contributions and their [Writing and Rating Impact](../impact). Additionally, Birdwatch contributors are [accountable to ratings their contributions receive](https://twitter.com/birdwatch/status/1404519791394758657), giving weight to contributors whose notes and ratings are consistently found helpful by others.
+It’s important that the benefits of aliases don’t come at the expense of accountability. To that end: all Community Notes accounts have profile pages that make it easy to see one’s past contributions and their [Writing and Rating Impact](../impact). Additionally, Community Notes contributors are [accountable to ratings their contributions receive](https://twitter.com/communitynotes/status/1404519791394758657), giving weight to contributors whose notes and ratings are consistently found helpful by others.
 
 ## How to choose your alias
 
@@ -29,10 +29,10 @@ Contributors can visit [this link](https://twitter.com/i/birdwatch/u/me) to choo
 
 {{< figure src="../images/alias-03.png">}}
 
-With aliases, every contributor gets a public profile. On this page, everyone can see the notes people have written in the past, as well as their [Writing and Rating Impact](../impact). We'll continue to add information and evolve the profile pages as we learn more about what's important to contributors when using Birdwatch.
+With aliases, every contributor gets a public profile. On this page, everyone can see the notes people have written in the past, as well as their [Writing and Rating Impact](../impact). We'll continue to add information and evolve the profile pages as we learn more about what's important to contributors when using Community Notes.
 
 ### Aliases are new! Did you contribute before the launch of aliases?
 
-Aliases launched on November 22, 2021. For those of you who were in the pilot and contributed under your Twitter username before that, your previous contributions will all now appear to come from your alias, not your Twitter username. Your Birdwatch profile page will show all the notes you’ve written, all attributed to your new alias. That said, if someone who previously read one of your notes happened to recall the username that wrote it, they could possibly infer your alias. The only way to completely prevent this is by deleting all of your prior contributions and starting fresh. If you want to do that, we’re happy to help, just DM [@birdwatch](http://twitter.com/birdwatch).
+Aliases launched on November 22, 2021. For those of you who were in the pilot and contributed under your Twitter username before that, your previous contributions will all now appear to come from your alias, not your Twitter username. Your Community Notes profile page will show all the notes you’ve written, all attributed to your new alias. That said, if someone who previously read one of your notes happened to recall the username that wrote it, they could possibly infer your alias. The only way to completely prevent this is by deleting all of your prior contributions and starting fresh. If you want to do that, we’re happy to help, just DM [@CommunityNotes](http://twitter.com/communitynotes).
 
-Don't hesitate to [send us feedback](http://twitter.com/birdwatch) at any time.
+Don't hesitate to [send us feedback](http://twitter.com/communitynotes) at any time.

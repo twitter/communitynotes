@@ -4,11 +4,11 @@ title: Home
 aliases: ["/learn-more", "/intro"]
 ---
 
-{{< figure class="hero" src="./images/hero.png">}}
+{{< figure class="hero" src="./images/community-notes-hero.png">}}
 
-## Birdwatch is a collaborative way to add helpful context to Tweets and keep people better informed
+## Community Notes is a collaborative way to add helpful context to Tweets and keep people better informed
 
-Birdwatch is a pilot program that aims to create a better-informed world. It empowers people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
+Community Notes is a pilot program that aims to create a better-informed world. It empowers people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
 
 <br/>
 
@@ -18,7 +18,7 @@ Birdwatch is a pilot program that aims to create a better-informed world. It emp
 
 **Contributors write and rate notes**
 
-Contributors are people on Twitter, just like you, who chose to enroll in the pilot to write and rate notes. The more people that participate, the better the program becomes. Learn more about [how Birdwatch works](./overview/).
+Contributors are people on Twitter, just like you, who chose to enroll in the pilot to write and rate notes. The more people that participate, the better the program becomes. Learn more about [how Community Notes works](./overview/).
 
 </div>
 </div>
@@ -29,7 +29,7 @@ Contributors are people on Twitter, just like you, who chose to enroll in the pi
 
 **Only notes that people find helpful appear on a Tweet**
 
-Birdwatch doesn't work by majority rules. To identify notes that are helpful to a wide range of people, Birdwatch ratings requires agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings. Learn more about how Birdwatch [identifies helpful notes](./diversity/).
+Communtity Notes doesn't work by majority rules. To identify notes that are helpful to a wide range of people, notes require agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings. Learn more about how the program [identifies helpful notes](./diversity/).
 
 </div>
 </div>
@@ -47,7 +47,7 @@ Twitter doesn’t write, rate or moderate notes (unless they break the Twitter r
 
 <div class="info-box">
 
-### Become a Birdwatch contributor
+### Become a Community Notes contributor
 
 {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
 
@@ -57,11 +57,11 @@ Twitter doesn’t write, rate or moderate notes (unless they break the Twitter r
 
 ### How does a Tweet get a note?
 
-Contributors can suggest a note on any Tweet. Notes are then rated for helpfulness by other contributors. Notes are only shown on Tweets if they are rated helpful by enough people from different perspectives. See how Birdwatch defines and uses [differences of perspectives here](diversity-of-perspectives/).
+Contributors can suggest a note on any Tweet. Notes are then rated for helpfulness by other contributors. Notes are only shown on Tweets if they are rated helpful by enough people from different perspectives. See how Community Notes defines and uses [differences of perspectives here](diversity-of-perspectives/).
 
-### How does Birdwatch prevent abuse?
+### How does Community Notes prevent abuse?
 
-Birdwatch works differently than the rest of Twitter. It is not a popularity contest. It aims to find notes that many people from different points of view will find helpful. It takes into account not only how many ratings a note has received, but also whether people who rated it helpful seem to come from different perspectives. Because notes need to genuinely be found helpful by people who tend to disagree, Birdwatch is more likely to identify notes that many people find helpful. Read the full details of [how this works](diversity-of-perspectives/).
+Community Notes works differently than the rest of Twitter. It is not a popularity contest. It aims to find notes that many people from different points of view will find helpful. It takes into account not only how many ratings a note has received, but also whether people who rated it helpful seem to come from different perspectives. Because notes need to genuinely be found helpful by people who tend to disagree, the program is more likely to identify notes that many people find helpful. Read the full details of [how this works](diversity-of-perspectives/).
 
 Notes are also subject to Twitter rules and can be reported.
 
@@ -74,9 +74,9 @@ We believe regular people can valuably contribute to identifying and adding help
 - [Bhuiyan, Zhang, Sehat, and Mitra 2020](https://arxiv.org/pdf/2008.09533.pdf)
 - [Kim and Walker 2020](https://misinforeview.hks.harvard.edu/article/leveraging-volunteer-fact-checking-to-identify-misinformation-about-covid-19-in-social-media/)
 
-In our pilot test of Birdwatch, we evaluated notes that Birdwatch would show on Tweets, and have found:
+In our pilot test of Community Notes, we evaluated notes would be shown on Tweets, and have found:
 
-- The majority of people surveyed on Twitter found Birdwatch notes helpful.
+- The majority of people surveyed on Twitter found notes helpful.
 - People in surveys were 20-40% less likely to agree with the substance of a potentially misleading Tweet after reading the note about it, compared to those who saw a Tweet without a note.
 - Most notes have been rated highly on accuracy by professional reviewers; it has been rare to find a note that reviewers agree is inaccurate.
 
@@ -84,4 +84,4 @@ The people on Twitter span a wide gamut of backgrounds and experiences, and we b
 
 ### I have a note on my Tweet. What can I do?
 
-As a Tweet author, if you disagree that a Birdwatch note provides important context about your Tweet, you can request [additional review](./additional-review/).
+As a Tweet author, if you disagree that a note provides important context about your Tweet, you can request [additional review](./additional-review/).

@@ -1,6 +1,6 @@
-baseURL: https://twitter.github.io/birdwatch/
+baseURL: https://twitter.github.io/communitynotes/
 languageCode: en-us
-title: Birdwatch Guide
+title: Community Notes Guide
 
 theme: "geekdoc"
 
@@ -34,8 +34,8 @@ params:
   geekdocTOC: 3
   geekdocNextPrev: true
   geekdocMenuBundle: true
-  geekdocLogo: "images/birdwatch-icon.png"
+  geekdocLogo: "images/community-notes-icon.svg"
   geekdocBreadcrumb: false
   geekdocSearch: false
-  # geekdocRepo: "https://github.com/twitter/birdwatch"
+  # geekdocRepo: "https://github.com/twitter/communitynotes"
   # geekdocEditPath: "edit/main/content"

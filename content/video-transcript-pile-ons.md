@@ -6,7 +6,7 @@ aliases: ["/video-transcript-pile-ons"]
 
 How does Birdwatch avoid one-sided bias? Pile-ons? Brigading? Manipulation? Abuse?
 
-Birdwatch notes are rated by contributors of multiple perspectives, and only notes that are widely found helpful are shown on Tweets. So one group alone can't determine what notes get shown, and pile-ons aren't effective.
+Community Notes are rated by contributors of multiple perspectives, and only notes that are widely found helpful are shown on Tweets. So one group alone can't determine what notes get shown, and pile-ons aren't effective.
 
 This helps ensure that notes are helpful to a wide range of people.
 
