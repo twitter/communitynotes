@@ -34,7 +34,7 @@ Our static documentation site (called "Birdwatch Guide") is built with [Hugo](ht
 
 ### Birdwatch source code
 
-The algorithm that powers Birdwatch can be found on the [sourcecode folder](https://github.com/twitter/birdwatch/tree/main/static/sourcecode), and isntructions on how to use it can be found in the [Guide](https://twitter.github.io/birdwatch/note-ranking-code/)
+The algorithm that powers Birdwatch can be found on the [sourcecode folder](https://github.com/twitter/birdwatch/tree/main/static/sourcecode), and instructions on how to use it can be found in the [Guide](https://twitter.github.io/birdwatch/note-ranking-code/)
 
 ### Birdwatch data
 
