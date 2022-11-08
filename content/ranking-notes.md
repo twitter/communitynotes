@@ -72,7 +72,7 @@ Where lambda_i (0.03), the regularization on the intercept terms, is currently 5
 
 The resulting scores that we use for each note are the note intercept terms i_n. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.
 
-We currently set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at –0.08. However, these are far from set in stone and the way we generate statuses from note scores will evolve over time.
+We currently set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at -0.05 - 0.8 \* abs(f_n). However, these are far from set in stone and the way we generate statuses from note scores will evolve over time.
 
 This approach has a few nice properties:
 
