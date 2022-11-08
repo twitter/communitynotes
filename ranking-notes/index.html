@@ -857,7 +857,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 <p>\[\sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2)\]</p>
 <p>Where lambda_i (0.03), the regularization on the intercept terms, is currently 5 times higher than lambda_f (0.15), the regularization on the factors.</p>
 <p>The resulting scores that we use for each note are the note intercept terms i_n. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.</p>
-<p>We currently set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at –0.08. However, these are far from set in stone and the way we generate statuses from note scores will evolve over time.</p>
+<p>We currently set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at -0.05 - 0.8 * abs(f_n). However, these are far from set in stone and the way we generate statuses from note scores will evolve over time.</p>
 <p>This approach has a few nice properties:</p>
 <ul>
 <li>Extra regularization on the intercept terms in practice requires that notes are rated by raters with diverse factors before a note gets a label (the note intercept term becomes very large or very small)</li>
