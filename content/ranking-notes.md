@@ -12,9 +12,9 @@ geekdocToc: 1
 katex: true
 ---
 
-Birdwatch notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the [Birdwatch Site’s timelines](../birdwatch-timelines/), and which notes are displayed as [Birdwatch Cards](../notes-on-twitter/) on Tweets.
+Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the [Community Notes Site’s timelines](../birdwatch-timelines/), and which notes are displayed [on Tweets](../notes-on-twitter/) .
 
-Only notes that indicate the Tweet as “potentially misleading” are eligible to be displayed as Birdwatch Cards on Tweets; notes that indicate the Tweet is “not misleading” are not displayed as Birdwatch Cards on Tweets. As of March 9, 2022, we have temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading.” Why? People have been confused about how to rate them. As these notes are effectively making the case that the Tweet does not need a note, raters often rated them as “Unhelpful - Tweet doesn’t need a note” so as to indicate the note should not appear on the Tweet. We are planning an improvement to the rating form to resolve this confusion, and plan to resume assigning statuses to “not misleading” notes once that’s in place.
+Only notes that indicate the Tweet as “potentially misleading” are eligible to be displayed on Tweets; notes that indicate the Tweet is “not misleading” are not displayed on Tweets. As of March 9, 2022, we have temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading.” Why? People have been confused about how to rate them. As these notes are effectively making the case that the Tweet does not need a note, raters often rated them as “Unhelpful - Tweet doesn’t need a note” so as to indicate the note should not appear on the Tweet. We are planning an improvement to the rating form to resolve this confusion, and plan to resume assigning statuses to “not misleading” notes once that’s in place.
 
 The sections below describe how notes are assigned statuses, which determines how notes are ranked and displayed in the product:
 
@@ -24,25 +24,25 @@ The sections below describe how notes are assigned statuses, which determines ho
 
 {{< figure src="../images/note-statuses.png">}}
 
-All Birdwatch notes start out with the Needs More Ratings status until they receive at least 5 total ratings. Once a note has received at least 5 ratings, it is assigned a Note Helpfulness Score according to the algorithm described below.
+All Community Notes start out with the Needs More Ratings status until they receive at least 5 total ratings. Once a note has received at least 5 ratings, it is assigned a Note Helpfulness Score according to the algorithm described below.
 
 If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on Twitter even if its status is Helpful.
 
 Notes with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Notes with scores in between remain with a status of Needs more Ratings.
 
-When a note reaches a status of Helpful / Not Helpful, Birdwatch also shows the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
+When a note reaches a status of Helpful / Not Helpful, they're shown alongside the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
 
 Notes with the status Needs More Ratings remain sorted by recency (newest first), and notes with a Helpful or Not Helpful status are sorted by their Helpfulness Score.
 
-This ranking mechanism is subject to continuous development and improvement with the aim that Birdwatch consistently identifies notes that are found helpful to people from a wide variety of perspectives.
+This ranking mechanism is subject to continuous development and improvement with the aim that Community Notes consistently identifies notes that are found helpful to people from a wide variety of perspectives.
 
-During the pilot phase, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the Helpful / Not Helpful criteria and when that designation appears on the Birdwatch site. This delay allows Birdwatch to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.
+During the pilot phase, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the Helpful / Not Helpful criteria and when that designation appears on the Community Notes site. This delay allows Community Notes to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.
 
 ## Helpful Rating Mapping
 
 {{< figure src="../images/helpful-ranking.png">}}
 
-When rating notes, Birdwatch contributors answer the question “Is this note helpful?” Answers to that question are then used to rank notes. When Birdwatch launched in January 2021, people could answer “yes” or “no” to that question. An update on June 30, 2021 allows people to choose between “yes,” “somewhat” and “no.” We map these responses to continuous values from 0.0 to 1.0, hereafter referred to as “helpful scores”:
+When rating notes, contributors answer the question “Is this note helpful?” Answers to that question are then used to rank notes. When Community Notes (formerly called Birdwatch) launched in January 2021, people could answer “yes” or “no” to that question. An update on June 30, 2021 allows people to choose between “yes,” “somewhat” and “no.” We map these responses to continuous values from 0.0 to 1.0, hereafter referred to as “helpful scores”:
 
 - `Yes` maps to `1.0`
 - `Somewhat` maps to `0.5`.
@@ -85,7 +85,7 @@ Note: for now, to avoid overfitting on our very small dataset, we only use 1-dim
 
 ### Determining Note Status Explanation Tags
 
-When notes reach a status of Helpful or Not Helpful, Birdwatch displays the top two explanation tags that were given by raters to explain why they rated the note helpful or not.
+When notes reach a status of Helpful or Not Helpful, they're displayed alongside the top two explanation tags that were given by raters to explain why they rated the note helpful or not.
 
 This is done by simply counting the number of times each explanation tag was given filtered to explanation tags that match the final note status (e.g., if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status is reverted back to “Needs More Ratings” (this is very rare).
 
@@ -144,7 +144,7 @@ For not-helpful notes:
 
 - To prevent manipulation of helpfulness scores through deletion of notes, notes that are deleted will continue to be assigned note statuses based on the ratings they received. These statuses are factored into author helpfulness scores.
 - Valid Ratings Definition Update: instead of just the first 5 ratings on a note, all ratings will be valid if they are within the first 48 hours after note creation and were created before the note first received its status of Helpful or Not Helpful (or if its status flipped between Helpful and Not Helpful, then all ratings will be valid up until that flip occurred).
-- To make the above two changes possible, we are releasing a new dataset, note status history, which contains timestamps for when each note received statuses, and the timestamp and hashed participant ID of the author of a note. This data file is being populated now and will be available on the Birdwatch [Data Download](https://twitter.com/i/birdwatch/download-data) page beginning Monday July 18, 2022.
+- To make the above two changes possible, we are releasing a new dataset, note status history, which contains timestamps for when each note received statuses, and the timestamp and hashed participant ID of the author of a note. This data file is being populated now and will be available on the Community Notes [Data Download](https://twitter.com/i/birdwatch/download-data) page beginning Monday July 18, 2022.
 
 **Mar 09, 2022**
 
@@ -165,4 +165,4 @@ For not-helpful notes:
 
 **January 28, 2021**
 
-- Birdwatch pilot begins, with note ranking done via simply computing the raw ratio of helpful ratings.
+- Community Notes (formerly called Birdwatch) pilot begins, with note ranking done via simply computing the raw ratio of helpful ratings.

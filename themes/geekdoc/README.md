@@ -1,12 +1,12 @@
-# Twitter Birdwatch Guide
+# Twitter Community Notes Guide
 
 ## Empowering the Twitter community to address misleading information
 
-The Birdwatch pilot will be an iterative study that allows participating individuals on Twitter to submit notes, such as research and explanations from credible sources on individual Tweets they believe contain misleading or false information.
+The Community Notes pilot will be an iterative study that allows participating individuals on Twitter to submit notes, such as research and explanations from credible sources on individual Tweets they believe contain misleading or false information.
 
 This experiment is building toward a new and different sort of governance on Twitter, one that empowers individuals and the community to access additional remediations like labels or deamplification based on community consensus.
 
-In this first phase of this pilot, our goal is to learn. We will design, experiment with, build and improve Birdwatch in public, with Birdwatchers. Making the Guide open source is one of the measures we've taken towards transparency. Our intention is to publish here as much of our learnings, documentation, roadmap, and feedback as possible.
+In this first phase of this pilot, our goal is to learn. We will design, experiment with, build and improve Community Notes in public, alongside contributors. Making the Guide open source is one of the measures we've taken towards transparency. Our intention is to publish here as much of our learnings, documentation, roadmap, and feedback as possible.
 
 # Hugo Geekdoc Theme
 

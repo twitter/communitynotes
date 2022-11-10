@@ -5,10 +5,10 @@ more:
   #   external: false
   #   icon: "notification"
   - name: "View source on GitHub"
-    ref: "https://github.com/twitter/birdwatch"
+    ref: "https://github.com/twitter/communitynotes"
     external: true
     icon: "github"
-  - name: "Follow @Birdwatch"
-    ref: "https://twitter.com/birdwatch"
+  - name: "Follow @CommunityNotes"
+    ref: "https://twitter.com/communitynotes"
     external: true
     icon: "twitter"
