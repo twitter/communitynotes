@@ -1,250 +1,249 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Home on Birdwatch Guide</title>
-    <link>https://twitter.github.io/birdwatch/</link>
-    <description>Recent content in Home on Birdwatch Guide</description>
+    <title>Home on Community Notes Guide</title>
+    <link>https://twitter.github.io/communitynotes/</link>
+    <description>Recent content in Home on Community Notes Guide</description>
     <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language><atom:link href="https://twitter.github.io/birdwatch/index.xml" rel="self" type="application/rss+xml" />
+    <language>en-us</language><atom:link href="https://twitter.github.io/communitynotes/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Signing up</title>
-      <link>https://twitter.github.io/birdwatch/signing-up/</link>
+      <link>https://twitter.github.io/communitynotes/signing-up/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/signing-up/</guid>
-      <description>During the first phase of the pilot, Birdwatch is limited to a small test group in the US.
-Our goal is to expand Birdwatch to the global Twitter community. We want anyone to be able to participate and know that having contributors with different points of view is essential to Birdwatch helpfully addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
-Sign up here     Eligibility To become a Birdwatch contributor, accounts must have:</description>
+      <guid>https://twitter.github.io/communitynotes/signing-up/</guid>
+      <description>During the first phase of the pilot, Community Notes is limited to a small test group in the US.
+Our goal is to expand Community Notes globally. We want anyone to be able to participate and know that having contributors with different points of view is essential to Community Notes helpfully addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
+Sign up here     Eligibility To become a Community Notes contributor, accounts must have:</description>
     </item>
     
     <item>
-      <title>Additional Birdwatch review</title>
-      <link>https://twitter.github.io/birdwatch/additional-review/</link>
+      <title>Additional Community review</title>
+      <link>https://twitter.github.io/communitynotes/additional-review/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/additional-review/</guid>
-      <description>What are Birdwatch notes? Birdwatch is a pilot program that allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading. The aim is to keep people on Twitter better informed by showing notes that people from different points of view will find helpful.
+      <guid>https://twitter.github.io/communitynotes/additional-review/</guid>
+      <description>What is Community Notes? Community Notes is a pilot program that allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading. The aim is to keep people on Twitter better informed by showing notes that people from different points of view will find helpful.
 Notes are only shown to a limited set of people in the pilot program, and notes only appear on Tweets when they’ve been rated helpful by enough people from different points of view.</description>
     </item>
     
     <item>
-      <title>Birdwatch Aliases</title>
-      <link>https://twitter.github.io/birdwatch/aliases/</link>
+      <title>Challenges</title>
+      <link>https://twitter.github.io/communitynotes/challenges/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/aliases/</guid>
-      <description>We want everyone to feel comfortable contributing to Birdwatch. Aliases let contributors write and rate notes without sharing their Twitter usernames.
-A Birdwatch alias is a new, auto-generated display name that contributors get when they join Birdwatch. Aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately.
+      <guid>https://twitter.github.io/communitynotes/challenges/</guid>
+      <description>We know there are many challenges involved in building an open, participatory system like Community Notes — from making it resistant to manipulation attempts, to ensuring it isn’t dominated by a simple majority or biased because of the distribution of contributors.
+We&amp;rsquo;ve been building Community Notes (formerly called Birdwatch) in public since January 2021, and have intentionally designed it to mitigate potential risks. We&amp;rsquo;ve seen encouraging results, but we&amp;rsquo;re constantly designing for challenges that could arise.</description>
+    </item>
+    
+    <item>
+      <title>Community Notes Aliases</title>
+      <link>https://twitter.github.io/communitynotes/aliases/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/communitynotes/aliases/</guid>
+      <description>We want everyone to feel comfortable contributing to Community Notes. Aliases let contributors write and rate notes without sharing their Twitter usernames.
+A Community Notes alias is a new, auto-generated display name that contributors get when they join Community Notes. Aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately.
 Further, we believe aliases have the potential to:
  Reduce bias. By keeping focus on the content of notes rather than who’s writing them, aliases have the potential to reduce bias that people might have around specific authors.</description>
     </item>
     
     <item>
-      <title>Challenges</title>
-      <link>https://twitter.github.io/birdwatch/challenges/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://twitter.github.io/birdwatch/challenges/</guid>
-      <description>We know there are many challenges involved in building an open, participatory system like Birdwatch — from making it resistant to manipulation attempts, to ensuring it isn’t dominated by a simple majority or biased because of the distribution of contributors.
-We&amp;rsquo;ve been building Birdwatch in public since January 2021, and have intentionally designed it to mitigate potential risks. We&amp;rsquo;ve seen encouraging results, but we&amp;rsquo;re constantly designing for challenges that could arise.</description>
-    </item>
-    
-    <item>
       <title>Contributor helpfulness scores</title>
-      <link>https://twitter.github.io/birdwatch/contributor-scores/</link>
+      <link>https://twitter.github.io/communitynotes/contributor-scores/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/contributor-scores/</guid>
-      <description>Helpfulness scores are a way to give more influence to people with a track record of making high-quality contributions to Birdwatch. There are currently two types of author helpfulness scores and one rater helpfulness score.
+      <guid>https://twitter.github.io/communitynotes/contributor-scores/</guid>
+      <description>Helpfulness scores are a way to give more influence to people with a track record of making high-quality contributions to Community Notes. There are currently two types of author helpfulness scores and one rater helpfulness score.
 In order to get enough data from new raters to be able to assess how similarly they rate notes to others, we require a minimum of 10 ratings made before helpfulness scores are computed and ratings may be counted.</description>
     </item>
     
     <item>
       <title>Diversity of perspectives</title>
-      <link>https://twitter.github.io/birdwatch/diversity-of-perspectives/</link>
+      <link>https://twitter.github.io/communitynotes/diversity-of-perspectives/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/diversity-of-perspectives/</guid>
-      <description>Birdwatch aims to identify notes that many people on Twitter will find helpful, including people with different points of view.
-To find notes that are helpful to the broadest possible set of people, Birdwatch takes into account not only how many contributors rated a note as helpful or unhelpful, but also whether people who rated it seem to come from different perspectives.
-Birdwatch assesses &amp;ldquo;different perspectives&amp;rdquo; entirely based on how people have rated notes in the past; Birdwatch does not ask about or use any other information to do this (e.</description>
+      <guid>https://twitter.github.io/communitynotes/diversity-of-perspectives/</guid>
+      <description>Community Notes aims to identify notes that many people on Twitter will find helpful, including people with different points of view.
+To find notes that are helpful to the broadest possible set of people, Community Notes takes into account not only how many contributors rated a note as helpful or unhelpful, but also whether people who rated it seem to come from different perspectives.
+Community Notes assesses &amp;ldquo;different perspectives&amp;rdquo; entirely based on how people have rated notes in the past; Community Notes does not ask about or use any other information to do this (e.</description>
     </item>
     
     <item>
       <title>Downloading data</title>
-      <link>https://twitter.github.io/birdwatch/download-data/</link>
+      <link>https://twitter.github.io/communitynotes/download-data/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/download-data/</guid>
+      <guid>https://twitter.github.io/communitynotes/download-data/</guid>
       <description>We can&amp;rsquo;t wait to learn with you!
-All Birdwatch contributions are publicly available on the Download Data page of the Birdwatch site so that anyone in the US has free access to analyze the data, identify problems, and spot opportunities to make Birdwatch better.
-If you have questions or feedback about the Birdwatch public data or would like to share your analyses of this data with us, please DM us at @Birdwatch.</description>
+All Community Notes contributions are publicly available on the Download Data page of the Community Notes site so that anyone in the US has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
+If you have questions or feedback about the Community Notes public data or would like to share your analyses of this data with us, please DM us at @CommunityNotes.</description>
     </item>
     
     <item>
       <title>FAQs</title>
-      <link>https://twitter.github.io/birdwatch/faq/</link>
+      <link>https://twitter.github.io/communitynotes/faq/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/faq/</guid>
-      <description>Who is eligible to participate in the Birdwatch pilot? Is there an approval process?   People in the US can sign up to become contributors in the pilot. Accounts must meet a few criteria to be eligible. Learn more here.
-In addition to people who have signed up to become Birdwatch contributors, limited test groups in the US may see Helpful notes on on Tweets, in order to help assess their quality.</description>
+      <guid>https://twitter.github.io/communitynotes/faq/</guid>
+      <description>Who is eligible to participate in the Community Notes pilot? Is there an approval process?   People in the US can sign up to become contributors in the pilot. Accounts must meet a few criteria to be eligible. Learn more here.
+In addition to people who have signed up to become Community Notes contributors, limited test groups in the US may see Helpful notes on on Tweets, in order to help assess their quality.</description>
     </item>
     
     <item>
       <title>Guardrails and Circuit Breakers</title>
-      <link>https://twitter.github.io/birdwatch/guardrails/</link>
+      <link>https://twitter.github.io/communitynotes/guardrails/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/guardrails/</guid>
-      <description>Birdwatch aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful context to Tweets that might be misleading or missing important context.
-It’s important that the context that is elevated to viewers from Birdwatch be helpful, informative, and accurate.
-Birdwatch’s note ranking algorithm is designed to help meet these quality standards, along with a number of additional safeguards built over the course of the program’s development.</description>
+      <guid>https://twitter.github.io/communitynotes/guardrails/</guid>
+      <description>Community Notes aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful context to Tweets that might be misleading or missing important context.
+It’s important that the context that is elevated to viewers from Community Notes be helpful, informative, and accurate.
+The note ranking algorithm is designed to help meet these quality standards, along with a number of additional safeguards built over the course of the program’s development.</description>
     </item>
     
     <item>
       <title>Locking and unlocking the ability to write notes</title>
-      <link>https://twitter.github.io/birdwatch/writing-ability/</link>
+      <link>https://twitter.github.io/communitynotes/writing-ability/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/writing-ability/</guid>
-      <description>To keep the quality of Birdwatch notes high, Birdwatch contributors earn (and can lose) the ability to write notes.
-Everyone who joins Birdwatch can rate notes. They can unlock the ability to write notes by helping to identify helpful and unhelpful notes. If notes they write are found helpful, they’ll continue to have greater impact. If notes they write are consistently found not helpful, their ability to write notes will be temporarily locked, and they’ll have to earn it back.</description>
+      <guid>https://twitter.github.io/communitynotes/writing-ability/</guid>
+      <description>To keep the quality of Community Notes high, contributors earn (and can lose) the ability to write notes.
+Everyone who joins Community Notes can rate notes. They can unlock the ability to write notes by helping to identify helpful and unhelpful notes. If notes they write are found helpful, they’ll continue to have greater impact. If notes they write are consistently found not helpful, their ability to write notes will be temporarily locked, and they’ll have to earn it back.</description>
     </item>
     
     <item>
       <title>Note ranking</title>
-      <link>https://twitter.github.io/birdwatch/ranking-notes/</link>
+      <link>https://twitter.github.io/communitynotes/ranking-notes/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/ranking-notes/</guid>
-      <description>Birdwatch notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the Birdwatch Site’s timelines, and which notes are displayed as Birdwatch Cards on Tweets.
-Only notes that indicate the Tweet as “potentially misleading” are eligible to be displayed as Birdwatch Cards on Tweets; notes that indicate the Tweet is “not misleading” are not displayed as Birdwatch Cards on Tweets.</description>
+      <guid>https://twitter.github.io/communitynotes/ranking-notes/</guid>
+      <description>Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the Community Notes Site’s timelines, and which notes are displayed on Tweets .
+Only notes that indicate the Tweet as “potentially misleading” are eligible to be displayed on Tweets; notes that indicate the Tweet is “not misleading” are not displayed on Tweets.</description>
     </item>
     
     <item>
       <title>Note ranking code</title>
-      <link>https://twitter.github.io/birdwatch/note-ranking-code/</link>
+      <link>https://twitter.github.io/communitynotes/note-ranking-code/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/note-ranking-code/</guid>
-      <description>Here you can find links to code that reproduces the note scoring/ranking code that Birdwatch runs in production.
-If you download the notes, ratings, and note status history files made available on the Birdwatch Data Download page and put them in the same directory as the following files, you can then run python main.py to produce a scoredNotes.tsv file that contains note scores, statuses, and explanation tags that will match what’s running in production (as of the time the data was from).</description>
+      <guid>https://twitter.github.io/communitynotes/note-ranking-code/</guid>
+      <description>Here you can find links to code that reproduces the note scoring/ranking code that Twitter runs in production.
+If you download the notes, ratings, and note status history files made available on the Data Download page and put them in the same directory as the following files, you can then run python main.py to produce a scoredNotes.tsv file that contains note scores, statuses, and explanation tags that will match what’s running in production (as of the time the data was from).</description>
     </item>
     
     <item>
       <title>Note-writing tips</title>
-      <link>https://twitter.github.io/birdwatch/examples/</link>
+      <link>https://twitter.github.io/communitynotes/examples/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/examples/</guid>
-      <description>Great Birdwatch notes provide helpful context to Tweets and leave people better informed. But what makes a Birdwatch note helpful?
-Helpful attributes  Cites high-quality sources Easy to understand Directly addresses the Tweet’s claim Provides important context Neutral or unbiased language    Unhelpful attributes Helpful Birdwatch notes steer clear of all of these unhelpful attributes:
- Sources not included or unreliable Sources do not support note Incorrect information Opinion or speculation Typos or unclear language Misses key points or irrelevant Argumentative or biased language Note not needed on this Tweet Harassment or abuse     The following are examples of Birdwatch notes that illustrate what makes a note helpful (versus unhelpful):</description>
+      <guid>https://twitter.github.io/communitynotes/examples/</guid>
+      <description>Great notes provide helpful context to Tweets and leave people better informed. But what makes a note helpful?
+Helpful attributes  Cites high-quality sources Easy to understand Directly addresses the Tweet’s claim Provides important context Neutral or unbiased language    Unhelpful attributes Helpful notes steer clear of all of these unhelpful attributes:
+ Sources not included or unreliable Sources do not support note Incorrect information Opinion or speculation Typos or unclear language Misses key points or irrelevant Argumentative or biased language Note not needed on this Tweet Harassment or abuse     The following are examples of notes that illustrate what makes a note helpful (versus unhelpful):</description>
     </item>
     
     <item>
       <title>Notes shown on Twitter</title>
-      <link>https://twitter.github.io/birdwatch/notes-on-twitter/</link>
+      <link>https://twitter.github.io/communitynotes/notes-on-twitter/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/notes-on-twitter/</guid>
-      <description>Birdwatch&amp;rsquo;s goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. During this pilot phase, only a limited group of people in the US can see these notes, but our goal is to eventually show them to everyone. Here&amp;rsquo;s how they show up:
-  If a Tweet has a Birdwatch note that earned a status of Helpful after being rated by enough contributors then the note will be shown in a card on the Tweet, along with a button to rate the note.</description>
+      <guid>https://twitter.github.io/communitynotes/notes-on-twitter/</guid>
+      <description>Community Notes&#39; goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. During this pilot phase, only a limited group of people in the US can see these notes, but our goal is to eventually show them to everyone. Here&amp;rsquo;s how they show up:
+  If a Tweet has a note that earned a status of Helpful after being rated by enough contributors then the note will be shown in a card on the Tweet, along with a button to rate the note.</description>
     </item>
     
     <item>
       <title>Overview</title>
-      <link>https://twitter.github.io/birdwatch/overview/</link>
+      <link>https://twitter.github.io/communitynotes/overview/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/overview/</guid>
-      <description>Birdwatch aims to create a better informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
+      <guid>https://twitter.github.io/communitynotes/overview/</guid>
+      <description>Community Notes aims to create a better informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
 Contributors can identify Tweets they believe are misleading, write notes that provide context to the Tweet, and rate the quality of other contributors’ notes. Through consensus from a broad and diverse set of people, our eventual goal is that the most helpful notes will be visible directly on Tweets, available to everyone on Twitter.</description>
     </item>
     
     <item>
       <title>Phone number troubleshooting</title>
-      <link>https://twitter.github.io/birdwatch/phone-faq/</link>
+      <link>https://twitter.github.io/communitynotes/phone-faq/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/phone-faq/</guid>
-      <description>All Birdwatch accounts must have phone numbers that are verified, use a trusted US-based carrier, and are unique among all Birdwatch contributors. This helps protect Birdwatch from spam and uphold the quality of Birdwatch notes.
-If you&amp;rsquo;re having trouble with your phone number in Birdwatch, here&amp;rsquo;s what you can do:
-If your phone number is not verified You can verify your phone number by following Twitter&amp;rsquo;s Help Center instructions.
-If your phone number is associated with more than one Twitter account If your phone number is associated with multiple Twitter accounts, only the account that most recently verified that number will be able to access Birdwatch.</description>
+      <guid>https://twitter.github.io/communitynotes/phone-faq/</guid>
+      <description>All Community Notes accounts must have phone numbers that are verified, use a trusted US-based carrier, and are unique among all contributors. This helps protect Community Notes from spam and uphold the quality of contributions.
+If you&amp;rsquo;re having trouble with your phone number in Community Notes, here&amp;rsquo;s what you can do:
+If your phone number is not verified You can verify your phone number by following Twitter&amp;rsquo;s Help Center instructions.</description>
     </item>
     
     <item>
       <title>Rating and Writing Impact</title>
-      <link>https://twitter.github.io/birdwatch/writing-and-rating-impact/</link>
+      <link>https://twitter.github.io/communitynotes/writing-and-rating-impact/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/writing-and-rating-impact/</guid>
-      <description>The two most important activities in Birdwatch are writing notes and rating notes. Contributors can see the history of their past Writing Impact and Rating Impact on their profiles.
-In the future, newly admitted Birdwatch contributors will need to earn enough Rating Impact to unlock the ability to write notes.
+      <guid>https://twitter.github.io/communitynotes/writing-and-rating-impact/</guid>
+      <description>The two most important activities in Community Notes are writing notes and rating notes. Contributors can see the history of their past Writing Impact and Rating Impact on their profiles.
+In the future, newly admitted contributors will need to earn enough Rating Impact to unlock the ability to write notes.
   Writing Impact Writing Impact reflects how often a contributor&amp;rsquo;s notes have earned a status of Helpful when rated by others.</description>
     </item>
     
     <item>
       <title>Rating notes</title>
-      <link>https://twitter.github.io/birdwatch/rating-notes/</link>
+      <link>https://twitter.github.io/communitynotes/rating-notes/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/rating-notes/</guid>
-      <description>There are two ways to find Tweets with Birdwatch notes in order to rate their quality:
-Rating notes on the Birdwatch site Go to the Birdwatch Site&amp;rsquo;s Home page and choose any Tweet to see notes that contributors have added to it. There are three main timelines on this page:
-  Needs your help: Contains Tweets with notes where you can have the most impact when rating. This tab is only visible to Birdwatch contributors.</description>
+      <guid>https://twitter.github.io/communitynotes/rating-notes/</guid>
+      <description>There are two ways to find Tweets with Community Notes in order to rate their quality:
+Rating notes on the Community Notes site Go to the Community Notes Home page and choose any Tweet to see notes that contributors have added to it. There are three main timelines on this page:
+  Needs your help: Contains Tweets with notes where you can have the most impact when rating. This tab is only visible to Community Notes contributors.</description>
     </item>
     
     <item>
       <title>Submit Feedback</title>
-      <link>https://twitter.github.io/birdwatch/feedback/</link>
+      <link>https://twitter.github.io/communitynotes/feedback/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/feedback/</guid>
-      <description>Birdwatch is early in its development, and our goal is to build it in the open with the public. We invite you on this journey to learn and shape Birdwatch alongside us. Feel free to reach out with:
+      <guid>https://twitter.github.io/communitynotes/feedback/</guid>
+      <description>Community Notes is early in its development, and our goal is to build it in the open with the public. We invite you on this journey to learn and shape Community Notes alongside us. Feel free to reach out with:
  Questions about the program Problems or issues you experience while contributing Risks and concerns we might not have considered Ideas for product updates or features for our roadmap Analyses done with our public data or feedback about the data.</description>
     </item>
     
     <item>
       <title>Timeline Tabs</title>
-      <link>https://twitter.github.io/birdwatch/timeline-tabs/</link>
+      <link>https://twitter.github.io/communitynotes/timeline-tabs/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/timeline-tabs/</guid>
-      <description>Birdwatch participants are able to view three different tabs on the Birdwatch Home page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
+      <guid>https://twitter.github.io/communitynotes/timeline-tabs/</guid>
+      <description>Community Notes participants are able to view three different tabs on the Community Notes Home page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
   New Contains Tweets sorted by reverse chronological order of when its latest note was written (Tweets are bumped to the top of the list when a new note is written on them).</description>
     </item>
     
     <item>
       <title>Values</title>
-      <link>https://twitter.github.io/birdwatch/values/</link>
+      <link>https://twitter.github.io/communitynotes/values/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/values/</guid>
-      <description>Birdwatch aims to provide context on Tweets in a way that a broad set of people with diverse perspectives find helpful. We ask that all Birdwatch contributors agree to uphold three core values:
-    Contribute to build understanding  Birdwatch seeks to provide helpful context so people can stay better informed about Tweets they see. It’s not a place for quick dunks, personal opinions, or insults. Write clear, evidence-based notes to help everyone, even skeptics, better understand a Tweet and why it might be misleading.</description>
+      <guid>https://twitter.github.io/communitynotes/values/</guid>
+      <description>Community Notes aims to provide context on Tweets in a way that a broad set of people with diverse perspectives find helpful. We ask that all Community Notes contributors agree to uphold three core values:
+    Contribute to build understanding  Community Notes seeks to provide helpful context so people can stay better informed about Tweets they see. It’s not a place for quick dunks, personal opinions, or insults.</description>
     </item>
     
     <item>
       <title>Video transcript</title>
-      <link>https://twitter.github.io/birdwatch/video-transcript-pile-ons/</link>
+      <link>https://twitter.github.io/communitynotes/video-transcript-pile-ons/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/video-transcript-pile-ons/</guid>
+      <guid>https://twitter.github.io/communitynotes/video-transcript-pile-ons/</guid>
       <description>How does Birdwatch avoid one-sided bias? Pile-ons? Brigading? Manipulation? Abuse?
-Birdwatch notes are rated by contributors of multiple perspectives, and only notes that are widely found helpful are shown on Tweets. So one group alone can&amp;rsquo;t determine what notes get shown, and pile-ons aren&amp;rsquo;t effective.
+Community Notes are rated by contributors of multiple perspectives, and only notes that are widely found helpful are shown on Tweets. So one group alone can&amp;rsquo;t determine what notes get shown, and pile-ons aren&amp;rsquo;t effective.
 This helps ensure that notes are helpful to a wide range of people.
 To make it clear how all of this works, Birdwatch&amp;rsquo;s algorithm is open source, and all the data is public.</description>
     </item>
     
     <item>
       <title>Video transcript</title>
-      <link>https://twitter.github.io/birdwatch/video-transcript/</link>
+      <link>https://twitter.github.io/communitynotes/video-transcript/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/video-transcript/</guid>
+      <guid>https://twitter.github.io/communitynotes/video-transcript/</guid>
       <description>Introducing Birdwatch.
 Sometimes, Tweets can be misleading or miss important context.
 [Cleve @All_the_sportz 1hr ago tweeted, “Police are reporting that 3 ostriches are loose in Central Station 😲”]
@@ -256,12 +255,12 @@ Decisions aren&amp;rsquo;t made by majority rules or popularity…So one group a
     
     <item>
       <title>Writing notes</title>
-      <link>https://twitter.github.io/birdwatch/writing-notes/</link>
+      <link>https://twitter.github.io/communitynotes/writing-notes/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://twitter.github.io/birdwatch/writing-notes/</guid>
-      <description>Anyone in the US can read Birdwatch notes, but only Birdwatch contributors who&amp;rsquo;ve unlocked the ability to write can add new notes to Tweets. Here&amp;rsquo;s how to add a note:
-   Click or tap the ••• menu on the Tweet&#39;s top right and then **Write a Birdwatch note**.       Before starting, you’ll see a reminder about Birdwatch values, — a prompt to promote helpful contributions.</description>
+      <guid>https://twitter.github.io/communitynotes/writing-notes/</guid>
+      <description>Anyone in the US can read and rate Community Notes, but only contributors who&amp;rsquo;ve unlocked the ability to write can add new notes to Tweets. Here&amp;rsquo;s how to add a note:
+   Click or tap the ••• menu on the Tweet&#39;s top right and then **Write a Community Note**.       Before starting, you’ll see a reminder about Community Notes values, — a prompt to promote helpful contributions.</description>
     </item>
     
   </channel>

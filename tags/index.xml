@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Tags on Birdwatch Guide</title>
-    <link>https://twitter.github.io/birdwatch/tags/</link>
-    <description>Recent content in Tags on Birdwatch Guide</description>
+    <title>Tags on Community Notes Guide</title>
+    <link>https://twitter.github.io/communitynotes/tags/</link>
+    <description>Recent content in Tags on Community Notes Guide</description>
     <generator>Hugo -- gohugo.io</generator>
-    <language>en-us</language><atom:link href="https://twitter.github.io/birdwatch/tags/index.xml" rel="self" type="application/rss+xml" />
+    <language>en-us</language><atom:link href="https://twitter.github.io/communitynotes/tags/index.xml" rel="self" type="application/rss+xml" />
   </channel>
 </rss>

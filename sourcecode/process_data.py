@@ -229,7 +229,7 @@ def preprocess_data(
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Populate helpfulNumKey, a unified column that merges the helpfulness answers from
   the V1 and V2 rating forms together, as described in
-  https://twitter.github.io/birdwatch/ranking-notes/#helpful-rating-mapping.
+  https://twitter.github.io/communitynotes/ranking-notes/#helpful-rating-mapping.
 
   Also, filter notes that indicate the Tweet is misleading, if the flag is True.
 
