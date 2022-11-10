@@ -20,11 +20,9 @@ Our goal is to expand Community Notes globally. We want anyone to be able to par
 
 ## How to contribute to this repo
 
-For this initial phase of the Community Notes pilot, we’ve turned off public Github contribution tools on GitHub (Issues, Pull Requests, Discussions) while we explore the best ways to engage with the growing community who is interested in studying or contributing to Community Notes.
+We welcome Pull Requests with fixes or improvements to our ranking source code as well as the Guide documentation content.
 
-For now, this site is intended as a transparent source of information about Community Notes, including version history of that information. As we develop algorithms that power Community Notes — such as reputation, consensus, and ranking systems — we also aim to make them publicly available. Our current implementation is already available [here](https://twitter.github.io/communitynotes/ranking-notes).
-
-You can talk directly with the team building Community Notes on Twitter, at [@CommunityNotes](https://twitter.com/communitynotes).
+You can also talk directly with the team building Community Notes on Twitter, at [@CommunityNotes](https://twitter.com/communitynotes).
 
 ---
 
@@ -33,7 +31,6 @@ You can talk directly with the team building Community Notes on Twitter, at [@Co
 Our static documentation site (called "Community Notes Guide") is built with [Hugo](https://gohugo.io/), using the [Hugo Geekdoc theme](https://github.com/thegeeklab/hugo-geekdoc). Follow the instructions on the Hugo website for downloading and running Hugo.
 
 ### Community Notes source code
-
 
 The algorithm that powers Community Notes can be found on the [sourcecode folder](https://github.com/twitter/communitynotes/tree/main/static/sourcecode), and isntructions on how to use it can be found in the [Guide](https://twitter.github.io/communitynotes/note-ranking-code/)
 
