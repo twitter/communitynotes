@@ -1,6 +1,6 @@
 # Twitter Community Notes
 
-![](/static/images/hero.png)
+![](/static/images/community-notes-hero.png)
 
 ## Welcome to Community Notes's public repository
 
