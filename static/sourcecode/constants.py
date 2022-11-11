@@ -7,6 +7,9 @@ maxHistoricalValidRatings = 5
 crhThreshold = 0.40
 crnhThresholdIntercept = -0.05
 crnhThresholdNoteFactorMultiplier = -0.8
+tagFilteringPercentile = 95
+minAdjustedTagWeight = 1.5
+crhSuperThreshold = 0.50
 
 # Explanation Tags
 minRatingsToGetTag = 2
@@ -149,6 +152,8 @@ helpfulTagsTiebreakOrder = [tag for (tiebreakOrder, tag) in sorted(helpfulTagsAn
 
 notHelpfulSpamHarassmentOrAbuseTagKey = "notHelpfulSpamHarassmentOrAbuse"
 notHelpfulArgumentativeOrBiasedTagKey = "notHelpfulArgumentativeOrBiased"
+notHelpfulHardToUnderstandKey = "notHelpfulHardToUnderstand"
+notHelpfulNoteNotNeededKey = "notHelpfulNoteNotNeeded"
 
 notHelpfulTagsAndTieBreakOrder = [
   (0, "notHelpfulOther"),
@@ -157,7 +162,7 @@ notHelpfulTagsAndTieBreakOrder = [
   (4, "notHelpfulOpinionSpeculationOrBias"),
   (5, "notHelpfulMissingKeyPoints"),
   (12, "notHelpfulOutdated"),
-  (10, "notHelpfulHardToUnderstand"),
+  (10, notHelpfulHardToUnderstandKey),
   (7, notHelpfulArgumentativeOrBiasedTagKey),
   (9, "notHelpfulOffTopic"),
   (11, notHelpfulSpamHarassmentOrAbuseTagKey),
@@ -316,6 +321,7 @@ scoredNotesColumns = (
   + helpfulTagsTSVOrder
   + notHelpfulTagsTSVOrder
   + [numRatingsKey, noteInterceptKey, noteFactor1Key, ratingStatusKey, firstTagKey, secondTagKey]
+  + [createdAtMillisKey, noteAuthorParticipantIdKey, activeRulesKey, activeFilterTagsKey]
 )
 
 noteModelOutputTSVColumnsAndTypes = [

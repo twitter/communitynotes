@@ -49,7 +49,7 @@ def note_post_processing(
   # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
   # and ML output.
   contributorNotes = note_ratings.compute_scored_notes(
-    ratings, noteParams, noteStatusHistory, allNotes=True
+    ratings, noteParams, raterParams, noteStatusHistory, allNotes=True, tagFiltering=True
   )
   # Return one row per rater with stats including trackrecord identifying note labels.
   contributorScores = contributor_state.get_contributor_scores(
@@ -63,14 +63,14 @@ def note_post_processing(
     how="outer",
   )
 
-  print("computing scoredNotes from contributorNotes")
-  scoredNotes = contributorNotes[c.scoredNotesColumns].merge(
-    noteParams[[c.noteIdKey]], on=c.noteIdKey, how="inner"
-  )
+  # Prune notes which weren't in second MF round and merge NSH to generate final scoredNotes.
+  scoredNotes = contributorNotes.merge(noteParams[[c.noteIdKey]], on=c.noteIdKey, how="inner")
   castColumns = c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder + [c.numRatingsKey]
   scoredNotes[castColumns] = scoredNotes[castColumns].astype(np.int64)
 
-  scoredNotes = scoredNotes.merge(
+  scoredNotes = scoredNotes.drop(
+    columns=[c.createdAtMillisKey, c.noteAuthorParticipantIdKey]
+  ).merge(
     noteStatusHistory[[c.noteIdKey, c.createdAtMillisKey, c.noteAuthorParticipantIdKey]],
     on=c.noteIdKey,
     how="inner",
@@ -123,7 +123,8 @@ def run_algorithm(
   )
 
   # Get a dataframe of scored notes based on the algorithm results above
-  scoredNotes = note_ratings.compute_scored_notes(ratings, noteParamsUnfiltered, noteStatusHistory)
+  scoredNotes = note_ratings.compute_scored_notes(
+    ratings, noteParamsUnfiltered, raterParamsUnfiltered, noteStatusHistory)
 
   # Determine "valid" ratings
   validRatings = note_ratings.get_valid_ratings(ratings, noteStatusHistory, scoredNotes)

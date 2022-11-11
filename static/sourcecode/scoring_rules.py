@@ -159,6 +159,9 @@ class FilterTagOutliers(ScoringRule):
       adjustedRatioColumn = f"{adjustedColumn}{c.ratioSuffix}"
       print(tag)
       print(f"  ratio threshold: {thresholds[adjustedRatioColumn]}")
+      if tag == c.notHelpfulHardToUnderstandKey or tag == c.notHelpfulNoteNotNeededKey:
+        print(f"outliner filtering disabled for tag: {tag}")
+        continue
       tagFilteredNotes = crhStats[
         # Adjusted total must pass minimum threhsold set across all tags.
         (crhStats[adjustedColumn] > self._minAdjustedTotal)

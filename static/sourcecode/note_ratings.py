@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
-from typing import Callable
+from typing import Callable, Optional
 
-import constants as c, scoring_rules
+import constants as c, scoring_rules, tag_filter
 from explanation_tags import top_tags
 from scoring_rules import RuleID
 
@@ -260,12 +260,14 @@ def get_valid_ratings(
 def compute_scored_notes(
   ratings: pd.DataFrame,
   noteParams: pd.DataFrame,
+  raterParams: Optional[pd.DataFrame],
   noteStatusHistory: pd.DataFrame,
   minRatingsNeeded: int = c.minRatingsNeeded,
   crhThreshold: float = c.crhThreshold,
   crnhThresholdIntercept: float = c.crnhThresholdIntercept,
   crnhThresholdNoteFactorMultiplier: float = c.crnhThresholdNoteFactorMultiplier,
   allNotes: bool = False,
+  tagFiltering: bool = False,
   # TODO: We might want to consider inputing only the series here, instead of the whole callable
   is_crh_function: Callable[..., pd.Series] = is_crh,
   is_crnh_function: Callable[..., pd.Series] = is_crnh,
@@ -338,6 +340,25 @@ def compute_scored_notes(
       ),
     ),
   ]
+  if tagFiltering:
+    # Compute tag aggregates only if they are required for tag filtering.
+    tagAggregates = tag_filter.get_note_tag_aggregates(ratings, noteParams, raterParams)
+    assert len(tagAggregates) == len(noteParams), "there should be one aggregate per scored note"
+    if not allNotes:
+      assert len(tagAggregates) == len(noteStats), "should be one aggregate per scored note"
+    noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer" if allNotes else "left")
+
+    # Add tag filtering rule.
+    rules.append(
+      scoring_rules.FilterTagOutliers(
+        RuleID.TAG_OUTLIER,
+        c.needsMoreRatings,
+        {RuleID.GENERAL_CRH},
+        c.tagFilteringPercentile,
+        c.minAdjustedTagWeight,
+        c.crhSuperThreshold,
+      )
+    )
   scoredNotes = scoring_rules.apply_scoring_rules(noteStats, rules)
 
   # We need to add apply the top tag counter, because it changes the ratingStatusKey
