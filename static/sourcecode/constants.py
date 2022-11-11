@@ -144,12 +144,6 @@ helpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in helpfulTagsAndTieBreakOrd
 helpfulTagsAndTypesTSVOrder = [(tag, np.int64) for tag in helpfulTagsTSVOrder]
 helpfulTagsTiebreakOrder = [tag for (tiebreakOrder, tag) in sorted(helpfulTagsAndTieBreakOrder)]
 
-# NOTE: Always add new tags to the end of this list, and *never* change the order of
-# elements which are already in the list.  Scala code uses BirdwatchNoteNotHelpfulTags.get
-# to convert integers to enum values.  See links below for more info:
-# https://sourcegraph.twitter.biz/git.twitter.biz/source@418a2115a402a00f99f3e42fda217332ce1124d8/-/blob/src/thrift/com/twitter/birdwatch/enums.thrift?L64
-# https://sourcegraph.twitter.biz/git.twitter.biz/source@418a2115a402a00f99f3e42fda217332ce1124d8/-/blob/birdwatch/manhattan-exporter/src/main/scala/com/twitter/birdwatch/exporter/BirdwatchTsvSchema.scala?L413
-
 notHelpfulSpamHarassmentOrAbuseTagKey = "notHelpfulSpamHarassmentOrAbuse"
 notHelpfulArgumentativeOrBiasedTagKey = "notHelpfulArgumentativeOrBiased"
 notHelpfulHardToUnderstandKey = "notHelpfulHardToUnderstand"
