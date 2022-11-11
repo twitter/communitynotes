@@ -1,17 +1,16 @@
 import argparse
 
-import constants as c
-
-import algorithm
-import process_data
+import algorithm, constants as c, process_data
 
 
 """
-Run with:
-python main.py \
-  --notes_path notes-00000.tsv  \
-  --ratings_path ratings-00000.tsv \
-  --note_status_history_path note_status_history-00000.tsv
+Run as a python script via run_main.py, one directory up.
+
+Example Usage:
+  python main.py \
+    --notes_path notes-00000.tsv  \
+    --ratings_path ratings-00000.tsv \
+    --note_status_history_path noteStatusHistory-00000.tsv
 """
 
 
@@ -40,11 +39,12 @@ def run_scoring():
   reading data and writing scored output; mean to be invoked from main.
   """
   args = get_args()
-  notes, ratings, noteStatusHistory = process_data.get_data(
+  _, ratings, noteStatusHistory = process_data.get_data(
     args.notes_path, args.ratings_path, args.note_status_history_path
   )
-  noteParams, raterParams, noteStatusHistory = algorithm.run_algorithm(ratings, noteStatusHistory)
+  noteParams, _, _ = algorithm.run_algorithm(ratings, noteStatusHistory)
   process_data.write_scored_notes(noteParams)
+  print("Finished.")
 
 
 if __name__ == "__main__":

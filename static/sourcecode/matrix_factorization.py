@@ -2,6 +2,7 @@ from typing import Optional, Tuple
 
 import constants as c
 
+import numpy as np
 import pandas as pd
 import torch
 
@@ -52,6 +53,8 @@ def run_mf(
   runName: str = "prod",
   logging: bool = True,
   flipFactorsForIdentification: bool = True,
+  noteInit: pd.DataFrame = None,
+  userInit: pd.DataFrame = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[float]]:
   """Train matrix factorization model.
 
@@ -75,7 +78,9 @@ def run_mf(
         globalIntercept: learned global intercept parameter
   """
   assert numFactors == 1
-  noteData = ratings
+  # We are extracting only the subset of note data from the ratings data frame that is needed to
+  # run matrix factorization. This avoids accidentally loosing data through `dropna`.
+  noteData = ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]]
   noteData.dropna(0, inplace=True)
 
   noteIdMap = (
@@ -106,14 +111,37 @@ def run_mf(
 
   l2_lambda_intercept = l2_lambda * l2_intercept_multiplier
 
-  rating = torch.FloatTensor(noteRatingIds[c.helpfulNumKey].values)
-  row = torch.LongTensor(noteRatingIds[c.raterIndexKey].values)
-  col = torch.LongTensor(noteRatingIds[c.noteIndexKey].values)
+  device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+  print(device)
+
+  rating = torch.FloatTensor(noteRatingIds[c.helpfulNumKey].values).to(device)
+  row = torch.LongTensor(noteRatingIds[c.raterIndexKey].values).to(device)
+  col = torch.LongTensor(noteRatingIds[c.noteIndexKey].values).to(device)
 
   mf_model = BiasedMatrixFactorization(
     n_users, n_items, use_global_intercept=useGlobalIntercept, n_factors=numFactors
   )
-  optimizer = torch.optim.Adam(mf_model.parameters(), lr=1)  # learning rate
+
+  if noteInit is not None:
+    print("initializing notes")
+    noteInit = noteIdMap.merge(noteInit, on=c.noteIdKey, how="left")
+    mf_model.item_intercepts.data = np.expand_dims(noteInit[c.noteInterceptKey].values, axis=1)
+    mf_model.item_factors.data = np.expand_dims(noteInit[c.noteFactor1Key].values, axis=1)
+
+  if userInit is not None:
+    print("initializing users")
+    userInit = raterIdMap.merge(userInit, on=c.raterParticipantIdKey, how="left")
+    mf_model.user_intercepts.data = np.expand_dims(userInit[c.raterInterceptKey].values, axis=1)
+    mf_model.user_factors.data = np.expand_dims(userInit[c.raterFactor1Key].values, axis=1)
+
+  mf_model.to(device)
+
+  if (noteInit is not None) and (userInit is not None):
+    optimizer = torch.optim.Adam(
+      mf_model.parameters(), lr=c.initLearningRate
+    )  # smaller learning rate
+  else:
+    optimizer = torch.optim.Adam(mf_model.parameters(), lr=c.noInitLearningRate)  # learning rate
 
   def print_loss():
     y_pred = mf_model(row, col)
@@ -123,14 +151,39 @@ def run_mf(
       print("epoch", epoch, loss.item())
       print("TRAIN FIT LOSS: ", train_loss.item())
 
-  for epoch in range(epochs):
+  prev_loss = 1e10
+
+  y_pred = mf_model(row, col)
+  loss = criterion(y_pred, rating)
+  l2_reg_loss = torch.tensor(0.0).to(device)
+
+  for name, param in mf_model.named_parameters():
+    if "intercept" in name:
+      l2_reg_loss += l2_lambda_intercept * (param**2).mean()
+    else:
+      l2_reg_loss += l2_lambda * (param**2).mean()
+
+  loss += l2_reg_loss
+
+  epoch = 0
+
+  while abs(prev_loss - loss.item()) > c.convergence:
+
+    prev_loss = loss.item()
+
+    # Backpropagate
+    loss.backward()
+
+    # Update the parameters
+    optimizer.step()
+
     # Set gradients to zero
     optimizer.zero_grad()
 
     # Predict and calculate loss
     y_pred = mf_model(row, col)
     loss = criterion(y_pred, rating)
-    l2_reg_loss = torch.tensor(0.0)
+    l2_reg_loss = torch.tensor(0.0).to(device)
 
     for name, param in mf_model.named_parameters():
       if "intercept" in name:
@@ -140,23 +193,20 @@ def run_mf(
 
     loss += l2_reg_loss
 
-    # Backpropagate
-    loss.backward()
-
-    # Update the parameters
-    optimizer.step()
-
     if epoch % 50 == 0:
       print_loss()
 
+    epoch += 1
+
+  print("Num epochs:", epoch)
   print_loss()
 
-  assert mf_model.item_factors.weight.data.numpy().shape[0] == noteIdMap.shape[0]
+  assert mf_model.item_factors.weight.data.cpu().numpy().shape[0] == noteIdMap.shape[0]
 
-  noteIdMap[c.noteFactor1Key] = mf_model.item_factors.weight.data.numpy()[:, 0]
-  raterIdMap[c.raterFactor1Key] = mf_model.user_factors.weight.data.numpy()[:, 0]
-  noteIdMap[c.noteInterceptKey] = mf_model.item_intercepts.weight.data.numpy()
-  raterIdMap[c.raterInterceptKey] = mf_model.user_intercepts.weight.data.numpy()
+  noteIdMap[c.noteFactor1Key] = mf_model.item_factors.weight.data.cpu().numpy()[:, 0]
+  raterIdMap[c.raterFactor1Key] = mf_model.user_factors.weight.data.cpu().numpy()[:, 0]
+  noteIdMap[c.noteInterceptKey] = mf_model.item_intercepts.weight.data.cpu().numpy()
+  raterIdMap[c.raterInterceptKey] = mf_model.user_intercepts.weight.data.cpu().numpy()
 
   globalIntercept = None
   if useGlobalIntercept:
