@@ -1,10 +1,18 @@
+from collections import Counter
+from typing import List, Optional
+
 import constants as c
 
 import numpy as np
 import pandas as pd
 
 
-def _top_tags(row: pd.Series, minRatingsToGetTag: int, minTagsNeededForStatus: int) -> pd.Series:
+def top_tags(
+  row: pd.Series,
+  minRatingsToGetTag: int,
+  minTagsNeededForStatus: int,
+  tagsConsidered: Optional[List[str]] = None,
+) -> pd.Series:
   """Given a particular row of the scoredNotes DataFrame, determine which two
   explanation tags to assign to the note based on its ratings.
 
@@ -14,11 +22,14 @@ def _top_tags(row: pd.Series, minRatingsToGetTag: int, minTagsNeededForStatus: i
       row (pd.Series): row of the scoredNotes dataframe, including a count of each tag
       minRatingsToGetTag (int): min ratings needed
       minTagsNeededForStatus (int): min tags needed before a note gets a status
+      tagsConsidered (list[str]): set of tags to consider for *all* notes
 
   Returns:
       Tuple: return the whole row back, with rating tag fields filled in.
   """
-  if row[c.ratingStatusKey] == c.currentlyRatedHelpful:
+  if tagsConsidered:
+    tagCounts = pd.DataFrame(row[tagsConsidered])
+  elif row[c.ratingStatusKey] == c.currentlyRatedHelpful:
     tagCounts = pd.DataFrame(row[c.helpfulTagsTiebreakOrder])
   elif row[c.ratingStatusKey] == c.currentlyRatedNotHelpful:
     tagCounts = pd.DataFrame(row[c.notHelpfulTagsTiebreakOrder])
@@ -29,78 +40,84 @@ def _top_tags(row: pd.Series, minRatingsToGetTag: int, minTagsNeededForStatus: i
   tagCounts = tagCounts[tagCounts[c.tagCountsKey] >= minRatingsToGetTag]
   topTags = tagCounts.sort_values(by=[c.tagCountsKey, c.tiebreakOrderKey], ascending=False)[:2]
   if len(topTags) < minTagsNeededForStatus:
+    # Even if note is currently CRH or CRNH, flip the status to NMR if we don't
+    # have strong enough signal on enough tags to explain the rating.
     row[c.ratingStatusKey] = c.needsMoreRatings
+    # We need to also update the bool keys. This is necessary for compute_scored_notes
+    # to correctly calcuate the status for the different counts.
+    if c.awaitingMoreRatingsBoolKey in row:
+      row[c.awaitingMoreRatingsBoolKey] = True
+    if c.currentlyRatedNotHelpfulBoolKey in row:
+      row[c.currentlyRatedNotHelpfulBoolKey] = False
+    if c.currentlyRatedHelpfulBoolKey in row:
+      row[c.currentlyRatedHelpfulBoolKey] = False
+
   else:
-    row[c.firstTagKey] = topTags.index[0]
-    row[c.secondTagKey] = topTags.index[1]
+    if len(topTags):
+      row[c.firstTagKey] = topTags.index[0]
+    if len(topTags) > 1:
+      row[c.secondTagKey] = topTags.index[1]
   return row
 
 
-def get_rating_status_and_explanation_tags(
-  ratings: pd.DataFrame,
-  noteParams: pd.DataFrame,
-  minRatingsNeeded: int = c.minRatingsNeeded,
-  minRatingsToGetTag: int = c.minRatingsToGetTag,
-  minTagsNeededForStatus: int = c.minTagsNeededForStatus,
-  crhThreshold: float = c.crhThreshold,
-  crnhThresholdIntercept: float = c.crnhThresholdIntercept,
-  crnhThresholdNoteFactorMultiplier: float = c.crnhThresholdNoteFactorMultiplier,
-  logging: bool = True,
-) -> pd.DataFrame:
-  """Given the parameters (intercept score) each note received from the algorithm,
-  assign a status to each note. Also assign rating explanation tags to each note
-  that's currently rated helpful or not helpful.
+def get_top_nonhelpful_tags_per_author(
+  notes: pd.DataFrame, reputationFilteredRatings: pd.DataFrame
+):
+  """Identifies the top non-helpful tags per author.
 
-  See https://twitter.github.io/birdwatch/ranking-notes/#note-status
+  We identify the top two non-helpful tags per author by:
+  1. Identifying the top two non-helpful tags for each note.
+  2. Grouping notes by author to find the top two tags across all notes
+     by the author.
 
   Args:
-      ratings (pd.DataFrame): all ratings
-      noteParams (pd.DataFrame): scored notes
-      minRatingsNeeded (int): min overall ratings needed to get status or tags
-      minRatingsToGetTag (int): min times a particular tag needs to be given
-      minTagsNeededForStatus (int): min number of tags a note needs to receive a status
-      crhThreshold (float): above this score, notes get currently rated helpful status
-      crnhThresholdIntercept (float): intercept to determine crnh status
-      crnhThresholdNoteFactorMultiplier (float): slope/multiplier to determine crnh status
-      logging (bool, optional): debug output. Defaults to True.
+      notes (pd.DataFrame): DF mapping notes to authors
+      reputationFilteredRatings (pd.DataFrame): DF including ratings and helpfulness tags
 
   Returns:
-      pd.DataFrame: scoredNotes, including note params, tags, and aggregated ratings.
+    pd.DataFrame with one row per author containing the author ID and top
+    two non-helpful tags associated with the author
   """
-  ratingsToUse = ratings[
-    [c.noteIdKey, c.helpfulNumKey] + c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder
-  ].copy()
-
-  ratingsToUse[c.numRatingsKey] = 1
-  scoredNotes = ratingsToUse.groupby(c.noteIdKey).sum()
-  scoredNotes = scoredNotes.merge(
-    noteParams[[c.noteIdKey, c.noteInterceptKey, c.noteFactor1Key]], on=c.noteIdKey
-  )
-
-  scoredNotes[c.ratingStatusKey] = c.needsMoreRatings
-  scoredNotes.loc[
-    (scoredNotes[c.numRatingsKey] >= minRatingsNeeded)
-    & (scoredNotes[c.noteInterceptKey] >= crhThreshold),
-    c.ratingStatusKey,
-  ] = c.currentlyRatedHelpful
-  scoredNotes.loc[
-    (scoredNotes[c.numRatingsKey] >= minRatingsNeeded)
-    & (
-      scoredNotes[c.noteInterceptKey]
-      <= crnhThresholdIntercept
-      + crnhThresholdNoteFactorMultiplier * np.abs(scoredNotes[c.noteFactor1Key])
+  # Finds the top two non-helpful tags per note.
+  noteTagTotals = reputationFilteredRatings.groupby(c.noteIdKey).sum().reset_index()
+  # Default tags to the empty string.
+  noteTagTotals[c.firstTagKey] = ""
+  noteTagTotals[c.secondTagKey] = ""
+  noteTopTags = noteTagTotals.apply(
+    lambda row: top_tags(
+      row,
+      c.minRatingsToGetTag,
+      c.minTagsNeededForStatus,
+      tagsConsidered=c.notHelpfulTagsTiebreakOrder,
     ),
-    c.ratingStatusKey,
-  ] = c.currentlyRatedNotHelpful
-
-  scoredNotes[c.firstTagKey] = np.nan
-  scoredNotes[c.secondTagKey] = np.nan
-
-  assert scoredNotes.columns.tolist() == c.scoredNotesColumns
-  scoredNotes = scoredNotes.apply(
-    lambda row: _top_tags(row, minRatingsToGetTag, minTagsNeededForStatus), axis=1
+    axis=1,
+  )[[c.noteIdKey, c.firstTagKey, c.secondTagKey]]
+  # Aggreagtes top two tags per author.
+  notesToUse = notes[[c.noteAuthorParticipantIdKey, c.noteIdKey]]
+  authorTagsAgg = (
+    notesToUse.merge(noteTopTags, on=[c.noteIdKey])
+    .groupby(c.noteAuthorParticipantIdKey)
+    .agg(Counter)
   )
+  # Chooses top two tags per author.
+  def _set_top_tags(row: pd.Series) -> pd.Series:
+    # Note that row[c.firstTagKey] and row[c.secondTagKey] are both Counter
+    # objects mapping tags to counts due to the aggregation above.
+    tagTuples = []
+    for tag, count in (row[c.firstTagKey] + row[c.secondTagKey]).items():
+      if not tag:
+        # Skip the empty string, which indicates no tag was assigned.
+        continue
+      tagTuples.append(
+        (count, c.notHelpfulTagsTiebreakMapping[tag], c.notHelpfulTagsEnumMapping[tag])
+      )
+    tagTuples = sorted(tagTuples, reverse=True)
+    topNotHelpfulTags = ",".join(
+      map(str, sorted([tagTuples[i][2] for i in range(min(len(tagTuples), 2))]))
+    )
+    row[c.authorTopNotHelpfulTagValues] = topNotHelpfulTags
+    return row
 
-  if logging:
-    print("Num Scored Notes:", len(scoredNotes))
-  return scoredNotes
+  return authorTagsAgg.apply(_set_top_tags, axis=1).reset_index()[
+    [c.noteAuthorParticipantIdKey, c.authorTopNotHelpfulTagValues]
+  ]

@@ -7,6 +7,9 @@ maxHistoricalValidRatings = 5
 crhThreshold = 0.40
 crnhThresholdIntercept = -0.05
 crnhThresholdNoteFactorMultiplier = -0.8
+tagFilteringPercentile = 95
+minAdjustedTagWeight = 1.5
+crhSuperThreshold = 0.50
 
 # Explanation Tags
 minRatingsToGetTag = 2
@@ -17,12 +20,16 @@ minMeanNoteScore = 0.05
 minCRHVsCRNHRatio = 0.00
 minRaterAgreeRatio = 0.66
 
+
 # Matrix factorization
 l2_lambda = 0.03
 l2_intercept_multiplier = 5
 numFactors = 1
 epochs = 200
 useGlobalIntercept = True
+convergence = 1e-7
+initLearningRate = 0.2
+noInitLearningRate = 1.0
 
 # Data Filters
 minNumRatingsPerRater = 10
@@ -41,6 +48,7 @@ notHelpfulKey = "notHelpful"
 helpfulnessLevelKey = "helpfulnessLevel"
 createdAtMillisKey = "createdAtMillis"
 summaryKey = "summary"
+authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
@@ -64,6 +72,21 @@ tagCountsKey = "tagCounts"
 tiebreakOrderKey = "tiebreakOrder"
 firstTagKey = "firstTag"
 secondTagKey = "secondTag"
+activeRulesKey = "activeRules"
+activeFilterTagsKey = "activeFilterTags"
+
+# Contributor Counts
+successfulRatingHelpfulCount = "successfulRatingHelpfulCount"
+successfulRatingNotHelpfulCount = "successfulRatingNotHelpfulCount"
+successfulRatingTotal = "successfulRatingTotal"
+unsuccessfulRatingHelpfulCount = "unsuccessfulRatingHelpfulCount"
+unsuccessfulRatingNotHelpfulCount = "unsuccessfulRatingNotHelpfulCount"
+unsuccessfulRatingTotal = "unsuccessfulRatingTotal"
+ratingsAwaitingMoreRatings = "ratingsAwaitingMoreRatings"
+ratedAfterDecision = "ratedAfterDecision"
+notesCurrentlyRatedHelpful = "notesCurrentlyRatedHelpful"
+notesCurrentlyRatedNotHelpful = "notesCurrentlyRatedNotHelpful"
+notesAwaitingMoreRatings = "notesAwaitingMoreRatings"
 
 # Model Output
 noteInterceptKey = "noteIntercept"
@@ -84,6 +107,7 @@ raterIndexKey = "raterIndex"
 noteCountKey = "noteCount"
 ratingCountKey = "ratingCount"
 numRatingsKey = "numRatings"
+numRatingsLast28DaysKey = "numRatingsLast28"
 
 # Helpfulness Score Keys
 crhRatioKey = "CRHRatio"
@@ -92,6 +116,7 @@ crhCrnhRatioDifferenceKey = "crhCrnhRatioDifference"
 meanNoteScoreKey = "meanNoteScore"
 raterAgreeRatioKey = "raterAgreeRatio"
 ratingAgreesWithNoteStatusKey = "ratingAgreesWithNoteStatus"
+aboveHelpfulnessThresholdKey = "aboveHelpfulnessThreshold"
 
 # Note Status Labels
 currentlyRatedHelpful = "CURRENTLY_RATED_HELPFUL"
@@ -101,7 +126,8 @@ needsMoreRatings = "NEEDS_MORE_RATINGS"
 # Boolean Note Status Labels
 currentlyRatedHelpfulBoolKey = "crhBool"
 currentlyRatedNotHelpfulBoolKey = "crnhBool"
-
+awaitingMoreRatingsBoolKey = "awaitingBool"
+afterDecisionBoolKey = "afterDecisionBool"
 
 helpfulTagsAndTieBreakOrder = [
   (0, "helpfulOther"),
@@ -118,6 +144,11 @@ helpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in helpfulTagsAndTieBreakOrd
 helpfulTagsAndTypesTSVOrder = [(tag, np.int64) for tag in helpfulTagsTSVOrder]
 helpfulTagsTiebreakOrder = [tag for (tiebreakOrder, tag) in sorted(helpfulTagsAndTieBreakOrder)]
 
+notHelpfulSpamHarassmentOrAbuseTagKey = "notHelpfulSpamHarassmentOrAbuse"
+notHelpfulArgumentativeOrBiasedTagKey = "notHelpfulArgumentativeOrBiased"
+notHelpfulHardToUnderstandKey = "notHelpfulHardToUnderstand"
+notHelpfulNoteNotNeededKey = "notHelpfulNoteNotNeeded"
+
 notHelpfulTagsAndTieBreakOrder = [
   (0, "notHelpfulOther"),
   (8, "notHelpfulIncorrect"),
@@ -125,10 +156,10 @@ notHelpfulTagsAndTieBreakOrder = [
   (4, "notHelpfulOpinionSpeculationOrBias"),
   (5, "notHelpfulMissingKeyPoints"),
   (12, "notHelpfulOutdated"),
-  (10, "notHelpfulHardToUnderstand"),
-  (7, "notHelpfulArgumentativeOrBiased"),
+  (10, notHelpfulHardToUnderstandKey),
+  (7, notHelpfulArgumentativeOrBiasedTagKey),
   (9, "notHelpfulOffTopic"),
-  (11, "notHelpfulSpamHarassmentOrAbuse"),
+  (11, notHelpfulSpamHarassmentOrAbuseTagKey),
   (1, "notHelpfulIrrelevantSources"),
   (3, "notHelpfulOpinionSpeculation"),
   (6, "notHelpfulNoteNotNeeded"),
@@ -138,6 +169,19 @@ notHelpfulTagsAndTypesTSVOrder = [(tag, np.int64) for tag in notHelpfulTagsTSVOr
 notHelpfulTagsTiebreakOrder = [
   tag for (tiebreakOrder, tag) in sorted(notHelpfulTagsAndTieBreakOrder)
 ]
+notHelpfulTagsTiebreakMapping = {
+  tag: priority for (priority, tag) in notHelpfulTagsAndTieBreakOrder
+}
+notHelpfulTagsEnumMapping = {
+  tag: idx for (idx, (_, tag)) in enumerate(notHelpfulTagsAndTieBreakOrder)
+}
+adjustedSuffix = "Adjusted"
+notHelpfulTagsAdjustedColumns = [f"{column}{adjustedSuffix}" for column in notHelpfulTagsTSVOrder]
+ratioSuffix = "Ratio"
+notHelpfulTagsAdjustedRatioColumns = [
+  f"{column}{ratioSuffix}" for column in notHelpfulTagsAdjustedColumns
+]
+ratingWeightKey = "ratingWeight"
 
 misleadingTags = [
   "misleadingOther",
@@ -214,11 +258,11 @@ noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
   (participantIdKey, np.object),
   (createdAtMillisKey, np.int64),
-  (timestampMillisOfNoteFirstNonNMRLabelKey, np.float),  # float because nullable.
+  (timestampMillisOfNoteFirstNonNMRLabelKey, np.double),  # double because nullable.
   (firstNonNMRLabelKey, np.object),
-  (timestampMillisOfNoteCurrentLabelKey, np.float),  # float because nullable.
+  (timestampMillisOfNoteCurrentLabelKey, np.double),  # double because nullable.
   (currentLabelKey, np.object),
-  (timestampMillisOfNoteMostRecentNonNMRLabelKey, np.float),  # float because nullable.
+  (timestampMillisOfNoteMostRecentNonNMRLabelKey, np.double),  # double because nullable.
   (mostRecentNonNMRLabelKey, np.object),
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
@@ -227,9 +271,82 @@ noteStatusHistoryTSVTypeMapping = {
   col: dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes
 }
 
+
+# Earn In + Earn Out
+enrollmentState = "enrollmentState"
+successfulRatingNeededToEarnIn = "successfulRatingNeededToEarnIn"
+timestampOfLastStateChange = "timestampOfLastStateChange"
+authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
+maxHistoryEarnOut = 5
+successfulRatingHelpfulCount = "successfulRatingHelpfulCount"
+earnedIn = "earnedIn"
+atRisk = "atRisk"
+earnedOutNoAcknowledge = "earnedOutNoAcknowledge"
+earnedOutAcknowledged = "earnedOutAcknowledged"
+newUser = "newUser"
+isAtRiskCRNHCount = 2
+ratingImpactForEarnIn = 5
+ratingImpact = "ratingImpact"
+enrollmentStateToThrift = {
+  earnedIn: 0,
+  atRisk: 1,
+  earnedOutNoAcknowledge: 2,
+  earnedOutAcknowledged: 3,
+  newUser: 4,
+}
+emergingWriterDays = 28
+isEmergingWriterKey = "isEmergingWriter"
+emergingMeanNoteScore = 0.3
+emergingRatingCount = 10
+aggregateRatingReceivedTotal = "aggregateRatingReceivedTotal"
+
+userEnrollmentTSVColumnsAndTypes = [
+  (participantIdKey, np.str),
+  (enrollmentState, np.str),
+  (successfulRatingNeededToEarnIn, np.int64),
+  (timestampOfLastStateChange, np.int64),
+]
+userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes]
+userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
+userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
+
 scoredNotesColumns = (
   [noteIdKey, helpfulNumKey]
   + helpfulTagsTSVOrder
   + notHelpfulTagsTSVOrder
   + [numRatingsKey, noteInterceptKey, noteFactor1Key, ratingStatusKey, firstTagKey, secondTagKey]
+  + [createdAtMillisKey, noteAuthorParticipantIdKey, activeRulesKey, activeFilterTagsKey]
 )
+
+noteModelOutputTSVColumnsAndTypes = [
+  (noteIdKey, np.int64),
+  (noteInterceptKey, np.double),
+  (noteFactor1Key, np.double),
+  (ratingStatusKey, np.str),
+  (firstTagKey, np.str),
+  (secondTagKey, np.str),
+]
+noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
+noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
+
+raterModelOutputTSVColumnsAndTypes = [
+  (raterParticipantIdKey, np.int64),
+  (raterInterceptKey, np.double),
+  (raterFactor1Key, np.double),
+  (crhCrnhRatioDifferenceKey, np.double),
+  (meanNoteScoreKey, np.double),
+  (raterAgreeRatioKey, np.double),
+  (successfulRatingHelpfulCount, np.int64),
+  (successfulRatingNotHelpfulCount, np.int64),
+  (successfulRatingTotal, np.int64),
+  (unsuccessfulRatingHelpfulCount, np.int64),
+  (unsuccessfulRatingNotHelpfulCount, np.int64),
+  (unsuccessfulRatingTotal, np.int64),
+  (ratingsAwaitingMoreRatings, np.int64),
+  (ratedAfterDecision, np.int64),
+  (notesCurrentlyRatedHelpful, np.int64),
+  (notesCurrentlyRatedNotHelpful, np.int64),
+  (notesAwaitingMoreRatings, np.int64)
+]
+raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
+raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}

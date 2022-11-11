@@ -1,10 +1,9 @@
 from io import StringIO
 from typing import Tuple
 
-import constants as c
+import constants as c, note_status_history
 
 from matplotlib import pyplot as plt
-import note_status_history
 import numpy as np
 import pandas as pd
 
@@ -15,7 +14,7 @@ def get_data(
   noteStatusHistoryPath: str,
   shouldFilterNotMisleadingNotes: bool = True,
   logging: bool = True,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """All-in-one function for reading Birdwatch notes and ratings from TSV files.
   It does both reading and pre-processing.
 
@@ -27,79 +26,63 @@ def get_data(
       logging (bool, optional): Print out debug output. Defaults to True.
 
   Returns:
-      Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory
+      Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
   """
-  notes, ratings, noteStatusHistory = read_from_tsv(notesPath, ratingsPath, noteStatusHistoryPath)
+  notes, ratings, noteStatusHistory = read_from_tsv(
+    notesPath, ratingsPath, noteStatusHistoryPath
+  )
   notes, ratings, noteStatusHistory = preprocess_data(
     notes, ratings, noteStatusHistory, shouldFilterNotMisleadingNotes, logging
   )
   return notes, ratings, noteStatusHistory
 
 
-def read_from_strings(
-  notesStr: str, ratingsStr: str, noteStatusHistoryStr: str
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-  """Read from TSV formatted String.
-
-  Args:
-      notesStr (str): tsv-formatted notes dataset
-      ratingsStr (str): tsv-formatted ratings dataset
-      noteStatusHistoryStr (str): tsv-formatted note status history dataset
-
-  Returns:
-     Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory
-  """
-  notes = pd.read_csv(
-    StringIO(notesStr), sep="\t", names=c.noteTSVColumns, dtype=c.noteTSVTypeMapping
-  )
-  ratings = pd.read_csv(
-    StringIO(ratingsStr), sep="\t", names=c.ratingTSVColumns, dtype=c.ratingTSVTypeMapping
-  )
-  noteStatusHistory = pd.read_csv(
-    StringIO(noteStatusHistoryStr),
-    sep="\t",
-    names=c.noteStatusHistoryTSVColumns,
-    dtype=c.noteStatusHistoryTSVTypeMapping,
-  )
-
-  return notes, ratings, noteStatusHistory
-
-
-def _tsv_reader(path: str, mapping, columns):
+def tsv_reader(path: str, mapping, columns):
   try:
     return pd.read_csv(path, sep="\t", dtype=mapping, names=columns)
-  except ValueError:
+  except ValueError as e:
+    print(e)
     return pd.read_csv(path, sep="\t", dtype=mapping)
 
 
 def read_from_tsv(
   notesPath: str, ratingsPath: str, noteStatusHistoryPath: str
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Mini function to read notes, ratings, and noteStatusHistory from TSVs.
 
   Args:
       notesPath (str): path
       ratingsPath (str): path
       noteStatusHistoryPath (str): path
-
   Returns:
-      Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory
+      Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
   """
-  notes = _tsv_reader(notesPath, c.noteTSVTypeMapping, c.noteTSVColumns)
-  ratings = _tsv_reader(ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns)
-  noteStatusHistory = _tsv_reader(
+  notes = tsv_reader(notesPath, c.noteTSVTypeMapping, c.noteTSVColumns)
+  ratings = tsv_reader(ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns)
+  noteStatusHistory = tsv_reader(
     noteStatusHistoryPath, c.noteStatusHistoryTSVTypeMapping, c.noteStatusHistoryTSVColumns
   )
 
-  assert all(
-    notes.columns == c.noteTSVColumns
-  ), f"got {notes.columns} but expected {c.noteTSVColumns}"  # ensure constants file is up to date.
-  assert all(
+  assert len(notes.columns) == len(c.noteTSVColumns) and all(notes.columns == c.noteTSVColumns), (
+    f"note columns don't match: \n{[col for col in notes.columns if not col in c.noteTSVColumns]} are extra columns, "
+    + f"\n{[col for col in c.noteTSVColumns if not col in notes.columns]} are missing."
+  )  # ensure constants file is up to date.
+  notes = notes.rename(columns={c.participantIdKey: c.noteAuthorParticipantIdKey})
+
+  assert len(ratings.columns.values) == len(c.ratingTSVColumns) and all(
     ratings.columns == c.ratingTSVColumns
-  ), f"got {ratings.columns} but expected {c.ratingTSVColumns}"  # ensure constants file is up to date.
-  assert all(
+  ), (
+    f"ratings columns don't match: \n{[col for col in ratings.columns if not col in c.ratingTSVColumns]} are extra columns, "
+    + f"\n{[col for col in c.ratingTSVColumns if not col in ratings.columns]} are missing."
+  )  # ensure constants file is up to date.
+  ratings = ratings.rename(columns={c.participantIdKey: c.raterParticipantIdKey})
+
+  assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
     noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
-  ), f"got {noteStatusHistory.columns} but expected {c.noteStatusHistoryTSVColumns}"
+  ), (
+    f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
+    + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
+  )
 
   return notes, ratings, noteStatusHistory
 
@@ -229,7 +212,7 @@ def preprocess_data(
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Populate helpfulNumKey, a unified column that merges the helpfulness answers from
   the V1 and V2 rating forms together, as described in
-  https://twitter.github.io/communitynotes/ranking-notes/#helpful-rating-mapping.
+  https://twitter.github.io/birdwatch/ranking-notes/#helpful-rating-mapping.
 
   Also, filter notes that indicate the Tweet is misleading, if the flag is True.
 
@@ -254,10 +237,6 @@ def preprocess_data(
       "Timestamp of latest note in data: ",
       pd.to_datetime(notes[c.createdAtMillisKey], unit="ms").max(),
     )
-
-  notes = notes.rename({c.participantIdKey: c.noteAuthorParticipantIdKey}, axis=1)
-  ratings = ratings.rename({c.participantIdKey: c.raterParticipantIdKey}, axis=1)
-
   ratings = remove_duplicate_ratings(ratings)
   notes = remove_duplicate_notes(notes)
 
@@ -300,13 +279,11 @@ def filter_ratings(ratings: pd.DataFrame, logging: bool = True) -> pd.DataFrame:
       pd.DataFrame: filtered ratings
   """
 
-  ratingsTriplets = ratings[
-    [c.raterParticipantIdKey, c.noteIdKey, c.helpfulNumKey, c.createdAtMillisKey]
-  ]
-  n = ratingsTriplets.groupby(c.noteIdKey).size().reset_index()
+  n = ratings.groupby(c.noteIdKey).size().reset_index()
   notesWithMinNumRatings = n[n[0] >= c.minNumRatersPerNote]
 
-  ratingsNoteFiltered = ratingsTriplets.merge(notesWithMinNumRatings[[c.noteIdKey]], on=c.noteIdKey)
+  ratingsNoteFiltered = ratings.merge(notesWithMinNumRatings[[c.noteIdKey]], on=c.noteIdKey)
+
   if logging:
     print("Filter notes and ratings with too few ratings")
     print(
@@ -349,8 +326,6 @@ def filter_ratings(ratings: pd.DataFrame, logging: bool = True) -> pd.DataFrame:
         len(np.unique(ratingsForTraining[c.raterParticipantIdKey])),
       )
     )
-
-  ratingsForTraining = ratingsForTraining
   return ratingsForTraining
 
 

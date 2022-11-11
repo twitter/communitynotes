@@ -55,7 +55,7 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
     # note used to be scored but isn't now; just retain old info
     return mergedNote
 
-  # If the note's created before the deleted note cutfoff, retain
+  # If the notes created before the deleted note cutfoff. Retain
   # the old data.
   if mergedNote[c.createdAtMillisKey] < c.deletedNoteTombstonesLaunchTime:
     return mergedNote
@@ -75,12 +75,11 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
       # first time note has a status
       mergedNote[c.firstNonNMRLabelKey] = mergedNote[c.ratingStatusKey]
       mergedNote[c.timestampMillisOfNoteFirstNonNMRLabelKey] = currentTimeMillis
-
       mergedNote[c.mostRecentNonNMRLabelKey] = mergedNote[c.ratingStatusKey]
-      mergedNote[c.timestampMillisOfNoteFirstNonNMRLabelKey] = currentTimeMillis
+      mergedNote[c.timestampMillisOfNoteMostRecentNonNMRLabelKey] = currentTimeMillis
 
     if mergedNote[c.ratingStatusKey] != mergedNote[c.mostRecentNonNMRLabelKey]:
-      # label flip
+      # NOTE: By design, this branch captures label flips between CRH and CRNH but not NMR.
       mergedNote[c.mostRecentNonNMRLabelKey] = mergedNote[c.ratingStatusKey]
       mergedNote[c.timestampMillisOfNoteMostRecentNonNMRLabelKey] = currentTimeMillis
 
@@ -101,7 +100,6 @@ def update_note_status_history(
       pd.DataFrame: noteStatusHistory
   """
   currentTimeMillis = 1000 * time()
-
   newScoredNotesSuffix = "_sn"
   mergedStatuses = oldNoteStatusHistory.merge(
     scoredNotes[
@@ -125,5 +123,4 @@ def update_note_status_history(
 
   assert pd.isna(newNoteStatusHistory[c.participantIdKey]).sum() == 0
   assert pd.isna(newNoteStatusHistory[c.createdAtMillisKey]).sum() == 0
-
   return newNoteStatusHistory[c.noteStatusHistoryTSVColumns]
