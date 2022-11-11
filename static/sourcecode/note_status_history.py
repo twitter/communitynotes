@@ -79,7 +79,7 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
       mergedNote[c.timestampMillisOfNoteMostRecentNonNMRLabelKey] = currentTimeMillis
 
     if mergedNote[c.ratingStatusKey] != mergedNote[c.mostRecentNonNMRLabelKey]:
-      # label flip!
+      # NOTE: By design, this branch captures label flips between CRH and CRNH but not NMR.
       mergedNote[c.mostRecentNonNMRLabelKey] = mergedNote[c.ratingStatusKey]
       mergedNote[c.timestampMillisOfNoteMostRecentNonNMRLabelKey] = currentTimeMillis
 
