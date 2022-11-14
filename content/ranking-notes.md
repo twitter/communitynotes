@@ -83,7 +83,7 @@ This approach has a few nice properties:
 
 Note: for now, to avoid overfitting on our very small dataset, we only use 1-dimensional factors. We expect to increase this dimensionality as our dataset size grows significantly.
 
-### Determining Note Status Explanation Tags
+## Determining Note Status Explanation Tags
 
 When notes reach a status of Helpful or Not Helpful, they're displayed alongside the top two explanation tags that were given by raters to explain why they rated the note helpful or not.
 
@@ -126,7 +126,9 @@ For not-helpful notes:
 
 </br>
 
-### Complete Algorithm Steps:
+## Tag Outlier Filtering
+
+## Complete Algorithm Steps:
 
 1. <div>Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence)</div>
 2. <div>Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.</div>
