@@ -13,7 +13,7 @@ aliases:
 
 Community Notes' goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. During this pilot phase, only a limited group of people in the US can see these notes, but our goal is to eventually show them to everyone. Here's how they show up:
 
-{{< figure src="../images/notes-on-twitter-specific.png">}}
+{{< figure src="../images/help-rate-this-note-expanded.png">}}
 
 If a Tweet has a note that earned a status of Helpful after being rated by enough contributors then the note will be shown in a card on the Tweet, along with a button to rate the note.
 
@@ -43,7 +43,7 @@ Many Tweets are seen by most people who will see them in a matter of hours. Note
 
 ### Notes on Tweets only visible to contributors
 
-{{< figure src="../images/notes-on-twitter-count.png">}}
+{{< figure src="../images/help-rate-this-note.png">}}
 
 If a Tweet has notes but none yet have earned a status of Helpful, the card will show the number of notes, and allow people to tap to read and rate those notes on the Community Notes site.
 

@@ -16,7 +16,7 @@ Go to the [**Community Notes Home page**](https://birdwatch.twitter.com) and cho
 
 - **Rated Helpful:** Contains Tweets with at least one note rated helpful by the community.
 
-{{< figure src="../images/4-birdwatch-site.png">}}
+{{< figure src="../images/home.png">}}
 
 You can learn more about how Community Notes chooses notes for each of these views on the [**Note Ranking**](../note-ranking) page of the Guide.
 
@@ -24,7 +24,7 @@ You can learn more about how Community Notes chooses notes for each of these vie
 
 Community Notes contributors and people in limited test groups may also see cards to rate notes when browsing Twitter. You can tap to rate those notes.
 
-{{< figure src="../images/birdwatch-notes-on-twitter.png">}}
+{{< figure src="../images/notes-on-twitter.png">}}
 
 ## Note statuses
 
