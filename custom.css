@@ -89,13 +89,6 @@ code span {
   background-color: #eee;
   border-radius: 2px;
 }
-
-.katex-display {
-  padding: 2rem 1rem;
-  border-radius: 12px;
-  background: #eee;
-  overflow: scroll;
-}
 span.gdoc-brand {
   color: var(--tw-color-text-primary);
 }
@@ -776,4 +769,10 @@ div.note.unhelpful h3 {
 
 .info-box h2 {
   margin-bottom: 0;
+}
+code.has-jax {
+  -webkit-font-smoothing: antialiased;
+  background: inherit !important;
+  border: none !important;
+  font-size: 100%;
 }
