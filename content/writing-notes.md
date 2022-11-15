@@ -8,7 +8,7 @@ aliases:
 Anyone in the US can read and rate Community Notes, but only contributors who've [unlocked the ability to write](../writing-ability) can add new notes to Tweets. Here's how to add a note:
 
 1. <div> Click or tap the ••• menu on the Tweet's top right and then **Write a Community Note**.
-      {{< figure src="../images/1-writing-notes.png">}}
+      {{< figure src="../images/writing-notes.png">}}
    </div>
 
 2. <div> Before starting, you’ll see a reminder about <a href="../values">Community Notes values</a>, — a prompt to promote helpful contributions. </div>

@@ -4,7 +4,7 @@ geekdocBreadcrumb: false
 aliases: ["/overview", "/about/overview"]
 ---
 
-{{< figure src="../images/1-writing-notes.png">}}
+{{< figure src="../images/writing-notes.png">}}
 
 <br>
 
