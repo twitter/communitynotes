@@ -90,9 +90,13 @@ Reviewers who rate a note as "Not Helpful" can associate [attributes](examples#h
 When a note has receives especially high levels of a "Not Helpful" attribute, we require a higher intercept before rating the note as "Helpful".
 This approach helps us to maintain data quality by recognizing when there is a troubling pattern on an otherwise strong note.
 
-We use the quantity $a_{un}$ defined below to represent the _weight_ given to attribute $a$ identified by reviewer (user) $u$ on note $n$, where $\tilde{f} = median_{r_{un}}(||f_n - f_r||)$ indicates the median distance between the reviewer and note for all observable reviews $r_{un}$:
+We define the quantity $a_{un}$ to represent the _weight_ given to attribute $a$ identified by reviewer (user) $u$ on note $n$:
 
-$$ a_{un} = \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$
+$$ a_{un} = \mathbb{1}_{aun} \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$
+
+Where:
+* $\tilde{f} = median_{r_{un}}(||f_n - f_r||)$ indicates the median distance between the reviewer and note latent factors over all observable reviews $r_{un}$
+* $\mathbb{1}_{aun}$ is 1 if reviewer $u$ assigned attribute $a$ to note $n$ and 0 otherwise.
 
 We define the total weight of an attribute $a$ on note $n$ as:
 
