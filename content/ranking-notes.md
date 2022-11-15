@@ -60,19 +60,19 @@ One challenge is that not all raters evaluate all notes - in fact most raters do
 
 We predict each rating as:
 
-\\[\hat{r}\_{un} = \mu + i_u + i_n + f_u \cdot f_n\\]
+$$ \hat{r}\_{un} = \mu + i_u + i_n + f_u \cdot f_n $$
 
-Where the prediction is the sum of three intercept terms: mu is the global intercept term, i_u is the user’s intercept term, and i_n is the note’s intercept term, added to the dot product of the user and notes’ factor vectors f_u and f_n (note that when user and note factors are close, a user is expected to give a higher rating to the note).
+Where the prediction is the sum of three intercept terms: $\mu$ is the global intercept term, $i_u$ is the user’s intercept term, and $i_n$ is the note’s intercept term, added to the dot product of the user and notes’ factor vectors $f_u$ and $f_n$ (note that when user and note factors are close, a user is expected to give a higher rating to the note).
 
-To fit the model parameters, we minimize the following regularized least squared error loss function via gradient descent over the dataset of all observed ratings r_un:
+To fit the model parameters, we minimize the following regularized least squared error loss function via gradient descent over the dataset of all observed ratings $r_{un}$:
 
-\\[\sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2)\\]
+$$ \sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2) $$
 
-Where lambda_i (0.03), the regularization on the intercept terms, is currently 5 times higher than lambda_f (0.15), the regularization on the factors.
+Where $\lambda_i=0.03$, the regularization on the intercept terms, is currently 5 times higher than $\lambda_f=0.15$, the regularization on the factors.
 
-The resulting scores that we use for each note are the note intercept terms i_n. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.
+The resulting scores that we use for each note are the note intercept terms $i_n$. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.
 
-We currently set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at -0.05 - 0.8 \* abs(f_n). However, these are far from set in stone and the way we generate statuses from note scores will evolve over time.
+In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$. The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
 
 This approach has a few nice properties:
 
@@ -83,7 +83,35 @@ This approach has a few nice properties:
 
 Note: for now, to avoid overfitting on our very small dataset, we only use 1-dimensional factors. We expect to increase this dimensionality as our dataset size grows significantly.
 
-### Determining Note Status Explanation Tags
+## Tag Outlier Filtering
+
+In some cases, a note may appear helpful but miss key points about the tweet or lack sources.
+Reviewers who rate a note as "Not Helpful" can associate [tag](examples#helpful-attributes) with their review to identify specific shortcomings of the note.
+When a note has receives especially high levels of a "Not Helpful" tag, we require a higher intercept before rating the note as "Helpful".
+This approach helps us to maintain data quality by recognizing when there is a troubling pattern on an otherwise strong note.
+
+We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
+
+$$ a_{un} = \mathbb{1}_{aun} \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$
+
+Where:
+* $\tilde{f} = median_{r_{un}}(||f_n - f_r||)$ indicates the median distance between the reviewer and note latent factors over all observable reviews $r_{un}$
+* $\mathbb{1}_{aun}$ is 1 if reviewer $u$ assigned tag $a$ to note $n$ and 0 otherwise.
+
+We define the total weight of an tag $a$ on note $n$ as:
+
+$$ n_{a} = \sum_{r_{un}} a_{un} $$
+
+Notice the following:
+* No single review can achieve an tag weight $a_{un} > 1$.
+* Reviews where the reviewer factor and note factor are equal will achieve the maximum weight of 1.0, reviews at a median distance will achieve a weight of 0.5, and reviews at 2x the median distance will have a weight of 0.2.  All reviews will have positive weight.
+* Assigning higher weights to tags in reviews where the reviewer and note are closer in the embedding space effectively lends greater weight to critical reviews from reviewers who tend to share the same perspective as the note.
+
+Given the quantities defined above, we modify scoring as follows:
+* When the total weight $a_n$ of an tag exceeds 1.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
+* We disregard the "Typos or unclear language" and "Note not needed on this Tweet" tags, which do not relate to note accuracy.
+
+## Determining Note Status Explanation Tags
 
 When notes reach a status of Helpful or Not Helpful, they're displayed alongside the top two explanation tags that were given by raters to explain why they rated the note helpful or not.
 
@@ -126,19 +154,22 @@ For not-helpful notes:
 
 </br>
 
-### Complete Algorithm Steps:
+## Complete Algorithm Steps:
 
 1. <div>Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence)</div>
 2. <div>Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.</div>
 3. <div>Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in <a href="../contributor-scores/#filtering-ratings-based-on-helpfulness-scores">Filtering Ratings Based on Helpfulness Scores</a></div>
 4. <div>Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3</div>
-5. <div>Assign final note status labels to notes based on whether their intercept terms (scores) are above or below thresholds</div>
-
+5. <div>Assign final note status labels to notes based on whether their intercept terms (scores) are above or below applicable thresholds as determined by review tags.</div>
 6. <div>Assign the top two explanation tags that match the note’s final status label as in <a href="./#determining-note-status-explanation-tags">Determining Note Status Explanation Tags</a>, or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.</div>
 
 <br/>
 
 ## What’s New?
+
+**November 10, 2022**
+
+- Launched scoring logic adjusting standards for "Helpful" notes based on tags assigned in reviews labeling the note as "Not Helpful." 
 
 **July 13, 2022**
 
