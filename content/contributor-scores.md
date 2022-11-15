@@ -3,7 +3,7 @@ title: Contributor helpfulness scores
 aliases: ["/contributor-scores", "/contributor-reputation"]
 geekdocBreadcrumb: false
 geekdocToc: 1
-katex: true
+math: true
 ---
 
 Helpfulness scores are a way to give more influence to people with a track record of making high-quality contributions to Community Notes. There are currently two types of author helpfulness scores and one rater helpfulness score.
