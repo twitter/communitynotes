@@ -78,6 +78,12 @@ def get_ratings_before_note_status_and_public_tsv(
     ratingsWithNoteLabelInfoTypes[c.helpfulNumKey] = np.float
 
     assert len(ratingsWithNoteLabelInfo) == len(ratings)
+    mismatches = [
+      (c, dtype, ratingsWithNoteLabelInfoTypes[c])
+      for c, dtype in zip(ratingsWithNoteLabelInfo, ratingsWithNoteLabelInfo.dtypes)
+      if dtype != ratingsWithNoteLabelInfoTypes[c]
+    ]
+    assert not len(mismatches), f"Mismatch columns: {mismatches}"
 
   ratingsWithNoteLabelInfo[c.ratingCreatedBeforeMostRecentNMRLabelKey] = (
     pd.isna(ratingsWithNoteLabelInfo[c.timestampMillisOfNoteMostRecentNonNMRLabelKey])
@@ -308,6 +314,7 @@ def compute_scored_notes(
         c.timestampMillisOfNoteMostRecentNonNMRLabelKey,
         c.noteAuthorParticipantIdKey,
         c.participantIdKey,
+        c.classificationKey,
       ]
     ],
     on=c.noteIdKey,
@@ -315,6 +322,9 @@ def compute_scored_notes(
     suffixes=("", "_note"),
   )
 
+  # Deleted notes do not contain any metadata outside of NSH. Later computations require
+  # an author id to be attached to the note stats. We copy over that data from NSH if it is missing.
+  noteStats[c.noteAuthorParticipantIdKey].fillna(noteStats[c.participantIdKey], inplace=True)
   noteStats[c.noteCountKey] = 1
   noteStats[c.afterDecisionBoolKey] = False
   noteStats.loc[
@@ -339,6 +349,7 @@ def compute_scored_notes(
         noteStats, minRatingsNeeded, crnhThresholdIntercept, crnhThresholdNoteFactorMultiplier
       ),
     ),
+    scoring_rules.NMtoCRNH(RuleID.NM_CRNH, c.currentlyRatedNotHelpful, {RuleID.INITIAL_NMR}),
   ]
   if tagFiltering:
     # Compute tag aggregates only if they are required for tag filtering.
@@ -365,8 +376,9 @@ def compute_scored_notes(
   # to needsMoreRatings for rows that do not have a critical number of statuses.
   scoredNotes[c.firstTagKey] = np.nan
   scoredNotes[c.secondTagKey] = np.nan
+  # TODO: Modify the top_tags logic to run as a ScoringRule which sets the firstTag,
+  # secondTag and modifies the ratingStatus as necessary.
   scoredNotes = scoredNotes.apply(
     lambda row: top_tags(row, c.minRatingsToGetTag, c.minTagsNeededForStatus), axis=1
   )
-
   return scoredNotes
