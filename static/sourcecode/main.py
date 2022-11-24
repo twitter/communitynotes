@@ -39,10 +39,10 @@ def run_scoring():
   reading data and writing scored output; mean to be invoked from main.
   """
   args = get_args()
-  _, ratings, noteStatusHistory = process_data.get_data(
-    args.notes_path, args.ratings_path, args.note_status_history_path
+  _, ratings, noteStatusHistory, userEnrollment = process_data.get_data(args.notes_path, args.ratings_path, args.note_status_history_path)
+  noteParams, raterParams, noteStatusHistory, auxNoteInfo = algorithm.run_algorithm(
+    ratings, noteStatusHistory, userEnrollment
   )
-  noteParams, _, _ = algorithm.run_algorithm(ratings, noteStatusHistory)
   process_data.write_scored_notes(noteParams)
   print("Finished.")
 
