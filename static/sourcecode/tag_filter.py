@@ -25,7 +25,7 @@ def _normalize_factors(rawFactors: pd.DataFrame, entityKey: str, factorKey: str)
     pd.DataFrame containing two columns with names matching the input, except the factor column has
     been Z-normalized.
   """
-  normalizedFactors = pd.DataFrame(rawFactors[[entityKey, factorKey]])
+  normalizedFactors = rawFactors[[entityKey, factorKey]]
   assert len(normalizedFactors) == len(normalizedFactors[entityKey].drop_duplicates())
   mean = np.mean(normalizedFactors[factorKey])
   std = np.std(normalizedFactors[factorKey])
