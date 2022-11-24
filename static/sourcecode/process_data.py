@@ -12,6 +12,7 @@ def get_data(
   notesPath: str,
   ratingsPath: str,
   noteStatusHistoryPath: str,
+  userEnrollmentPath: str,
   shouldFilterNotMisleadingNotes: bool = True,
   logging: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -28,12 +29,41 @@ def get_data(
   Returns:
       Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
   """
-  notes, ratings, noteStatusHistory = read_from_tsv(
-    notesPath, ratingsPath, noteStatusHistoryPath
+  notes, ratings, noteStatusHistory, userEnrollment = read_from_tsv(
+    notesPath, ratingsPath, noteStatusHistoryPath, userEnrollmentPath
   )
   notes, ratings, noteStatusHistory = preprocess_data(
     notes, ratings, noteStatusHistory, shouldFilterNotMisleadingNotes, logging
   )
+  return notes, ratings, noteStatusHistory, userEnrollment
+
+
+def read_from_strings(
+  notesStr: str, ratingsStr: str, noteStatusHistoryStr: str
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+  """Read from TSV formatted String.
+
+  Args:
+      notesStr (str): tsv-formatted notes dataset
+      ratingsStr (str): tsv-formatted ratings dataset
+      noteStatusHistoryStr (str): tsv-formatted note status history dataset
+
+  Returns:
+     Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory
+  """
+  notes = pd.read_csv(
+    StringIO(notesStr), sep="\t", names=c.noteTSVColumns, dtype=c.noteTSVTypeMapping
+  )
+  ratings = pd.read_csv(
+    StringIO(ratingsStr), sep="\t", names=c.ratingTSVColumns, dtype=c.ratingTSVTypeMapping
+  )
+  noteStatusHistory = pd.read_csv(
+    StringIO(noteStatusHistoryStr),
+    sep="\t",
+    names=c.noteStatusHistoryTSVColumns,
+    dtype=c.noteStatusHistoryTSVTypeMapping,
+  )
+
   return notes, ratings, noteStatusHistory
 
 
@@ -46,7 +76,7 @@ def tsv_reader(path: str, mapping, columns):
 
 
 def read_from_tsv(
-  notesPath: str, ratingsPath: str, noteStatusHistoryPath: str
+  notesPath: str, ratingsPath: str, noteStatusHistoryPath: str, userEnrollmentPath: str
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Mini function to read notes, ratings, and noteStatusHistory from TSVs.
 
@@ -54,6 +84,7 @@ def read_from_tsv(
       notesPath (str): path
       ratingsPath (str): path
       noteStatusHistoryPath (str): path
+      userEnrollmentPath (str): path
   Returns:
       Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
   """
@@ -61,6 +92,9 @@ def read_from_tsv(
   ratings = tsv_reader(ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns)
   noteStatusHistory = tsv_reader(
     noteStatusHistoryPath, c.noteStatusHistoryTSVTypeMapping, c.noteStatusHistoryTSVColumns
+  )
+  userEnrollment = tsv_reader(
+    userEnrollmentPath, c.userEnrollmentTSVTypeMapping, c.userEnrollmentTSVColumns
   )
 
   assert len(notes.columns) == len(c.noteTSVColumns) and all(notes.columns == c.noteTSVColumns), (
@@ -75,7 +109,6 @@ def read_from_tsv(
     f"ratings columns don't match: \n{[col for col in ratings.columns if not col in c.ratingTSVColumns]} are extra columns, "
     + f"\n{[col for col in c.ratingTSVColumns if not col in ratings.columns]} are missing."
   )  # ensure constants file is up to date.
-  ratings = ratings.rename(columns={c.participantIdKey: c.raterParticipantIdKey})
 
   assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
     noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
@@ -84,7 +117,14 @@ def read_from_tsv(
     + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
   )
 
-  return notes, ratings, noteStatusHistory
+  assert len(userEnrollment.columns.values) == len(c.userEnrollmentTSVColumns) and all(
+    userEnrollment.columns == c.userEnrollmentTSVColumns
+  ), (
+    f"userEnrollment columns don't match: \n{[col for col in userEnrollment.columns if not col in c.userEnrollmentTSVColumns]} are extra columns, "
+    + f"\n{[col for col in c.userEnrollmentTSVColumns if not col in userEnrollment.columns]} are missing."
+  )
+
+  return notes, ratings, noteStatusHistory, userEnrollment
 
 
 def _filter_misleading_notes(
@@ -109,10 +149,8 @@ def _filter_misleading_notes(
   Returns:
       pd.DataFrame: filtered ratings
   """
-  ratings = ratings.merge(notes[[c.noteIdKey, c.classificationKey]], on=c.noteIdKey, how="left")
-
   ratings = ratings.merge(
-    noteStatusHistory[[c.noteIdKey, c.createdAtMillisKey]],
+    noteStatusHistory[[c.noteIdKey, c.createdAtMillisKey, c.classificationKey]],
     on=c.noteIdKey,
     how="left",
     suffixes=("", "_nsh"),
@@ -132,7 +170,12 @@ def _filter_misleading_notes(
   )
 
   deletedNotInNSH = (ratings[deletedNoteKey]) & pd.isna(ratings[createdAtMillisNSHKey])
-  notDeletedNotMisleading = ratings[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey
+  notDeletedNotMisleadingOldUI = (
+    ratings[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey
+  ) & (ratings[createdAtMillisNSHKey] <= c.notMisleadingUILaunchTime)
+  notDeletedNotMisleadingNewUI = (
+    ratings[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey
+  ) & (ratings[createdAtMillisNSHKey] > c.notMisleadingUILaunchTime)
 
   if logging:
     print(
@@ -145,13 +188,15 @@ def _filter_misleading_notes(
       f"  Keeping {ratings[deletedButInNSHKey].sum()} ratings on {len(np.unique(ratings.loc[ratings[deletedButInNSHKey],c.noteIdKey]))} deleted notes that were previously scored (in note status history)"
     )
     print(
-      f"  Removing {notDeletedNotMisleading.sum()} ratings on {len(np.unique(ratings.loc[notDeletedNotMisleading, c.noteIdKey]))} notes that aren't deleted, but are not-misleading."
+      f"  Removing {notDeletedNotMisleadingOldUI.sum()} ratings on {len(np.unique(ratings.loc[notDeletedNotMisleadingOldUI, c.noteIdKey]))} older notes that aren't deleted, but are not-misleading."
     )
     print(
       f"  Removing {deletedNotInNSH.sum()} ratings on {len(np.unique(ratings.loc[deletedNotInNSH, c.noteIdKey]))} notes that were deleted and not in note status history (e.g. old)."
     )
 
-  ratings = ratings[ratings[notDeletedMisleadingKey] | ratings[deletedButInNSHKey]]
+  ratings = ratings[
+    ratings[notDeletedMisleadingKey] | ratings[deletedButInNSHKey] | notDeletedNotMisleadingNewUI
+  ]
   ratings = ratings.drop(
     columns=[
       createdAtMillisNSHKey,
@@ -250,10 +295,10 @@ def preprocess_data(
 
   notes[c.tweetIdKey] = notes[c.tweetIdKey].astype(np.str)
 
+  noteStatusHistory = note_status_history.merge_note_info(noteStatusHistory, notes)
+
   if shouldFilterNotMisleadingNotes:
     ratings = _filter_misleading_notes(notes, ratings, noteStatusHistory, logging)
-
-  newNoteStatusHistory = note_status_history.add_new_notes(noteStatusHistory, notes)
 
   if logging:
     print(
@@ -264,7 +309,7 @@ def preprocess_data(
         len(np.unique(ratings[c.raterParticipantIdKey])),
       )
     )
-  return notes, ratings, newNoteStatusHistory
+  return notes, ratings, noteStatusHistory
 
 
 def filter_ratings(ratings: pd.DataFrame, logging: bool = True) -> pd.DataFrame:
