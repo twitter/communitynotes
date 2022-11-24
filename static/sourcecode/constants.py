@@ -38,6 +38,7 @@ minNumRatersPerNote = 5
 
 # Data Filenames
 scoredNotesOutputPath = "scoredNotes.tsv"
+enrollmentInputPath = "userEnrollment-00000.tsv"
 notesInputPath = "notes-00000.tsv"
 ratingsInputPath = "ratings-00000.tsv"
 noteStatusHistoryInputPath = "noteStatusHistory-00000.tsv"
