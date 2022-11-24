@@ -78,12 +78,6 @@ def get_ratings_before_note_status_and_public_tsv(
     ratingsWithNoteLabelInfoTypes[c.helpfulNumKey] = np.float
 
     assert len(ratingsWithNoteLabelInfo) == len(ratings)
-    mismatches = [
-      (c, dtype, ratingsWithNoteLabelInfoTypes[c])
-      for c, dtype in zip(ratingsWithNoteLabelInfo, ratingsWithNoteLabelInfo.dtypes)
-      if dtype != ratingsWithNoteLabelInfoTypes[c]
-    ]
-    assert not len(mismatches), f"Mismatch columns: {mismatches}"
 
   ratingsWithNoteLabelInfo[c.ratingCreatedBeforeMostRecentNMRLabelKey] = (
     pd.isna(ratingsWithNoteLabelInfo[c.timestampMillisOfNoteMostRecentNonNMRLabelKey])

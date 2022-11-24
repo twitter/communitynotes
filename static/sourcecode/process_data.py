@@ -109,6 +109,7 @@ def read_from_tsv(
     f"ratings columns don't match: \n{[col for col in ratings.columns if not col in c.ratingTSVColumns]} are extra columns, "
     + f"\n{[col for col in c.ratingTSVColumns if not col in ratings.columns]} are missing."
   )  # ensure constants file is up to date.
+  ratings = ratings.rename(columns={c.participantIdKey: c.raterParticipantIdKey})
 
   assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
     noteStatusHistory.columns == c.noteStatusHistoryTSVColumns

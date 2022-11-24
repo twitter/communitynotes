@@ -3,7 +3,7 @@ from collections import namedtuple
 from enum import Enum
 from typing import Callable, List, Optional, Set, Tuple
 
-from . import constants as c, tag_filter
+import constants as c, tag_filter
 
 import numpy as np
 import pandas as pd
