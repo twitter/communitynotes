@@ -1,14 +1,6 @@
 from typing import Optional, Tuple
 
-from . import (
-  constants as c,
-  contributor_state,
-  helpfulness_scores,
-  matrix_factorization,
-  note_ratings,
-  note_status_history,
-  process_data,
-)
+import constants as c, contributor_state, helpfulness_scores, matrix_factorization, note_ratings, note_status_history, process_data
 
 import numpy as np
 import pandas as pd

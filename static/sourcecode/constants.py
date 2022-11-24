@@ -231,7 +231,7 @@ noteTSVTypeMapping = {col: dtype for (col, dtype) in noteTSVColumnsAndTypes}
 ratingTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
-    (raterParticipantIdKey, np.object),
+    (participantIdKey, np.object),
     (createdAtMillisKey, np.int64),
     ("version", np.int64),
     ("agree", np.int64),
