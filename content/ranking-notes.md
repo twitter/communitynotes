@@ -12,9 +12,13 @@ geekdocToc: 1
 math: true
 ---
 
-Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the [Community Notes Site’s timelines](../birdwatch-timelines/), and which notes are displayed [on Tweets](../notes-on-twitter/) .
+Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the [Community Notes Site’s timelines](../birdwatch-timelines/), and which notes are displayed [on Tweets](../notes-on-twitter/).
 
-Only notes that indicate the Tweet as “potentially misleading” are eligible to be displayed on Tweets; notes that indicate the Tweet is “not misleading” are not displayed on Tweets. As of March 9, 2022, we have temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading.” Why? People have been confused about how to rate them. As these notes are effectively making the case that the Tweet does not need a note, raters often rated them as “Unhelpful - Tweet doesn’t need a note” so as to indicate the note should not appear on the Tweet. We are planning an improvement to the rating form to resolve this confusion, and plan to resume assigning statuses to “not misleading” notes once that’s in place.
+At this time, only notes that indicate a Tweet is “potentially misleading” are eligible to be displayed on Tweets.
+We observed that notes marking a Tweet as "not misleading" were often rated as “Unhelpful - Tweet doesn’t need a note”.
+On March 9, 2022 we paused assigning status to notes marking Tweets as "not misleading" pending improvements to the rating form.
+On October 3, 2022 we updated the rating form to better capture the strengths of notes which add context without indicating the Tweet is misleading.
+As discussed in Note Status below, we have resumed assigning status to notes marking Tweets as "not misleading" in select circumstances as we evaluate ranking quality and utility to users.
 
 The sections below describe how notes are assigned statuses, which determines how notes are ranked and displayed in the product:
 
@@ -24,19 +28,26 @@ The sections below describe how notes are assigned statuses, which determines ho
 
 {{< figure src="../images/note-statuses.png">}}
 
-All Community Notes start out with the Needs More Ratings status until they receive at least 5 total ratings. Once a note has received at least 5 ratings, it is assigned a Note Helpfulness Score according to the algorithm described below.
-
+All Community Notes start out with the Needs More Ratings status until they receive at least 5 total ratings.
+Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful according to the algorithm described below.
 If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on Twitter even if its status is Helpful.
 
-Notes with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Notes with scores in between remain with a status of Needs more Ratings.
+Notes marking Tweets as "potentially misleading" with a Note Helpfulness Score of 0.40 and above earn the status of Helpful.
+Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization).
+Notes with scores in between remain with a status of Needs more Ratings.
+
+Notes marking Tweets as "not misleading" with a Note Helpfulness Score below -0.15 earn the status of Not Helpful.
+Identifying notes as Not Helpful improves contributor helpfulness scoring and reduces time contributors spend reviewing low quality notes.
+At this time, any note marking a Tweet as "not misleading" with a Note Helpfulness Score above -0.15 remains in the status of Needs More Ratings.
+We plan to enable Helpful statuses for notes marking Tweets as "not misleading" as we continue to evaluate ranking quality and utility to users.
 
 When a note reaches a status of Helpful / Not Helpful, they're shown alongside the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
-
 Notes with the status Needs More Ratings remain sorted by recency (newest first), and notes with a Helpful or Not Helpful status are sorted by their Helpfulness Score.
 
 This ranking mechanism is subject to continuous development and improvement with the aim that Community Notes consistently identifies notes that are found helpful to people from a wide variety of perspectives.
 
-During the pilot phase, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the Helpful / Not Helpful criteria and when that designation appears on the Community Notes site. This delay allows Community Notes to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.
+Rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the Helpful / Not Helpful criteria and when that designation appears on the Community Notes site.
+This delay allows Community Notes to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.
 
 ## Helpful Rating Mapping
 
