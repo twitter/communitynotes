@@ -118,8 +118,8 @@ Everyone who joins Community Notes can rate notes. They can unlock the ability t
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/ranking-notes/</guid>
-      <description>Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the Community Notes Site’s timelines, and which notes are displayed on Tweets .
-Only notes that indicate the Tweet as “potentially misleading” are eligible to be displayed on Tweets; notes that indicate the Tweet is “not misleading” are not displayed on Tweets.</description>
+      <description>Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the Community Notes Site’s timelines, and which notes are displayed on Tweets.
+At this time, only notes that indicate a Tweet is “potentially misleading” are eligible to be displayed on Tweets. We observed that notes marking a Tweet as &amp;ldquo;not misleading&amp;rdquo; were often rated as “Unhelpful - Tweet doesn’t need a note”.</description>
     </item>
     
     <item>
