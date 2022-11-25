@@ -14,7 +14,7 @@ math: true
 
 Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the [Community Notes Site’s timelines](../birdwatch-timelines/), and which notes are displayed [on Tweets](../notes-on-twitter/).
 
-At this time, only notes that indicate the Tweet as “potentially misleading” are eligible to be displayed on Tweets.
+At this time, only notes that indicate a Tweet is “potentially misleading” are eligible to be displayed on Tweets.
 We observed that notes marking a Tweet as "not misleading" were often rated as “Unhelpful - Tweet doesn’t need a note”.
 On March 9, 2022 we paused assigning status to notes marking Tweets as "not misleading" pending improvements to the rating form.
 On October 3, 2022 we updated the rating form to better capture the strengths of notes which add context without indicating the Tweet is misleading.
@@ -28,7 +28,8 @@ The sections below describe how notes are assigned statuses, which determines ho
 
 {{< figure src="../images/note-statuses.png">}}
 
-All Community Notes start out with the Needs More Ratings status until they receive at least 5 total ratings. Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful according to the algorithm described below.
+All Community Notes start out with the Needs More Ratings status until they receive at least 5 total ratings.
+Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful according to the algorithm described below.
 If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on Twitter even if its status is Helpful.
 
 Notes marking Tweets as "potentially misleading" with a Note Helpfulness Score of 0.40 and above earn the status of Helpful.
@@ -45,7 +46,8 @@ Notes with the status Needs More Ratings remain sorted by recency (newest first)
 
 This ranking mechanism is subject to continuous development and improvement with the aim that Community Notes consistently identifies notes that are found helpful to people from a wide variety of perspectives.
 
-During the pilot phase, rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the Helpful / Not Helpful criteria and when that designation appears on the Community Notes site. This delay allows Community Notes to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.
+Rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the Helpful / Not Helpful criteria and when that designation appears on the Community Notes site.
+This delay allows Community Notes to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.
 
 ## Helpful Rating Mapping
 
