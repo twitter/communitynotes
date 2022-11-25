@@ -8,6 +8,7 @@ Run as a python script via run_main.py, one directory up.
 
 Example Usage:
   python main.py \
+    --enrollment userEnrollment-00000.tsv \
     --notes_path notes-00000.tsv  \
     --ratings_path ratings-00000.tsv \
     --note_status_history_path noteStatusHistory-00000.tsv
@@ -21,6 +22,9 @@ def get_args():
       args: the parsed arguments
   """
   parser = argparse.ArgumentParser(description="Birdwatch Algorithm.")
+  parser.add_argument(
+    "-e", "--enrollment", default=c.enrollmentInputPath, help="user enrollment dataset"
+  )
   parser.add_argument("-n", "--notes_path", default=c.notesInputPath, help="note dataset")
   parser.add_argument("-r", "--ratings_path", default=c.ratingsInputPath, help="rating dataset")
   parser.add_argument(
@@ -39,10 +43,10 @@ def run_scoring():
   reading data and writing scored output; mean to be invoked from main.
   """
   args = get_args()
-  _, ratings, noteStatusHistory = process_data.get_data(
-    args.notes_path, args.ratings_path, args.note_status_history_path
+  _, ratings, noteStatusHistory, userEnrollment = process_data.get_data(
+    args.notes_path, args.ratings_path, args.note_status_history_path, args.enrollment
   )
-  noteParams, _, _ = algorithm.run_algorithm(ratings, noteStatusHistory)
+  noteParams, _, _, _ = algorithm.run_algorithm(ratings, noteStatusHistory, userEnrollment)
   process_data.write_scored_notes(noteParams)
   print("Finished.")
 

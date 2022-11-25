@@ -13,7 +13,8 @@ def note_post_processing(
   raterParams: pd.DataFrame,
   helpfulnessScores: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+  userEnrollment: pd.DataFrame,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Given scored Birdwatch notes and rater helpfulness, calculate contributor scores and update noteStatusHistory, as described in
   and https://twitter.github.io/birdwatch/contributor-scores/.
 
@@ -23,12 +24,14 @@ def note_post_processing(
       raterParams (pd.DataFrame): raters with scores returned by MF scoring algorithm
       helpfulnessScores (pd.DataFrame): BasicReputation scores for all raters
       noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
+      userEnrollment (pd.DataFrame): The enrollment state for each contributor
 
   Returns:
       Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         scoredNotes pd.DataFrame: one row per note contained note scores and parameters.
         helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
         noteStatusHistory pd.DataFrame: one row per note containing when they got their most recent statuses.
+        auxilaryNoteInfo pd.DataFrame: one row per note containing adjusted and ratio tag values
   """
   # Takes raterParams from most recent MF run, but use the pre-computed
   # helpfulness scores.
@@ -55,6 +58,26 @@ def note_post_processing(
   contributorScores = contributor_state.get_contributor_scores(
     contributorNotes, ratings, noteStatusHistory
   )
+  contributorState = contributor_state.get_contributor_state(
+    contributorNotes, ratings, noteStatusHistory, userEnrollment
+  )
+
+  # We need to do an outer merge because the contributor can have a state (be a new user)
+  # without any notes or ratings.
+  contributorScores = contributorScores.merge(
+    contributorState[
+      [
+        c.raterParticipantIdKey,
+        c.timestampOfLastStateChange,
+        c.enrollmentState,
+        c.successfulRatingNeededToEarnIn,
+        c.authorTopNotHelpfulTagValues,
+        c.isEmergingWriterKey,
+      ]
+    ],
+    on=c.raterParticipantIdKey,
+    how="outer",
+  )
 
   # Consolidates all information on raters / authors.
   helpfulnessScores = helpfulnessScores.merge(
@@ -67,7 +90,7 @@ def note_post_processing(
   scoredNotes = contributorNotes.merge(noteParams[[c.noteIdKey]], on=c.noteIdKey, how="inner")
   castColumns = c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder + [c.numRatingsKey]
   scoredNotes[castColumns] = scoredNotes[castColumns].astype(np.int64)
-
+  # BUG: validate that the assignment below can be eliminated
   scoredNotes = scoredNotes.drop(
     columns=[c.createdAtMillisKey, c.noteAuthorParticipantIdKey]
   ).merge(
@@ -75,26 +98,30 @@ def note_post_processing(
     on=c.noteIdKey,
     how="inner",
   )
+  auxilaryNoteInfo = scoredNotes[c.auxilaryScoredNotesColumns]
+  scoredNotes = scoredNotes[c.scoredNotesColumns]
 
   newNoteStatusHistory = note_status_history.update_note_status_history(
     noteStatusHistory, scoredNotes
   )
 
-  return scoredNotes, helpfulnessScores, newNoteStatusHistory
+  return scoredNotes, helpfulnessScores, newNoteStatusHistory, auxilaryNoteInfo
 
 
 def run_algorithm(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
+  userEnrollment: pd.DataFrame,
   epochs: int = c.epochs,
   seed: Optional[int] = None,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Run the entire Birdwatch scoring algorithm, as described in https://twitter.github.io/birdwatch/ranking-notes/
   and https://twitter.github.io/birdwatch/contributor-scores/.
 
   Args:
       ratings (pd.DataFrame): preprocessed ratings
       noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
+      userEnrollment (pd.DataFrame): The enrollment state for each contributor
       epochs (int, optional): number of epochs to train matrix factorization for. Defaults to c.epochs.
       mf_seed (int, optional): if not None, base distinct seeds for the first and second MF rounds on this value
 
@@ -103,6 +130,7 @@ def run_algorithm(
         scoredNotes pd.DataFrame: one row per note contained note scores and parameters.
         helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
         noteStatusHistory pd.DataFrame: one row per note containing when they got their most recent statuses.
+        auxilaryNoteInfo: one row per note containing adjusted and ratio tag values
   """
   if seed is not None:
     torch.manual_seed(seed)
@@ -124,7 +152,8 @@ def run_algorithm(
 
   # Get a dataframe of scored notes based on the algorithm results above
   scoredNotes = note_ratings.compute_scored_notes(
-    ratings, noteParamsUnfiltered, raterParamsUnfiltered, noteStatusHistory)
+    ratings, noteParamsUnfiltered, raterParamsUnfiltered, noteStatusHistory
+  )
 
   # Determine "valid" ratings
   validRatings = note_ratings.get_valid_ratings(ratings, noteStatusHistory, scoredNotes)
@@ -172,8 +201,8 @@ def run_algorithm(
   )
   raterParams.drop(c.raterIndexKey, axis=1, inplace=True)
 
-  scoredNotes, helpfulnessScores, newNoteStatusHistory = note_post_processing(
-    ratings, noteParams, raterParams, helpfulnessScores, noteStatusHistory
+  scoredNotes, helpfulnessScores, newNoteStatusHistory, auxilaryNoteInfo = note_post_processing(
+    ratings, noteParams, raterParams, helpfulnessScores, noteStatusHistory, userEnrollment
   )
 
-  return scoredNotes, helpfulnessScores, newNoteStatusHistory
+  return scoredNotes, helpfulnessScores, newNoteStatusHistory, auxilaryNoteInfo

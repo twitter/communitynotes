@@ -1,9 +1,81 @@
 from time import time
 
-import constants as c
+import constants as c, explanation_tags
+from helpfulness_scores import author_helpfulness
 from note_ratings import get_ratings_with_scores, get_valid_ratings
 
 import pandas as pd
+
+
+def should_earn_in(contributorScoresWithEnrollment: pd.DataFrame):
+  """
+  The participant should earn in when they are in the earnedOutAcknowledged and newUser state.
+  To earn in, we need to check that the rating impact is larger than the succesfully ratings
+  needed to earn in. This constant is fixed for new users (ratingImpactForEarnIn), for
+  earnedOutNoAcknowledge it will be set int the CombineEventAndSnapshot job to +5 their current
+  rating impact with a minimum of ratingImpactForEarnIn.
+
+  Args:
+    authorEnrollmentCounts (pd.DataFrame): Scored Notes + User Enrollment status
+  """
+  return (
+    (contributorScoresWithEnrollment[c.enrollmentState] != c.earnedIn)
+    & (contributorScoresWithEnrollment[c.enrollmentState] != c.atRisk)
+    & (contributorScoresWithEnrollment[c.enrollmentState] != c.earnedOutNoAcknowledge)
+    & (
+      contributorScoresWithEnrollment[c.ratingImpact]
+      >= contributorScoresWithEnrollment[c.successfulRatingNeededToEarnIn]
+    )
+  )
+
+
+def is_at_risk(authorEnrollmentCounts: pd.DataFrame):
+  """
+  The author is at risk when they have written 2 CRNH notes of the last 5 notes. NewUser
+  and EarnedOutAcknowledged states cannot transition to this state because they cannot
+  write notes, and must first Earn in to Birdwatch.
+
+  Args:
+    authorEnrollmentCounts (pd.DataFrame): Scored Notes + User Enrollment status
+  """
+  return (
+    (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
+    & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
+    & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] == c.isAtRiskCRNHCount)
+  )
+
+
+def is_earned_out(authorEnrollmentCounts: pd.DataFrame):
+  """
+  The author is at earned out when they have written 3+ CRNH notes of the last 5 notes. The user
+  loses their ability to write notes once they acknowledge earn out. (EarnedOutAcknowledged) NewUser
+  and EarnedOutAcknowledged states cannot transition to this state because they cannot
+  write notes, and must first Earn in to Birdwatch.
+
+  Args:
+    authorEnrollmentCounts (pd.DataFrame): Scored Notes + User Enrollment status
+  """
+  return (
+    (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
+    & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
+    & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] > c.isAtRiskCRNHCount)
+  )
+
+
+def is_earned_in(authorEnrollmentCounts):
+  """
+  The author is at earned out when they have written <2 CRNH notes of the last 5 notes.
+  NewUser and EarnedOutAcknowledged states cannot transition to this state because they cannot
+  write notes, and must first Earn in to Birdwatch.
+
+  Args:
+    authorEnrollmentCounts (pd.DataFrame): Scored Notes + User Enrollment status
+  """
+  return (
+    (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
+    & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
+    & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] < c.isAtRiskCRNHCount)
+  )
 
 
 def _get_visible_rating_counts(
@@ -132,6 +204,153 @@ def _get_visible_note_counts(
     },
   )
   return authorCounts
+
+
+def _transform_to_thrift_code(f):
+  """
+  TODO: Fix MH importer or CombineEventAndSnapshot.
+  This is a bit of tech debt that should be addressed at some point. The MH importer expects
+  a Thrift code, and the CombineEventAndSnapshot outputs a string. This function ensures that
+  all strings are correctly converted.
+  """
+  if f in c.enrollmentStateToThrift:
+    return c.enrollmentStateToThrift[f]
+  return f
+
+
+def is_emerging_writer(scoredNotes: pd.DataFrame):
+  """
+  A function that checks if a user is an emerging writer. Emerging writers have a
+  high helpfulness scores over a number of ratings in the last 28 days.
+  Args:
+      scoredNotes (pd.DataFrame): scored notes
+  Returns:
+    pd.DataFrame: emergingWriter The contributor scores with enrollments
+  """
+  authorCounts = author_helpfulness(scoredNotes)
+  raterCounts = scoredNotes.groupby(c.participantIdKey).sum()[c.numRatingsLast28DaysKey]
+  emergingWriter = (
+    authorCounts.join(raterCounts, how="outer", lsuffix="_author", rsuffix="_rater")
+    .reset_index()
+    .rename({"index": c.participantIdKey}, axis=1)
+  )
+  emergingWriter[c.isEmergingWriterKey] = False
+  emergingWriter.loc[
+    (emergingWriter[c.meanNoteScoreKey] > c.emergingMeanNoteScore)
+    & (emergingWriter[c.numRatingsLast28DaysKey] >= c.emergingRatingCount),
+    c.isEmergingWriterKey,
+  ] = True
+  return emergingWriter[[c.participantIdKey, c.isEmergingWriterKey]]
+
+
+def get_contributor_state(
+  scoredNotes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  statusHistory: pd.DataFrame,
+  userEnrollment: pd.DataFrame,
+  logging: bool = True,
+) -> pd.DataFrame:
+  """
+  Given scored notes, ratings, note status history, the current user enrollment state, this
+  uses the contributor counts over ratings and notes and transitions the user between the different
+  enrollment states.
+
+  Args:
+      scoredNotes (pd.DataFrame): scored notes
+      ratings (pd.DataFrame): all ratings
+      statusHistory (pd.DataFrame): history of note statuses
+      userEnrollment (pd.DataFrame): User enrollment for BW participants.
+      logging (bool): Should we log
+  Returns:
+      pd.DataFrame: contributorScoresWithEnrollment The contributor scores with enrollments
+  """
+
+  # We need to consider only the last 5 notes for enrollment state. The ratings are aggregated historically.
+  contributorScores = get_contributor_scores(
+    scoredNotes, ratings, statusHistory, lastNNotes=c.maxHistoryEarnOut, countNMRNotesLast=True
+  )
+
+  # We merge in the top not hellpful tags
+  authorTopNotHelpfulTags = explanation_tags.get_top_nonhelpful_tags_per_author(
+    statusHistory, ratings
+  )
+  contributorScores = contributorScores.merge(
+    authorTopNotHelpfulTags,
+    left_on=c.raterParticipantIdKey,
+    right_on=c.noteAuthorParticipantIdKey,
+    how="outer",
+  ).drop(columns=[c.noteAuthorParticipantIdKey])
+
+  # We merge in the emerging writer data.
+  emergingWriter = is_emerging_writer(scoredNotes)
+  contributorScores = contributorScores.merge(
+    emergingWriter, left_on=c.raterParticipantIdKey, right_on=c.participantIdKey, how="outer"
+  )
+
+  # We merge the current enrollment state
+  contributorScoresWithEnrollment = contributorScores.merge(
+    userEnrollment, left_on=c.raterParticipantIdKey, right_on=c.participantIdKey, how="outer"
+  )
+
+  # We set the new contributor state.
+  contributorScoresWithEnrollment[c.timestampOfLastStateChange] = 1000 * time()
+  contributorScoresWithEnrollment.fillna(
+    inplace=True,
+    value={
+      c.successfulRatingNeededToEarnIn: c.ratingImpactForEarnIn,
+      c.enrollmentState: c.newUser,
+      c.isEmergingWriterKey: False,
+    },
+  )
+  contributorScoresWithEnrollment[c.ratingImpact] = (
+    contributorScoresWithEnrollment[c.successfulRatingTotal]
+    - contributorScoresWithEnrollment[c.unsuccessfulRatingTotal]
+  )
+
+  contributorScoresWithEnrollment.loc[
+    should_earn_in(contributorScoresWithEnrollment), c.enrollmentState
+  ] = c.enrollmentStateToThrift[c.earnedIn]
+  contributorScoresWithEnrollment.loc[
+    is_at_risk(contributorScoresWithEnrollment), c.enrollmentState
+  ] = c.enrollmentStateToThrift[c.atRisk]
+  contributorScoresWithEnrollment.loc[
+    is_earned_out(contributorScoresWithEnrollment), c.enrollmentState
+  ] = c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
+  contributorScoresWithEnrollment.loc[
+    is_earned_in(contributorScoresWithEnrollment), c.enrollmentState
+  ] = c.enrollmentStateToThrift[c.earnedIn]
+
+  contributorScoresWithEnrollment[c.enrollmentState] = contributorScoresWithEnrollment[
+    c.enrollmentState
+  ].map(_transform_to_thrift_code)
+
+  # This addresses an issue in the TSV dump in HDFS getting corrupted. It removes lines
+  # users that do not have an id.
+  contributorScoresWithEnrollment.dropna(subset=[c.raterParticipantIdKey], inplace=True)
+  if logging:
+    print("Enrollment State")
+    print(
+      "Number of Earned In",
+      len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 0]),
+    )
+    print(
+      "At Risk",
+      contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 1],
+    )
+    print(
+      "Earn Out No Ack",
+      contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 2],
+    )
+    print(
+      "Earned Out Ack",
+      contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 3],
+    )
+    print(
+      "Number of New Users",
+      len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 4]),
+    )
+
+  return contributorScoresWithEnrollment
 
 
 def get_contributor_scores(

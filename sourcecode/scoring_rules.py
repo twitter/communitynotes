@@ -20,6 +20,7 @@ class RuleID(Enum):
   GENERAL_CRH = RuleAndVersion("GeneralCRH", "1.0")
   GENERAL_CRNH = RuleAndVersion("GeneralCRNH", "1.0")
   TAG_OUTLIER = RuleAndVersion("TagFilter", "1.0")
+  NM_CRNH = RuleAndVersion("NmCRNH", "1.0")
 
 
 class ScoringRule(ABC):
@@ -107,7 +108,13 @@ class RuleFromFunction(ScoringRule):
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
     """Returns noteIDs for notes matched by the boolean function."""
-    return (noteStats.loc[self._function(noteStats)][c.noteIdKey], None)
+    return (
+      noteStats.loc[
+        self._function(noteStats)
+        & (noteStats[c.classificationKey] != c.noteSaysTweetIsNotMisleadingKey)
+      ][c.noteIdKey],
+      None,
+    )
 
 
 class FilterTagOutliers(ScoringRule):
@@ -181,6 +188,21 @@ class FilterTagOutliers(ScoringRule):
     ]
     print(f"Total unique notes impacted by tag filtering: {len(impactedNotes)}")
     return (impactedNotes[c.noteIdKey].drop_duplicates(), impactedNotes)
+
+
+class NMtoCRNH(ScoringRule):
+  def __init__(self, name, version, status):
+    super().__init__(name, version, status)
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
+  ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
+    """Returns noteIDs for notes matched by the boolean function."""
+    noteIds = noteStats.loc[
+      (noteStats[c.noteInterceptKey] < c.crnhThresholdNMIntercept)
+      & (noteStats[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey)
+    ][c.noteIdKey]
+    return (noteIds, None)
 
 
 def apply_scoring_rules(noteStats: pd.DataFrame, rules: List[ScoringRule]) -> pd.DataFrame:

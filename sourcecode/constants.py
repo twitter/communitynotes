@@ -6,6 +6,7 @@ minRatingsNeeded = 5
 maxHistoricalValidRatings = 5
 crhThreshold = 0.40
 crnhThresholdIntercept = -0.05
+crnhThresholdNMIntercept = -0.15
 crnhThresholdNoteFactorMultiplier = -0.8
 tagFilteringPercentile = 95
 minAdjustedTagWeight = 1.5
@@ -37,6 +38,7 @@ minNumRatersPerNote = 5
 
 # Data Filenames
 scoredNotesOutputPath = "scoredNotes.tsv"
+enrollmentInputPath = "userEnrollment-00000.tsv"
 notesInputPath = "notes-00000.tsv"
 ratingsInputPath = "ratings-00000.tsv"
 noteStatusHistoryInputPath = "noteStatusHistory-00000.tsv"
@@ -64,6 +66,7 @@ ratingCreatedBeforePublicTSVReleasedKey = "ratingCreatedBeforePublicTSVReleased"
 
 # Timestamps
 deletedNoteTombstonesLaunchTime = 1652918400000  # May 19, 2022 UTC
+notMisleadingUILaunchTime = 1664755200000  # October 3, 2022 UTC
 publicTSVTimeDelay = 172800000  # 48 hours
 
 # Explanation Tags
@@ -162,7 +165,7 @@ notHelpfulTagsAndTieBreakOrder = [
   (11, notHelpfulSpamHarassmentOrAbuseTagKey),
   (1, "notHelpfulIrrelevantSources"),
   (3, "notHelpfulOpinionSpeculation"),
-  (6, "notHelpfulNoteNotNeeded"),
+  (6, notHelpfulNoteNotNeededKey),
 ]
 notHelpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in notHelpfulTagsAndTieBreakOrder]
 notHelpfulTagsAndTypesTSVOrder = [(tag, np.int64) for tag in notHelpfulTagsTSVOrder]
@@ -314,8 +317,23 @@ scoredNotesColumns = (
   [noteIdKey, helpfulNumKey]
   + helpfulTagsTSVOrder
   + notHelpfulTagsTSVOrder
-  + [numRatingsKey, noteInterceptKey, noteFactor1Key, ratingStatusKey, firstTagKey, secondTagKey]
-  + [createdAtMillisKey, noteAuthorParticipantIdKey, activeRulesKey, activeFilterTagsKey]
+  + [
+    numRatingsKey,
+    noteInterceptKey,
+    noteFactor1Key,
+    ratingStatusKey,
+    firstTagKey,
+    secondTagKey,
+    createdAtMillisKey,
+    noteAuthorParticipantIdKey,
+    activeRulesKey,
+    activeFilterTagsKey,
+    classificationKey,
+  ]
+)
+
+auxilaryScoredNotesColumns = (
+  [noteIdKey, ratingWeightKey] + notHelpfulTagsAdjustedColumns + notHelpfulTagsAdjustedRatioColumns
 )
 
 noteModelOutputTSVColumnsAndTypes = [
@@ -346,7 +364,14 @@ raterModelOutputTSVColumnsAndTypes = [
   (ratedAfterDecision, np.int64),
   (notesCurrentlyRatedHelpful, np.int64),
   (notesCurrentlyRatedNotHelpful, np.int64),
-  (notesAwaitingMoreRatings, np.int64)
+  (notesAwaitingMoreRatings, np.int64),
+  (enrollmentState, np.int32),
+  (successfulRatingNeededToEarnIn, np.int64),
+  (authorTopNotHelpfulTagValues, np.str),
+  (timestampOfLastStateChange, np.int64),
+  (aboveHelpfulnessThresholdKey, np.int32),
+  (isEmergingWriterKey, np.bool_),
+  (aggregateRatingReceivedTotal, np.int64),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
