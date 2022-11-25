@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 
-def add_new_notes(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> pd.DataFrame:
+def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> pd.DataFrame:
   """Add the creation time and authorId of notes to noteStatusHistory.
   Useful when you have some new notes; called as a pre-processing step.
 
@@ -18,7 +18,7 @@ def add_new_notes(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> pd
       pd.DataFrame: noteStatusHistory
   """
   newNoteStatusHistory = oldNoteStatusHistory.merge(
-    notes[[c.noteIdKey, c.createdAtMillisKey, c.noteAuthorParticipantIdKey]],
+    notes[[c.noteIdKey, c.createdAtMillisKey, c.noteAuthorParticipantIdKey, c.classificationKey]],
     on=c.noteIdKey,
     how="outer",
     suffixes=("", "_notes"),
