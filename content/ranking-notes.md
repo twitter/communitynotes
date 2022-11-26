@@ -180,7 +180,7 @@ For not-helpful notes:
 
 **November 25, 2022**
 
-- Resumed assigning statuses to notes that indicate the Tweet is “not misleading.” Only such notes written after October 3, 2022 will be eligible to receive statuses, as on that date we [updated the rating](https://twitter.com/CommunityNotes/status/1576981914296102912) form to better capture the helpfulness of notes indicating the Tweet is not misleading. 
+- Resumed assigning statuses to notes that indicate the Tweet is “not misleading.” Only such notes written after October 3, 2022 will be eligible to receive statuses, as on that date we [updated the rating form](https://twitter.com/CommunityNotes/status/1576981914296102912) to better capture the helpfulness of notes indicating the Tweet is not misleading. 
 
 **November 10, 2022**
 
