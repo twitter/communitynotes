@@ -4,7 +4,7 @@ title: Home
 aliases: ["/learn-more", "/intro"]
 ---
 
-{{< figure class="hero" src="./images/community-notes-hero.png">}}
+{{< figure class="hero" src="./images/help-rate-this-note-expanded.png">}}
 
 ## Community Notes is a collaborative way to add helpful context to Tweets and keep people better informed
 
