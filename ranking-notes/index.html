@@ -906,7 +906,7 @@ This approach helps us to maintain data quality by recognizing when there is a t
 <p>The scoring algorithm updates the Helpful status of each note during every invocation.
 Re-computing the Helpful status ensures that as new ratings emerge the notes shown to users continue to reflect a broad consensus among raters.
 In some cases, small variations in the note intercept $i_n$ can cause notes to lose and potentially re-acquire Helpful status.</p>
-<p>To help ensure that changes in Helpful status reflect a clear shift in consensus, we require that the note intercept $i_n$ drops below the applicable threshld by more than 0.01 before the note loses Helpful status.
+<p>To help ensure that changes in Helpful status reflect a clear shift in consensus, we require that the note intercept $i_n$ drops below the applicable threshold by more than 0.01 before the note loses Helpful status.
 For example, if a note achieved Helpful status with note intercept $i_n&gt;0.40$, then the note would need $i_n&lt;0.39$ before losing Helpful status.
 Similarly, if a note was impacted by tag outlier filter and required note intercedpt $i_n&gt;0.50$ to achieve Helpful status, the note would need $i_n&lt;0.49$ to lose Helpful status.</p>
 <div class="gdoc-page__anchorwrap"><h2 id="determining-note-status-explanation-tags">Determining Note Status Explanation Tags<a data-clipboard-text="https://twitter.github.io/communitynotes/ranking-notes/#determining-note-status-explanation-tags" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Determining Note Status Explanation Tags" href="#determining-note-status-explanation-tags"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
