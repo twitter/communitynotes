@@ -52,7 +52,7 @@ def note_post_processing(
   # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
   # and ML output.
   contributorNotes = note_ratings.compute_scored_notes(
-    ratings, noteParams, raterParams, noteStatusHistory, allNotes=True, tagFiltering=True
+    ratings, noteParams, raterParams, noteStatusHistory, finalRound=True
   )
   # Return one row per rater with stats including trackrecord identifying note labels.
   contributorScores = contributor_state.get_contributor_scores(
