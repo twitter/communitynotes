@@ -11,6 +11,7 @@ crnhThresholdNoteFactorMultiplier = -0.8
 tagFilteringPercentile = 95
 minAdjustedTagWeight = 1.5
 crhSuperThreshold = 0.50
+inertiaDelta = 0.01
 
 # Explanation Tags
 minRatingsToGetTag = 2

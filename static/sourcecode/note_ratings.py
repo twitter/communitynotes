@@ -266,8 +266,7 @@ def compute_scored_notes(
   crhThreshold: float = c.crhThreshold,
   crnhThresholdIntercept: float = c.crnhThresholdIntercept,
   crnhThresholdNoteFactorMultiplier: float = c.crnhThresholdNoteFactorMultiplier,
-  allNotes: bool = False,
-  tagFiltering: bool = False,
+  finalRound: bool = False,
   # TODO: We might want to consider inputing only the series here, instead of the whole callable
   is_crh_function: Callable[..., pd.Series] = is_crh,
   is_crnh_function: Callable[..., pd.Series] = is_crnh,
@@ -294,12 +293,14 @@ def compute_scored_notes(
   ratingsToUse[c.numRatingsKey] = 1
   ratingsToUse[c.numRatingsLast28DaysKey] = False
   ratingsToUse.loc[ratings[c.createdAtMillisKey] > last28Days, c.numRatingsLast28DaysKey] = True
+  # BUG: The line below causes us to sum over createdAtMillisKey, adding up timestamps which we
+  # later compare against timestampMillisOfNoteMostRecentNonNMRLabelKey.
   noteStats = ratingsToUse.groupby(c.noteIdKey).sum()
   noteStats = noteStats.merge(
     noteParams[[c.noteIdKey, c.noteInterceptKey, c.noteFactor1Key]], on=c.noteIdKey
   )
 
-  how = "outer" if allNotes else "left"
+  how = "outer" if finalRound else "left"
   noteStats = noteStats.merge(
     noteStatusHistory[
       [
@@ -309,6 +310,7 @@ def compute_scored_notes(
         c.noteAuthorParticipantIdKey,
         c.participantIdKey,
         c.classificationKey,
+        c.currentLabelKey,
       ]
     ],
     on=c.noteIdKey,
@@ -345,24 +347,38 @@ def compute_scored_notes(
     ),
     scoring_rules.NMtoCRNH(RuleID.NM_CRNH, c.currentlyRatedNotHelpful, {RuleID.INITIAL_NMR}),
   ]
-  if tagFiltering:
+  if finalRound:
     # Compute tag aggregates only if they are required for tag filtering.
     tagAggregates = tag_filter.get_note_tag_aggregates(ratings, noteParams, raterParams)
     assert len(tagAggregates) == len(noteParams), "there should be one aggregate per scored note"
-    if not allNotes:
-      assert len(tagAggregates) == len(noteStats), "should be one aggregate per scored note"
-    noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer" if allNotes else "left")
+    noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer")
 
-    # Add tag filtering rule.
-    rules.append(
-      scoring_rules.FilterTagOutliers(
-        RuleID.TAG_OUTLIER,
-        c.needsMoreRatings,
-        {RuleID.GENERAL_CRH},
-        c.tagFilteringPercentile,
-        c.minAdjustedTagWeight,
-        c.crhSuperThreshold,
-      )
+    # Add tag filtering and sticky scoring logic.
+    rules.extend(
+      [
+        scoring_rules.AddCRHInertia(
+          RuleID.GENERAL_CRH_INERTIA,
+          c.currentlyRatedHelpful,
+          {RuleID.GENERAL_CRH},
+          c.crhThreshold - c.inertiaDelta,
+          c.crhThreshold,
+        ),
+        scoring_rules.FilterTagOutliers(
+          RuleID.TAG_OUTLIER,
+          c.needsMoreRatings,
+          {RuleID.GENERAL_CRH},
+          c.tagFilteringPercentile,
+          c.minAdjustedTagWeight,
+          c.crhSuperThreshold,
+        ),
+        scoring_rules.AddCRHInertia(
+          RuleID.ELEVATED_CRH_INERTIA,
+          c.currentlyRatedHelpful,
+          {RuleID.TAG_OUTLIER},
+          c.crhSuperThreshold - c.inertiaDelta,
+          c.crhSuperThreshold,
+        ),
+      ]
     )
   scoredNotes = scoring_rules.apply_scoring_rules(noteStats, rules)
 
