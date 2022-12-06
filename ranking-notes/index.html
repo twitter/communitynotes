@@ -961,6 +961,14 @@ Similarly, if a note was impacted by tag outlier filter and required note interc
 </ol>
 <br/>
 <div class="gdoc-page__anchorwrap"><h2 id="whats-new">What’s New?<a data-clipboard-text="https://twitter.github.io/communitynotes/ranking-notes/#whats-new" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor What’s New?" href="#whats-new"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
+<p><strong>December 6, 2022</strong></p>
+<ul>
+<li>Corrected calculation of how many notes a contributor has rated after a status decision was made.</li>
+<li>Corrected authorship attribution within noteStatusHistory to eliminate <code>nan</code> author values in note scoring output.</li>
+<li>Improved usage of Pandas to eliminate warnings.</li>
+<li>Removed logging from contributor_state which is no longer necessary.</li>
+<li>Refactored insufficient tag scoring logic to fit within updated scoring framework.</li>
+</ul>
 <p><strong>November 30, 2022</strong></p>
 <ul>
 <li>Improved thresholding logic to help ensure notes only lose CRH status when there is a clear change in rater consensus.</li>
