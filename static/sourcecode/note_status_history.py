@@ -156,4 +156,6 @@ def update_note_status_history(
 
   assert pd.isna(newNoteStatusHistory[c.noteAuthorParticipantIdKey]).sum() == 0
   assert pd.isna(newNoteStatusHistory[c.createdAtMillisKey]).sum() == 0
-  return newNoteStatusHistory[c.noteStatusHistoryTSVColumns]
+  return newNoteStatusHistory[
+    [col.replace(c.participantIdKey, c.noteAuthorParticipantIdKey)
+     for col in c.noteStatusHistoryTSVColumns]]
