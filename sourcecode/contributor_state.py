@@ -78,6 +78,43 @@ def is_earned_in(authorEnrollmentCounts):
   )
 
 
+def _get_rated_after_decision(
+  ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame
+) -> pd.DataFrame:
+  """Calculates how many notes each rater reviewed after the note was assigned a status.
+
+  Args:
+    ratings: DataFrame containing all ratings from all users
+    noteStatusHistory: DataFrame containing times when each note was first assigned CRH/CRNH status
+
+  Returns:
+    DataFrame mapping raterParticipantId to number of notes rated after status
+  """
+  ratingInfos = ratings[[c.noteIdKey, c.raterParticipantIdKey, c.createdAtMillisKey]].merge(
+    noteStatusHistory[[c.noteIdKey, c.timestampMillisOfNoteMostRecentNonNMRLabelKey]],
+    how="inner",
+  )
+  assert len(ratingInfos) == len(
+    ratings
+  ), f"assigning a status timestamp shouldn't decrease number of ratings: {len(ratingInfos)} vs. {len(ratings)}"
+  print("Calculating ratedAfterDecision:")
+  print(f"  Total ratings: {len(ratingInfos)}")
+  ratingInfos = ratingInfos[~pd.isna(ratingInfos[c.timestampMillisOfNoteMostRecentNonNMRLabelKey])]
+  print(f"  Total ratings on notes with status: {len(ratingInfos)}")
+  ratingInfos = ratingInfos[
+    ratingInfos[c.createdAtMillisKey] > ratingInfos[c.timestampMillisOfNoteMostRecentNonNMRLabelKey]
+  ]
+  print(f"  Total ratings after status: {len(ratingInfos)}")
+  ratingInfos[c.ratedAfterDecision] = 1
+  ratedAfterDecision = (
+    ratingInfos[[c.raterParticipantIdKey, c.ratedAfterDecision]]
+    .groupby(c.raterParticipantIdKey)
+    .sum()
+  )
+  print(f"  Total raters rating after decision: {len(ratedAfterDecision)}")
+  return ratedAfterDecision
+
+
 def _get_visible_rating_counts(
   scoredNotes: pd.DataFrame, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame
 ) -> pd.DataFrame:
@@ -106,10 +143,14 @@ def _get_visible_rating_counts(
 
   ratingsWithScores = get_ratings_with_scores(ratings, noteStatusHistory, scoredNotes)
   historyCounts = ratingsWithScores.groupby(c.raterParticipantIdKey).sum()[
-    [c.afterDecisionBoolKey, c.awaitingMoreRatingsBoolKey]
+    [c.awaitingMoreRatingsBoolKey]
   ]
-  historyCounts[c.ratedAfterDecision] = historyCounts[c.afterDecisionBoolKey]
   historyCounts[c.ratingsAwaitingMoreRatings] = historyCounts[c.awaitingMoreRatingsBoolKey]
+  ratedAfterDecision = _get_rated_after_decision(ratings, noteStatusHistory)
+  historyCounts = historyCounts.merge(ratedAfterDecision, on=c.raterParticipantIdKey, how="left")
+  # Fill in zero for any rater who didn't rate any notes after status was assigned and consequently
+  # doesn't appear in the dataframe.
+  historyCounts = historyCounts.fillna({c.ratedAfterDecision: 0})
 
   ratingCounts = ratingCounts.merge(historyCounts, on=c.raterParticipantIdKey, how="outer")
   for rowName in ratingCountRows:
@@ -149,7 +190,11 @@ def _sort_nmr_status_last(x: pd.Series) -> pd.Series:
   # order. The nmrSortLast transforms CRH + CRNH notes to the beginning of the frame. The noteIdkey
   # (snowflake id) acts a secondary filter to make sure that we are checking for recent notes.
   nmrSortLast = DictCopyMissing(
-    {c.needsMoreRatings: 0, c.currentlyRatedHelpful: 1, c.currentlyRatedNotHelpful: 1}
+    {
+      c.needsMoreRatings: 0,
+      c.currentlyRatedHelpful: 1,
+      c.currentlyRatedNotHelpful: 1,
+    }
   )
   return x.map(nmrSortLast)
 
@@ -181,16 +226,18 @@ def _get_visible_note_counts(
       }
     )
     if lastNNotes > 0
-    else scoredNotes.groupby(c.noteAuthorParticipantIdKey).sum()
+    else scoredNotes.groupby(c.noteAuthorParticipantIdKey).sum(numeric_only=True)
   )
-  authorCounts = groupAuthorCounts[
-    [
-      c.currentlyRatedHelpfulBoolKey,
-      c.currentlyRatedNotHelpfulBoolKey,
-      c.awaitingMoreRatingsBoolKey,
-      c.numRatingsKey,
+  authorCounts = pd.DataFrame(
+    groupAuthorCounts[
+      [
+        c.currentlyRatedHelpfulBoolKey,
+        c.currentlyRatedNotHelpfulBoolKey,
+        c.awaitingMoreRatingsBoolKey,
+        c.numRatingsKey,
+      ]
     ]
-  ]
+  )
   authorCounts[c.notesCurrentlyRatedHelpful] = authorCounts[c.currentlyRatedHelpfulBoolKey]
   authorCounts[c.notesCurrentlyRatedNotHelpful] = authorCounts[c.currentlyRatedNotHelpfulBoolKey]
   authorCounts[c.notesAwaitingMoreRatings] = authorCounts[c.awaitingMoreRatingsBoolKey]
@@ -228,11 +275,13 @@ def is_emerging_writer(scoredNotes: pd.DataFrame):
     pd.DataFrame: emergingWriter The contributor scores with enrollments
   """
   authorCounts = author_helpfulness(scoredNotes)
-  raterCounts = scoredNotes.groupby(c.participantIdKey).sum()[c.numRatingsLast28DaysKey]
+  raterCounts = scoredNotes.groupby(c.noteAuthorParticipantIdKey).sum(numeric_only=True)[
+    c.numRatingsLast28DaysKey
+  ]
   emergingWriter = (
     authorCounts.join(raterCounts, how="outer", lsuffix="_author", rsuffix="_rater")
     .reset_index()
-    .rename({"index": c.participantIdKey}, axis=1)
+    .rename({"index": c.noteAuthorParticipantIdKey}, axis=1)
   )
   emergingWriter[c.isEmergingWriterKey] = False
   emergingWriter.loc[
@@ -240,13 +289,13 @@ def is_emerging_writer(scoredNotes: pd.DataFrame):
     & (emergingWriter[c.numRatingsLast28DaysKey] >= c.emergingRatingCount),
     c.isEmergingWriterKey,
   ] = True
-  return emergingWriter[[c.participantIdKey, c.isEmergingWriterKey]]
+  return emergingWriter[[c.noteAuthorParticipantIdKey, c.isEmergingWriterKey]]
 
 
 def get_contributor_state(
   scoredNotes: pd.DataFrame,
   ratings: pd.DataFrame,
-  statusHistory: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
   logging: bool = True,
 ) -> pd.DataFrame:
@@ -258,7 +307,7 @@ def get_contributor_state(
   Args:
       scoredNotes (pd.DataFrame): scored notes
       ratings (pd.DataFrame): all ratings
-      statusHistory (pd.DataFrame): history of note statuses
+      noteStatusHistory (pd.DataFrame): history of note statuses
       userEnrollment (pd.DataFrame): User enrollment for BW participants.
       logging (bool): Should we log
   Returns:
@@ -267,12 +316,12 @@ def get_contributor_state(
 
   # We need to consider only the last 5 notes for enrollment state. The ratings are aggregated historically.
   contributorScores = get_contributor_scores(
-    scoredNotes, ratings, statusHistory, lastNNotes=c.maxHistoryEarnOut, countNMRNotesLast=True
+    scoredNotes, ratings, noteStatusHistory, lastNNotes=c.maxHistoryEarnOut, countNMRNotesLast=True
   )
 
   # We merge in the top not hellpful tags
   authorTopNotHelpfulTags = explanation_tags.get_top_nonhelpful_tags_per_author(
-    statusHistory, ratings
+    noteStatusHistory, ratings
   )
   contributorScores = contributorScores.merge(
     authorTopNotHelpfulTags,
@@ -284,8 +333,11 @@ def get_contributor_state(
   # We merge in the emerging writer data.
   emergingWriter = is_emerging_writer(scoredNotes)
   contributorScores = contributorScores.merge(
-    emergingWriter, left_on=c.raterParticipantIdKey, right_on=c.participantIdKey, how="outer"
-  )
+    emergingWriter,
+    left_on=c.raterParticipantIdKey,
+    right_on=c.noteAuthorParticipantIdKey,
+    how="outer",
+  ).drop(columns=[c.noteAuthorParticipantIdKey])
 
   # We merge the current enrollment state
   contributorScoresWithEnrollment = contributorScores.merge(
@@ -334,16 +386,16 @@ def get_contributor_state(
       len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 0]),
     )
     print(
-      "At Risk",
-      contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 1],
+      "Number At Risk",
+      len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 1]),
     )
     print(
-      "Earn Out No Ack",
-      contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 2],
+      "Number of Earn Out No Ack",
+      len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 2]),
     )
     print(
-      "Earned Out Ack",
-      contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 3],
+      "Number of Earned Out Ack",
+      len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 3]),
     )
     print(
       "Number of New Users",

@@ -4,8 +4,6 @@ import algorithm, constants as c, process_data
 
 
 """
-Run as a python script via run_main.py, one directory up.
-
 Example Usage:
   python main.py \
     --enrollment userEnrollment-00000.tsv \
