@@ -81,7 +81,7 @@ def run_mf(
   # We are extracting only the subset of note data from the ratings data frame that is needed to
   # run matrix factorization. This avoids accidentally loosing data through `dropna`.
   noteData = ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]]
-  noteData.dropna(0, inplace=True)
+  assert not pd.isna(noteData).values.any(), "noteData must note contain nan values"
 
   noteIdMap = (
     pd.DataFrame(noteData[c.noteIdKey].unique())

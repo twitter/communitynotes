@@ -8,7 +8,10 @@ import pandas as pd
 
 def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> pd.DataFrame:
   """Add the creation time and authorId of notes to noteStatusHistory.
-  Useful when you have some new notes; called as a pre-processing step.
+
+  Useful when you have some new notes; called as a pre-processing step.  Note that oldNoteStatusHistory
+  is expected to consistently contain noteIds which are not in notes due to deletions, and notes
+  *may* contain notes which are not in noteStatusHistory if new notes have been written.
 
   Args:
       oldNoteStatusHistory (pd.DataFrame)
@@ -17,21 +20,51 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
   Returns:
       pd.DataFrame: noteStatusHistory
   """
+  noteSuffix = "_notes"
   newNoteStatusHistory = oldNoteStatusHistory.merge(
     notes[[c.noteIdKey, c.createdAtMillisKey, c.noteAuthorParticipantIdKey, c.classificationKey]],
     on=c.noteIdKey,
+    # use outer so we don't drop deleted notes from "oldNoteStatusHistory" or new notes from "notes"
     how="outer",
-    suffixes=("", "_notes"),
+    suffixes=("", noteSuffix),
   )
   newNotes = pd.isna(newNoteStatusHistory[c.createdAtMillisKey])
+  print(f"total notes added to noteStatusHistory: {sum(newNotes)}")
+  # Copy timestamp and authorship data over for new notes.
   newNoteStatusHistory.loc[newNotes, c.createdAtMillisKey] = newNoteStatusHistory.loc[
-    newNotes, c.createdAtMillisKey + "_notes"
+    newNotes, c.createdAtMillisKey + noteSuffix
   ]
-  newNoteStatusHistory.loc[newNotes, c.participantIdKey] = newNoteStatusHistory.loc[
-    newNotes, c.noteAuthorParticipantIdKey
+  newNoteStatusHistory.loc[newNotes, c.noteAuthorParticipantIdKey] = newNoteStatusHistory.loc[
+    newNotes, c.noteAuthorParticipantIdKey + noteSuffix
   ]
+  # Validate expectations that notes is a subset of noteStatusHistory, and that timestamp
+  # and authorship data match when applicable.
+  assert len(notes) == len(
+    notes[[c.noteIdKey]].drop_duplicates()
+  ), "notes must not contain duplicates"
+  assert len(newNoteStatusHistory) == len(
+    newNoteStatusHistory[[c.noteIdKey]].drop_duplicates()
+  ), "noteStatusHistory must not contain duplicates"
+  assert len(notes) == len(
+    newNoteStatusHistory[[c.noteIdKey, c.createdAtMillisKey]].merge(
+      notes[[c.noteIdKey, c.createdAtMillisKey]],
+      on=[c.noteIdKey, c.createdAtMillisKey],
+      how="inner",
+    )
+  ), "timestamps from notes and noteStatusHistory must match"
+  assert len(notes) == len(
+    newNoteStatusHistory[[c.noteIdKey, c.noteAuthorParticipantIdKey]].merge(
+      notes[[c.noteIdKey, c.noteAuthorParticipantIdKey]],
+      on=[c.noteIdKey, c.noteAuthorParticipantIdKey],
+      how="inner",
+    )
+  ), "authorship from notes and noteStatusHistory must match"
 
-  return newNoteStatusHistory
+  # Drop cols which were artifacts of the merge
+  noteStatusHistory = newNoteStatusHistory.drop(
+    columns=[c.createdAtMillisKey + noteSuffix, c.noteAuthorParticipantIdKey + noteSuffix]
+  )
+  return noteStatusHistory
 
 
 def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredNotesSuffix="_sn"):
@@ -121,6 +154,6 @@ def update_note_status_history(
 
   newNoteStatusHistory = mergedStatuses.apply(apply_update, axis=1)
 
-  assert pd.isna(newNoteStatusHistory[c.participantIdKey]).sum() == 0
+  assert pd.isna(newNoteStatusHistory[c.noteAuthorParticipantIdKey]).sum() == 0
   assert pd.isna(newNoteStatusHistory[c.createdAtMillisKey]).sum() == 0
   return newNoteStatusHistory[c.noteStatusHistoryTSVColumns]

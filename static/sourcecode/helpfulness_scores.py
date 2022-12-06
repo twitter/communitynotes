@@ -18,7 +18,7 @@ def author_helpfulness(
   Returns:
       pd.DataFrame: one row per author, containing columns for author helpfulness scores
   """
-  authorCounts = scoredNotes.groupby(c.participantIdKey).sum()[
+  authorCounts = scoredNotes.groupby(c.noteAuthorParticipantIdKey).sum(numeric_only=True)[
     [
       c.currentlyRatedHelpfulBoolKey,
       c.currentlyRatedNotHelpfulBoolKey,

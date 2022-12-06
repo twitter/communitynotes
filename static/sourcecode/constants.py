@@ -22,7 +22,6 @@ minMeanNoteScore = 0.05
 minCRHVsCRNHRatio = 0.00
 minRaterAgreeRatio = 0.66
 
-
 # Matrix factorization
 l2_lambda = 0.03
 l2_intercept_multiplier = 5
@@ -131,7 +130,6 @@ needsMoreRatings = "NEEDS_MORE_RATINGS"
 currentlyRatedHelpfulBoolKey = "crhBool"
 currentlyRatedNotHelpfulBoolKey = "crnhBool"
 awaitingMoreRatingsBoolKey = "awaitingBool"
-afterDecisionBoolKey = "afterDecisionBool"
 
 helpfulTagsAndTieBreakOrder = [
   (0, "helpfulOther"),
