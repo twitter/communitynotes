@@ -188,6 +188,14 @@ For not-helpful notes:
 
 ## What’s New?
 
+**December 6, 2022**
+
+- Corrected calculation of how many notes a contributor has rated after a status decision was made.
+- Corrected authorship attribution within noteStatusHistory to eliminate `nan` author values in note scoring output.
+- Improved usage of Pandas to eliminate warnings.
+- Removed logging from contributor_state which is no longer necessary.
+- Refactored insufficient tag scoring logic to fit within updated scoring framework.
+
 **November 30, 2022**
 
 - Improved thresholding logic to help ensure notes only lose CRH status when there is a clear change in rater consensus.
