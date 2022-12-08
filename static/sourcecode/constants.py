@@ -11,6 +11,7 @@ crnhThresholdNoteFactorMultiplier = -0.8
 tagFilteringPercentile = 95
 minAdjustedTagWeight = 1.5
 crhSuperThreshold = 0.50
+inertiaDelta = 0.01
 
 # Explanation Tags
 minRatingsToGetTag = 2
@@ -20,7 +21,6 @@ minTagsNeededForStatus = 2
 minMeanNoteScore = 0.05
 minCRHVsCRNHRatio = 0.00
 minRaterAgreeRatio = 0.66
-
 
 # Matrix factorization
 l2_lambda = 0.03
@@ -130,7 +130,6 @@ needsMoreRatings = "NEEDS_MORE_RATINGS"
 currentlyRatedHelpfulBoolKey = "crhBool"
 currentlyRatedNotHelpfulBoolKey = "crnhBool"
 awaitingMoreRatingsBoolKey = "awaitingBool"
-afterDecisionBoolKey = "afterDecisionBool"
 
 helpfulTagsAndTieBreakOrder = [
   (0, "helpfulOther"),

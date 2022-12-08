@@ -51,15 +51,15 @@ def note_post_processing(
 
   # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
   # and ML output.
-  contributorNotes = note_ratings.compute_scored_notes(
-    ratings, noteParams, raterParams, noteStatusHistory, allNotes=True, tagFiltering=True
+  scoredNotes = note_ratings.compute_scored_notes(
+    ratings, noteParams, raterParams, noteStatusHistory, finalRound=True
   )
   # Return one row per rater with stats including trackrecord identifying note labels.
   contributorScores = contributor_state.get_contributor_scores(
-    contributorNotes, ratings, noteStatusHistory
+    scoredNotes, ratings, noteStatusHistory
   )
   contributorState = contributor_state.get_contributor_state(
-    contributorNotes, ratings, noteStatusHistory, userEnrollment
+    scoredNotes, ratings, noteStatusHistory, userEnrollment
   )
 
   # We need to do an outer merge because the contributor can have a state (be a new user)
@@ -87,17 +87,9 @@ def note_post_processing(
   )
 
   # Prune notes which weren't in second MF round and merge NSH to generate final scoredNotes.
-  scoredNotes = contributorNotes.merge(noteParams[[c.noteIdKey]], on=c.noteIdKey, how="inner")
+  scoredNotes = scoredNotes.merge(noteParams[[c.noteIdKey]], on=c.noteIdKey, how="inner")
   castColumns = c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder + [c.numRatingsKey]
   scoredNotes[castColumns] = scoredNotes[castColumns].astype(np.int64)
-  # BUG: validate that the assignment below can be eliminated
-  scoredNotes = scoredNotes.drop(
-    columns=[c.createdAtMillisKey, c.noteAuthorParticipantIdKey]
-  ).merge(
-    noteStatusHistory[[c.noteIdKey, c.createdAtMillisKey, c.noteAuthorParticipantIdKey]],
-    on=c.noteIdKey,
-    how="inner",
-  )
   auxilaryNoteInfo = scoredNotes[c.auxilaryScoredNotesColumns]
   scoredNotes = scoredNotes[c.scoredNotesColumns]
 

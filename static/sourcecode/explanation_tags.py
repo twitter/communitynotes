@@ -3,7 +3,6 @@ from typing import List, Optional
 
 import constants as c
 
-import numpy as np
 import pandas as pd
 
 
@@ -39,29 +38,18 @@ def top_tags(
   tagCounts[c.tiebreakOrderKey] = range(len(tagCounts))
   tagCounts = tagCounts[tagCounts[c.tagCountsKey] >= minRatingsToGetTag]
   topTags = tagCounts.sort_values(by=[c.tagCountsKey, c.tiebreakOrderKey], ascending=False)[:2]
-  if len(topTags) < minTagsNeededForStatus:
-    # Even if note is currently CRH or CRNH, flip the status to NMR if we don't
-    # have strong enough signal on enough tags to explain the rating.
-    row[c.ratingStatusKey] = c.needsMoreRatings
-    # We need to also update the bool keys. This is necessary for compute_scored_notes
-    # to correctly calcuate the status for the different counts.
-    if c.awaitingMoreRatingsBoolKey in row:
-      row[c.awaitingMoreRatingsBoolKey] = True
-    if c.currentlyRatedNotHelpfulBoolKey in row:
-      row[c.currentlyRatedNotHelpfulBoolKey] = False
-    if c.currentlyRatedHelpfulBoolKey in row:
-      row[c.currentlyRatedHelpfulBoolKey] = False
-
-  else:
+  # Note: this currently only allows for minTagsNeededForStatus between 0-2
+  if len(topTags) >= minTagsNeededForStatus:
     if len(topTags):
       row[c.firstTagKey] = topTags.index[0]
     if len(topTags) > 1:
       row[c.secondTagKey] = topTags.index[1]
+
   return row
 
 
 def get_top_nonhelpful_tags_per_author(
-  notes: pd.DataFrame, reputationFilteredRatings: pd.DataFrame
+  noteStatusHistory: pd.DataFrame, reputationFilteredRatings: pd.DataFrame
 ):
   """Identifies the top non-helpful tags per author.
 
@@ -71,7 +59,7 @@ def get_top_nonhelpful_tags_per_author(
      by the author.
 
   Args:
-      notes (pd.DataFrame): DF mapping notes to authors
+      noteStatusHistory (pd.DataFrame): DF mapping notes to authors
       reputationFilteredRatings (pd.DataFrame): DF including ratings and helpfulness tags
 
   Returns:
@@ -79,7 +67,9 @@ def get_top_nonhelpful_tags_per_author(
     two non-helpful tags associated with the author
   """
   # Finds the top two non-helpful tags per note.
-  noteTagTotals = reputationFilteredRatings.groupby(c.noteIdKey).sum().reset_index()
+  noteTagTotals = (
+    reputationFilteredRatings.groupby(c.noteIdKey).sum(numeric_only=True).reset_index()
+  )
   # Default tags to the empty string.
   noteTagTotals[c.firstTagKey] = ""
   noteTagTotals[c.secondTagKey] = ""
@@ -93,7 +83,7 @@ def get_top_nonhelpful_tags_per_author(
     axis=1,
   )[[c.noteIdKey, c.firstTagKey, c.secondTagKey]]
   # Aggreagtes top two tags per author.
-  notesToUse = notes[[c.noteAuthorParticipantIdKey, c.noteIdKey]]
+  notesToUse = noteStatusHistory[[c.noteAuthorParticipantIdKey, c.noteIdKey]]
   authorTagsAgg = (
     notesToUse.merge(noteTopTags, on=[c.noteIdKey])
     .groupby(c.noteAuthorParticipantIdKey)

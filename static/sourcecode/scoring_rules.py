@@ -4,6 +4,8 @@ from enum import Enum
 from typing import Callable, List, Optional, Set, Tuple
 
 import constants as c, tag_filter
+from explanation_tags import top_tags
+
 
 import numpy as np
 import pandas as pd
@@ -21,6 +23,9 @@ class RuleID(Enum):
   GENERAL_CRNH = RuleAndVersion("GeneralCRNH", "1.0")
   TAG_OUTLIER = RuleAndVersion("TagFilter", "1.0")
   NM_CRNH = RuleAndVersion("NmCRNH", "1.0")
+  GENERAL_CRH_INERTIA = RuleAndVersion("GeneralCRHInertia", "1.0")
+  ELEVATED_CRH_INERTIA = RuleAndVersion("ElevatedCRHInertia", "1.0")
+  INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0")
 
 
 class ScoringRule(ABC):
@@ -111,6 +116,8 @@ class RuleFromFunction(ScoringRule):
     return (
       noteStats.loc[
         self._function(noteStats)
+        # Check for inequality with "not misleading" to include notes whose classificaiton
+        # is nan (i.e. deleted notes).
         & (noteStats[c.classificationKey] != c.noteSaysTweetIsNotMisleadingKey)
       ][c.noteIdKey],
       None,
@@ -134,7 +141,7 @@ class FilterTagOutliers(ScoringRule):
         tag must exceed Nth percentile for notes currently rated as CRH.
       minAdjustedTotal: For a filter to trigger, the adjusted total of a tag must
         exceed the minAdjustedTotal.
-      crhSuperThrehsold: If the note intercept exceeds the crhSuperThreshold, then the
+      crhSuperThreshold: If the note intercept exceeds the crhSuperThreshold, then the
         tag filter is disabled.
     """
     super().__init__(ruleID, status, dependencies)
@@ -145,7 +152,7 @@ class FilterTagOutliers(ScoringRule):
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, pd.DataFrame]):
-    """Identifies notes on track for CRH with high levels of any tag and assigns NMR status."""
+    """Returns notes on track for CRH with high levels of any tag to receive NMR status."""
     # Prune noteStats to only include CRH notes.
     crhNotes = currentLabels[currentLabels[c.ratingStatusKey] == c.currentlyRatedHelpful][
       [c.noteIdKey]
@@ -167,7 +174,7 @@ class FilterTagOutliers(ScoringRule):
       print(tag)
       print(f"  ratio threshold: {thresholds[adjustedRatioColumn]}")
       if tag == c.notHelpfulHardToUnderstandKey or tag == c.notHelpfulNoteNotNeededKey:
-        print(f"outliner filtering disabled for tag: {tag}")
+        print(f"outlier filtering disabled for tag: {tag}")
         continue
       tagFilteredNotes = crhStats[
         # Adjusted total must pass minimum threhsold set across all tags.
@@ -190,19 +197,155 @@ class FilterTagOutliers(ScoringRule):
     return (impactedNotes[c.noteIdKey].drop_duplicates(), impactedNotes)
 
 
+class InsufficientExplanation(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    status: str,
+    dependencies: Set[RuleID],
+    minRatingsToGetTag: int,
+    minTagsNeededForStatus: int,
+    tagsConsidered: Optional[List[str]] = None,
+  ):
+    """Set Top Tags, and set status to NMR for CRH / CRNH notes for which we don't have
+        a strong enough explanation signal
+
+    Args:
+      minRatingsToGetTag: min number occurrences to assign a tag to a note.
+      minTagsNeededForStatus: min tags assigned before a note can be CRH/CRNH
+      tagsConsidered: set of tags to consider for *all* notes.
+    """
+    super().__init__(ruleID, status, dependencies)
+    self._minRatingsToGetTag = minRatingsToGetTag
+    self._minTagsNeededForStatus = minTagsNeededForStatus
+    self._tagsConsidered = tagsConsidered
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
+  ) -> (Tuple[pd.Series, pd.DataFrame]):
+    """Sets Top Tags, returns notes on track for CRH / CRNH with insufficient to receive NMR status."""
+
+    if self._tagsConsidered is None:
+      # Set Top Tags
+      crh_idx = noteStats[c.noteIdKey].isin(
+        currentLabels.loc[currentLabels[c.ratingStatusKey] == c.currentlyRatedHelpful, c.noteIdKey]
+      )
+      noteStats.loc[crh_idx, :] = noteStats.loc[crh_idx, :].apply(
+        lambda row: top_tags(
+          row, self._minRatingsToGetTag, self._minTagsNeededForStatus, c.helpfulTagsTiebreakOrder
+        ),
+        axis=1,
+      )
+      crnh_idx = noteStats[c.noteIdKey].isin(
+        currentLabels.loc[
+          currentLabels[c.ratingStatusKey] == c.currentlyRatedNotHelpful, c.noteIdKey
+        ]
+      )
+      noteStats.loc[crnh_idx, :] = noteStats.loc[crnh_idx, :].apply(
+        lambda row: top_tags(
+          row, self._minRatingsToGetTag, self._minTagsNeededForStatus, c.notHelpfulTagsTiebreakOrder
+        ),
+        axis=1,
+      )
+    else:
+      noteStats = noteStats.apply(
+        lambda row: top_tags(
+          row, self._minRatingsToGetTag, self._minTagsNeededForStatus, self._tagsConsidered
+        ),
+        axis=1,
+      )
+
+    # Prune noteStats to only include CRH / CRNH notes.
+    crNotes = currentLabels[
+      (currentLabels[c.ratingStatusKey] == c.currentlyRatedHelpful)
+      | (currentLabels[c.ratingStatusKey] == c.currentlyRatedNotHelpful)
+    ][[c.noteIdKey]]
+    crStats = noteStats.merge(crNotes, on=c.noteIdKey, how="inner")
+    print(f"CRH / CRNH notes prior to filtering for insufficient explanation: {len(crStats)}")
+
+    # Identify impacted notes.
+    impactedNotes = crStats.loc[
+      (~crStats[[c.firstTagKey, c.secondTagKey]].isna()).sum(axis=1) < self._minTagsNeededForStatus,
+      c.noteIdKey,
+    ]
+
+    pd.testing.assert_series_equal(impactedNotes, impactedNotes.drop_duplicates())
+
+    print(f"Total notes impacted by explanation filtering: {len(impactedNotes)}")
+
+    return (impactedNotes, None)
+
+
 class NMtoCRNH(ScoringRule):
-  def __init__(self, name, version, status):
-    super().__init__(name, version, status)
+  def __init__(self, ruleID: RuleID, status: str, dependencies: Set[RuleID]):
+    super().__init__(ruleID, status, dependencies)
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
-    """Returns noteIDs for notes matched by the boolean function."""
+    """Returns noteIds for low scoring notes on non-misleading tweets."""
     noteIds = noteStats.loc[
       (noteStats[c.noteInterceptKey] < c.crnhThresholdNMIntercept)
+      # Require that that the classification is "not misleading" to explicitly exclude deleted
+      # notes where the classification is nan.
       & (noteStats[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey)
     ][c.noteIdKey]
     return (noteIds, None)
+
+
+class AddCRHInertia(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    status: str,
+    dependencies: Set[RuleID],
+    threshold: float,
+    expectedMax: float,
+  ):
+    """Scores notes as CRH contingent on whether the note is already CRH.
+
+    This rule should be applied after other CRH scoring logic to add CRH status for
+    notes with intercepts in a defined range (e.g. 0.01 below the general threshold)
+    contingent on whether the note is currently rated as CRH on the BW site.  The
+    objective of this rule is to decrease scoring changes due to small variations
+    in note intercepts around the threshold.
+
+    Args:
+      threshold: minimum threshold for marking a note as CRH.
+      expectedMax: raise an AssertionError if any note scores above this threshold.
+    """
+    super().__init__(ruleID, status, dependencies)
+    self._threshold = threshold
+    self._expectedMax = expectedMax
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
+  ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
+    """Returns noteIds for notes already have CRH status but now fall slightly below a threshold."""
+    # This scoring only impacts notes which don't already have CRH status - there is no need to
+    # act on notes that already have CRH status.
+    noteIds = currentLabels[currentLabels[c.ratingStatusKey] != c.currentlyRatedHelpful][
+      [c.noteIdKey]
+    ]
+    noteIds = noteIds.merge(
+      noteStats.loc[
+        # Must have minimum number of ratings to receive CRH status.
+        (noteStats[c.numRatingsKey] >= c.minRatingsNeeded)
+        # Score must exceed defined threshold for actionability.
+        & (noteStats[c.noteInterceptKey] >= self._threshold)
+        # Note must have been rated CRH during the last scoring run.
+        & (noteStats[c.currentLabelKey] == c.currentlyRatedHelpful)
+        # Check for inequality with "not misleading" to include notes whose classificaiton
+        # is nan (i.e. deleted notes).
+        & (noteStats[c.classificationKey] != c.noteSaysTweetIsNotMisleadingKey)
+      ][[c.noteIdKey]],
+      on=c.noteIdKey,
+      how="inner",
+    )
+    # Validate that all note scores were within the expected range
+    noteIntercepts = noteStats.merge(noteIds, on=c.noteIdKey, how="inner")[c.noteInterceptKey]
+    assert sum(noteIntercepts > self._expectedMax) == 0, "note exceeded expected maximum"
+    return noteIds[c.noteIdKey], None
 
 
 def apply_scoring_rules(noteStats: pd.DataFrame, rules: List[ScoringRule]) -> pd.DataFrame:
@@ -235,7 +378,7 @@ def apply_scoring_rules(noteStats: pd.DataFrame, rules: List[ScoringRule]) -> pd
   for rule in rules:
     print(f"Applying scoring rule: {rule.get_name()}")
     rule.check_dependencies(ruleIDs)
-    assert rule.get_rule_id() not in ruleIDs, f"repeate ruleID: {rule.get_name()}"
+    assert rule.get_rule_id() not in ruleIDs, f"repeat ruleID: {rule.get_name()}"
     ruleIDs.add(rule.get_rule_id())
     activeNotes, additionalColumns = rule.score_notes(noteStats, noteLabels)
     if additionalColumns is not None:

@@ -122,6 +122,16 @@ Given the quantities defined above, we modify scoring as follows:
 * When the total weight $a_n$ of an tag exceeds 1.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
 * We disregard the "Typos or unclear language" and "Note not needed on this Tweet" tags, which do not relate to note accuracy.
 
+## CRH Inertia
+
+The scoring algorithm updates the Helpful status of each note during every invocation.
+Re-computing the Helpful status ensures that as new ratings emerge the notes shown to users continue to reflect a broad consensus among raters.
+In some cases, small variations in the note intercept $i_n$ can cause notes to lose and potentially re-acquire Helpful status.
+
+To help ensure that changes in Helpful status reflect a clear shift in consensus, we require that the note intercept $i_n$ drops below the applicable threshold by more than 0.01 before the note loses Helpful status.
+For example, if a note achieved Helpful status with note intercept $i_n>0.40$, then the note would need $i_n<0.39$ before losing Helpful status.
+Similarly, if a note was impacted by tag outlier filter and required note intercedpt $i_n>0.50$ to achieve Helpful status, the note would need $i_n<0.49$ to lose Helpful status.
+
 ## Determining Note Status Explanation Tags
 
 When notes reach a status of Helpful or Not Helpful, they're displayed alongside the top two explanation tags that were given by raters to explain why they rated the note helpful or not.
@@ -177,6 +187,18 @@ For not-helpful notes:
 <br/>
 
 ## What’s New?
+
+**December 6, 2022**
+
+- Corrected calculation of how many notes a contributor has rated after a status decision was made.
+- Corrected authorship attribution within noteStatusHistory to eliminate `nan` author values in note scoring output.
+- Improved usage of Pandas to eliminate warnings.
+- Removed logging from contributor_state which is no longer necessary.
+- Refactored insufficient tag scoring logic to fit within updated scoring framework.
+
+**November 30, 2022**
+
+- Improved thresholding logic to help ensure notes only lose CRH status when there is a clear change in rater consensus.
 
 **November 25, 2022**
 

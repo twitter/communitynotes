@@ -117,6 +117,7 @@ def read_from_tsv(
     f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
     + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
   )
+  noteStatusHistory = noteStatusHistory.rename(columns={c.participantIdKey: c.noteAuthorParticipantIdKey})
 
   assert len(userEnrollment.columns.values) == len(c.userEnrollmentTSVColumns) and all(
     userEnrollment.columns == c.userEnrollmentTSVColumns
@@ -219,7 +220,8 @@ def remove_duplicate_ratings(ratings: pd.DataFrame) -> pd.DataFrame:
   Returns:
       pd.DataFrame: ratings, with one record per userId, noteId.
   """
-  ratings = ratings.drop_duplicates()
+  # Construct a new DataFrame to avoid SettingWithCopyWarning
+  ratings = pd.DataFrame(ratings.drop_duplicates())
 
   numRatings = len(ratings)
   numUniqueRaterIdNoteIdPairs = len(ratings.groupby([c.raterParticipantIdKey, c.noteIdKey]).head(1))
@@ -238,7 +240,8 @@ def remove_duplicate_notes(notes: pd.DataFrame) -> pd.DataFrame:
   Returns:
       notes (pd.DataFrame) with one record per noteId
   """
-  notes = notes.drop_duplicates()
+  # Construct a new DataFrame to avoid SettingWithCopyWarning
+  notes = pd.DataFrame(notes.drop_duplicates())
 
   numNotes = len(notes)
   numUniqueNotes = len(np.unique(notes[c.noteIdKey]))
@@ -286,7 +289,7 @@ def preprocess_data(
   ratings = remove_duplicate_ratings(ratings)
   notes = remove_duplicate_notes(notes)
 
-  ratings[c.helpfulNumKey] = np.nan
+  ratings.loc[:, c.helpfulNumKey] = np.nan
   ratings.loc[ratings[c.helpfulKey] == 1, c.helpfulNumKey] = 1
   ratings.loc[ratings[c.notHelpfulKey] == 1, c.helpfulNumKey] = 0
   ratings.loc[ratings[c.helpfulnessLevelKey] == c.notHelpfulValueTsv, c.helpfulNumKey] = 0

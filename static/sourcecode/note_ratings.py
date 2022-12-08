@@ -161,7 +161,6 @@ def get_ratings_with_scores(
         c.currentlyRatedHelpfulBoolKey,
         c.currentlyRatedNotHelpfulBoolKey,
         c.awaitingMoreRatingsBoolKey,
-        c.afterDecisionBoolKey,
       ]
     ],
     on=c.noteIdKey,
@@ -266,8 +265,7 @@ def compute_scored_notes(
   crhThreshold: float = c.crhThreshold,
   crnhThresholdIntercept: float = c.crnhThresholdIntercept,
   crnhThresholdNoteFactorMultiplier: float = c.crnhThresholdNoteFactorMultiplier,
-  allNotes: bool = False,
-  tagFiltering: bool = False,
+  finalRound: bool = False,
   # TODO: We might want to consider inputing only the series here, instead of the whole callable
   is_crh_function: Callable[..., pd.Series] = is_crh,
   is_crnh_function: Callable[..., pd.Series] = is_crnh,
@@ -286,46 +284,34 @@ def compute_scored_notes(
   last28Days = (
     1000 * (datetime.now(tz=timezone.utc) - timedelta(days=c.emergingWriterDays)).timestamp()
   )
-  ratingsToUse = ratings[
-    [c.noteIdKey, c.helpfulNumKey, c.createdAtMillisKey]
-    + c.helpfulTagsTSVOrder
-    + c.notHelpfulTagsTSVOrder
-  ]
-  ratingsToUse[c.numRatingsKey] = 1
-  ratingsToUse[c.numRatingsLast28DaysKey] = False
+  ratingsToUse = pd.DataFrame(
+    ratings[[c.noteIdKey, c.helpfulNumKey] + c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder]
+  )
+  ratingsToUse.loc[:, c.numRatingsKey] = 1
+  ratingsToUse.loc[:, c.numRatingsLast28DaysKey] = False
   ratingsToUse.loc[ratings[c.createdAtMillisKey] > last28Days, c.numRatingsLast28DaysKey] = True
+  # BUG: The line below causes us to sum over createdAtMillisKey, adding up timestamps which we
+  # later compare against timestampMillisOfNoteMostRecentNonNMRLabelKey.
   noteStats = ratingsToUse.groupby(c.noteIdKey).sum()
   noteStats = noteStats.merge(
     noteParams[[c.noteIdKey, c.noteInterceptKey, c.noteFactor1Key]], on=c.noteIdKey
   )
 
-  how = "outer" if allNotes else "left"
+  how = "outer" if finalRound else "left"
   noteStats = noteStats.merge(
     noteStatusHistory[
       [
         c.noteIdKey,
         c.createdAtMillisKey,
-        c.timestampMillisOfNoteMostRecentNonNMRLabelKey,
         c.noteAuthorParticipantIdKey,
-        c.participantIdKey,
         c.classificationKey,
+        c.currentLabelKey,
       ]
     ],
     on=c.noteIdKey,
     how=how,
-    suffixes=("", "_note"),
   )
-
-  # Deleted notes do not contain any metadata outside of NSH. Later computations require
-  # an author id to be attached to the note stats. We copy over that data from NSH if it is missing.
-  noteStats[c.noteAuthorParticipantIdKey].fillna(noteStats[c.participantIdKey], inplace=True)
   noteStats[c.noteCountKey] = 1
-  noteStats[c.afterDecisionBoolKey] = False
-  noteStats.loc[
-    (noteStats[c.createdAtMillisKey] > noteStats[c.timestampMillisOfNoteMostRecentNonNMRLabelKey])
-    & np.invert(pd.isna(c.timestampMillisOfNoteMostRecentNonNMRLabelKey)),
-    c.afterDecisionBoolKey,
-  ] = True
 
   rules = [
     scoring_rules.DefaultRule(RuleID.INITIAL_NMR, c.needsMoreRatings, set()),
@@ -345,34 +331,66 @@ def compute_scored_notes(
     ),
     scoring_rules.NMtoCRNH(RuleID.NM_CRNH, c.currentlyRatedNotHelpful, {RuleID.INITIAL_NMR}),
   ]
-  if tagFiltering:
+  if finalRound:
     # Compute tag aggregates only if they are required for tag filtering.
     tagAggregates = tag_filter.get_note_tag_aggregates(ratings, noteParams, raterParams)
     assert len(tagAggregates) == len(noteParams), "there should be one aggregate per scored note"
-    if not allNotes:
-      assert len(tagAggregates) == len(noteStats), "should be one aggregate per scored note"
-    noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer" if allNotes else "left")
+    noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer")
 
-    # Add tag filtering rule.
-    rules.append(
-      scoring_rules.FilterTagOutliers(
-        RuleID.TAG_OUTLIER,
-        c.needsMoreRatings,
-        {RuleID.GENERAL_CRH},
-        c.tagFilteringPercentile,
-        c.minAdjustedTagWeight,
-        c.crhSuperThreshold,
-      )
+    # Add tag filtering and sticky scoring logic.
+    rules.extend(
+      [
+        scoring_rules.AddCRHInertia(
+          RuleID.GENERAL_CRH_INERTIA,
+          c.currentlyRatedHelpful,
+          {RuleID.GENERAL_CRH},
+          c.crhThreshold - c.inertiaDelta,
+          c.crhThreshold,
+        ),
+        scoring_rules.FilterTagOutliers(
+          RuleID.TAG_OUTLIER,
+          c.needsMoreRatings,
+          {RuleID.GENERAL_CRH},
+          c.tagFilteringPercentile,
+          c.minAdjustedTagWeight,
+          c.crhSuperThreshold,
+        ),
+        scoring_rules.AddCRHInertia(
+          RuleID.ELEVATED_CRH_INERTIA,
+          c.currentlyRatedHelpful,
+          {RuleID.TAG_OUTLIER},
+          c.crhSuperThreshold - c.inertiaDelta,
+          c.crhSuperThreshold,
+        ),
+        scoring_rules.InsufficientExplanation(
+          RuleID.INSUFFICIENT_EXPLANATION,
+          c.needsMoreRatings,
+          {
+            RuleID.GENERAL_CRH,
+            RuleID.GENERAL_CRNH,
+            RuleID.GENERAL_CRH_INERTIA,
+            RuleID.ELEVATED_CRH_INERTIA,
+          },
+          c.minRatingsToGetTag,
+          c.minTagsNeededForStatus,
+        ),
+      ]
     )
+  else:
+    rules.append(
+      scoring_rules.InsufficientExplanation(
+        RuleID.INSUFFICIENT_EXPLANATION,
+        c.needsMoreRatings,
+        {
+          RuleID.GENERAL_CRH,
+          RuleID.GENERAL_CRNH,
+        },
+        c.minRatingsToGetTag,
+        c.minTagsNeededForStatus,
+      ),
+    )
+  noteStats[c.firstTagKey] = np.nan
+  noteStats[c.secondTagKey] = np.nan
   scoredNotes = scoring_rules.apply_scoring_rules(noteStats, rules)
 
-  # We need to add apply the top tag counter, because it changes the ratingStatusKey
-  # to needsMoreRatings for rows that do not have a critical number of statuses.
-  scoredNotes[c.firstTagKey] = np.nan
-  scoredNotes[c.secondTagKey] = np.nan
-  # TODO: Modify the top_tags logic to run as a ScoringRule which sets the firstTag,
-  # secondTag and modifies the ratingStatus as necessary.
-  scoredNotes = scoredNotes.apply(
-    lambda row: top_tags(row, c.minRatingsToGetTag, c.minTagsNeededForStatus), axis=1
-  )
   return scoredNotes
