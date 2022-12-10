@@ -32,7 +32,7 @@ Our static documentation site (called "Community Notes Guide") is built with [Hu
 
 ### Community Notes source code
 
-The algorithm that powers Community Notes can be found on the [sourcecode folder](https://github.com/twitter/communitynotes/tree/main/static/sourcecode), and instructions on how to use it can be found in the [Guide](https://twitter.github.io/communitynotes/note-ranking-code/)
+The algorithm that powers Community Notes can be found on the [sourcecode folder](https://github.com/twitter/communitynotes/tree/main/static/sourcecode), and instructions on how to use it can be found in the [Guide](https://twitter.github.io/communitynotes/note-ranking-code/).
 
 ### Community Notes data
 
