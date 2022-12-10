@@ -11,7 +11,7 @@ aliases:
   ]
 ---
 
-Community Notes' goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. During this pilot phase, only a limited group of people in the US can see these notes, but our goal is to eventually show them to everyone. Here's how they show up:
+Community Notes' goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. Here's how they show up:
 
 {{< figure src="../images/help-rate-this-note-expanded.png">}}
 

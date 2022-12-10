@@ -19,7 +19,7 @@ Tweets in this tab have at least one note with the status of Helpful, at least o
 
 ### Needs Your Help
 
-This tab is only visible to pilot participants. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Community Notes can ultimately elevate notes that people from a wide range of perspectives will find helpful. It also gives contributors an easy way to have immediate impact.
+This tab is only visible to contributors. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Community Notes can ultimately elevate notes that people from a wide range of perspectives will find helpful. It also gives contributors an easy way to have immediate impact.
 
 It contains a set of 10 Tweets that have notes that need more ratings (although there may be fewer than 10 Tweets if one of the Tweets was recently deleted by the author, or if not enough Tweets have new notes that meet the criteria to appear in the NYH tab). Tweets in this tab are filtered to those that the contributor hasn’t rated any of the notes on, and Tweets with notes from the past day, unless no Tweets pass those filters for you (that will only happen if you’re a very active rater!). The tab is updated roughly every hour or two, so when the contributor has rated notes in the tab, they can come back later to see fresh Tweets.
 

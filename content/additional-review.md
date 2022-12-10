@@ -6,9 +6,9 @@ aliases: ["/additional-review"]
 
 ## What is Community Notes?
 
-Community Notes is a pilot program that allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading. The aim is to keep people on Twitter better informed by showing notes that people from different points of view will find helpful.
+Community Notes is a program that allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading. The aim is to keep people on Twitter better informed by showing notes that people from different points of view will find helpful.
 
-Notes are only shown to a limited set of people in the pilot program, and notes only appear on Tweets when they’ve been rated helpful by enough people from different points of view.
+Notes only appear on Tweets when they’ve been rated helpful by enough people from different points of view.
 
 This program is still in development. During this phase, it is possible that some notes shown on Tweets might not always be helpful. At this stage, our goal is to gather input from more people to better identify what makes a note helpful.
 

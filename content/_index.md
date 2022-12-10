@@ -8,7 +8,7 @@ aliases: ["/learn-more", "/intro"]
 
 ## Community Notes is a collaborative way to add helpful context to Tweets and keep people better informed
 
-Community Notes is a pilot program that aims to create a better-informed world. It empowers people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
+Community Notes is a program that aims to create a better-informed world. It empowers people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
 
 <br/>
 
@@ -18,7 +18,7 @@ Community Notes is a pilot program that aims to create a better-informed world. 
 
 **Contributors write and rate notes**
 
-Contributors are people on Twitter, just like you, who chose to enroll in the pilot to write and rate notes. The more people that participate, the better the program becomes. Learn more about [how Community Notes works](./overview/).
+Contributors are people on Twitter, just like you, who chose to enroll to write and rate notes. The more people that participate, the better the program becomes. Learn more about [how Community Notes works](./overview/).
 
 </div>
 </div>

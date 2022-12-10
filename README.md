@@ -10,11 +10,13 @@ This repository holds the source code and content for our [documentation website
 
 Community Notes aims to create a better informed world, by empowering people on Twitter to add helpful notes to Tweets that might be misleading.
 
-Currently, Community Notes is in pilot mode for people in the US. We're building it in the open, with the public’s input, and we’re taking significant steps to make Community Notes transparent.
+We're building it in the open, with the public’s input, and we’re taking significant steps to make Community Notes transparent.
 
 ## Sign up and become a Community Notes contributor
 
-Our goal is to expand Community Notes globally. We want anyone to be able to participate and know that having contributors with different points of view is essential to Community Notes helpfully addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
+Our goal is to expand Community Notes globally. We want anyone to be able to participate and know that having contributors with different points of view is essential to Community Notes helpfully addressing misinformation.
+
+As there are important nuances in each market, we’ll expand the contributor base country-by-country. We’ll add contributors from a first new country soon.
 
 [Sign up here](https://twitter.com/i/flow/join-birdwatch)
 
