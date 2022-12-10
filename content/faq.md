@@ -6,9 +6,7 @@ aliases: ["/faq", "/about/faq"]
 
 {{< expand "Who is eligible to participate in the Community Notes pilot? Is there an approval process?" >}}
 
-People in the US can sign up to become contributors in the pilot. Accounts must meet a few criteria to be eligible. [Learn more here](../signup/).
-
-In addition to people who have signed up to become Community Notes contributors, limited test groups in the US may see Helpful notes on on Tweets, in order to help assess their quality.
+Anyone can sign up to become contributors. Accounts must meet a few criteria to be eligible. [Learn more here](../signup/).
 
 {{< /expand >}}
 
@@ -28,7 +26,7 @@ Any Tweet can receive a Community Note.
 
 {{< expand "Will Community Notes contributions affect content on Twitter? Will it be used to label or remove Tweets? " >}}
 
-Notes that have been rated helpful by enough contributors from [different points of view](../diversity/) will appear directly on Tweets for a limited, randomized group of people in the US. They will also be able to rate notes for helpfulness. Beyond that, notes do not affect display of Tweets or enforcement of Twitter Rules. Our focus during this phase of the pilot is gaining confidence that Community Notes produces context people from [different points of view](../diversity/) find helpful and informative.
+Notes that have been rated helpful by enough contributors from [different points of view](../diversity/) will appear directly on Tweets. Beyond that, notes do not affect display of Tweets or enforcement of Twitter Rules. Our focus during this phase of the pilot is gaining confidence that Community Notes produces context people from [different points of view](../diversity/) find helpful and informative.
 
 {{< /expand >}}
 
@@ -63,7 +61,7 @@ The people on Twitter span a wide gamut of backgrounds and experiences, and we l
 
 {{< expand "Will researchers and others outside of Twitter be able to download and analyze the data? " >}}
 
-All Community Notes' data are made publicly available on the [Download Data](https://twitter.com/i/birdwatch/download-data) page of the Community Notes site so that anyone in the US has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better. [You can learn more about our data here.](../data)
+All Community Notes' data are made publicly available on the [Download Data](https://twitter.com/i/birdwatch/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better. [You can learn more about our data here.](../data)
 
 {{< /expand >}}
 

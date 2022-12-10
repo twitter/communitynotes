@@ -4,7 +4,7 @@ geekdocBreadcrumb: false
 aliases: ["/phone-faq"]
 ---
 
-All Community Notes accounts must have phone numbers that are verified, use a trusted US-based carrier, and are unique among all contributors. This helps protect Community Notes from spam and uphold the quality of contributions.
+All Community Notes accounts must have phone numbers that are verified, use a trusted carrier, and are unique among all contributors. This helps protect Community Notes from spam and uphold the quality of contributions.
 
 If you're having trouble with your phone number in Community Notes, here's what you can do:
 
@@ -20,6 +20,6 @@ You can verify your phone number on the account you want to use with Community N
 
 You can optionally remove your phone number from other accounts by going into **Privacy & Settings > Your Account > Account Information > Phone**
 
-## If your phone number is not from a trusted US-based carrier
+## If your phone number is not from a trusted carrier
 
-To reduce the use of artificially created or virtual phone numbers, phone numbers must be from a trusted US-based carrier.
+To reduce the use of artificially created or virtual phone numbers, phone numbers must be from a trusted carrier.

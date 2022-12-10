@@ -14,9 +14,9 @@ geekdocBreadcrumb: false
 weight: 1
 ---
 
-During the first phase of the pilot, Community Notes is limited to a small test group in the US.
+Sign ups are open to everyone. We want anyone to be able to participate and know that having contributors with [different points of view](../diversity) is essential to Community Notes helpfully addressing misinformation.
 
-Our goal is to expand Community Notes globally. We want anyone to be able to participate and know that having contributors with [different points of view](../diversity) is essential to Community Notes helpfully addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
+As there are important nuances in each market, we’ll expand the contributor base country-by-country. We’ll add contributors from a first new country soon.
 
 ## {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
 
@@ -40,7 +40,7 @@ To become a Community Notes contributor, accounts must have:
 
 That phone number must be:
 
-- **From a trusted U.S.-based phone carrier**
+- **From a trusted phone carrier**
 - **Not associated with other Community Notes accounts**
 
 These make it more likely that contributors are real people instead of bots or adversary actors.

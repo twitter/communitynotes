@@ -6,7 +6,7 @@ aliases: ["/data", "/about/data", "/contributing/data"]
 
 We can't wait to learn with you!
 
-All Community Notes contributions are publicly available on the [Download Data](https://twitter.com/i/birdwatch/download-data) page of the Community Notes site so that anyone in the US has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
+All Community Notes contributions are publicly available on the [Download Data](https://twitter.com/i/birdwatch/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
 
 If you have questions or feedback about the Community Notes public data or would like to share your analyses of this data with us, please DM us at [@CommunityNotes](http://twitter.com/communitynotes).
 
