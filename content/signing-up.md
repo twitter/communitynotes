@@ -43,7 +43,7 @@ That phone number must be:
 - **From a trusted phone carrier**
 - **Not associated with other Community Notes accounts**
 
-These make it more likely that contributors are real people instead of bots or adversary actors.
+These make it more likely that contributors are real people instead of bots or adversarial actors.
 
 If you're having issues with signup due to your phone number, see [Phone number troubleshooting](../phone-faq)
 
