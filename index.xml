@@ -12,8 +12,8 @@
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/signing-up/</guid>
-      <description>During the first phase of the pilot, Community Notes is limited to a small test group in the US.
-Our goal is to expand Community Notes globally. We want anyone to be able to participate and know that having contributors with different points of view is essential to Community Notes helpfully addressing misinformation. We’ll draw on learnings from this initial test and, over time, scale safely.
+      <description>Sign ups are open to everyone. We want anyone to be able to participate and know that having contributors with different points of view is essential to Community Notes helpfully addressing misinformation.
+As there are important nuances in each market, we’ll expand the contributor base country-by-country. We’ll add contributors from a first new country soon.
 Sign up here     Eligibility To become a Community Notes contributor, accounts must have:</description>
     </item>
     
@@ -23,8 +23,9 @@ Sign up here     Eligibility To become a Community Notes contributor, accounts m
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/additional-review/</guid>
-      <description>What is Community Notes? Community Notes is a pilot program that allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading. The aim is to keep people on Twitter better informed by showing notes that people from different points of view will find helpful.
-Notes are only shown to a limited set of people in the pilot program, and notes only appear on Tweets when they’ve been rated helpful by enough people from different points of view.</description>
+      <description>What is Community Notes? Community Notes is a program that allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading. The aim is to keep people on Twitter better informed by showing notes that people from different points of view will find helpful.
+Notes only appear on Tweets when they’ve been rated helpful by enough people from different points of view.
+This program is still in development.</description>
     </item>
     
     <item>
@@ -77,7 +78,7 @@ Community Notes assesses &amp;ldquo;different perspectives&amp;rdquo; entirely b
       
       <guid>https://twitter.github.io/communitynotes/download-data/</guid>
       <description>We can&amp;rsquo;t wait to learn with you!
-All Community Notes contributions are publicly available on the Download Data page of the Community Notes site so that anyone in the US has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
+All Community Notes contributions are publicly available on the Download Data page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
 If you have questions or feedback about the Community Notes public data or would like to share your analyses of this data with us, please DM us at @CommunityNotes.</description>
     </item>
     
@@ -87,8 +88,7 @@ If you have questions or feedback about the Community Notes public data or would
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/faq/</guid>
-      <description>Who is eligible to participate in the Community Notes pilot? Is there an approval process?   People in the US can sign up to become contributors in the pilot. Accounts must meet a few criteria to be eligible. Learn more here.
-In addition to people who have signed up to become Community Notes contributors, limited test groups in the US may see Helpful notes on on Tweets, in order to help assess their quality.</description>
+      <description>Who is eligible to participate in Community Notes? Is there an approval process?   Anyone can sign up to become contributors. Accounts must meet a few criteria to be eligible. Learn more here.   Are contributions anonymous? Or will my name be attached to my notes?   We want everyone to feel comfortable contributing to Community Notes. Because of that, all contributors get a new, auto-generated display name (or alias) when they join Community Notes.</description>
     </item>
     
     <item>
@@ -149,7 +149,7 @@ Helpful attributes  Cites high-quality sources Easy to understand Directly addre
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/notes-on-twitter/</guid>
-      <description>Community Notes&#39; goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. During this pilot phase, only a limited group of people in the US can see these notes, but our goal is to eventually show them to everyone. Here&amp;rsquo;s how they show up:
+      <description>Community Notes&#39; goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. Here&amp;rsquo;s how they show up:
   If a Tweet has a note that earned a status of Helpful after being rated by enough contributors then the note will be shown in a card on the Tweet, along with a button to rate the note.</description>
     </item>
     
@@ -180,9 +180,10 @@ Contributors can identify Tweets they believe are misleading, write notes that p
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/phone-faq/</guid>
-      <description>All Community Notes accounts must have phone numbers that are verified, use a trusted US-based carrier, and are unique among all contributors. This helps protect Community Notes from spam and uphold the quality of contributions.
+      <description>All Community Notes accounts must have phone numbers that are verified, use a trusted carrier, and are unique among all contributors. This helps protect Community Notes from spam and uphold the quality of contributions.
 If you&amp;rsquo;re having trouble with your phone number in Community Notes, here&amp;rsquo;s what you can do:
-If your phone number is not verified You can verify your phone number by following Twitter&amp;rsquo;s Help Center instructions.</description>
+If your phone number is not verified You can verify your phone number by following Twitter&amp;rsquo;s Help Center instructions.
+If your phone number is associated with more than one Twitter account If your phone number is associated with multiple Twitter accounts, only the account that most recently verified that number will be able to access Community Notes.</description>
     </item>
     
     <item>
@@ -288,7 +289,7 @@ Decisions aren&amp;rsquo;t made by majority rules or popularity…So one group a
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/writing-notes/</guid>
-      <description>Anyone in the US can read and rate Community Notes, but only contributors who&amp;rsquo;ve unlocked the ability to write can add new notes to Tweets. Here&amp;rsquo;s how to add a note:
+      <description>Anyone can read and rate Community Notes, but only contributors who&amp;rsquo;ve unlocked the ability to write can add new notes to Tweets. Here&amp;rsquo;s how to add a note:
    Click or tap the ••• menu on the Tweet&#39;s top right and then **Write a Community Note**.       Before starting, you’ll see a reminder about Community Notes values, — a prompt to promote helpful contributions.</description>
     </item>
     
