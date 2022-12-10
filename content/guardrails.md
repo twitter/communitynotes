@@ -24,7 +24,7 @@ Evidence of consistent or systematic problems in top rated notes that earn the s
 2. <div> <strong>Informativeness: Whether notes that earn the status of Helpful help inform people’s understanding of the subject matter in Tweets</strong><label>
    <br/> This is measured via survey experiments of random samples of Twitter users in the US, comparing whether people who see potentially misleading Tweets with notes tend to have a different view of the Tweet’s main claim vs those who see Tweets without notes. </br><br/> While notes may vary in their ability to inform, we want to ensure that on average notes that earn the status of Helpful are effective at helping people understand the topics in Tweets (vs having no impact or an adverse effect).</label></div>
 
-3. <div> <strong>Helpfulness: Whether Twitter users beyond the pilot tend to find notes that earn the status of Helpful to be helpful</strong><label>
+3. <div> <strong>Helpfulness: Whether Twitter users beyond the contributor pool tend to find notes that earn the status of Helpful to be helpful</strong><label>
    <br/> This is measured via surveys of random samples of Twitter users in the US. The surveys allow these Twitter users to give feedback on the helpfulness of Community Notes.</br><br/> We don’t expect all notes to be perceived as helpful by all people all of the time. Instead, the goal is to ensure that on average notes that earn the status of Helpful are likely to be seen as helpful by a wide range of people from different points of view, and not only be seen as helpful by people from one viewpoint.</label></div>
 
 In addition to the three topline metrics listed above, Community Notes monitors additional operational quality metrics, like whether any notes violate Twitter Rules.

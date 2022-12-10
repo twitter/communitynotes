@@ -4,7 +4,7 @@ geekdocBreadcrumb: false
 aliases: ["/faq", "/about/faq"]
 ---
 
-{{< expand "Who is eligible to participate in the Community Notes pilot? Is there an approval process?" >}}
+{{< expand "Who is eligible to participate in Community Notes? Is there an approval process?" >}}
 
 Anyone can sign up to become contributors. Accounts must meet a few criteria to be eligible. [Learn more here](../signup/).
 
@@ -26,13 +26,13 @@ Any Tweet can receive a Community Note.
 
 {{< expand "Will Community Notes contributions affect content on Twitter? Will it be used to label or remove Tweets? " >}}
 
-Notes that have been rated helpful by enough contributors from [different points of view](../diversity/) will appear directly on Tweets. Beyond that, notes do not affect display of Tweets or enforcement of Twitter Rules. Our focus during this phase of the pilot is gaining confidence that Community Notes produces context people from [different points of view](../diversity/) find helpful and informative.
+Notes that have been rated helpful by enough contributors from [different points of view](../diversity/) will appear directly on Tweets. Beyond that, notes do not affect display of Tweets or enforcement of Twitter Rules. Our current focus is gaining confidence that Community Notes produces context people from [different points of view](../diversity/) find helpful and informative.
 
 {{< /expand >}}
 
 {{< expand "Will this eventually replace Twitter’s existing misleading information interventions?" >}}
 
-No. We believe there’s no single blanket tool or intervention that can solve the problem of misleading information on the internet. During this pilot, we aim to learn how Community Notes may complement our existing efforts.
+No. We believe there’s no single blanket tool or intervention that can solve the problem of misleading information on the internet. Our aim is to learn how Community Notes may complement our existing efforts.
 
 {{< /expand >}}
 
@@ -79,7 +79,7 @@ Tweet authors with Community Notes on their Tweets can request additional review
 
 {{< expand "Can people be removed from the Community Notes program? What if someone is writing harmful content in their notes?" >}}
 
-All contributors and all Community Notes contributions are subject to the Twitter Rules. Failure to abide by the rules can result in removal from the Community Notes pilot, and/or other remediations.
+All contributors and all Community Notes contributions are subject to the Twitter Rules. Failure to abide by the rules can result in removal from the Community Notes program, and/or other remediations.
 
 If you believe a note may have violated the Twitter Rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using [this form](https://help.twitter.com/en/forms/birdwatch).
 
@@ -89,13 +89,13 @@ Contributors who consistently write unhelpful notes may also have their [ability
 
 {{< expand "How will attempts to abuse or manipulate Community Notes be prevented?" >}}
 
-Community Notes will only be successful if the context it produces is found to be helpful and appropriate by a wide range of people with diverse views. This obviously won’t be true if it can be taken over by a single group or ideology, or used in an abusive manner. We’re going to be very focused on achieving that during the pilot. We believe this is possible, and will be experimenting with different mechanics and incentives than Twitter to help make it happen. Learn more about how we are approaching these issues [here](../challenges).
+Community Notes will only be successful if the context it produces is found to be helpful and appropriate by a wide range of people with diverse views. This obviously won’t be true if it can be taken over by a single group or ideology, or used in an abusive manner. We believe this is possible, and will be experimenting with different mechanics and incentives than Twitter to help make it happen. Learn more about how we are approaching these issues [here](../challenges).
 
 {{< /expand >}}
 
-{{< expand "How do I opt-out of the pilot?" >}}
+{{< expand "How do I opt-out of the program?" >}}
 
-If you join the pilot but later want to leave, just DM @CommunityNotes to let the team know.
+If you join the program but later want to leave, just DM @CommunityNotes to let the team know.
 
 {{< /expand >}}
 
