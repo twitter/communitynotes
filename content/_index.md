@@ -29,7 +29,7 @@ Contributors are people on Twitter, just like you, who chose to enroll in the pi
 
 **Only notes that people find helpful appear on a Tweet**
 
-Communtity Notes doesn't work by majority rules. To identify notes that are helpful to a wide range of people, notes require agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings. Learn more about how the program [identifies helpful notes](./diversity/).
+Community Notes doesn't work by majority rules. To identify notes that are helpful to a wide range of people, notes require agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings. Learn more about how the program [identifies helpful notes](./diversity/).
 
 </div>
 </div>
