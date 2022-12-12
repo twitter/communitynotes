@@ -14,7 +14,9 @@ If you are a contributor, you should see these alerts in your notifications tab.
 
 ### Configuring your alerts
 
-The default setting for all contributors is "Often", which means you'll start by getting a few alerts per week. You can change that frequency by clicking the button below:
+The default setting for all contributors is "Often", which means you'll start by getting a few alerts per week. You can change that frequency by visiting your Community Notes profile and tapping the gear icon on the top right, or by clicking the button below:
+
+{{< figure src="../images/alerts-settings.png">}}
 
 {{< button href="https://www.twitter.com/i/communitynotes/notification_settings">}} Open notification settings {{</ button>}}
 
