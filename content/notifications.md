@@ -36,7 +36,7 @@ Alerts are optimized to increase the chance that potentially helpful notes on Tw
 - Currently have a high helpfulness score, nearing the threshold to earn status of "Helpful"
 - Do not already have a large number of ratings (such that more ratings could change the note's status)
 
-Notes are sent to a ranbomd selection of contributors, excluding the note author and those who have already rated the note. Notifications are also limited by the recipient's notification frequency setting.
+Notes are sent to a random selection of contributors, excluding the note author and those who have already rated the note. Notifications are also limited by the recipient's notification frequency setting.
 
 We will continue to experiment with this logic to help ensure Needs Your Help notifications feel high impact and satisfying for contributors.
 
