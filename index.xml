@@ -159,7 +159,7 @@ Helpful attributes  Cites high-quality sources Easy to understand Directly addre
       
       <guid>https://twitter.github.io/communitynotes/notes-on-twitter/</guid>
       <description>Community Notes&#39; goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. Here&amp;rsquo;s how they show up:
-  If a Tweet has a note that earned a status of Helpful after being rated by enough contributors then the note will be shown in a card on the Tweet, along with a button to rate the note.</description>
+  If the Tweet has multiple notes with a status of Helpful, the card randomly cycles between the notes at periodic intervals in order to gather additional rating inputs on each.</description>
     </item>
     
     <item>
