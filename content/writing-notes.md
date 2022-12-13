@@ -15,7 +15,7 @@ Anyone can read and rate Community Notes, but only contributors who've [unlocked
 
 3. <div>Answer the required multiple choice questions. These are designed to understand, in a structured way, why a Tweet might or might not be misleading.</div>
 
-4. <div> Finally, in the text field, write the context you feel would help others understand why that Tweet is or is not misleading. Citing sources is helpful. (Each URL counts as only 1 character towards the 280 character limit). </div>
+4. <div> Finally, in the text field, write the context you feel would help others understand why that Tweet is or is not misleading. Citing sources is helpful. (Each URL counts as only 1 character towards the 280 characters limit). </div>
 
 5. <div>After it’s submitted, the note will be available on the Community Notes site for other contributors to read and rate. </div>
 
