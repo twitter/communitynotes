@@ -15,15 +15,13 @@ Community Notes' goal is to show helpful context to people when they come across
 
 {{< figure src="../images/help-rate-this-note-expanded.png">}}
 
-If a Tweet has a note that earned a status of Helpful after being rated by enough contributors then the note will be shown in a card on the Tweet, along with a button to rate the note.
-
 If the Tweet has multiple notes with a status of Helpful, the card randomly cycles between the notes at periodic intervals in order to gather additional rating inputs on each.
 
 Notes that were written deeming the Tweet "not misleading" are only visible as additional information to raters, and are not shown as context with the Tweet, even if they earn the status of Helpful.
 
 ## View counts
 
-Community Notes contributors can see how many times a note has been viewed on Twitter. This number only appears after the first 1000 views, and only reflects the limited test group of people who can currently see notes. Contributors can expect the number of views on their notes to increase significantly as we expand the program to more people on Twitter.
+Community Notes contributors can see how many times a note has been viewed on Twitter. This number only appears after the first 1000 views.
 
 {{< figure src="../images/views-on-twitter.png">}}
 
