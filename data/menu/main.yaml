@@ -3,8 +3,8 @@ main:
   - name: About
     ref: ""
     sub:
-      - name: Overview
-        ref: "overview"
+      - name: Introduction
+        ref: "/"
       - name: Challenges
         ref: "challenges"
       - name: FAQs
@@ -12,6 +12,8 @@ main:
   - name: Contributing
     ref: ""
     sub:
+      - name: Getting started
+        ref: "welcome"
       - name: Signing Up
         ref: "signing-up"
       - name: Values
