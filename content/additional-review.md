@@ -37,6 +37,7 @@ If you believe a note rated “helpful” on your Tweet doesn’t add helpful co
 
 4. <div><strong> In Community Notes, look for the note that you believe requires additional review and click "Request additional review".</strong></div>
 
+```html
 <form style="display: flex; flex-direction: column;">
 <label for="Tweet URL">Tweet URL</label>
 <input name="Tweet URL" type="text" style="font-size: 1rem; margin-bottom: 4px; padding: 1rem; border: none; border-bottom: 2px solid black; background: #eee; border-radius: 2px;" id="input" ></input>
@@ -60,3 +61,5 @@ If you believe a note rated “helpful” on your Tweet doesn’t add helpful co
     }
     }
 </script>
+
+```
