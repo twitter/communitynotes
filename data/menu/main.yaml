@@ -13,7 +13,7 @@ main:
     ref: ""
     sub:
       - name: Getting started
-        ref: "welcome"
+        ref: "getting-started"
       - name: Signing Up
         ref: "signing-up"
       - name: Values

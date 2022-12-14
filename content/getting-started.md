@@ -1,10 +1,15 @@
 ---
-title: Welcome to Community Notes!
+title: Getting started
 geekdocBreadcrumb: false
-aliases: ["/welcome"]
+aliases: ["/getting-started"]
 ---
 
-You're now a Community Notes contributor 🎉
+1. <div><strong> Sign up</strong><label>
+   Anyone who meets the <a href="../join/">eligibility criteria</a> can sign up to become a Community Notes contributor. As there are important nuances in each market, we’ll expand the contributor base country-by-country. 
+   <br/>
+   {{< button href="../join/" >}}Sign up{{< /button >}}
+   </label>
+      </div>
 
 1. <div><strong> Select an alias so you can keep your identity private</strong><label>
    As a Community Notes contributor, you can now rate the helpfulness of all notes. But first, choose an alias to contribute under (it’s like a pen name!) 
