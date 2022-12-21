@@ -8,7 +8,7 @@ aliases: ["/learn-more", "/intro", "/overview"]
 
 ## Community Notes: a collaborative way to add helpful context to Tweets and keep people better informed
 
-Community Notes aims to create a better informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
+Community Notes aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
 
 <br/>
 
