@@ -1,19 +1,24 @@
 from typing import Optional, Tuple
 
-import constants as c
-
 import numpy as np
 import pandas as pd
 import torch
+
+import constants as c
 
 
 class BiasedMatrixFactorization(torch.nn.Module):
   """Matrix factorization algorithm class."""
 
   def __init__(
-    self, n_users: int, n_items: int, n_factors: int = 1, use_global_intercept: bool = True
+    self,
+    n_users: int,
+    n_items: int,
+    n_factors: int = 1,
+    use_global_intercept: bool = True
   ) -> None:
-    """Initialize matrix factorization model using xavier_uniform for factors
+    """
+    Initialize matrix factorization model using xavier_uniform for factors
     and zeros for intercepts.
 
     Args:
@@ -38,7 +43,7 @@ class BiasedMatrixFactorization(torch.nn.Module):
     """Forward pass: get predicted rating for user of note (item)"""
     pred = self.user_intercepts(user) + self.item_intercepts(item)
     pred += (self.user_factors(user) * self.item_factors(item)).sum(1, keepdim=True)
-    if self.use_global_intercept == True:
+    if self.use_global_intercept:
       pred += self.global_intercept
     return pred.squeeze()
 
@@ -56,10 +61,12 @@ def run_mf(
   noteInit: pd.DataFrame = None,
   userInit: pd.DataFrame = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[float]]:
-  """Train matrix factorization model.
+  """
+  Train matrix factorization model.
 
   See https://twitter.github.io/birdwatch/ranking-notes/#matrix-factorization
 
+  #TODO refactor unused parameters epochs and runName
   Args:
       ratings (pd.DataFrame): pre-filtered ratings to train on
       l2_lambda (float): regularization for factors
@@ -69,13 +76,15 @@ def run_mf(
       useGlobalIntercept (bool): whether to fit global intercept parameter
       runName (str, optional): name. Defaults to "prod".
       logging (bool, optional): debug output. Defaults to True.
-      flipFactorsForIdentification (bool, optional): Default to True.
+      flipFactorsForIdentification (bool, optional): Defaults to True.
+      noteInit (pd.DataFrame): Defaults to True.
+      userInit (pd.DataFrame): Defaults to True.
 
   Returns:
       Tuple[pd.DataFrame, pd.DataFrame, float]:
-        noteParams: contains one row per note, including noteId and learned note parameters
-        raterParams: contains one row per rating, including raterId and learned rater parameters
-        globalIntercept: learned global intercept parameter
+        noteParams (pd.DataFrame): contains one row per note, including noteId and learned note parameters
+        raterParams (pd.DataFrame): contains one row per rating, including raterId and learned rater parameters
+        globalIntercept (float): learned global intercept parameter
   """
   assert numFactors == 1
   # We are extracting only the subset of note data from the ratings data frame that is needed to
@@ -219,9 +228,11 @@ def run_mf(
 
 
 def flip_factors_for_identification(
-  noteParams: pd.DataFrame, raterParams: pd.DataFrame
+  noteParams: pd.DataFrame,
+  raterParams: pd.DataFrame
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-  """Flip factors if needed, so that the larger group of raters gets a negative factor1
+  """
+  Flip factors if needed, so that the larger group of raters gets a negative factor1
 
   Args:
       noteParams (pd.DataFrame): note params

@@ -1,9 +1,9 @@
 from collections import Counter
 from typing import List, Optional
 
-import constants as c
-
 import pandas as pd
+
+import constants as c
 
 
 def top_tags(
@@ -12,7 +12,8 @@ def top_tags(
   minTagsNeededForStatus: int,
   tagsConsidered: Optional[List[str]] = None,
 ) -> pd.Series:
-  """Given a particular row of the scoredNotes DataFrame, determine which two
+  """
+  Given a particular row of the scoredNotes DataFrame, determine which two
   explanation tags to assign to the note based on its ratings.
 
   See https://twitter.github.io/birdwatch/ranking-notes/#determining-note-status-explanation-tags
@@ -49,9 +50,11 @@ def top_tags(
 
 
 def get_top_nonhelpful_tags_per_author(
-  noteStatusHistory: pd.DataFrame, reputationFilteredRatings: pd.DataFrame
+  noteStatusHistory: pd.DataFrame,
+  reputationFilteredRatings: pd.DataFrame
 ):
-  """Identifies the top non-helpful tags per author.
+  """
+  Identifies the top non-helpful tags per author.
 
   We identify the top two non-helpful tags per author by:
   1. Identifying the top two non-helpful tags for each note.

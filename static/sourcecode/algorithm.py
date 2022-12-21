@@ -1,10 +1,16 @@
 from typing import Optional, Tuple
 
-import constants as c, contributor_state, helpfulness_scores, matrix_factorization, note_ratings, note_status_history, process_data
-
 import numpy as np
 import pandas as pd
 import torch
+
+import constants as c
+import contributor_state
+import helpfulness_scores
+import matrix_factorization
+import note_ratings
+import note_status_history
+import process_data
 
 
 def note_post_processing(
@@ -15,8 +21,9 @@ def note_post_processing(
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-  """Given scored Birdwatch notes and rater helpfulness, calculate contributor scores and update noteStatusHistory, as described in
-  and https://twitter.github.io/birdwatch/contributor-scores/.
+  """
+  Given scored Birdwatch notes and rater helpfulness, calculate contributor scores and update noteStatusHistory,
+  as described in https://twitter.github.io/birdwatch/contributor-scores/.
 
   Args:
       ratings (pd.DataFrame): preprocessed ratings
@@ -28,10 +35,10 @@ def note_post_processing(
 
   Returns:
       Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        scoredNotes pd.DataFrame: one row per note contained note scores and parameters.
-        helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
-        noteStatusHistory pd.DataFrame: one row per note containing when they got their most recent statuses.
-        auxilaryNoteInfo pd.DataFrame: one row per note containing adjusted and ratio tag values
+        scoredNotes (pd.DataFrame): one row per note contained note scores and parameters.
+        helpfulnessScores (pd.DataFrame): one row per user containing a column for each helpfulness score.
+        noteStatusHistory (pd.DataFrame): one row per note containing when they got their most recent statuses.
+        auxilaryNoteInfo (pd.DataFrame): one row per note containing adjusted and ratio tag values
   """
   # Takes raterParams from most recent MF run, but use the pre-computed
   # helpfulness scores.
@@ -107,7 +114,8 @@ def run_algorithm(
   epochs: int = c.epochs,
   seed: Optional[int] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-  """Run the entire Birdwatch scoring algorithm, as described in https://twitter.github.io/birdwatch/ranking-notes/
+  """
+  Run the entire Birdwatch scoring algorithm, as described in https://twitter.github.io/birdwatch/ranking-notes/
   and https://twitter.github.io/birdwatch/contributor-scores/.
 
   Args:
@@ -115,14 +123,14 @@ def run_algorithm(
       noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
       userEnrollment (pd.DataFrame): The enrollment state for each contributor
       epochs (int, optional): number of epochs to train matrix factorization for. Defaults to c.epochs.
-      mf_seed (int, optional): if not None, base distinct seeds for the first and second MF rounds on this value
+      seed (int, optional): if not None, base distinct seeds for the first and second MF rounds on this value
 
   Returns:
-      Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        scoredNotes pd.DataFrame: one row per note contained note scores and parameters.
-        helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
-        noteStatusHistory pd.DataFrame: one row per note containing when they got their most recent statuses.
-        auxilaryNoteInfo: one row per note containing adjusted and ratio tag values
+      Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        scoredNotes (pd.DataFrame): one row per note contained note scores and parameters.
+        helpfulnessScores (pd.DataFrame): one row per user containing a column for each helpfulness score.
+        noteStatusHistory (pd.DataFrame): one row per note containing when they got their most recent statuses.
+        auxilaryNoteInfo (pd.DataFrame): one row per note containing adjusted and ratio tag values
   """
   if seed is not None:
     torch.manual_seed(seed)

@@ -1,14 +1,15 @@
-import constants as c
-
 import numpy as np
 import pandas as pd
+
+import constants as c
 
 
 def author_helpfulness(
   scoredNotes: pd.DataFrame,
   CRNHMultiplier: float = 5.0,
 ) -> pd.DataFrame:
-  """Computes author helpfulness scores as described in:
+  """
+  Computes author helpfulness scores as described in:
   https://twitter.github.io/birdwatch/contributor-scores/#author-helpfulness-scores
 
   Args:
@@ -41,7 +42,8 @@ def author_helpfulness(
 
 
 def _rater_helpfulness(validRatings: pd.DataFrame) -> pd.DataFrame:
-  """Computes rater helpfulness scores as described in:
+  """
+  Computes rater helpfulness scores as described in:
   https://twitter.github.io/birdwatch/contributor-scores/#rater-helpfulness-score
 
   Args:
@@ -61,16 +63,18 @@ def _rater_helpfulness(validRatings: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_general_helpfulness_scores(
-  scoredNotes: pd.DataFrame, validRatings: pd.DataFrame
+  scoredNotes: pd.DataFrame,
+  validRatings: pd.DataFrame
 ) -> pd.DataFrame:
-  """Given notes scored by matrix factorization, compute helpfulness scores.
+  """
+  Given notes scored by matrix factorization, compute helpfulness scores.
   Author helpfulness scores are based on the scores of the notes you wrote.
   Rater helpfulness scores are based on how the ratings you made match up with note scores.
   See https://twitter.github.io/birdwatch/contributor-scores/.
 
   Args:
-      scoredNotes pandas.DataFrame: one row per note, containing preliminary note statuses.
-      validRatings pandas.DataFrame: ratings to use
+      scoredNotes (pandas.DataFrame): one row per note, containing preliminary note statuses.
+      validRatings (pandas.DataFrame): ratings to use
   Returns:
       helpfulness_scores pandas.DataFrame: 1 row per user, with helpfulness scores as columns.
   """
@@ -115,12 +119,13 @@ def filter_ratings_by_helpfulness_scores(
   helpfulnessScores: pd.DataFrame,
   logging: bool = True,
 ):
-  """Filter out ratings from raters whose helpfulness scores are too low.
+  """
+  Filter out ratings from raters whose helpfulness scores are too low.
   See https://twitter.github.io/birdwatch/contributor-scores/#filtering-ratings-based-on-helpfulness-scores.
 
   Args:
-      ratingsForTraining pandas.DataFrame: unfiltered input ratings
-      helpfulnessScores pandas.DataFrame: helpfulness scores to use to determine which raters to filter out.
+      ratingsForTraining (pandas.DataFrame): unfiltered input ratings
+      helpfulnessScores (pandas.DataFrame): helpfulness scores to use to determine which raters to filter out.
       logging (bool, optional): debug output. Defaults to True.
 
   Returns:

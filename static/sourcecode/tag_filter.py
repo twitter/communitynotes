@@ -1,15 +1,20 @@
-"""Utilites for tag based scoring logic."""
+"""Utilities for tag based scoring logic."""
 
 from typing import Dict
-
-import constants as c
 
 import numpy as np
 import pandas as pd
 
+import constants as c
 
-def _normalize_factors(rawFactors: pd.DataFrame, entityKey: str, factorKey: str) -> pd.DataFrame:
-  """Performs Z-Normalization on embedding factors.
+
+def _normalize_factors(
+  rawFactors: pd.DataFrame,
+  entityKey: str,
+  factorKey: str
+) -> pd.DataFrame:
+  """
+  Performs Z-Normalization on embedding factors.
 
   Z-Normalization scales a vector to have mean=0 and stddev=1, removing any effects of scale differences
   in situations where scales can vary.  Since we map raters and notes into the same embedding space the
@@ -17,9 +22,9 @@ def _normalize_factors(rawFactors: pd.DataFrame, entityKey: str, factorKey: str)
   and ensures that distances will remain on a similar scale even if the scale of the embedding changes.
 
   Args:
-    rawFactors: Pairs  of a entity (note or rater) and an associated factor (embedding)
-    entityKey: String corresponding to the column which identifies the entity
-    factorKey: String corresponding to the column which identifies the factor
+    rawFactors (pd.DataFrame): Pairs of an entity (note or rater) and an associated factor (embedding)
+    entityKey (str): String corresponding to the column which identifies the entity
+    factorKey (str): String corresponding to the column which identifies the factor
 
   Returns:
     pd.DataFrame containing two columns with names matching the input, except the factor column has
@@ -34,7 +39,8 @@ def _normalize_factors(rawFactors: pd.DataFrame, entityKey: str, factorKey: str)
 
 
 def _get_weight_from_distance(distances: pd.Series) -> pd.Series:
-  """Transforms non-negative distances to weights in the range (0, 1].
+  """
+  Transforms non-negative distances to weights in the range (0, 1].
 
   This function transforms distances to weights between zero (exclusive) and one (inclusive).
   See the link below for a plot showing the transformation function.  Note that we normalize
@@ -42,7 +48,7 @@ def _get_weight_from_distance(distances: pd.Series) -> pd.Series:
   https://homework.study.com/cimages/multimages/16/graph1247713316447442307.png
 
   Args:
-    distances: pd.Series of non-negative float values representing distances between notes and raters.
+    distances (pd.Series): pd.Series of non-negative float values representing distances between notes and raters.
 
   Returns:
     pd.Series of rating weights corresponding to the input distances.
@@ -51,14 +57,17 @@ def _get_weight_from_distance(distances: pd.Series) -> pd.Series:
 
 
 def _get_rating_weight(
-  ratings: pd.DataFrame, noteParams: pd.DataFrame, raterParams: pd.DataFrame
+  ratings: pd.DataFrame,
+  noteParams: pd.DataFrame,
+  raterParams: pd.DataFrame
 ) -> pd.DataFrame:
-  """Computes the weight of each rating based on the distance between the note and the rater.
+  """
+  Computes the weight of each rating based on the distance between the note and the rater.
 
   Args:
-    ratings: initial input ratings DF containing all ratings
-    noteParams: MF results for notes
-    raterParams: MF results for raters
+    ratings (pd.DataFrame): initial input ratings DF containing all ratings
+    noteParams (pd.DataFrame): MF results for notes
+    raterParams (pd.DataFrame): MF results for raters
 
   Returns:
     pd.DataFrame containing the weight for reach rating, where a rating is identified by a
@@ -80,14 +89,17 @@ def _get_rating_weight(
 
 
 def get_note_tag_aggregates(
-  ratings: pd.DataFrame, noteParams: pd.DataFrame, raterParams: pd.DataFrame
+  ratings: pd.DataFrame,
+  noteParams: pd.DataFrame,
+  raterParams: pd.DataFrame
 ) -> pd.DataFrame:
-  """Computes non-helpful tag aggregates for each note.
+  """
+  Computes non-helpful tag aggregates for each note.
 
   Args:
-    ratings: initial input ratings DF containing all ratings
-    noteParams: MF results for notes
-    raterParams: MF results for raters
+    ratings (pd.DataFrame): initial input ratings DF containing all ratings
+    noteParams (pd.DataFrame): MF results for notes
+    raterParams (pd.DataFrame): MF results for raters
 
   Returns:
     pd.DataFrame containing one row per note that was scored during MF.  Columns correspond to
@@ -121,12 +133,15 @@ def get_note_tag_aggregates(
   return noteTagAggregates
 
 
-def get_tag_thresholds(ratings: pd.DataFrame, percentile: int) -> Dict[str, float]:
-  """Determine a Nth percentile threshold for each adjusted ratio tag.
+def get_tag_thresholds(
+  ratings: pd.DataFrame,
+  percentile: int) -> Dict[str, float]:
+  """
+  Determine a Nth percentile threshold for each adjusted ratio tag.
 
   Args:
-    ratings: DataFrame containing adjusted ratio columns
-    percnetile: int in the range [0, 100)
+    ratings (pd.DataFrame): DataFrame containing adjusted ratio columns
+    percentile (int): int in the range [0, 100)
 
   Returns:
     Dictionary mapping adjusted ratio columns to a threshold value

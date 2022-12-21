@@ -1,7 +1,8 @@
 import argparse
 
-import algorithm, constants as c, process_data
-
+import algorithm
+import constants as c
+import process_data
 
 """
 Example Usage:
@@ -14,7 +15,8 @@ Example Usage:
 
 
 def get_args():
-  """Parse command line arguments for running on command line.
+  """
+  Parse command line arguments for running on command line.
 
   Returns:
       args: the parsed arguments

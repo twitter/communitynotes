@@ -1,20 +1,22 @@
 from time import time
 
-import constants as c, explanation_tags
+import pandas as pd
+
+import constants as c
+import explanation_tags
 from helpfulness_scores import author_helpfulness
 from note_ratings import get_ratings_with_scores, get_valid_ratings
-
-import pandas as pd
 
 
 def should_earn_in(contributorScoresWithEnrollment: pd.DataFrame):
   """
   The participant should earn in when they are in the earnedOutAcknowledged and newUser state.
-  To earn in, we need to check that the rating impact is larger than the succesfully ratings
+  To earn in, we need to check that the rating impact is larger than the successfully ratings
   needed to earn in. This constant is fixed for new users (ratingImpactForEarnIn), for
   earnedOutNoAcknowledge it will be set int the CombineEventAndSnapshot job to +5 their current
   rating impact with a minimum of ratingImpactForEarnIn.
 
+  # TODO update this documentation
   Args:
     authorEnrollmentCounts (pd.DataFrame): Scored Notes + User Enrollment status
   """
@@ -79,13 +81,15 @@ def is_earned_in(authorEnrollmentCounts):
 
 
 def _get_rated_after_decision(
-  ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame
 ) -> pd.DataFrame:
-  """Calculates how many notes each rater reviewed after the note was assigned a status.
+  """
+  Calculates how many notes each rater reviewed after the note was assigned a status.
 
   Args:
-    ratings: DataFrame containing all ratings from all users
-    noteStatusHistory: DataFrame containing times when each note was first assigned CRH/CRNH status
+    ratings (pd.DataFrame): containing all ratings from all users
+    noteStatusHistory (pd.DataFrame): containing times when each note was first assigned CRH/CRNH status
 
   Returns:
     DataFrame mapping raterParticipantId to number of notes rated after status
@@ -116,17 +120,19 @@ def _get_rated_after_decision(
 
 
 def _get_visible_rating_counts(
-  scoredNotes: pd.DataFrame, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame
+  scoredNotes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame
 ) -> pd.DataFrame:
   """
   Given scored notes from the algorithm, all ratings, and note status history, this function
-  analyzes how succesfully a user rates notes. It aggregates how successfully/unsucessfully
+  analyzes how successfully a user rates notes. It aggregates how successfully/unsuccessfully
   a notes ratings aligns with a contributors ratings.
 
   Args:
       scoredNotes (pd.DataFrame): Notes scored from MF + contributor stats
       ratings (pd.DataFrame): all ratings
-      statusHistory (pd.DataFrame): history of note statuses
+      noteStatusHistory (pd.DataFrame): history of note statuses
   Returns:
       pd.DataFrame: noteCounts The visible rating counts
   """
@@ -200,15 +206,17 @@ def _sort_nmr_status_last(x: pd.Series) -> pd.Series:
 
 
 def _get_visible_note_counts(
-  scoredNotes: pd.DataFrame, lastNNotes: int = -1, countNMRNotesLast: bool = False
+  scoredNotes: pd.DataFrame,
+  lastNNotes: int = -1,
+  countNMRNotesLast: bool = False
 ):
   """
   Given scored notes from the algorithm, this function aggregates the note status by note author.
 
   Args:
-      scoredNotes: Notes scored from MF + contributor stats
-      lastNNotes: Only count the last n notes
-      countNMRNotesLast: Count the NMR notes last. Only affects lastNNNotes counts.
+      scoredNotes (pd.DataFrame): Notes scored from MF + contributor stats
+      lastNNotes (int): Only count the last n notes
+      countNMRNotesLast (bool): Count the NMR notes last. Only affects lastNNNotes counts.
   Returns:
       pd.DataFrame: noteCounts The visible note counts
   """
@@ -415,7 +423,7 @@ def get_contributor_scores(
 ) -> pd.DataFrame:
   """
   Given the outputs of the MF model, this function aggregates stats over notes and ratings. The
-  contributor scores are merged and attached to helfpulness scores in the algorithm.
+  contributor scores are merged and attached to helpfulness scores in the algorithm.
 
   Args:
       scoredNotes (pd.DataFrame): scored notes

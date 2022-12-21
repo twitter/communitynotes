@@ -1,22 +1,29 @@
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Optional
 
-import constants as c, scoring_rules, tag_filter
-from explanation_tags import top_tags
-from scoring_rules import RuleID
-
 import numpy as np
 import pandas as pd
 
+import constants as c
+import scoring_rules
+import tag_filter
+from scoring_rules import RuleID
 
-def is_crh(scoredNotes, minRatingsNeeded, crhThreshold) -> pd.Series:
+
+def is_crh(
+  scoredNotes,
+  minRatingsNeeded,
+  crhThreshold) -> pd.Series:
   return (scoredNotes[c.numRatingsKey] >= minRatingsNeeded) & (
     scoredNotes[c.noteInterceptKey] >= crhThreshold
   )
 
 
 def is_crnh(
-  scoredNotes, minRatingsNeeded, crnhThresholdIntercept, crnhThresholdNoteFactorMultiplier
+  scoredNotes,
+  minRatingsNeeded,
+  crnhThresholdIntercept,
+  crnhThresholdNoteFactorMultiplier
 ) -> pd.Series:
   return (scoredNotes[c.numRatingsKey] >= minRatingsNeeded) & (
     scoredNotes[c.noteInterceptKey]
@@ -31,7 +38,8 @@ def get_ratings_before_note_status_and_public_tsv(
   logging: bool = True,
   doTypeCheck: bool = True,
 ) -> pd.DataFrame:
-  """Determine which ratings are made before note's most recent non-NMR status,
+  """
+  Determine which ratings are made before note's most recent non-NMR status,
   and before we could've released any information in the public TSV (48 hours after note creation).
 
   For old notes (created pre-tombstones launch May 19, 2022), take first 5 ratings.
@@ -39,8 +47,8 @@ def get_ratings_before_note_status_and_public_tsv(
   Args:
       ratings (pd.DataFrame)
       noteStatusHistory (pd.DataFrame)
-      logging (bool, optional). Defaults to True.
-      doTypeCheck (bool): do asserts to check types.
+      logging (bool, optional): debug output. Defaults to True.
+      doTypeCheck (bool): doTypeCheck asserts to check types.
   Returns:
       pd.DataFrame combinedRatingsBeforeStatus ratings that were created early enough to be valid ratings
   """
@@ -138,12 +146,14 @@ def get_ratings_with_scores(
   doTypeCheck: bool = True,
 ) -> pd.DataFrame:
   """
-  This funciton merges the note status history, ratings, and scores for later aggregation.
+  This function merges the note status history, ratings, and scores for later aggregation.
 
   Args:
       ratings (pd.DataFrame): all ratings
       noteStatusHistory (pd.DataFrame): history of note statuses
       scoredNotes (pd.DataFrame): Notes scored from MF + contributor stats
+      logging (bool, optional): debug output. Defaults to True.
+      doTypeCheck (bool): doTypeCheck asserts to check types.
   Returns:
       pd.DataFrame: binaryRatingsOnNotesWithStatusLabels Binary ratings with status labels
   """
@@ -175,7 +185,8 @@ def get_valid_ratings(
   logging: bool = True,
   doTypeCheck: bool = True,
 ) -> pd.DataFrame:
-  """Determine which ratings are "valid" (used to determine rater helpfulness score)
+  """
+  Determine which ratings are "valid" (used to determine rater helpfulness score)
 
   See definition here: https://twitter.github.io/birdwatch/contributor-scores/#valid-ratings
 
@@ -183,8 +194,8 @@ def get_valid_ratings(
       ratings (pd.DataFrame)
       noteStatusHistory (pd.DataFrame)
       scoredNotes (pd.DataFrame)
-      logging (bool, optional): Defaults to True.
-      doTypeCheck (bool): do asserts to check types.
+      logging (bool, optional): debug output. Defaults to True.
+      doTypeCheck (bool): doTypeCheck asserts to check types.
   Returns:
       pd.DataFrame: binaryRatingsOnNotesWithStatusLabels CRH/CRNH notes group by helpfulness
   """
@@ -274,6 +285,7 @@ def compute_scored_notes(
   Merges note status history, ratings, and model output. It annotes the data frame with
   different note statuses, and features needed to calculate contributor stats.
 
+  #TODO update Args to include all parameters
   Args:
       ratings (pd.DataFrame): all ratings
       noteStatusHistory (pd.DataFrame): history of note statuses

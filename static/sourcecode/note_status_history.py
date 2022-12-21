@@ -1,13 +1,17 @@
 from time import time
 
-import constants as c
-
 import numpy as np
 import pandas as pd
 
+import constants as c
 
-def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> pd.DataFrame:
-  """Add the creation time and authorId of notes to noteStatusHistory.
+
+def merge_note_info(
+  oldNoteStatusHistory: pd.DataFrame,
+  notes: pd.DataFrame
+) -> pd.DataFrame:
+  """
+  Add the creation time and authorId of notes to noteStatusHistory.
 
   Useful when you have some new notes; called as a pre-processing step.  Note that oldNoteStatusHistory
   is expected to consistently contain noteIds which are not in notes due to deletions, and notes
@@ -68,7 +72,8 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
 
 
 def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredNotesSuffix="_sn"):
-  """For a single row (representing one note) in note status history, which contains fields
+  """
+  For a single row (representing one note) in note status history, which contains fields
   merged between the old note status history and the note's current status, compute the new
   note's status history.
 
@@ -123,7 +128,8 @@ def update_note_status_history(
   oldNoteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
 ) -> pd.DataFrame:
-  """Generate new noteStatusHistory by merging in new note labels.
+  """
+  Generate new noteStatusHistory by merging in new note labels.
 
   Args:
       oldNoteStatusHistory (pd.DataFrame)

@@ -3,13 +3,12 @@ from collections import namedtuple
 from enum import Enum
 from typing import Callable, List, Optional, Set, Tuple
 
-import constants as c, tag_filter
-from explanation_tags import top_tags
-
-
 import numpy as np
 import pandas as pd
 
+import constants as c
+import tag_filter
+from explanation_tags import top_tags
 
 RuleAndVersion = namedtuple("RuleAndVersion", ["ruleName", "ruleVersion"])
 """namedtuple identifying ScoringRule with a name and tracking revisions with a version."""
@@ -29,7 +28,8 @@ class RuleID(Enum):
 
 
 class ScoringRule(ABC):
-  """Scoring logic describing how to assign a ratingStatus given raw scoring signals and note attributes.
+  """
+  Scoring logic describing how to assign a ratingStatus given raw scoring signals and note attributes.
 
   Each ScoringRule must have a name, version and status (e.g. CRH, NMR, etc.) which the rule will
   assign.  Each ScoringRule must implement a score_notes function, which accepts as input the
@@ -39,11 +39,16 @@ class ScoringRule(ABC):
   which are attributes of the object itself.
   """
 
-  def __init__(self, ruleID: RuleID, status: str, dependencies: Set[RuleID]):
-    """Create a ScoringRule.
+  def __init__(
+    self,
+    ruleID: RuleID,
+    status: str,
+    dependencies: Set[RuleID]):
+    """
+    Create a ScoringRule.
 
     Args:
-      rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
+      ruleID: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
       status: valid ratingStatus to assign to notes where the ScoringRule is active.
       dependencies: Rules which must run before this rule can run.
     """
@@ -69,13 +74,16 @@ class ScoringRule(ABC):
 
   @abstractmethod
   def score_notes(
-    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
+    self,
+    noteStats: pd.DataFrame,
+    currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
-    """Identify which notes the ScoringRule should be active for, and any new columns to add for those notes.
+    """
+    Identify which notes the ScoringRule should be active for, and any new columns to add for those notes.
 
     Args:
-      noteStats: Raw note attributes, scoring signals and attirbutes for notes.
-      currentLabels: the ratingStatus assigned to each note from prior ScoringRules.
+      noteStats (pd.DataFrame): Raw note attributes, scoring signals and attirbutes for notes.
+      currentLabels (pd.DataFrame): the ratingStatus assigned to each note from prior ScoringRules.
 
     Returns:
       Tuple[0]: note IDs where the ScoringRule is active.
@@ -85,7 +93,9 @@ class ScoringRule(ABC):
 
 class DefaultRule(ScoringRule):
   def score_notes(
-    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
+    self,
+    noteStats: pd.DataFrame,
+    currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
     """Returns all noteIDs to initialize all note ratings to a default status (e.g. NMR)."""
     return (noteStats[c.noteIdKey], None)
@@ -99,7 +109,8 @@ class RuleFromFunction(ScoringRule):
     dependencies: Set[RuleID],
     function: Callable[[pd.DataFrame], pd.Series],
   ):
-    """Creates a ScoringRule which wraps a boolean function.
+    """
+    Creates a ScoringRule which wraps a boolean function.
 
     Args:
       function: accepts noteStats as input and returns a boolean pd.Series corresponding to
@@ -110,7 +121,9 @@ class RuleFromFunction(ScoringRule):
     self._function = function
 
   def score_notes(
-    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
+    self,
+    noteStats: pd.DataFrame,
+    currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
     """Returns noteIDs for notes matched by the boolean function."""
     return (
@@ -134,7 +147,8 @@ class FilterTagOutliers(ScoringRule):
     minAdjustedTotal: float,
     crhSuperThreshold: float,
   ):
-    """Filter CRH notes for outliers with high levels of any particular tag.
+    """
+    Filter CRH notes for outliers with high levels of any particular tag.
 
     Args:
       tagRatioPercentile: For a filter to trigger, the adjusted ratio value for a
@@ -150,7 +164,9 @@ class FilterTagOutliers(ScoringRule):
     self._crhSuperThreshold = crhSuperThreshold
 
   def score_notes(
-    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
+    self,
+    noteStats: pd.DataFrame,
+    currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, pd.DataFrame]):
     """Returns notes on track for CRH with high levels of any tag to receive NMR status."""
     # Prune noteStats to only include CRH notes.
@@ -207,7 +223,8 @@ class InsufficientExplanation(ScoringRule):
     minTagsNeededForStatus: int,
     tagsConsidered: Optional[List[str]] = None,
   ):
-    """Set Top Tags, and set status to NMR for CRH / CRNH notes for which we don't have
+    """
+    Set Top Tags, and set status to NMR for CRH / CRNH notes for which we don't have
         a strong enough explanation signal
 
     Args:
@@ -221,7 +238,9 @@ class InsufficientExplanation(ScoringRule):
     self._tagsConsidered = tagsConsidered
 
   def score_notes(
-    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
+    self,
+    noteStats: pd.DataFrame,
+    currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, pd.DataFrame]):
     """Sets Top Tags, returns notes on track for CRH / CRNH with insufficient to receive NMR status."""
 
@@ -277,7 +296,13 @@ class InsufficientExplanation(ScoringRule):
 
 
 class NMtoCRNH(ScoringRule):
-  def __init__(self, ruleID: RuleID, status: str, dependencies: Set[RuleID]):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    status: str,
+    dependencies: Set[RuleID]
+  ):
+    """Create a NMtoCRNH ScoringRule."""
     super().__init__(ruleID, status, dependencies)
 
   def score_notes(
@@ -286,7 +311,7 @@ class NMtoCRNH(ScoringRule):
     """Returns noteIds for low scoring notes on non-misleading tweets."""
     noteIds = noteStats.loc[
       (noteStats[c.noteInterceptKey] < c.crnhThresholdNMIntercept)
-      # Require that that the classification is "not misleading" to explicitly exclude deleted
+      # Require that the classification is "not misleading" to explicitly exclude deleted
       # notes where the classification is nan.
       & (noteStats[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey)
     ][c.noteIdKey]
@@ -302,7 +327,8 @@ class AddCRHInertia(ScoringRule):
     threshold: float,
     expectedMax: float,
   ):
-    """Scores notes as CRH contingent on whether the note is already CRH.
+    """
+    Scores notes as CRH contingent on whether the note is already CRH.
 
     This rule should be applied after other CRH scoring logic to add CRH status for
     notes with intercepts in a defined range (e.g. 0.01 below the general threshold)
@@ -319,7 +345,9 @@ class AddCRHInertia(ScoringRule):
     self._expectedMax = expectedMax
 
   def score_notes(
-    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
+    self,
+    noteStats: pd.DataFrame,
+    currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
     """Returns noteIds for notes already have CRH status but now fall slightly below a threshold."""
     # This scoring only impacts notes which don't already have CRH status - there is no need to
@@ -348,8 +376,11 @@ class AddCRHInertia(ScoringRule):
     return noteIds[c.noteIdKey], None
 
 
-def apply_scoring_rules(noteStats: pd.DataFrame, rules: List[ScoringRule]) -> pd.DataFrame:
-  """Apply a list of ScoringRules to note inputs and return noteStats augmented with scoring results.
+def apply_scoring_rules(
+  noteStats: pd.DataFrame,
+  rules: List[ScoringRule]) -> pd.DataFrame:
+  """
+  Apply a list of ScoringRules to note inputs and return noteStats augmented with scoring results.
 
   This function applies a list of ScoringRules in order.  Once each rule has run
   a final ratingStatus is set for each note. An additional column is added to capture

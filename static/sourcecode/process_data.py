@@ -1,11 +1,12 @@
 from io import StringIO
 from typing import Tuple
 
-import constants as c, note_status_history
-
-from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
+
+import constants as c
+import note_status_history
 
 
 def get_data(
@@ -16,7 +17,8 @@ def get_data(
   shouldFilterNotMisleadingNotes: bool = True,
   logging: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-  """All-in-one function for reading Birdwatch notes and ratings from TSV files.
+  """
+  All-in-one function for reading Birdwatch notes and ratings from TSV files.
   It does both reading and pre-processing.
 
   Args:
@@ -39,9 +41,12 @@ def get_data(
 
 
 def read_from_strings(
-  notesStr: str, ratingsStr: str, noteStatusHistoryStr: str
+  notesStr: str,
+  ratingsStr: str,
+  noteStatusHistoryStr: str
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-  """Read from TSV formatted String.
+  """
+  Read from TSV formatted String.
 
   Args:
       notesStr (str): tsv-formatted notes dataset
@@ -76,7 +81,10 @@ def tsv_reader(path: str, mapping, columns):
 
 
 def read_from_tsv(
-  notesPath: str, ratingsPath: str, noteStatusHistoryPath: str, userEnrollmentPath: str
+  notesPath: str,
+  ratingsPath: str,
+  noteStatusHistoryPath: str,
+  userEnrollmentPath: str
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Mini function to read notes, ratings, and noteStatusHistory from TSVs.
 
@@ -142,6 +150,7 @@ def _filter_misleading_notes(
   Also filter out ratings of deleted notes, unless they were deleted after
     c.deletedNotesTombstoneLaunchTime, and appear in noteStatusHistory.
 
+  #TODO refactor unused parameter notes
   Args:
       notes (pd.DataFrame): _description_
       ratings (pd.DataFrame): _description_
@@ -212,7 +221,8 @@ def _filter_misleading_notes(
 
 
 def remove_duplicate_ratings(ratings: pd.DataFrame) -> pd.DataFrame:
-  """Drop duplicate ratings, then assert that there is exactly one rating per noteId per raterId.
+  """
+  Drop duplicate ratings, then assert that there is exactly one rating per noteId per raterId.
 
   Args:
       ratings (pd.DataFrame) with possible duplicated ratings
@@ -232,7 +242,8 @@ def remove_duplicate_ratings(ratings: pd.DataFrame) -> pd.DataFrame:
 
 
 def remove_duplicate_notes(notes: pd.DataFrame) -> pd.DataFrame:
-  """Remove duplicate notes, then assert that there is only one copy of each noteId.
+  """
+  Remove duplicate notes, then assert that there is only one copy of each noteId.
 
   Args:
       notes (pd.DataFrame): with possible duplicate notes
@@ -316,8 +327,12 @@ def preprocess_data(
   return notes, ratings, noteStatusHistory
 
 
-def filter_ratings(ratings: pd.DataFrame, logging: bool = True) -> pd.DataFrame:
-  """Apply min number of ratings for raters & notes. Instead of iterating these filters
+def filter_ratings(
+  ratings: pd.DataFrame,
+  logging: bool = True
+) -> pd.DataFrame:
+  """
+  Apply min number of ratings for raters & notes. Instead of iterating these filters
   until convergence, simply stop after going back and force once.
 
   Args:
@@ -378,8 +393,11 @@ def filter_ratings(ratings: pd.DataFrame, logging: bool = True) -> pd.DataFrame:
   return ratingsForTraining
 
 
-def visualize_parameters(noteParams: pd.DataFrame, raterParams: pd.DataFrame) -> None:
-  """Plot/describe note and rater params.
+def visualize_parameters(
+  noteParams: pd.DataFrame,
+  raterParams: pd.DataFrame) -> None:
+  """
+  Plot/describe note and rater params.
 
   Args:
       noteParams (pd.DataFrame)
@@ -406,7 +424,8 @@ def visualize_parameters(noteParams: pd.DataFrame, raterParams: pd.DataFrame) ->
 
 
 def visualize_helpfulness(helpfulness_scores: pd.DataFrame) -> None:
-  """Plot user helpfulness scores.
+  """
+  Plot user helpfulness scores.
 
   Args:
       helpfulness_scores (pd.DataFrame)
@@ -421,8 +440,12 @@ def visualize_helpfulness(helpfulness_scores: pd.DataFrame) -> None:
   helpfulness_scores[c.raterAgreeRatioKey].plot(kind="hist", bins=20)
 
 
-def write_scored_notes_with_summary(scoredNotes: pd.DataFrame, notes: pd.DataFrame) -> None:
-  """Write scoredNotes as a TSV, with summary joined in.
+def write_scored_notes_with_summary(
+  scoredNotes: pd.DataFrame,
+  notes: pd.DataFrame
+) -> None:
+  """
+  Write scoredNotes as a TSV, with summary joined in.
 
   Args:
       scoredNotes (pd.DataFrame)
@@ -453,7 +476,8 @@ def write_scored_notes_with_summary(scoredNotes: pd.DataFrame, notes: pd.DataFra
 
 
 def write_scored_notes(scoredNotes: pd.DataFrame) -> None:
-  """Write scoredNotes as a TSV.
+  """
+  Write scoredNotes as a TSV.
 
   Args:
       scoredNotes (pd.DataFrame)
