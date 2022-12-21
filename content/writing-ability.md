@@ -16,6 +16,12 @@ To unlock the ability to write, new contributors need to earn a [Rating Impact](
 
 Rating notes is a great way for new contributors to better understand [what makes Helpful and Not Helpful notes](../examples), before they start writing their own notes.
 
+{{< hint info >}}
+
+Contributors admitted to Community Notes prior to September 2022 started with writing ability and did not have to unlock it. On December 20, 2022, we rolled out a change that retroactively requires all of those contributors to unlock writing ability as well. Those who had already earned a Rating Impact score of 5+, or a Writing Impact score of 1+, automatically and immediately unlocked writing ability. Those who haven’t earned that impact yet can unlock writing ability by earning a Rating Impact of 5. 
+
+{{< / hint >}}
+
 ## All contributors
 
 **A contributor’s ability to write new notes is locked if they write too many notes that reach a status of Not Helpful** after being rated by other contributors.
