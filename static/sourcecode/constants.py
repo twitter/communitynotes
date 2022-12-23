@@ -209,7 +209,7 @@ notMisleadingTagsAndTypes = [(tag, np.int64) for tag in notMisleadingTags]
 noteTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
-    (participantIdKey, np.object),
+    (noteAuthorParticipantIdKey, np.object),
     (createdAtMillisKey, np.int64),
     (tweetIdKey, np.int64),
     (classificationKey, np.object),
@@ -231,7 +231,7 @@ noteTSVTypeMapping = {col: dtype for (col, dtype) in noteTSVColumnsAndTypes}
 ratingTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
-    (participantIdKey, np.object),
+    (raterParticipantIdKey, np.object),
     (createdAtMillisKey, np.int64),
     ("version", np.int64),
     ("agree", np.int64),
@@ -258,7 +258,7 @@ mostRecentNonNMRLabelKey = "mostRecentNonNMRStatus"
 
 noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
-  (participantIdKey, np.object),
+  (noteAuthorParticipantIdKey, np.object),
   (createdAtMillisKey, np.int64),
   (timestampMillisOfNoteFirstNonNMRLabelKey, np.double),  # double because nullable.
   (firstNonNMRLabelKey, np.object),
