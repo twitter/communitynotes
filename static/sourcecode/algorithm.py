@@ -86,6 +86,9 @@ def note_post_processing(
     how="outer",
   )
 
+  # Computes business results of scoring and update status history.
+  assert ratings.columns.tolist() == c.ratingTSVColumns + [c.helpfulNumKey]
+
   # Prune notes which weren't in second MF round and merge NSH to generate final scoredNotes.
   scoredNotes = scoredNotes.merge(noteParams[[c.noteIdKey]], on=c.noteIdKey, how="inner")
   castColumns = c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder + [c.numRatingsKey]

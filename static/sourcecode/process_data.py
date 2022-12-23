@@ -101,7 +101,6 @@ def read_from_tsv(
     f"note columns don't match: \n{[col for col in notes.columns if not col in c.noteTSVColumns]} are extra columns, "
     + f"\n{[col for col in c.noteTSVColumns if not col in notes.columns]} are missing."
   )  # ensure constants file is up to date.
-  notes = notes.rename(columns={c.participantIdKey: c.noteAuthorParticipantIdKey})
 
   assert len(ratings.columns.values) == len(c.ratingTSVColumns) and all(
     ratings.columns == c.ratingTSVColumns
@@ -109,7 +108,6 @@ def read_from_tsv(
     f"ratings columns don't match: \n{[col for col in ratings.columns if not col in c.ratingTSVColumns]} are extra columns, "
     + f"\n{[col for col in c.ratingTSVColumns if not col in ratings.columns]} are missing."
   )  # ensure constants file is up to date.
-  ratings = ratings.rename(columns={c.participantIdKey: c.raterParticipantIdKey})
 
   assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
     noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
@@ -117,7 +115,6 @@ def read_from_tsv(
     f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
     + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
   )
-  noteStatusHistory = noteStatusHistory.rename(columns={c.participantIdKey: c.noteAuthorParticipantIdKey})
 
   assert len(userEnrollment.columns.values) == len(c.userEnrollmentTSVColumns) and all(
     userEnrollment.columns == c.userEnrollmentTSVColumns
