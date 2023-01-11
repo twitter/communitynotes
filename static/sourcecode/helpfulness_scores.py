@@ -9,7 +9,7 @@ def author_helpfulness(
   CRNHMultiplier: float = 5.0,
 ) -> pd.DataFrame:
   """Computes author helpfulness scores as described in:
-  https://twitter.github.io/birdwatch/contributor-scores/#author-helpfulness-scores
+  https://twitter.github.io/communitynotes/contributor-scores/#author-helpfulness-scores
 
   Args:
       scoredNotes (pd.DataFrame): one row per note, containing preliminary note statuses
@@ -42,7 +42,7 @@ def author_helpfulness(
 
 def _rater_helpfulness(validRatings: pd.DataFrame) -> pd.DataFrame:
   """Computes rater helpfulness scores as described in:
-  https://twitter.github.io/birdwatch/contributor-scores/#rater-helpfulness-score
+  https://twitter.github.io/communitynotes/contributor-scores/#rater-helpfulness-score
 
   Args:
       validRatings (pd.DataFrame): ratings to use
@@ -66,7 +66,7 @@ def compute_general_helpfulness_scores(
   """Given notes scored by matrix factorization, compute helpfulness scores.
   Author helpfulness scores are based on the scores of the notes you wrote.
   Rater helpfulness scores are based on how the ratings you made match up with note scores.
-  See https://twitter.github.io/birdwatch/contributor-scores/.
+  See https://twitter.github.io/communitynotes/contributor-scores/.
 
   Args:
       scoredNotes pandas.DataFrame: one row per note, containing preliminary note statuses.
@@ -116,7 +116,7 @@ def filter_ratings_by_helpfulness_scores(
   logging: bool = True,
 ):
   """Filter out ratings from raters whose helpfulness scores are too low.
-  See https://twitter.github.io/birdwatch/contributor-scores/#filtering-ratings-based-on-helpfulness-scores.
+  See https://twitter.github.io/communitynotes/contributor-scores/#filtering-ratings-based-on-helpfulness-scores.
 
   Args:
       ratingsForTraining pandas.DataFrame: unfiltered input ratings

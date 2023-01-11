@@ -58,7 +58,7 @@ def run_mf(
 ) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[float]]:
   """Train matrix factorization model.
 
-  See https://twitter.github.io/birdwatch/ranking-notes/#matrix-factorization
+  See https://twitter.github.io/communitynotes/ranking-notes/#matrix-factorization
 
   Args:
       ratings (pd.DataFrame): pre-filtered ratings to train on
