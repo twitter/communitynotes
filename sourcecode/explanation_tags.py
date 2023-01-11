@@ -15,7 +15,7 @@ def top_tags(
   """Given a particular row of the scoredNotes DataFrame, determine which two
   explanation tags to assign to the note based on its ratings.
 
-  See https://twitter.github.io/birdwatch/ranking-notes/#determining-note-status-explanation-tags
+  See https://twitter.github.io/communitynotes/ranking-notes/#determining-note-status-explanation-tags
 
   Args:
       row (pd.Series): row of the scoredNotes dataframe, including a count of each tag
