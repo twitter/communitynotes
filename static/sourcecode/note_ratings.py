@@ -183,7 +183,7 @@ def get_valid_ratings(
 ) -> pd.DataFrame:
   """Determine which ratings are "valid" (used to determine rater helpfulness score)
 
-  See definition here: https://twitter.github.io/birdwatch/contributor-scores/#valid-ratings
+  See definition here: https://twitter.github.io/communitynotes/contributor-scores/#valid-ratings
 
   Args:
       ratings (pd.DataFrame)
