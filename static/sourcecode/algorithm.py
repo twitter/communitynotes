@@ -93,12 +93,20 @@ def note_post_processing(
   scoredNotes = scoredNotes.merge(noteParams[[c.noteIdKey]], on=c.noteIdKey, how="inner")
   castColumns = c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder + [c.numRatingsKey]
   scoredNotes[castColumns] = scoredNotes[castColumns].astype(np.int64)
-  auxilaryNoteInfo = scoredNotes[c.auxilaryScoredNotesColumns]
-  scoredNotes = scoredNotes[c.scoredNotesColumns]
 
+  # Merge scoring results into noteStatusHistory
   newNoteStatusHistory = note_status_history.update_note_status_history(
     noteStatusHistory, scoredNotes
   )
+
+  # Finalize output dataframes with correct columns
+  assert set(scoredNotes.columns) == set(
+    c.noteModelOutputTSVColumns + c.auxilaryScoredNotesTSVColumns
+  )
+  auxilaryNoteInfo = scoredNotes[c.auxilaryScoredNotesTSVColumns]
+  scoredNotes = scoredNotes[c.noteModelOutputTSVColumns]
+  helpfulnessScores = helpfulnessScores[c.raterModelOutputTSVColumns]
+  newNoteStatusHistory = newNoteStatusHistory[c.noteStatusHistoryTSVColumns]
 
   return scoredNotes, helpfulnessScores, newNoteStatusHistory, auxilaryNoteInfo
 
@@ -196,8 +204,29 @@ def run_algorithm(
   )
   raterParams.drop(c.raterIndexKey, axis=1, inplace=True)
 
-  scoredNotes, helpfulnessScores, newNoteStatusHistory, auxilaryNoteInfo = note_post_processing(
+  # Add pseudo-raters with the most extreme parameters and re-score notes, to estimate
+  #  upper and lower confidence bounds on note parameters.
+  if c.addPseudoRaters:
+    noteIdMap, raterIdMap, noteRatingIds = matrix_factorization.get_note_and_rater_id_maps(
+      ratingsHelpfulnessScoreFiltered
+    )
+
+    extremeRaters = matrix_factorization.make_extreme_raters(raterParams, raterIdMap)
+
+    (
+      rawRescoredNotesWithEachExtraRater,
+      notesWithConfidenceBounds,
+    ) = matrix_factorization.fit_note_params_for_each_dataset_with_extreme_ratings(
+      extremeRaters,
+      noteRatingIds,
+      ratingsHelpfulnessScoreFiltered,
+      noteParams,
+      raterParams,
+      globalBias,
+    )
+
+    noteParams = noteParams.merge(notesWithConfidenceBounds.reset_index(), on="noteId", how="left")
+
+  return note_post_processing(
     ratings, noteParams, raterParams, helpfulnessScores, noteStatusHistory, userEnrollment
   )
-
-  return scoredNotes, helpfulnessScores, newNoteStatusHistory, auxilaryNoteInfo

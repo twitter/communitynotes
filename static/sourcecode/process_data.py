@@ -418,58 +418,19 @@ def visualize_helpfulness(helpfulness_scores: pd.DataFrame) -> None:
   helpfulness_scores[c.raterAgreeRatioKey].plot(kind="hist", bins=20)
 
 
-def write_scored_notes_with_summary(scoredNotes: pd.DataFrame, notes: pd.DataFrame) -> None:
-  """Write scoredNotes as a TSV, with summary joined in.
+def write_tsv_local(df: pd.DataFrame, path: str) -> None:
+  """Write DF as a TSV stored to local disk.
+
+  Note that index=False (so the index column will not be written to disk), and header=True
+  (so the first line of the output will contain row names).
 
   Args:
-      scoredNotes (pd.DataFrame)
-      notes (pd.DataFrame)
+    df: pd.DataFrame to write to disk.
+    path: location of file on disk.
+
+  Returns:
+    None, because path is always None.
   """
-  columnsToWrite = (
-    [
-      c.noteIdKey,
-      c.tweetIdKey,
-      c.numRatingsKey,
-      c.noteInterceptKey,
-      c.noteFactor1Key,
-      c.ratingStatusKey,
-      c.firstTagKey,
-      c.secondTagKey,
-      c.summaryKey,
-    ]
-    + c.helpfulTagsTSVOrder
-    + c.notHelpfulTagsTSVOrder
-  )
-  scoredNotes = scoredNotes.merge(
-    notes[[c.noteIdKey, c.summaryKey, c.tweetIdKey]], on=c.noteIdKey, how="inner"
-  )
 
-  scoredNotes[columnsToWrite].sort_values(by=c.noteInterceptKey, ascending=False).to_csv(
-    c.scoredNotesOutputPath, sep="\t", index=False
-  )
-
-
-def write_scored_notes(scoredNotes: pd.DataFrame) -> None:
-  """Write scoredNotes as a TSV.
-
-  Args:
-      scoredNotes (pd.DataFrame)
-  """
-  columnsToWrite = (
-    [c.noteIdKey, c.helpfulNumKey]
-    + c.helpfulTagsTSVOrder
-    + c.notHelpfulTagsTSVOrder
-    + [
-      c.numRatingsKey,
-      c.noteInterceptKey,
-      c.noteFactor1Key,
-      c.ratingStatusKey,
-      c.firstTagKey,
-      c.secondTagKey,
-      c.createdAtMillisKey,
-      c.noteAuthorParticipantIdKey,
-    ]
-  )
-
-  dfToWrite = scoredNotes[columnsToWrite].sort_values(by=c.noteInterceptKey, ascending=False)
-  dfToWrite.to_csv(c.scoredNotesOutputPath, sep="\t", index=False)
+  assert path is not None
+  assert df.to_csv(path, index=False, header=True, sep="\t") is None

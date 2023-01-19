@@ -183,7 +183,7 @@ def get_valid_ratings(
 ) -> pd.DataFrame:
   """Determine which ratings are "valid" (used to determine rater helpfulness score)
 
-  See definition here: https://twitter.github.io/communitynotes/contributor-scores/#valid-ratings
+  See definition here: https://twitter.github.io/birdwatch/contributor-scores/#valid-ratings
 
   Args:
       ratings (pd.DataFrame)
@@ -299,9 +299,12 @@ def compute_scored_notes(
   # BUG: The line below causes us to sum over createdAtMillisKey, adding up timestamps which we
   # later compare against timestampMillisOfNoteMostRecentNonNMRLabelKey.
   noteStats = ratingsToUse.groupby(c.noteIdKey).sum()
-  noteStats = noteStats.merge(
-    noteParams[[c.noteIdKey, c.noteInterceptKey, c.noteFactor1Key]], on=c.noteIdKey
-  )
+
+  noteParamsColsToKeep = [c.noteIdKey, c.noteInterceptKey, c.noteFactor1Key]
+  for col in c.noteParameterUncertaintyTSVColumns:
+    if col in noteParams.columns:
+      noteParamsColsToKeep.append(col)
+  noteStats = noteStats.merge(noteParams[noteParamsColsToKeep], on=c.noteIdKey)
 
   how = "outer" if finalRound else "left"
   noteStats = noteStats.merge(
@@ -312,6 +315,7 @@ def compute_scored_notes(
         c.noteAuthorParticipantIdKey,
         c.classificationKey,
         c.currentLabelKey,
+        c.lockedStatusKey,
       ]
     ],
     on=c.noteIdKey,
@@ -320,22 +324,22 @@ def compute_scored_notes(
   noteStats[c.noteCountKey] = 1
 
   rules = [
-    scoring_rules.DefaultRule(RuleID.INITIAL_NMR, c.needsMoreRatings, set()),
+    scoring_rules.DefaultRule(RuleID.INITIAL_NMR, set(), c.needsMoreRatings),
     scoring_rules.RuleFromFunction(
       RuleID.GENERAL_CRH,
-      c.currentlyRatedHelpful,
       {RuleID.INITIAL_NMR},
+      c.currentlyRatedHelpful,
       lambda noteStats: is_crh_function(noteStats, minRatingsNeeded, crhThreshold),
     ),
     scoring_rules.RuleFromFunction(
       RuleID.GENERAL_CRNH,
-      c.currentlyRatedNotHelpful,
       {RuleID.INITIAL_NMR},
+      c.currentlyRatedNotHelpful,
       lambda noteStats: is_crnh_function(
         noteStats, minRatingsNeeded, crnhThresholdIntercept, crnhThresholdNoteFactorMultiplier
       ),
     ),
-    scoring_rules.NMtoCRNH(RuleID.NM_CRNH, c.currentlyRatedNotHelpful, {RuleID.INITIAL_NMR}),
+    scoring_rules.NMtoCRNH(RuleID.NM_CRNH, {RuleID.INITIAL_NMR}, c.currentlyRatedNotHelpful),
   ]
   if finalRound:
     # Compute tag aggregates only if they are required for tag filtering.
@@ -348,37 +352,41 @@ def compute_scored_notes(
       [
         scoring_rules.AddCRHInertia(
           RuleID.GENERAL_CRH_INERTIA,
-          c.currentlyRatedHelpful,
           {RuleID.GENERAL_CRH},
+          c.currentlyRatedHelpful,
           c.crhThreshold - c.inertiaDelta,
           c.crhThreshold,
         ),
         scoring_rules.FilterTagOutliers(
           RuleID.TAG_OUTLIER,
-          c.needsMoreRatings,
           {RuleID.GENERAL_CRH},
+          c.needsMoreRatings,
           c.tagFilteringPercentile,
           c.minAdjustedTagWeight,
           c.crhSuperThreshold,
         ),
         scoring_rules.AddCRHInertia(
           RuleID.ELEVATED_CRH_INERTIA,
-          c.currentlyRatedHelpful,
           {RuleID.TAG_OUTLIER},
+          c.currentlyRatedHelpful,
           c.crhSuperThreshold - c.inertiaDelta,
           c.crhSuperThreshold,
         ),
         scoring_rules.InsufficientExplanation(
           RuleID.INSUFFICIENT_EXPLANATION,
-          c.needsMoreRatings,
           {
             RuleID.GENERAL_CRH,
             RuleID.GENERAL_CRNH,
             RuleID.GENERAL_CRH_INERTIA,
             RuleID.ELEVATED_CRH_INERTIA,
           },
+          c.needsMoreRatings,
           c.minRatingsToGetTag,
           c.minTagsNeededForStatus,
+        ),
+        scoring_rules.ScoringDriftGuard(
+          RuleID.SCORING_DRIFT_GUARD,
+          {RuleID.INSUFFICIENT_EXPLANATION},
         ),
       ]
     )
@@ -386,11 +394,11 @@ def compute_scored_notes(
     rules.append(
       scoring_rules.InsufficientExplanation(
         RuleID.INSUFFICIENT_EXPLANATION,
-        c.needsMoreRatings,
         {
           RuleID.GENERAL_CRH,
           RuleID.GENERAL_CRNH,
         },
+        c.needsMoreRatings,
         c.minRatingsToGetTag,
         c.minTagsNeededForStatus,
       ),
@@ -398,5 +406,8 @@ def compute_scored_notes(
   noteStats[c.firstTagKey] = np.nan
   noteStats[c.secondTagKey] = np.nan
   scoredNotes = scoring_rules.apply_scoring_rules(noteStats, rules)
+  # Discard the locked status column since it is captured in noteStatusHistory and
+  # not necessary for the rest of scoring.
+  scoredNotes = scoredNotes.drop(columns=[c.lockedStatusKey])
 
   return scoredNotes
