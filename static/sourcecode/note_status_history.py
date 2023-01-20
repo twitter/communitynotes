@@ -81,8 +81,25 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   Returns:
       row of pd.DataFrame
   """
+  # update the current status in accordance with this scoring run
   mergedNote[c.currentLabelKey] = mergedNote[c.ratingStatusKey]
   mergedNote[c.timestampMillisOfNoteCurrentLabelKey] = currentTimeMillis
+
+  # if the note is old enough and status isn't already locked, lock the status
+  notAlreadyLocked = pd.isna(mergedNote[c.lockedStatusKey])
+  lockEligible = c.noteLockMillis < (currentTimeMillis - mergedNote[c.createdAtMillisKey])
+  if notAlreadyLocked and lockEligible:
+    # Notes which didn't get enough reviews to be included in scoring before the lock
+    # period will have a status of NaN.  Those notes should be set to NEEDS_MORE_RATINGS,
+    # and the rest of notes will be set however they were scored.  Note that locking the
+    # score at NEEDS_MORE_RATINGS won't cause the note to be included in scoring results
+    # in the future, but if the note does later receive enough ratings to be scored we do
+    # guarantee that the score will be NEEDS_MORE_RATINGS.
+    lockedStatus = c.needsMoreRatings
+    if not pd.isna(mergedNote[c.ratingStatusKey]):
+      lockedStatus = mergedNote[c.ratingStatusKey]
+    mergedNote[c.lockedStatusKey] = lockedStatus
+    mergedNote[c.timestampMillisOfStatusLockKey] = currentTimeMillis
 
   if pd.isna(mergedNote[c.createdAtMillisKey + newScoredNotesSuffix]):
     # note used to be scored but isn't now; just retain old info

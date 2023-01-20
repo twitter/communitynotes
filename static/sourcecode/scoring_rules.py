@@ -26,20 +26,19 @@ class RuleID(Enum):
   GENERAL_CRH_INERTIA = RuleAndVersion("GeneralCRHInertia", "1.0")
   ELEVATED_CRH_INERTIA = RuleAndVersion("ElevatedCRHInertia", "1.0")
   INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0")
+  SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0")
 
 
 class ScoringRule(ABC):
   """Scoring logic describing how to assign a ratingStatus given raw scoring signals and note attributes.
 
-  Each ScoringRule must have a name, version and status (e.g. CRH, NMR, etc.) which the rule will
-  assign.  Each ScoringRule must implement a score_notes function, which accepts as input the
-  raw attributes of notes and currently assigned lables and returns (1) a set of noteIDs which the rule
-  will act on, and (2) a DF containing any new columns which should be added to the output for those
-  noteIDs.  Note that score_notes does not need to return the ratingStatus or the rule name/version,
-  which are attributes of the object itself.
+  Each ScoringRule must have a name and version. Each ScoringRule must implement a score_notes function,
+  which accepts as input the raw attributes of notes and currently assigned lables and returns (1) a
+  DataFrame specifying the noteIDs and associated status which the rule will assign, and (2) a DF
+  containing any new columns which should be added to the output for those noteIDs.
   """
 
-  def __init__(self, ruleID: RuleID, status: str, dependencies: Set[RuleID]):
+  def __init__(self, ruleID: RuleID, dependencies: Set[RuleID]):
     """Create a ScoringRule.
 
     Args:
@@ -48,7 +47,6 @@ class ScoringRule(ABC):
       dependencies: Rules which must run before this rule can run.
     """
     self._ruleID = ruleID
-    self._status = status
     self._dependencies = dependencies
 
   def get_rule_id(self) -> RuleID:
@@ -58,10 +56,6 @@ class ScoringRule(ABC):
   def get_name(self) -> str:
     """Returns a string combining the name and version to uniquely name the logic of the ScoringRule."""
     return f"{self._ruleID.value.ruleName} (v{self._ruleID.value.ruleVersion})"
-
-  def get_status(self) -> str:
-    """Returns a string defining the ratingStatus for notes where this ScoringRule is active."""
-    return self._status
 
   def check_dependencies(self, priorRules: Set[RuleID]) -> None:
     """Raise an AssertionError if rule dependencies have not been satisfied."""
@@ -78,58 +72,70 @@ class ScoringRule(ABC):
       currentLabels: the ratingStatus assigned to each note from prior ScoringRules.
 
     Returns:
-      Tuple[0]: note IDs where the ScoringRule is active.
+      Tuple[0]: DF specifying note IDs and associated status which this rule will update.
       Tuple[1]: DF containing noteIDs and any new columns to add to output
     """
 
 
 class DefaultRule(ScoringRule):
+  def __init__(self, ruleID: RuleID, dependencies: Set[RuleID], status: str):
+    """Creates a ScoringRule which sets all note statuses to a default value.
+
+    Args:
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
+    """
+    super().__init__(ruleID, dependencies)
+    self._status = status
+
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
     """Returns all noteIDs to initialize all note ratings to a default status (e.g. NMR)."""
-    return (noteStats[c.noteIdKey], None)
+    noteStatusUpdates = pd.DataFrame(noteStats[[c.noteIdKey]])
+    noteStatusUpdates[c.ratingStatusKey] = self._status
+    return (noteStatusUpdates, None)
 
 
 class RuleFromFunction(ScoringRule):
   def __init__(
     self,
     ruleID: RuleID,
-    status: str,
     dependencies: Set[RuleID],
+    status: str,
     function: Callable[[pd.DataFrame], pd.Series],
   ):
     """Creates a ScoringRule which wraps a boolean function.
 
     Args:
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
       function: accepts noteStats as input and returns a boolean pd.Series corresponding to
         rows matched by the function.  For example, a valid function would be:
         "lambda noteStats: noteStats[c.noteInterceptKey] > 0.4"
     """
-    super().__init__(ruleID, status, dependencies)
+    super().__init__(ruleID, dependencies)
+    self._status = status
     self._function = function
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
     """Returns noteIDs for notes matched by the boolean function."""
-    return (
-      noteStats.loc[
-        self._function(noteStats)
-        # Check for inequality with "not misleading" to include notes whose classificaiton
-        # is nan (i.e. deleted notes).
-        & (noteStats[c.classificationKey] != c.noteSaysTweetIsNotMisleadingKey)
-      ][c.noteIdKey],
-      None,
-    )
+    noteStatusUpdates = noteStats.loc[
+      self._function(noteStats)
+      # Check for inequality with "not misleading" to include notes whose classificaiton
+      # is nan (i.e. deleted notes).
+      & (noteStats[c.classificationKey] != c.noteSaysTweetIsNotMisleadingKey)
+    ][[c.noteIdKey]]
+    noteStatusUpdates[c.ratingStatusKey] = self._status
+    return (noteStatusUpdates, None)
 
 
 class FilterTagOutliers(ScoringRule):
   def __init__(
     self,
     ruleID: RuleID,
-    status: str,
     dependencies: Set[RuleID],
+    status: str,
     tagRatioPercentile: int,
     minAdjustedTotal: float,
     crhSuperThreshold: float,
@@ -137,6 +143,7 @@ class FilterTagOutliers(ScoringRule):
     """Filter CRH notes for outliers with high levels of any particular tag.
 
     Args:
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
       tagRatioPercentile: For a filter to trigger, the adjusted ratio value for a
         tag must exceed Nth percentile for notes currently rated as CRH.
       minAdjustedTotal: For a filter to trigger, the adjusted total of a tag must
@@ -144,7 +151,8 @@ class FilterTagOutliers(ScoringRule):
       crhSuperThreshold: If the note intercept exceeds the crhSuperThreshold, then the
         tag filter is disabled.
     """
-    super().__init__(ruleID, status, dependencies)
+    super().__init__(ruleID, dependencies)
+    self._status = status
     self._tagRatioPercentile = tagRatioPercentile
     self._minAdjustedTotal = minAdjustedTotal
     self._crhSuperThreshold = crhSuperThreshold
@@ -194,15 +202,17 @@ class FilterTagOutliers(ScoringRule):
       ",".join(tags) for tags in impactedNotes[c.activeFilterTagsKey]
     ]
     print(f"Total unique notes impacted by tag filtering: {len(impactedNotes)}")
-    return (impactedNotes[c.noteIdKey].drop_duplicates(), impactedNotes)
+    noteStatusUpdates = impactedNotes[[c.noteIdKey]].drop_duplicates()
+    noteStatusUpdates[c.ratingStatusKey] = self._status
+    return (noteStatusUpdates, impactedNotes)
 
 
 class InsufficientExplanation(ScoringRule):
   def __init__(
     self,
     ruleID: RuleID,
-    status: str,
     dependencies: Set[RuleID],
+    status: str,
     minRatingsToGetTag: int,
     minTagsNeededForStatus: int,
     tagsConsidered: Optional[List[str]] = None,
@@ -211,11 +221,13 @@ class InsufficientExplanation(ScoringRule):
         a strong enough explanation signal
 
     Args:
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
       minRatingsToGetTag: min number occurrences to assign a tag to a note.
       minTagsNeededForStatus: min tags assigned before a note can be CRH/CRNH
       tagsConsidered: set of tags to consider for *all* notes.
     """
-    super().__init__(ruleID, status, dependencies)
+    super().__init__(ruleID, dependencies)
+    self._status = status
     self._minRatingsToGetTag = minRatingsToGetTag
     self._minTagsNeededForStatus = minTagsNeededForStatus
     self._tagsConsidered = tagsConsidered
@@ -264,41 +276,48 @@ class InsufficientExplanation(ScoringRule):
     print(f"CRH / CRNH notes prior to filtering for insufficient explanation: {len(crStats)}")
 
     # Identify impacted notes.
-    impactedNotes = crStats.loc[
-      (~crStats[[c.firstTagKey, c.secondTagKey]].isna()).sum(axis=1) < self._minTagsNeededForStatus,
-      c.noteIdKey,
-    ]
+    noteStatusUpdates = crStats.loc[
+      (~crStats[[c.firstTagKey, c.secondTagKey]].isna()).sum(axis=1) < self._minTagsNeededForStatus
+    ][[c.noteIdKey]]
 
-    pd.testing.assert_series_equal(impactedNotes, impactedNotes.drop_duplicates())
+    pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
 
-    print(f"Total notes impacted by explanation filtering: {len(impactedNotes)}")
+    print(f"Total notes impacted by explanation filtering: {len(noteStatusUpdates)}")
+    noteStatusUpdates[c.ratingStatusKey] = self._status
 
-    return (impactedNotes, None)
+    return (noteStatusUpdates, None)
 
 
 class NMtoCRNH(ScoringRule):
-  def __init__(self, ruleID: RuleID, status: str, dependencies: Set[RuleID]):
-    super().__init__(ruleID, status, dependencies)
+  def __init__(self, ruleID: RuleID, dependencies: Set[RuleID], status: str):
+    """Configure a ScoringRule to set low scoring, non-misleading notes to CRNH.
+
+    Args:
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
+    """
+    super().__init__(ruleID, dependencies)
+    self._status = status
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
   ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
     """Returns noteIds for low scoring notes on non-misleading tweets."""
-    noteIds = noteStats.loc[
+    noteStatusUpdates = noteStats.loc[
       (noteStats[c.noteInterceptKey] < c.crnhThresholdNMIntercept)
       # Require that that the classification is "not misleading" to explicitly exclude deleted
       # notes where the classification is nan.
       & (noteStats[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey)
-    ][c.noteIdKey]
-    return (noteIds, None)
+    ][[c.noteIdKey]]
+    noteStatusUpdates[c.ratingStatusKey] = self._status
+    return (noteStatusUpdates, None)
 
 
 class AddCRHInertia(ScoringRule):
   def __init__(
     self,
     ruleID: RuleID,
-    status: str,
     dependencies: Set[RuleID],
+    status: str,
     threshold: float,
     expectedMax: float,
   ):
@@ -311,10 +330,12 @@ class AddCRHInertia(ScoringRule):
     in note intercepts around the threshold.
 
     Args:
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
       threshold: minimum threshold for marking a note as CRH.
       expectedMax: raise an AssertionError if any note scores above this threshold.
     """
-    super().__init__(ruleID, status, dependencies)
+    super().__init__(ruleID, dependencies)
+    self._status = status
     self._threshold = threshold
     self._expectedMax = expectedMax
 
@@ -345,7 +366,39 @@ class AddCRHInertia(ScoringRule):
     # Validate that all note scores were within the expected range
     noteIntercepts = noteStats.merge(noteIds, on=c.noteIdKey, how="inner")[c.noteInterceptKey]
     assert sum(noteIntercepts > self._expectedMax) == 0, "note exceeded expected maximum"
-    return noteIds[c.noteIdKey], None
+    noteStatusUpdates = noteIds[[c.noteIdKey]]
+    noteStatusUpdates[c.ratingStatusKey] = self._status
+    return (noteStatusUpdates, None)
+
+
+class ScoringDriftGuard(ScoringRule):
+  def __init__(self, ruleID: RuleID, dependencies: Set[RuleID]):
+    """Guards against drift in scoring over time by applying historical note status.
+
+    If a locked status is available for a note, and the locked status diverges from
+    the current status, this rule will set the status to the locked status and preserve
+    the current status in an additional column.
+    """
+    super().__init__(ruleID, dependencies)
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame
+  ) -> (Tuple[pd.Series, Optional[pd.DataFrame]]):
+    """Returns locked status when necessary to impact scoring outcomes."""
+    # identify impacted notes where we need to change a label
+    lockedStatusAvailable = ~pd.isna(noteStats[c.lockedStatusKey])
+    lockedStatusDF = noteStats.loc[lockedStatusAvailable, [c.noteIdKey, c.lockedStatusKey]]
+    mergedLabels = lockedStatusDF.merge(currentLabels, on=c.noteIdKey, how="inner")
+    mergedLabels = mergedLabels.loc[
+      mergedLabels[c.lockedStatusKey] != mergedLabels[c.ratingStatusKey]
+    ]
+    # prepare matrix with new note status
+    noteStatusUpdates = pd.DataFrame(mergedLabels[[c.noteIdKey, c.lockedStatusKey]])
+    noteStatusUpdates = noteStatusUpdates.rename(columns={c.lockedStatusKey: c.ratingStatusKey})
+    # save current labels so we can persist them in a new column
+    unlockedStatus = mergedLabels[[c.noteIdKey, c.ratingStatusKey]].copy()
+    unlockedStatus = unlockedStatus.rename(columns={c.ratingStatusKey: c.unlockedRatingStatusKey})
+    return noteStatusUpdates, unlockedStatus
 
 
 def apply_scoring_rules(noteStats: pd.DataFrame, rules: List[ScoringRule]) -> pd.DataFrame:
@@ -380,25 +433,18 @@ def apply_scoring_rules(noteStats: pd.DataFrame, rules: List[ScoringRule]) -> pd
     rule.check_dependencies(ruleIDs)
     assert rule.get_rule_id() not in ruleIDs, f"repeat ruleID: {rule.get_name()}"
     ruleIDs.add(rule.get_rule_id())
-    activeNotes, additionalColumns = rule.score_notes(noteStats, noteLabels)
+    noteStatusUpdates, additionalColumns = rule.score_notes(noteStats, noteLabels)
     if additionalColumns is not None:
-      assert set(activeNotes) == set(additionalColumns[c.noteIdKey])
+      assert set(noteStatusUpdates[c.noteIdKey]) == set(additionalColumns[c.noteIdKey])
     # Update noteLabels, which will always hold at most one label per note.
-    noteLabels = (
-      pd.concat(
-        [
-          noteLabels,
-          pd.DataFrame.from_dict({c.noteIdKey: activeNotes, c.ratingStatusKey: rule.get_status()}),
-        ]
-      )
-      .groupby(c.noteIdKey)
-      .tail(1)
-    )
+    noteLabels = pd.concat([noteLabels, noteStatusUpdates]).groupby(c.noteIdKey).tail(1)
     # Update note rules to have one row per rule which was active for a note
     noteRules = pd.concat(
       [
         noteRules,
-        pd.DataFrame.from_dict({c.noteIdKey: activeNotes, c.activeRulesKey: rule.get_name()}),
+        pd.DataFrame.from_dict(
+          {c.noteIdKey: noteStatusUpdates[c.noteIdKey], c.activeRulesKey: rule.get_name()}
+        ),
       ]
     )
     # Merge any additional columns into current set of new columns
