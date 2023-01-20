@@ -12,6 +12,7 @@ tagFilteringPercentile = 95
 minAdjustedTagWeight = 1.5
 crhSuperThreshold = 0.50
 inertiaDelta = 0.01
+noteLockMillis = 14 * 24 * 60 * 60 * 1000
 
 # Explanation Tags
 minRatingsToGetTag = 2
@@ -31,6 +32,7 @@ useGlobalIntercept = True
 convergence = 1e-7
 initLearningRate = 0.2
 noInitLearningRate = 1.0
+addPseudoRaters = True
 
 # Data Filters
 minNumRatingsPerRater = 10
@@ -77,6 +79,7 @@ firstTagKey = "firstTag"
 secondTagKey = "secondTag"
 activeRulesKey = "activeRules"
 activeFilterTagsKey = "activeFilterTags"
+unlockedRatingStatusKey = "unlockedRatingStatus"
 
 # Contributor Counts
 successfulRatingHelpfulCount = "successfulRatingHelpfulCount"
@@ -94,8 +97,25 @@ notesAwaitingMoreRatings = "notesAwaitingMoreRatings"
 # Model Output
 noteInterceptKey = "noteIntercept"
 raterInterceptKey = "raterIntercept"
-noteFactor1Key = "noteFactor1"
-raterFactor1Key = "raterFactor1"
+noteFactorKeyBase = "noteFactor"
+raterFactorKeyBase = "raterFactor"
+
+
+def note_factor_key(i):
+  return noteFactorKeyBase + str(i)
+
+
+def rater_factor_key(i):
+  return raterFactorKeyBase + str(i)
+
+
+noteFactor1Key = note_factor_key(1)
+raterFactor1Key = rater_factor_key(1)
+
+extraRaterInterceptKey = "extraRaterIntercept"
+extraRaterFactor1Key = "extraRaterFactor1"
+extraRatingHelpfulNumKey = "extraRatingHelpfulNum"
+
 
 # Ids and Indexes
 noteIdKey = "noteId"
@@ -255,6 +275,8 @@ timestampMillisOfNoteCurrentLabelKey = "timestampMillisOfCurrentStatus"
 currentLabelKey = "currentStatus"
 timestampMillisOfNoteMostRecentNonNMRLabelKey = "timestampMillisOfLatestNonNMRStatus"
 mostRecentNonNMRLabelKey = "mostRecentNonNMRStatus"
+timestampMillisOfStatusLockKey = "timestampMillisOfStatusLock"
+lockedStatusKey = "lockedStatus"
 
 noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
@@ -266,13 +288,14 @@ noteStatusHistoryTSVColumnsAndTypes = [
   (currentLabelKey, np.object),
   (timestampMillisOfNoteMostRecentNonNMRLabelKey, np.double),  # double because nullable.
   (mostRecentNonNMRLabelKey, np.object),
+  (timestampMillisOfStatusLockKey, np.double),  # double because nullable.
+  (lockedStatusKey, np.object),
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypes = [dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypeMapping = {
   col: dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes
 }
-
 
 # Earn In + Earn Out
 enrollmentState = "enrollmentState"
@@ -312,27 +335,50 @@ userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
 
-scoredNotesColumns = (
-  [noteIdKey, helpfulNumKey]
-  + helpfulTagsTSVOrder
-  + notHelpfulTagsTSVOrder
-  + [
+noteParameterUncertaintyTSVColumnsAndTypes = [
+  ("noteFactor1_max", np.double),
+  ("noteFactor1_median", np.double),
+  ("noteFactor1_min", np.double),
+  ("noteFactor1_refit_orig", np.double),
+  ("noteIntercept_max", np.double),
+  ("noteIntercept_median", np.double),
+  ("noteIntercept_min", np.double),
+  ("noteIntercept_refit_orig", np.double),
+  ("ratingCount_all", np.int64),
+  ("ratingCount_neg_fac", np.int64),
+  ("ratingCount_pos_fac", np.int64),
+]
+noteParameterUncertaintyTSVColumns = [
+  col for (col, _) in noteParameterUncertaintyTSVColumnsAndTypes
+]
+noteParameterUncertaintyTSVTypes = [
+  dtype for (_, dtype) in noteParameterUncertaintyTSVColumnsAndTypes
+]
+noteParameterUncertaintyTSVTypeMapping = {
+  col: dtype for (col, dtype) in noteParameterUncertaintyTSVColumnsAndTypes
+}
+
+auxilaryScoredNotesTSVColumns = (
+  [
+    noteIdKey,
+    ratingWeightKey,
+    helpfulNumKey,
     numRatingsKey,
-    noteInterceptKey,
-    noteFactor1Key,
-    ratingStatusKey,
-    firstTagKey,
-    secondTagKey,
     createdAtMillisKey,
     noteAuthorParticipantIdKey,
-    activeRulesKey,
-    activeFilterTagsKey,
-    classificationKey,
+    awaitingMoreRatingsBoolKey,
+    numRatingsLast28DaysKey,
+    noteCountKey,
+    currentLabelKey,
+    currentlyRatedHelpfulBoolKey,
+    currentlyRatedNotHelpfulBoolKey,
+    unlockedRatingStatusKey,
   ]
-)
-
-auxilaryScoredNotesColumns = (
-  [noteIdKey, ratingWeightKey] + notHelpfulTagsAdjustedColumns + notHelpfulTagsAdjustedRatioColumns
+  + helpfulTagsTSVOrder
+  + notHelpfulTagsTSVOrder
+  + notHelpfulTagsAdjustedColumns
+  + notHelpfulTagsAdjustedRatioColumns
+  + noteParameterUncertaintyTSVColumns
 )
 
 noteModelOutputTSVColumnsAndTypes = [
@@ -342,6 +388,10 @@ noteModelOutputTSVColumnsAndTypes = [
   (ratingStatusKey, np.str),
   (firstTagKey, np.str),
   (secondTagKey, np.str),
+  (activeRulesKey, np.str),
+  (activeFilterTagsKey, np.str),
+  (classificationKey, np.str),
+  (createdAtMillisKey, np.int64),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}

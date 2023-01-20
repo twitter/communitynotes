@@ -44,8 +44,8 @@ def run_scoring():
   _, ratings, noteStatusHistory, userEnrollment = process_data.get_data(
     args.notes_path, args.ratings_path, args.note_status_history_path, args.enrollment
   )
-  noteParams, _, _, _ = algorithm.run_algorithm(ratings, noteStatusHistory, userEnrollment)
-  process_data.write_scored_notes(noteParams)
+  scoredNotes, _, _, _ = algorithm.run_algorithm(ratings, noteStatusHistory, userEnrollment)
+  process_data.write_tsv_local(scoredNotes, c.scoredNotesOutputPath)
   print("Finished.")
 
 
