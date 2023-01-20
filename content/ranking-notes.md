@@ -134,8 +134,8 @@ Similarly, if a note was impacted by tag outlier filter and required note interc
 
 ## Status Stabilization
 
-As Community Notes has scaled from inception to global availability we've seen an increasing number of notes and reviews spanning a widening array of topics.
-With the increased volume of community contributions, ranking data for older and newer notes has diverged: newer notes are able to receive more reviews from a wider range of contributors while the available ranking data for older notes remains more limited.
+As Community Notes has scaled from inception to global availability we've seen an increasing number of notes and ratings spanning a widening array of topics.
+With the increased volume of community contributions, ranking data for older and newer notes has diverged: newer notes are able to receive more ratings from a wider range of contributors while the available ranking data for older notes remains more limited.
 As older data comprise an increasingly small fraction of the dataset, ranking results have tended to fluctuate and some notes have lost Helpful status.
 
 To maintain Helpful note quality as Community Notes continues to grow, we are adding logic which stabilizes the status of a note once the note is two weeks old.
@@ -192,7 +192,7 @@ For not-helpful notes:
 2. <div>Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.</div>
 3. <div>Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in <a href="../contributor-scores/#filtering-ratings-based-on-helpfulness-scores">Filtering Ratings Based on Helpfulness Scores</a>.</div>
 4. <div>Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3.</div>
-5. <div>Update status labels for any notes written within the last two weeks based the intercept terms (scores) and review tags.  Stabilize helpfulness status for any notes older than two weeks.</div>
+5. <div>Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags.  Stabilize helpfulness status for any notes older than two weeks.</div>
 6. <div>Assign the top two explanation tags that match the note’s final status label as in <a href="./#determining-note-status-explanation-tags">Determining Note Status Explanation Tags</a>, or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.</div>
 
 <br/>
