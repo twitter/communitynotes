@@ -16,7 +16,7 @@ def note_post_processing(
   userEnrollment: pd.DataFrame,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Given scored Birdwatch notes and rater helpfulness, calculate contributor scores and update noteStatusHistory, as described in
-  and https://twitter.github.io/birdwatch/contributor-scores/.
+  and https://twitter.github.io/communitynotes/contributor-scores/.
 
   Args:
       ratings (pd.DataFrame): preprocessed ratings
@@ -118,8 +118,8 @@ def run_algorithm(
   epochs: int = c.epochs,
   seed: Optional[int] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-  """Run the entire Birdwatch scoring algorithm, as described in https://twitter.github.io/birdwatch/ranking-notes/
-  and https://twitter.github.io/birdwatch/contributor-scores/.
+  """Run the entire Birdwatch scoring algorithm, as described in https://twitter.github.io/communitynotes/ranking-notes/
+  and https://twitter.github.io/communitynotes/contributor-scores/.
 
   Args:
       ratings (pd.DataFrame): preprocessed ratings

@@ -12,7 +12,7 @@ This helps ensure that notes are helpful to a wide range of people.
 
 To make it clear how all of this works, Birdwatch's algorithm is open source, and all the data is public.
 
-See the code on Github: [twitter.github.io/birdwatch](https://twitter.github.io/birdwatch)
+See the code on Github: [twitter.github.io/communitynotes](https://twitter.github.io/communitynotes)
 
 Birdwatch
 
