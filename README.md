@@ -38,7 +38,7 @@ The algorithm that powers Community Notes can be found on the [sourcecode folder
 
 ### Community Notes data
 
-All notes and ratings are [publicly available](https://twitter.com/i/birdwatch/download-data). Instructions on how to use them can be found in the [Community Notes Guide](https://twitter.github.io/communitynotes/download-data/).
+All notes and ratings are [publicly available](https://twitter.com/i/communitynotes/download-data). Instructions on how to use them can be found in the [Community Notes Guide](https://twitter.github.io/communitynotes/download-data/).
 
 ### Community Notes paper
 

@@ -49,7 +49,7 @@ It’s crucial that people feel safe contributing to Community Notes and aren’
 
 - Second, contributors have an open communication line with the Community Notes team to report any issues they experience (they can reach us by DM [@CommunityNotes](https://twitter.com/communitynotes)). Community Notes has a dedicated community manager who gathers and responds to contributors’ feedback or concerns via this handle. This provides a way for contributors to flag potential issues to the Community Notes team.
 
-- Finally, all Community Notes contributions are subject to Twitter [Rules](https://help.twitter.com/rules-and-policies/twitter-rules), [Terms of Service](https://twitter.com/tos) and [Privacy Policy](https://twitter.com/privacy). If you think note might not abide by the rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using the [Report a Community Note](https://help.twitter.com/en/forms/birdwatch) form. This provides a mechanism to address violating content in notes.
+- Finally, all Community Notes contributions are subject to Twitter [Rules](https://help.twitter.com/rules-and-policies/twitter-rules), [Terms of Service](https://twitter.com/tos) and [Privacy Policy](https://twitter.com/privacy). If you think note might not abide by the rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using the [Report a Community Note](https://help.twitter.com/en/forms/community-note) form. This provides a mechanism to address violating content in notes.
 
 ### Reducing the impacts of low quality contributions on the system
 
