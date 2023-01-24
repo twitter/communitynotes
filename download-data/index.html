@@ -859,8 +859,15 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 <hr>
 <div class="gdoc-page__anchorwrap"><h2 id="working-with-the-community-notes-data">Working with the Community Notes data<a data-clipboard-text="https://twitter.github.io/communitynotes/download-data/#working-with-the-community-notes-data" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Working with the Community Notes data" href="#working-with-the-community-notes-data"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <div class="gdoc-page__anchorwrap"><h3 id="data-snapshots">Data snapshots<a data-clipboard-text="https://twitter.github.io/communitynotes/download-data/#data-snapshots" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Data snapshots" href="#data-snapshots"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
-<p>The <a href="https://twitter.com/i/communitynotes/download-data">Community Notes data</a> is released as three separate files: one containing a table representing all notes, one containing a table representing all ratings, and one containing a table with metadata about notes including what statuses they received and when. These tables can be joined together on the noteId field to create a combined dataset with information about notes and their ratings. The data is released in three separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model).</p>
-<p>Currently, we release one cumulative file each for notes, notes status history, and note ratings. However, in the future, if the data ever grows too large, we will split the data into multiple files as needed.</p>
+<p>The <a href="https://twitter.com/i/communitynotes/download-data">Community Notes data</a> is released as four separate files:</p>
+<ul>
+<li><strong>Notes:</strong> Contains a table representing all notes</li>
+<li><strong>Ratings:</strong> Contains a table representing all ratings</li>
+<li><strong>Note Status History:</strong> Contains a table with metadata about notes including what statuses they received and when.</li>
+<li><strong>User Enrollment:</strong> Contains a table with metadata about each user&rsquo;s enrollment state.</li>
+</ul>
+<p>These tables can be joined together on the noteId field to create a combined dataset with information about users, notes, and their ratings. The data is released in separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model).</p>
+<p>Currently, we release one cumulative file each for notes, notes status history, note ratings, and user enrollment. However, in the future, if the data ever grows too large, we will split the data into multiple files as needed.</p>
 <p>A new snapshot of the Community Notes public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshots are cumulative files, but only contain notes and ratings that were created as of 48 hours before the dataset release time. When notes and ratings are deleted, they will no longer be released in any future versions of the data downloads, although the note status history dataset will continue to contain metadata about all scored notes even after they’ve been deleted, which includes noteId, creation time, the hashed participant ID of the note’s author, and a history of which statuses each notes received and when; however, all of the content of the note itself e.g. the note’s text will no longer be available.</p>
 <p>The <a href="https://twitter.com/i/communitynotes/download-data">data download page in Community Notes</a> displays a date stamp indicating the most recent date of data included in the downloadable files.</p>
 <div class="gdoc-page__anchorwrap"><h3 id="file-structure">File structure<a data-clipboard-text="https://twitter.github.io/communitynotes/download-data/#file-structure" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor File structure" href="#file-structure"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
@@ -870,13 +877,27 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
   <div class="gdoc-page__anchorwrap"><h3 id="updates-to-the-data">Updates to the Data<a data-clipboard-text="https://twitter.github.io/communitynotes/download-data/#updates-to-the-data" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Updates to the Data" href="#updates-to-the-data"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
 <p>As we iterate and improve Community Notes, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms, or additional metadata shared about notes and rating. When we do this, some question fields / columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and other updates we have made to the data, as well as when those changes were made.</p>
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="3040c1f2-0">
+  <label class="gdoc-expand__head flex justify-between" for="68ab0956-0">
+    <span>2022-11-25 - New User Enrollment dataset </span>
+    <svg width="18" height="11" viewBox="0 0 18 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.2069 1.04299C16.8169 0.652988 16.1839 0.652988 15.7929 1.04299L8.99988 7.83599L2.20688 1.04299C1.81688 0.652988 1.18388 0.652988 0.792875 1.04299C0.401875 1.43299 0.402875 2.06599 0.792875 2.45699L8.29288 9.95699C8.48788 10.152 8.74288 10.25 8.99988 10.25C9.25688 10.25 9.51187 10.152 9.70687 9.95699L17.2069 2.45699C17.5969 2.06699 17.5969 1.43399 17.2069 1.04299Z" fill="#AAB8C2"/>
+      </svg>
+  </label>
+  <input id="68ab0956-0" type="checkbox" class="gdoc-expand__control hidden" />
+  <div class="gdoc-markdown--nested gdoc-expand__content">
+    <ul>
+<li>New dataset with user enrollment states. These states define what actions users can take in the system (eg. rating, writing).</li>
+</ul>
+  </div>
+</div>
+<div class="gdoc-expand">
+  <label class="gdoc-expand__head flex justify-between" for="3040c1f2-1">
     <span>2022-10-27 - Deprecated fields in note writing form </span>
     <svg width="18" height="11" viewBox="0 0 18 11" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M17.2069 1.04299C16.8169 0.652988 16.1839 0.652988 15.7929 1.04299L8.99988 7.83599L2.20688 1.04299C1.81688 0.652988 1.18388 0.652988 0.792875 1.04299C0.401875 1.43299 0.402875 2.06599 0.792875 2.45699L8.29288 9.95699C8.48788 10.152 8.74288 10.25 8.99988 10.25C9.25688 10.25 9.51187 10.152 9.70687 9.95699L17.2069 2.45699C17.5969 2.06699 17.5969 1.43399 17.2069 1.04299Z" fill="#AAB8C2"/>
       </svg>
   </label>
-  <input id="3040c1f2-0" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="3040c1f2-1" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <ul>
 <li>Deprecated Columns
@@ -890,13 +911,13 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
   </div>
 </div>
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="fd5ce9ea-1">
+  <label class="gdoc-expand__head flex justify-between" for="fd5ce9ea-2">
     <span>2022-07-19 - New Note Status History dataset </span>
     <svg width="18" height="11" viewBox="0 0 18 11" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M17.2069 1.04299C16.8169 0.652988 16.1839 0.652988 15.7929 1.04299L8.99988 7.83599L2.20688 1.04299C1.81688 0.652988 1.18388 0.652988 0.792875 1.04299C0.401875 1.43299 0.402875 2.06599 0.792875 2.45699L8.29288 9.95699C8.48788 10.152 8.74288 10.25 8.99988 10.25C9.25688 10.25 9.51187 10.152 9.70687 9.95699L17.2069 2.45699C17.5969 2.06699 17.5969 1.43399 17.2069 1.04299Z" fill="#AAB8C2"/>
       </svg>
   </label>
-  <input id="fd5ce9ea-1" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="fd5ce9ea-2" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <ul>
 <li>Added entirely new note status history dataset</li>
@@ -904,13 +925,13 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
   </div>
 </div>
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="ebddede1-2">
+  <label class="gdoc-expand__head flex justify-between" for="ebddede1-3">
     <span>2021-12-15 - Updated Note Rating Questions</span>
     <svg width="18" height="11" viewBox="0 0 18 11" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M17.2069 1.04299C16.8169 0.652988 16.1839 0.652988 15.7929 1.04299L8.99988 7.83599L2.20688 1.04299C1.81688 0.652988 1.18388 0.652988 0.792875 1.04299C0.401875 1.43299 0.402875 2.06599 0.792875 2.45699L8.29288 9.95699C8.48788 10.152 8.74288 10.25 8.99988 10.25C9.25688 10.25 9.51187 10.152 9.70687 9.95699L17.2069 2.45699C17.5969 2.06699 17.5969 1.43399 17.2069 1.04299Z" fill="#AAB8C2"/>
       </svg>
   </label>
-  <input id="ebddede1-2" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="ebddede1-3" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <p><strong>Updated Columns</strong></p>
 <ul>
@@ -926,13 +947,13 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
   </div>
 </div>
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="aecb918f-3">
+  <label class="gdoc-expand__head flex justify-between" for="aecb918f-4">
     <span>2021-06-30 - Updated Note Rating Questions</span>
     <svg width="18" height="11" viewBox="0 0 18 11" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M17.2069 1.04299C16.8169 0.652988 16.1839 0.652988 15.7929 1.04299L8.99988 7.83599L2.20688 1.04299C1.81688 0.652988 1.18388 0.652988 0.792875 1.04299C0.401875 1.43299 0.402875 2.06599 0.792875 2.45699L8.29288 9.95699C8.48788 10.152 8.74288 10.25 8.99988 10.25C9.25688 10.25 9.51187 10.152 9.70687 9.95699L17.2069 2.45699C17.5969 2.06699 17.5969 1.43399 17.2069 1.04299Z" fill="#AAB8C2"/>
       </svg>
   </label>
-  <input id="aecb918f-3" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="aecb918f-4" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <ul>
 <li>Note Helpfulness question now has 3 response categories (Yes, Somewhat, No), rather than 2 (originally: Yes, No)</li>
@@ -1394,6 +1415,51 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 <td>Int</td>
 <td>User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15</td>
 <td>1 if “Note not needed on this Tweet” is selected, else 0.</td>
+</tr>
+</tbody>
+</table>
+
+    </div>
+  
+    <input type="radio" class="gdoc-tabs__control hidden" name="tabs-uniqueid" id="tabs-uniqueid-3"
+       />
+    <label for="tabs-uniqueid-3" class="gdoc-tabs__label">
+      User Enrollment
+    </label>
+    <div class="gdoc-markdown--nested gdoc-tabs__content">
+      <table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Descripton</th>
+<th>Response values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>participantId</code></td>
+<td>String</td>
+<td>A Community Notes-specific user identifier of the user who authored the rating. This is a permanent id, which remains stable even if the user changes their username/handle.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>enrollmentState</code></td>
+<td>String</td>
+<td>Defines the user&rsquo;s enrollment state and the actions they can take on the system</td>
+<td><code>newUser</code>: newly admitted users, who only have rating ability. <br/> <code>earnedIn</code>: users who&rsquo;ve earned writing ability. <br/> <code>atRisk</code>: users who are one Not Helpful note away from having writing ability locked. <br/> <code>earnedOutNoAcknowledge</code>: users with writing ability locked that have not yet clicked the acknowledgement button it in the product. <br/> <code>earnedOutAcknowledge</code>: users who&rsquo;ve lost the ability to write and acknowledged it in the product, at which point their ratings start counting towards going back to <code>earnedIn</code>.</td>
+</tr>
+<tr>
+<td><code>successfulRatingNeededToEarnIn</code></td>
+<td>Number</td>
+<td>The target Rating Impact a user has to reach to earn the ability to write notes. Starts</td>
+<td></td>
+</tr>
+<tr>
+<td><code>timestampOfLastStateChange</code></td>
+<td>String</td>
+<td>The timestamp, in milliseconds since epoch, of the most recent user enrollment state change</td>
+<td></td>
 </tr>
 </tbody>
 </table>
