@@ -6,7 +6,7 @@ aliases: ["/data", "/about/data", "/contributing/data"]
 
 We can't wait to learn with you!
 
-All Community Notes contributions are publicly available on the [Download Data](https://twitter.com/i/birdwatch/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
+All Community Notes contributions are publicly available on the [Download Data](https://twitter.com/i/communitynotes/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
 
 If you have questions or feedback about the Community Notes public data or would like to share your analyses of this data with us, please DM us at [@CommunityNotes](http://twitter.com/communitynotes).
 
@@ -31,7 +31,7 @@ Currently, we release one cumulative file each for notes, notes status history, 
 
 A new snapshot of the Community Notes public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshots are cumulative files, but only contain notes and ratings that were created as of 48 hours before the dataset release time. When notes and ratings are deleted, they will no longer be released in any future versions of the data downloads, although the note status history dataset will continue to contain metadata about all scored notes even after they’ve been deleted, which includes noteId, creation time, the hashed participant ID of the note’s author, and a history of which statuses each notes received and when; however, all of the content of the note itself e.g. the note’s text will no longer be available.
 
-The [data download page in Community Notes](https://twitter.com/i/birdwatch/download-data) displays a date stamp indicating the most recent date of data included in the downloadable files.
+The [data download page in Community Notes](https://twitter.com/i/communitynotes/download-data) displays a date stamp indicating the most recent date of data included in the downloadable files.
 
 ### File structure
 
