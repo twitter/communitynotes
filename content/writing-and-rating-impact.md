@@ -42,7 +42,7 @@ Note statuses can change any time as more ratings come in, and can be overturned
 
 ### How do I increase my Rating Impact?
 
-To increase this impact, you should look for notes that still need more ratings, and rate them. The best ways to do this are by browsing the [Needs Your Help](https://twitter.com/i/birdwatch/needs_your_help) tab in Community Notes, and by looking out for alerts when a note needs your rating.
+To increase this impact, you should look for notes that still need more ratings, and rate them. The best ways to do this are by browsing the [Needs Your Help](https://twitter.com/i/communitynotes/needs_your_help) tab in Community Notes, and by looking out for alerts when a note needs your rating.
 
 1. <div><strong> Help identify notes as Helpful</strong>
    <label>When you help a note earn the status of Helpful, it gets shown on Twitter as context, helping keep people informed.</label></div>

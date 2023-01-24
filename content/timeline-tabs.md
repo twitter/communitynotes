@@ -5,7 +5,7 @@ geekdocBreadcrumb: false
 geekdocToc: 1
 ---
 
-Community Notes participants are able to view three different tabs on the [Community Notes Home](http://birdwatch.twitter.com) page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
+Community Notes participants are able to view three different tabs on the [Community Notes Home](https://communitynotes.twitter.com) page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
 
 {{< figure src="../images/home.png">}}
 

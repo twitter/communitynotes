@@ -21,7 +21,7 @@ It’s important that the benefits of aliases don’t come at the expense of acc
 
 ## How to choose your alias
 
-Contributors can visit [this link](https://twitter.com/i/birdwatch/u/me) to choose an alias. You'll have 5 random options to pick from, and at this time choices cannot be changed.
+Contributors can visit [this link](https://twitter.com/i/communitynotes/u/me) to choose an alias. You'll have 5 random options to pick from, and at this time choices cannot be changed.
 
 {{< figure src="../images/alias-02.png">}}
 

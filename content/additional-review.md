@@ -51,7 +51,7 @@ If you believe a note rated “helpful” on your Tweet doesn’t add helpful co
             // get the tweet id
             var tweetId = text.split("/status/")[1].split("?")[0];
             if (tweetId.match(/^[0-9]+$/)) {
-            window.open("https://twitter.com/i/birdwatch/t/" + tweetId, "_blank");
+            window.open("https://twitter.com/i/communitynotes/t/" + tweetId, "_blank");
         } else {
             alert("Invalid Tweet URL");
         }

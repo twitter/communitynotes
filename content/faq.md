@@ -61,7 +61,7 @@ The people on Twitter span a wide gamut of backgrounds and experiences, and we l
 
 {{< expand "Will researchers and others outside of Twitter be able to download and analyze the data? " >}}
 
-All Community Notes' data are made publicly available on the [Download Data](https://twitter.com/i/birdwatch/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better. [You can learn more about our data here.](../data)
+All Community Notes' data are made publicly available on the [Download Data](https://twitter.com/i/communitynotes/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better. [You can learn more about our data here.](../data)
 
 {{< /expand >}}
 
@@ -81,7 +81,7 @@ Tweet authors with Community Notes on their Tweets can request additional review
 
 All contributors and all Community Notes contributions are subject to the Twitter Rules. Failure to abide by the rules can result in removal from the Community Notes program, and/or other remediations.
 
-If you believe a note may have violated the Twitter Rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using [this form](https://help.twitter.com/en/forms/birdwatch).
+If you believe a note may have violated the Twitter Rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using [this form](https://help.twitter.com/en/forms/community-note).
 
 Contributors who consistently write unhelpful notes may also have their [ability to write new notes temporarily locked](../writing-ability).
 

@@ -8,7 +8,7 @@ There are two ways to find Tweets with Community Notes in order to rate their qu
 
 ## Rating notes on the Community Notes site
 
-Go to the [**Community Notes Home page**](https://birdwatch.twitter.com) and choose any Tweet to see notes that contributors have added to it. There are three main timelines on this page:
+Go to the [**Community Notes Home page**](https://communitynotes.twitter.com) and choose any Tweet to see notes that contributors have added to it. There are three main timelines on this page:
 
 - **Needs your help:** Contains Tweets with notes where you can have the most impact when rating. This tab is only visible to Community Notes contributors.
 
