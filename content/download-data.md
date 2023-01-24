@@ -6,7 +6,7 @@ aliases: ["/data", "/about/data", "/contributing/data"]
 
 We can't wait to learn with you!
 
-All Community Notes contributions are publicly available on the [Download Data](https://twitter.com/i/communitynotes/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
+All Community Notes contributions are publicly available on the [Download Data](https://twitter.com/i/birdwatch/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
 
 If you have questions or feedback about the Community Notes public data or would like to share your analyses of this data with us, please DM us at [@CommunityNotes](http://twitter.com/communitynotes).
 
@@ -18,13 +18,20 @@ If you have questions or feedback about the Community Notes public data or would
 
 ### Data snapshots
 
-The [Community Notes data](https://twitter.com/i/communitynotes/download-data) is released as three separate files: one containing a table representing all notes, one containing a table representing all ratings, and one containing a table with metadata about notes including what statuses they received and when. These tables can be joined together on the noteId field to create a combined dataset with information about notes and their ratings. The data is released in three separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model).
+The [Community Notes data](https://twitter.com/i/birdwatch/download-data) is released as four separate files:
 
-Currently, we release one cumulative file each for notes, notes status history, and note ratings. However, in the future, if the data ever grows too large, we will split the data into multiple files as needed.
+- **Notes:** Contains a table representing all notes
+- **Ratings:** Contains a table representing all ratings
+- **Note Status History:** Contains a table with metadata about notes including what statuses they received and when.
+- **User Enrollment:** Contains a table with metadata about each user's enrollment state.
+
+These tables can be joined together on the noteId field to create a combined dataset with information about users, notes, and their ratings. The data is released in separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model).
+
+Currently, we release one cumulative file each for notes, notes status history, note ratings, and user enrollment. However, in the future, if the data ever grows too large, we will split the data into multiple files as needed.
 
 A new snapshot of the Community Notes public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshots are cumulative files, but only contain notes and ratings that were created as of 48 hours before the dataset release time. When notes and ratings are deleted, they will no longer be released in any future versions of the data downloads, although the note status history dataset will continue to contain metadata about all scored notes even after they’ve been deleted, which includes noteId, creation time, the hashed participant ID of the note’s author, and a history of which statuses each notes received and when; however, all of the content of the note itself e.g. the note’s text will no longer be available.
 
-The [data download page in Community Notes](https://twitter.com/i/communitynotes/download-data) displays a date stamp indicating the most recent date of data included in the downloadable files.
+The [data download page in Community Notes](https://twitter.com/i/birdwatch/download-data) displays a date stamp indicating the most recent date of data included in the downloadable files.
 
 ### File structure
 
@@ -37,6 +44,12 @@ Each data snapshot table is stored in tsv (tab-separated values) file format wit
 ### Updates to the Data
 
 As we iterate and improve Community Notes, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms, or additional metadata shared about notes and rating. When we do this, some question fields / columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and other updates we have made to the data, as well as when those changes were made.
+
+{{< expand "2022-11-25 - New User Enrollment dataset " >}}
+
+- New dataset with user enrollment states. These states define what actions users can take in the system (eg. rating, writing).
+
+{{< / expand >}}
 
 {{< expand "2022-10-27 - Deprecated fields in note writing form " >}}
 
@@ -181,6 +194,17 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `notHelpfulIrrelevantSources`            | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-06-30                                                                               | 1 if “Sources do not support note” is selected, else 0.          |
 | `notHelpfulOpinionSpeculation`           | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Opinion or speculation” is selected, else 0.               |
 | `notHelpfulNoteNotNeeded`                | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Note not needed on this Tweet” is selected, else 0.        |
+
+{{< /tab >}}
+
+{{< tab "User Enrollment" >}}
+
+| Field                            | Type   | Descripton                                                                                                                                                                   | Response values                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `participantId`                  | String | A Community Notes-specific user identifier of the user who authored the rating. This is a permanent id, which remains stable even if the user changes their username/handle. |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `enrollmentState`                | String | Defines the user's enrollment state and the actions they can take on the system                                                                                              | `newUser`: newly admitted users, who only have rating ability. <br/> `earnedIn`: users who've earned writing ability. <br/> `atRisk`: users who are one Not Helpful note away from having writing ability locked. <br/> `earnedOutNoAcknowledge`: users with writing ability locked that have not yet clicked the acknowledgement button it in the product. <br/> `earnedOutAcknowledge`: users who've lost the ability to write and acknowledged it in the product, at which point their ratings start counting towards going back to `earnedIn`. |
+| `successfulRatingNeededToEarnIn` | Number | The target Rating Impact a user has to reach to earn the ability to write notes. Starts                                                                                      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `timestampOfLastStateChange`     | String | The timestamp, in milliseconds since epoch, of the most recent user enrollment state change                                                                                  |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 {{< /tab >}}
 
