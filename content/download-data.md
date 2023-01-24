@@ -18,7 +18,7 @@ If you have questions or feedback about the Community Notes public data or would
 
 ### Data snapshots
 
-The [Community Notes data](https://twitter.com/i/birdwatch/download-data) is released as four separate files:
+The [Community Notes data](https://twitter.com/i/communitynotes/download-data) is released as four separate files:
 
 - **Notes:** Contains a table representing all notes
 - **Ratings:** Contains a table representing all ratings
