@@ -149,7 +149,7 @@ def update_note_status_history(
   Returns:
       pd.DataFrame: noteStatusHistory
   """
-  currentTimeMillis = 1000 * time()
+  currentTimeMillis = c.epochMillis
   newScoredNotesSuffix = "_sn"
   mergedStatuses = oldNoteStatusHistory.merge(
     scoredNotes[

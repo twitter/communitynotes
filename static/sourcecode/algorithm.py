@@ -117,6 +117,7 @@ def run_algorithm(
   userEnrollment: pd.DataFrame,
   epochs: int = c.epochs,
   seed: Optional[int] = None,
+  pseudoraters: Optional[bool] = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Run the entire Birdwatch scoring algorithm, as described in https://twitter.github.io/birdwatch/ranking-notes/
   and https://twitter.github.io/birdwatch/contributor-scores/.
@@ -127,6 +128,7 @@ def run_algorithm(
       userEnrollment (pd.DataFrame): The enrollment state for each contributor
       epochs (int, optional): number of epochs to train matrix factorization for. Defaults to c.epochs.
       mf_seed (int, optional): if not None, base distinct seeds for the first and second MF rounds on this value
+      pseudoraters (bool, optional): if True, compute optional pseudorater confidence intervals
 
   Returns:
       Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -206,7 +208,7 @@ def run_algorithm(
 
   # Add pseudo-raters with the most extreme parameters and re-score notes, to estimate
   #  upper and lower confidence bounds on note parameters.
-  if c.addPseudoRaters:
+  if pseudoraters:
     noteIdMap, raterIdMap, noteRatingIds = matrix_factorization.get_note_and_rater_id_maps(
       ratingsHelpfulnessScoreFiltered
     )
@@ -226,6 +228,10 @@ def run_algorithm(
     )
 
     noteParams = noteParams.merge(notesWithConfidenceBounds.reset_index(), on="noteId", how="left")
+
+  else:
+    for col in c.noteParameterUncertaintyTSVColumns:
+      noteParams[col] = np.nan
 
   return note_post_processing(
     ratings, noteParams, raterParams, helpfulnessScores, noteStatusHistory, userEnrollment
