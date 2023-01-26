@@ -76,7 +76,10 @@ def tsv_reader(path: str, mapping, columns):
 
 
 def read_from_tsv(
-  notesPath: str, ratingsPath: str, noteStatusHistoryPath: str, userEnrollmentPath: str
+  notesPath: str,
+  ratingsPath: str,
+  noteStatusHistoryPath: str,
+  userEnrollmentPath: str,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Mini function to read notes, ratings, and noteStatusHistory from TSVs.
 

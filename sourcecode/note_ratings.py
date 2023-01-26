@@ -288,7 +288,11 @@ def compute_scored_notes(
       pd.DataFrame: scoredNotes The scored notes
   """
   last28Days = (
-    1000 * (datetime.now(tz=timezone.utc) - timedelta(days=c.emergingWriterDays)).timestamp()
+    1000
+    * (
+      datetime.fromtimestamp(c.epochMillis / 1000, tz=timezone.utc)
+      - timedelta(days=c.emergingWriterDays)
+    ).timestamp()
   )
   ratingsToUse = pd.DataFrame(
     ratings[[c.noteIdKey, c.helpfulNumKey] + c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder]
