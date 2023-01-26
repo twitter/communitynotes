@@ -1,5 +1,17 @@
+import time
+
 import numpy as np
 
+
+# Store the timestamp at which the constants module is initialized.  Note
+# that module initialization occurs only once regardless of how many times
+# the module is imported (see link below).  Storing a designated timestamp
+# as a constant allow us to:
+#  -Use a consistent notion of "now" throughout scorer execution.
+#  -Overwrite "now" when system testing to reduce spurious diffs.
+#
+# https://docs.python.org/3/tutorial/modules.html#more-on-modules
+epochMillis = 1000 * time.time()
 
 # Note Status Requirements
 minRatingsNeeded = 5
@@ -32,7 +44,6 @@ useGlobalIntercept = True
 convergence = 1e-7
 initLearningRate = 0.2
 noInitLearningRate = 1.0
-addPseudoRaters = True
 
 # Data Filters
 minNumRatingsPerRater = 10
@@ -241,7 +252,7 @@ noteTSVColumnsAndTypes = (
   + notMisleadingTagsAndTypes
   + [
     ("trustworthySources", np.int64),
-    ("summary", np.object),
+    (summaryKey, np.object),
   ]
 )
 noteTSVColumns = [col for (col, dtype) in noteTSVColumnsAndTypes]
@@ -277,6 +288,7 @@ timestampMillisOfNoteMostRecentNonNMRLabelKey = "timestampMillisOfLatestNonNMRSt
 mostRecentNonNMRLabelKey = "mostRecentNonNMRStatus"
 timestampMillisOfStatusLockKey = "timestampMillisOfStatusLock"
 lockedStatusKey = "lockedStatus"
+timestampMillisOfRetroLockKey = "timestampMillisOfRetroLock"
 
 noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
@@ -290,6 +302,7 @@ noteStatusHistoryTSVColumnsAndTypes = [
   (mostRecentNonNMRLabelKey, np.object),
   (timestampMillisOfStatusLockKey, np.double),  # double because nullable.
   (lockedStatusKey, np.object),
+  (timestampMillisOfRetroLockKey, np.double),  # double because nullable.
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypes = [dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
@@ -301,6 +314,7 @@ noteStatusHistoryTSVTypeMapping = {
 enrollmentState = "enrollmentState"
 successfulRatingNeededToEarnIn = "successfulRatingNeededToEarnIn"
 timestampOfLastStateChange = "timestampOfLastStateChange"
+timestampOfLastEarnOut = "timestampOfLastEarnOut"
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 maxHistoryEarnOut = 5
 successfulRatingHelpfulCount = "successfulRatingHelpfulCount"

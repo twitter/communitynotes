@@ -345,7 +345,7 @@ def get_contributor_state(
   )
 
   # We set the new contributor state.
-  contributorScoresWithEnrollment[c.timestampOfLastStateChange] = 1000 * time()
+  contributorScoresWithEnrollment[c.timestampOfLastStateChange] = c.epochMillis
   contributorScoresWithEnrollment.fillna(
     inplace=True,
     value={
