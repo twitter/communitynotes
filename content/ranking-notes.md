@@ -199,7 +199,11 @@ For not-helpful notes:
 
 ## What’s New?
 
-**January 19, 2022**
+**January 20, 2022**
+
+- Updated the helpfulness status of all notes to the historical status on August 15, 2022 or two weeks after note creation, whichever was later.  Notes created within the last two weeks were unimpacted.  We selected August 15, 2022 to include as many scoring improvements as possible while still predating data changes caused by scaling Community Notes.
+
+**January 17, 2022**
 
 - Introduced logic stabilizing helpfulness status once a note is two weeks old.
 - Added an experimental extension to the matrix factorization approach to quantify how much a note intercept may fluctuate.
