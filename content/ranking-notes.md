@@ -12,7 +12,7 @@ geekdocToc: 1
 math: true
 ---
 
-Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the [Community Notes Site’s timelines](../birdwatch-timelines/), and which notes are displayed [on Tweets](../notes-on-twitter/).
+Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses determine which notes are displayed on each of the [Community Notes Site’s timelines](../birdwatch-timelines/), and which notes are displayed [on Tweets](../notes-on-twitter/).
 
 At this time, only notes that indicate a Tweet is “potentially misleading” are eligible to be displayed on Tweets.
 We observed that notes marking a Tweet as "not misleading" were often rated as “Unhelpful - Tweet doesn’t need a note”.
@@ -28,7 +28,7 @@ The sections below describe how notes are assigned statuses, which determines ho
 
 {{< figure src="../images/note-statuses.png">}}
 
-All Community Notes start out with the Needs More Ratings status until they receive at least 5 total ratings.
+All Community Notes start with the Needs More Ratings status until they receive at least 5 total ratings.
 Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful according to the algorithm described below.
 If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on Twitter even if its status is Helpful.
 
@@ -46,7 +46,7 @@ Notes with the status Needs More Ratings remain sorted by recency (newest first)
 
 This ranking mechanism is subject to continuous development and improvement with the aim that Community Notes consistently identifies notes that are found helpful to people from a wide variety of perspectives.
 
-Rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the Helpful / Not Helpful criteria and when that designation appears on the Community Notes site.
+Rating statuses are computed at periodic intervals, so there is a time delay from when a note meets the Helpful / Not Helpful criteria and when that designation appears on the Community Notes site.
 This delay allows Community Notes to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.
 
 ## Helpful Rating Mapping
@@ -61,7 +61,7 @@ When rating notes, contributors answer the question “Is this note helpful?” 
 - `Yes` from the original 2-option version of the rating form maps to `1.0`.
 - `No` from the original 2-option version of the rating form maps to `0.0`.
 
-Specific values in the mapping may change in the future, and will be updated here if so.
+Specific values in the mapping may change in the future, and will be updated here.
 
 ## Matrix Factorization
 
@@ -98,7 +98,7 @@ Note: for now, to avoid overfitting on our very small dataset, we only use 1-dim
 
 In some cases, a note may appear helpful but miss key points about the tweet or lack sources.
 Reviewers who rate a note as "Not Helpful" can associate [tag](examples#helpful-attributes) with their review to identify specific shortcomings of the note.
-When a note has receives especially high levels of a "Not Helpful" tag, we require a higher intercept before rating the note as "Helpful".
+When a note has receives high levels of a "Not Helpful" tag, we require a higher intercept before rating the note as "Helpful".
 This approach helps us to maintain data quality by recognizing when there is a troubling pattern on an otherwise strong note.
 
 We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
@@ -147,7 +147,7 @@ After a note turns two weeks old we store the helpfulness status for that note a
 
 When notes reach a status of Helpful or Not Helpful, they're displayed alongside the top two explanation tags that were given by raters to explain why they rated the note helpful or not.
 
-This is done by simply counting the number of times each explanation tag was given filtered to explanation tags that match the final note status (e.g., if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status is reverted back to “Needs More Ratings” (this is very rare).
+This is done by counting the number of times each explanation tag was given filtered to explanation tags that match the final note status (e.g., if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status is reverted to “Needs More Ratings” (this is rare).
 
 We break ties between multiple explanation tags by picking the less commonly used reasons, given in order below (#1 is the least commonly used and therefore wins all tiebreaks).
 
@@ -241,7 +241,7 @@ For not-helpful notes:
 
 **Feb 28, 2022**
 
-- Launched entirely new algorithm to compute note statuses (Helpful, Not Helpful), which looks for agreement across different viewpoints using a matrix factorization method. Updates contributor helpfulness scores to reflect helpfulness so that contributors whose contributions are helpful to people from a wide range of viewpoints earn higher scores. Uses helpfulness scores to identify a subset of contributor ratings to include in a final round of note scoring. This entirely replaces the previous algorithm which weighted ratings by raters’ helpfulness scores.
+- Launched new algorithm to compute note statuses (Helpful, Not Helpful), which looks for agreement across different viewpoints using a matrix factorization method. Updates contributor helpfulness scores to reflect helpfulness so that contributors whose contributions are helpful to people from a wide range of viewpoints earn higher scores. Uses helpfulness scores to identify a subset of contributor ratings to include in a final round of note scoring. This replaces the previous algorithm which weighted ratings by raters’ helpfulness scores.
 
 **June 30, 2021**
 
@@ -249,7 +249,7 @@ For not-helpful notes:
 
 **June 14, 2021**
 
-- New algorithm to compute note status, which weights ratings by raters’ helpfulness scores, rather than just taking a direct average of ratings.
+- New algorithm to compute note status, which weights ratings by raters’ helpfulness scores, rather than taking a direct average of ratings.
 
 **January 28, 2021**
 

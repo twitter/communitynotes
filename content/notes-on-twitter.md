@@ -29,4 +29,4 @@ If enough contributors rate a note as **not helpful**, it reaches a status of "N
 
 {{< figure src="../images/note-statuses.png">}}
 
-Note statuses are updated as new ratings come in, so notes may show on Twitter and then dissappear. Statuses are locked after 2 weeks.
+Note statuses are updated as new ratings come in, so notes may show on Twitter and then disappear. Statuses are locked after 2 weeks.

@@ -40,7 +40,7 @@ Note statuses can change any time as more ratings come in, and can be overturned
 
 ### How do I increase my Rating Impact?
 
-To increase this impact, you should look for notes that still need more ratings, and rate them. The best ways to do this are by browsing the [Needs Your Help](https://twitter.com/i/communitynotes/needs_your_help) tab in Community Notes, and by looking out for alerts when a note needs your rating.
+To increase this impact, you should look for notes that need more ratings, and rate them. The best ways to do this are by browsing the [Needs Your Help](https://twitter.com/i/communitynotes/needs_your_help) tab in Community Notes, and by looking out for alerts when a note needs your rating.
 
 1. <div><strong> Help identify notes as Helpful</strong>
    <label>When you help a note earn the status of Helpful, it gets shown on Twitter as context, helping keep people informed.</label></div>
@@ -66,11 +66,11 @@ Note statuses [aren’t reached by majority rule](../diversity). A note will rea
 
 Contrasting ratings are important. They help make sure the best notes get seen, and can often help overturn the status of a note. However, contrasting ratings that don't contribute to changing a note's status need to be discounted to prevent simple manipulation strategies. (For example: a contributor acting in bad faith could increase their score by rating many notes randomly and earning Rating Impact for the ones where their rating happened to agree with the status reached.)
 
-This approach helps make sure Rating Impact reflects the overall net impact that people find helpful. We expect everyone to have some contrasting ratings, and this disagreement is important, so don’t worry if you have some!
+This approach helps make sure Rating Impact reflects the net impact that people find helpful. We expect everyone to have some contrasting ratings, and this disagreement is important, so don’t worry if you have some!
 
 ### Do scores change when a note is deleted?
 
-When a note is deleted, its content is removed. However, contributors continue to earn Writing Impact and Rating Impact based on the status of the note. This is important, as it prevents people from gaming impact scores simply by deleting notes that have reached a status of Not Helpful.
+When a note is deleted, its content is removed. However, contributors continue to earn Writing Impact and Rating Impact based on the status of the note. This is important, as it prevents people from gaming impact scores by deleting notes that have reached a status of Not Helpful.
 
 ### Can scores go negative?
 

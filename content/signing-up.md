@@ -47,11 +47,11 @@ These make it more likely that contributors are real people instead of bots or a
 
 If you're having issues with signup due to your phone number, see [Phone number troubleshooting](../phone-faq)
 
-We want anyone to be able to contribute to Community Notes, and may remove or modify some of these criteria as the program evolves and as we observe contributor's ability to promote high quality context that people find helpful.
+We want anyone to be able to contribute to Community Notes, and may remove or modify these criteria as the program evolves and as we observe contributor's ability to promote high quality context that people find helpful.
 
 ## Admissions
 
-Our goal is to admit applicants on a rolling, periodic basis. We will admit all contributors who meet the required criteria, but if we have more applicants than slots, we will randomly admit accounts, prioritizing those more likely to participate due to having been recently active on Twitter, and those that tend to follow and engage with different tweets than existing contributors do — so as to reduce the likelihood that contributors would be predominantly from one ideology, background, or interest space.
+Our goal is to admit applicants on a periodic basis. We will admit all contributors who meet the required criteria, but if we have more applicants than slots, we will randomly admit accounts, prioritizing those more likely to participate due to having been recently active on Twitter, and those that tend to follow and engage with different tweets than existing contributors do — so as to reduce the likelihood that contributors would be predominantly from one ideology, background, or interest space.
 
 ## Contributions are public
 
@@ -59,6 +59,6 @@ To promote transparency, all contributions to Community Notes are [anonymized](.
 
 ## Rules
 
-Contributions are also subject to Twitter [Rules](https://help.twitter.com/rules-and-policies/twitter-rules), [Terms of Service](https://twitter.com/tos) and [Privacy Policy](https://twitter.com/privacy). Failure to abide by the rules can result in removal from the Community Notes program, and/or other remediations.
+Contributions are subject to Twitter [Rules](https://help.twitter.com/rules-and-policies/twitter-rules), [Terms of Service](https://twitter.com/tos) and [Privacy Policy](https://twitter.com/privacy). Failure to abide by the rules can result in removal from the Community Notes program, and/or other remediations.
 
 Anyone can report notes they believe aren’t in accordance with those rules by clicking or tapping the ••• menu on a note, and then selecting "Report", or by using this form.

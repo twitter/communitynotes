@@ -4,7 +4,7 @@ geekdocBreadcrumb: false
 aliases: ["/rating-notes", "/contributing/rating-notes", "/contributing/rating"]
 ---
 
-Ratings help identify which notes are helpful enough to show on Twitter. They also help identify notes that are not helpful and should not be shown.
+Ratings help identify which notes are helpful enough to show on Twitter and notes that are not helpful and should not be shown.
 
 ## Rating notes on the Community Notes site
 
@@ -20,7 +20,7 @@ Go to the [**Community Notes Home page**](https://communitynotes.twitter.com) an
 
 ## Rating notes on Twitter
 
-Community Notes contributors and people on Twitter may also see notes in their timeline when browsing Twitter.
+Community Notes contributors and people on Twitter may also see notes and prompts in their timeline when browsing Twitter.
 
 {{< figure src="../images/notes-on-twitter.png">}}
 

@@ -17,9 +17,9 @@ Attempts at coordinated manipulation represent a crucial risk for open rating sy
 The program currently takes multiple steps to reduce the potential for this type of manipulation:
 
 - First, all Twitter accounts must meet the [eligibility criteria](../signup) to become a Community Notes contributor. For example, having a unique, verified phone number. These criteria are designed to help prevent the creation of large numbers of fake or sock puppet contributor accounts that could be used for inauthentic rating.
-- Second, Community Notes doesn't work like many engagement-based ranking systems, where popular content gains the most visibility and people can simply coordinate to mass upvote or downvote content they don't like or agree with. Instead, Community Notes uses a bridging algorithm — for a note to be shown on a Tweet, it needs to be found helpful by people who have tended to [disagree in their past ratings](../diversity).
+- Second, Community Notes doesn't work like many engagement-based ranking systems, where popular content gains the most visibility and people can coordinate to mass upvote or downvote content they don't like or agree with. Instead, Community Notes uses a bridging algorithm — for a note to be shown on a Tweet, it needs to be found helpful by people who have tended to [disagree in their past ratings](../diversity).
 
-  [Academic](https://www.belfercenter.org/publication/bridging-based-ranking) [research](https://www.google.com/books/edition/Breaking_the_Social_Media_Prism/ORMCEAAAQBAJ?hl=en&gbpv=0) indicates this sort of bridging based ranking can help to identify content that is healthier and higher quality, and reduce the risk of elevating polarizing content.
+  [Academic](https://www.belfercenter.org/publication/bridging-based-ranking) [research](https://www.google.com/books/edition/Breaking_the_Social_Media_Prism/ORMCEAAAQBAJ?hl=en&gbpv=0) indicates that bridging-based ranking can help to identify content that is healthier and higher quality, and reduce the risk of elevating polarizing content.
 
 - In addition to requiring ratings from a diversity of contributors, Community Notes has a [reputation system](../contributor-scores/) in which contributors earn helpfulness scores for contributions that people from a wide range of perspectives find helpful.
 
@@ -29,7 +29,7 @@ The program currently takes multiple steps to reduce the potential for this type
 
 ### Reflecting Diverse Perspectives, Avoiding Biased Outcomes
 
-Community Notes will most be effective if the context it produces can be found to be helpful by people of multiple points of view–not just people from one group or another. To work towards this goal, Community Notes currently takes the following steps:
+Community Notes will be most effective if the context it produces can be found to be helpful by people of multiple points of view–not just people from one group or another. To work towards this goal, Community Notes currently takes the following steps:
 
 - First, as described above, Community Notes uses a [bridging based algorithm](../note-ranking) to identify notes that are likely to be helpful to people from many points of view. This helps to prevent one-sided ratings and to prevent a single group from being able to engage in mass voting to determine what notes are shown.
 
@@ -43,7 +43,7 @@ Community Notes will most be effective if the context it produces can be found t
 
 ### Avoiding Harassment
 
-It’s crucial that people feel safe contributing to Community Notes and aren’t harassed for their contributions. It’s also important that Community Notes itself does not become a vector for harassment. Here are some measures Community Notes takes to keep everyone safe:
+It’s crucial that people feel safe contributing to Community Notes and aren’t harassed for their contributions. It’s also important that Community Notes itself does not become a vector for harassment. Here are measures Community Notes takes to keep everyone safe:
 
 - First, as described above, all contributors get a new, auto-generated [display name (or alias)](../aliases) when they join Community Notes. These aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately. This inhibits public identification and harassment of contributors.
 

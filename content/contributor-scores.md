@@ -16,7 +16,7 @@ In order to get enough data from new raters to be able to assess how similarly t
 
 This score is the proportion of notes you’ve written (that have gotten at least 5 ratings) that have reached the status of Helpful ("Currently Rated Helpful", or CRH), minus 5 times the proportion of notes you wrote that reached the status of Not Helpful ("Currently Rated Not Helpful", or CRNH).
 
-Contributors must have a ratio greater than 0.0 to be included in the [second round of note scoring](../ranking-notes/#complete-algorithm-steps) (contributors need to write at least 5 CRH notes for every 1 CRNH note they write in order for their ratings to count); this only filters out a very small percentage of raters. Labels on notes that have been deleted after May 19, 2022 continue to affect this score, so that the score can’t be trivially changed by deleting CRNH notes.
+Contributors must have a ratio greater than 0.0 to be included in the [second round of note scoring](../ranking-notes/#complete-algorithm-steps) (contributors need to write at least 5 CRH notes for every 1 CRNH note they write in order for their ratings to count); this filters out a small percentage of raters. Labels on notes that have been deleted after May 19, 2022 continue to affect this score, so that the score can’t be trivially changed by deleting CRNH notes.
 
 ### Author Mean Note Score
 
@@ -26,13 +26,13 @@ This score is the average score of notes you’ve written (that have gotten at l
 
 The Rater Helpfulness Score reflects how similar a contributor’s ratings are to the ratings on notes that eventually reached the status of “Helpful” or "Not Helpful” (indicating clear widespread consensus among raters, and not labeled “Needs More Ratings”).
 
-Only [Valid Ratings](./#valid-ratings) are used in computing rater helpfulness scores. This is done to both reward quick rating, and also to prevent one form of artificially gaming this score (retroactively rating old notes with clear labels).
+Only [Valid Ratings](./#valid-ratings) are used in computing rater helpfulness scores. This is done to both reward quick rating, and to prevent one form of artificially gaming this score (retroactively rating old notes with clear labels).
 
 Rater Helpfulness is not defined until the contributor has made at least one valid rating (defined below). Then the Rater Helpfulness Score is the fraction of their valid ratings that match the final note status label of whether the note was rated helpful or not rated helpful.
 
 ## Valid Ratings
 
-A “valid” rating is a rating that’s eligible to be used in determining rater helpfulness scores. The idea is that to prevent manipulation, only ratings that were made before the rater could’ve possibly known what the final note status label is are eligible. To be specific, valid ratings must be:
+A “valid” rating is a rating that’s eligible to be used in determining rater helpfulness scores. The idea is that to prevent manipulation, only ratings that were made before the rater could’ve known what the final note status label is are eligible. To be specific, valid ratings must be:
 
 - Made within the first 48 hours of the note’s creation (because we publicly release all rating data after 48 hours)
 - A rating on a note that eventually ended up getting a Helpful or Not Helpful status, so we can compute whether your rating matched the final note status
@@ -45,9 +45,9 @@ Ratings have the same impact on the note’s final status label whether they are
 
 ## Filtering Ratings Based on Helpfulness Scores
 
-Community Notes gives more weight to contributors who are good at identifying which notes will be helpful (or unhelpful) to people from different points of view. This helps improve note scoring and ranking, and makes manipulation of Community Notes slightly more difficult.
+Community Notes gives more weight to contributors who are good at identifying which notes will be helpful (or unhelpful) to people from different points of view. This helps improve note scoring and ranking, and makes manipulation of Community Notes more difficult.
 
-Specifically, Community Notes does this by incorporating a subset of ratings in a second round of note scoring. Contributors’ ratings are only included in the second round of note scoring if:
+Community Notes does this by incorporating a subset of ratings in a second round of note scoring. Contributors’ ratings are only included in the second round of note scoring if:
 
 - They have made at least 10 total ratings (on notes that have at least 5 ratings) and have made at least 1 [valid rating](./#valid-ratings).
 - Their rater helpfulness score must be at least 0.66

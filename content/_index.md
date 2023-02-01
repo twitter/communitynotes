@@ -82,7 +82,7 @@ Notes are also subject to Twitter rules and can be reported.
 
 {{< /expand >}}
 
-{{< expand "Can regular people really be trusted to do this?" >}}
+{{< expand "Can regular people be trusted to do this?" >}}
 
 We believe regular people can valuably contribute to identifying and adding helpful context to potentially misleading information. Many of the internet’s existing collaborative sites thrive with the help of non-expert contributions — Wikipedia, for example — and, while it’s not a cure-all, research has shown the potential of incorporating crowdsourced based approaches as part of a broader toolkit to address misleading information on the internet, for example:
 

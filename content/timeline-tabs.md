@@ -5,13 +5,13 @@ geekdocBreadcrumb: false
 geekdocToc: 1
 ---
 
-Community Notes participants are able to see a tab of notes that could use their ratings, and also receive notifications about notes that can use their ratings.
+Community Notes participants are able to see a tab of notes that could use their ratings, and receive notifications about notes that need help.
 
 {{< figure src="../images/home.png">}}
 
 ### Needs Your Help tab
 
-This tab is only visible to contributors. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Community Notes can ultimately elevate notes that people from a wide range of perspectives will find helpful. It also gives contributors an easy way to have immediate impact.
+This tab is only visible to contributors. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Community Notes can elevate notes that people from a wide range of perspectives will find helpful. It gives contributors an easy way to have immediate impact.
 
 It contains a set of 10 Tweets that have notes that need more ratings (although there may be fewer than 10 Tweets if one of the Tweets was recently deleted by the author, or if not enough Tweets have new notes that meet the criteria to appear in the NYH tab). Tweets in this tab are filtered to those that the contributor hasn’t rated any of the notes on, and Tweets with notes from the past day, unless no Tweets pass those filters for you (that will only happen if you’re a very active rater!). The tab is updated roughly every hour or two, so when the contributor has rated notes in the tab, they can come back later to see fresh Tweets.
 
@@ -37,9 +37,9 @@ Alerts are optimized to increase the chance that potentially helpful notes on Tw
 **Notes are chosen based on meeting some of the following:**
 
 - Written by an author with high writing impact, or high average helpfulness score of notes they authored.
-- Currently have a status of "Needs More Ratings" (not already "Helpful")
+- Currently have a status of "Needs More Ratings" 
 - Currently have a high helpfulness score, nearing the threshold to earn status of "Helpful"
-- Do not already have a large number of ratings (such that more ratings could change the note's status)
+- Do not have a large number of ratings (such that more ratings could change the note's status)
 
 Notes are sent to a random selection of contributors, excluding the note author and those who have already rated the note. Notifications are also limited by the recipient's notification frequency setting.
 

@@ -32,7 +32,7 @@ For example: If a contributor's Rating Impact was 22 when their ability to write
 
 [Learn more about Rating Impact](../impact) and get tips on how to increase it.
 
-### How can I avoid having my ability to write notes temporarily locked?
+### How can I avoid having my ability to write notes locked?
 
 You'll receive notifications about how your notes have been rated by other contributors, and get alerts if you're at risk of having your ability to write locked. Additionally, all notes with the status of Helpful or Not Helpful show the top feedback tags selected by raters with the status title. Keep an eye out for that feedback, and make sure to read our tips for writing helpful notes.
 

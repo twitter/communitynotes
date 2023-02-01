@@ -27,4 +27,4 @@ You're now a Community Notes contributor 🎉
 ### Confused? Need a hand? Have feedback?
 
 Don’t hesitate to get in touch with the Community Notes team! You can reach us by Tweeting to or DMing
-[@CommunityNotes](https://twitter.com/communitynotes). We’re so glad you’re here!
+[@CommunityNotes](https://twitter.com/communitynotes). We’re glad you’re here!

@@ -20,7 +20,7 @@ You can learn more about aliases [here](../aliases).
 
 {{< /expand >}}
 
-{{< expand "Why does Community Notes allow anyone to write notes, rather than just experts?">}}
+{{< expand "Why does Community Notes allow anyone to write notes, rather than experts?">}}
 
 We believe regular people can valuably contribute to identifying and adding helpful context to potentially misleading information. Many of the internet’s existing collaborative sites thrive with the help of non-expert contributions — Wikipedia, for example — and, while it’s not a cure-all, research has shown the potential of incorporating crowdsourced based approaches as part of a broader toolkit to address misleading information on the internet, for example:
 
@@ -53,7 +53,7 @@ Tweet authors with Community Notes on their Tweets can request additional review
 
 {{< expand "How do I opt-out of the program?" >}}
 
-If you join the program but later want to leave, just DM @CommunityNotes to let the team know.
+If you join the program but later want to leave, DM @CommunityNotes to let the team know.
 
 {{< /expand >}}
 
@@ -83,13 +83,13 @@ Contributors who consistently write unhelpful notes may also have their [ability
 
 {{< expand "How will attempts to abuse or manipulate Community Notes be prevented?" >}}
 
-Community Notes will only be successful if the context it produces is found to be helpful and appropriate by a wide range of people with diverse views. This obviously won’t be true if it can be taken over by a single group or ideology, or used in an abusive manner. We believe this is possible, and will be experimenting with different mechanics and incentives than Twitter to help make it happen. Learn more about how we are approaching these issues [here](../challenges).
+Community Notes will only be successful if the context it produces is found to be helpful and appropriate by a wide range of people with diverse views. This won’t be true if it can be taken over by a single group or ideology, or used in an abusive manner. We believe this is possible, and will be experimenting with different mechanics and incentives than Twitter to help make it happen. Learn more about how we are approaching these issues [here](../challenges).
 
 {{< /expand >}}
 
 ## Research
 
-{{< expand "Will researchers and others outside of Twitter be able to download and analyze the data? " >}}
+{{< expand "Will researchers and others outside Twitter be able to download and analyze the data? " >}}
 
 All Community Notes' data are made publicly available on the [Download Data](https://twitter.com/i/communitynotes/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better. [You can learn more about our data here.](../data)
 
@@ -97,7 +97,7 @@ All Community Notes' data are made publicly available on the [Download Data](htt
 
 {{< expand "Is Twitter working with any outside organizations to build this product?" >}}
 
-A wealth of relevant knowledge exists beyond Twitter’s virtual walls, so we are drawing on external research and collaborating with a variety of groups and organizations for their expertise and input. In building Community Notes, we’ve drawn on input from academic advisors whose expertise includes crowdsourcing, online juries, political science, polarization and more. Their input has helped us shape what Community Notes is today, and will going forward. We’re also [collaborating with professional reviewers](https://twitter.com/communitynotes/status/1422293696041603081) as part of our analysis of the helpfulness & quality of information elevated by Community Notes.
+A wealth of relevant knowledge exists beyond Twitter’s virtual walls, so we are drawing on external research and collaborating with a variety of groups and organizations for their expertise and input. In building Community Notes, we’ve drawn on input from academic advisors whose expertise includes crowdsourcing, online juries, political science, polarization and more. Their input has helped us shape what Community Notes is today. We’re also [collaborating with professional reviewers](https://twitter.com/communitynotes/status/1422293696041603081) as part of our analysis of the helpfulness & quality of information elevated by Community Notes.
 
 {{< /expand >}}
 
