@@ -325,6 +325,31 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 
             <span class="flex">
                 
+                <a href="/communitynotes/rating-notes/"
+                    class="gdoc-nav__entry ">
+                    Rating notes
+                </a>
+            </span>
+        
+
+        
+        
+    </li>
+
+
+    
+    
+
+    <li>
+        
+        
+            
+            
+            
+            
+
+            <span class="flex">
+                
                 <a href="/communitynotes/writing-notes/"
                     class="gdoc-nav__entry ">
                     Writing notes
@@ -353,31 +378,6 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
                 <a href="/communitynotes/writing-ability/"
                     class="gdoc-nav__entry ">
                     Locking and unlocking the ability to write notes
-                </a>
-            </span>
-        
-
-        
-        
-    </li>
-
-
-    
-    
-
-    <li>
-        
-        
-            
-            
-            
-            
-
-            <span class="flex">
-                
-                <a href="/communitynotes/rating-notes/"
-                    class="gdoc-nav__entry ">
-                    Rating notes
                 </a>
             </span>
         
@@ -452,7 +452,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
                 
                 <a href="/communitynotes/notes-on-twitter/"
                     class="gdoc-nav__entry ">
-                    Notes on Twitter
+                    Notes shown on Twitter
                 </a>
             </span>
         
@@ -627,32 +627,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
                 
                 <a href="/communitynotes/ranking-notes/"
                     class="gdoc-nav__entry ">
-                    Note Ranking
-                </a>
-            </span>
-        
-
-        
-        
-    </li>
-
-
-    
-    
-
-    <li>
-        
-        
-            
-            
-            
-            
-
-            <span class="flex">
-                
-                <a href="/communitynotes/note-ranking-code/"
-                    class="gdoc-nav__entry ">
-                    Note Ranking Code
+                    Note ranking logic
                 </a>
             </span>
         
@@ -677,7 +652,32 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
                 
                 <a href="/communitynotes/contributor-scores/"
                     class="gdoc-nav__entry ">
-                    Contributor Scores
+                    Contributor scores
+                </a>
+            </span>
+        
+
+        
+        
+    </li>
+
+
+    
+    
+
+    <li>
+        
+        
+            
+            
+            
+            
+
+            <span class="flex">
+                
+                <a href="/communitynotes/note-ranking-code/"
+                    class="gdoc-nav__entry ">
+                    Open-source code
                 </a>
             </span>
         
@@ -702,7 +702,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
                 
                 <a href="/communitynotes/timeline-tabs/"
                     class="gdoc-nav__entry ">
-                    Timeline tabs
+                    Needs your help ranking
                 </a>
             </span>
         
@@ -859,7 +859,8 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     <img src="../images/alerts-tab.png"/> 
 </figure>
 
-<div class="gdoc-page__anchorwrap"><h3 id="configuring-your-alerts">Configuring your alerts<a data-clipboard-text="https://twitter.github.io/communitynotes/notifications/#configuring-your-alerts" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Configuring your alerts" href="#configuring-your-alerts"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
+<p>To learn more about how Community Notes decides which notes trigger these alerts, see <a href="./timeline-tabs.md">Under the Hood – Needs Your Help</a></p>
+<div class="gdoc-page__anchorwrap"><h3 id="notification-settings">Notification settings<a data-clipboard-text="https://twitter.github.io/communitynotes/notifications/#notification-settings" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Notification settings" href="#notification-settings"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
 <p>The default setting for all contributors is &ldquo;Often&rdquo;, which means you&rsquo;ll start by getting a few alerts per week. You can change that frequency by visiting your Community Notes profile and tapping the gear icon on the top right, or by clicking the button below:</p>
 <figure>
     <img src="../images/alerts-settings.png"/> 
@@ -881,22 +882,6 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
 </a>
 </span>
 
-<div class="gdoc-page__anchorwrap"><h3 id="how-does-community-notes-decide-which-notes-trigger-alerts-for-help">How does Community Notes decide which notes trigger alerts for help?<a data-clipboard-text="https://twitter.github.io/communitynotes/notifications/#how-does-community-notes-decide-which-notes-trigger-alerts-for-help" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor How does Community Notes decide which notes trigger alerts for help?" href="#how-does-community-notes-decide-which-notes-trigger-alerts-for-help"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h3></div>
-<p>Alerts are optimized to increase the chance that potentially helpful notes on Tweets with high predicted visibility get rated by enough people that they have the chance to earn a status of Helpful quickly. Here&rsquo;s our current approach:</p>
-<p><strong>Tweets are chosen based on:</strong></p>
-<ul>
-<li>Projected future Likes and Retweets the Tweet will receive.</li>
-<li>The rater can see the Tweet (for example, excludes Tweets from authors you&rsquo;ve blocked)</li>
-</ul>
-<p><strong>Notes are chosen based on meeting some of the following:</strong></p>
-<ul>
-<li>Written by an author with high writing impact, or high average helpfulness score of notes they authored.</li>
-<li>Currently have a status of &ldquo;Needs More Ratings&rdquo; (not already &ldquo;Helpful&rdquo;)</li>
-<li>Currently have a high helpfulness score, nearing the threshold to earn status of &ldquo;Helpful&rdquo;</li>
-<li>Do not already have a large number of ratings (such that more ratings could change the note&rsquo;s status)</li>
-</ul>
-<p>Notes are sent to a random selection of contributors, excluding the note author and those who have already rated the note. Notifications are also limited by the recipient&rsquo;s notification frequency setting.</p>
-<p>We will continue to experiment with this logic to help ensure Needs Your Help notifications feel high impact and satisfying for contributors.</p>
 <div class="gdoc-page__anchorwrap"><h2 id="other-notifications">Other notifications<a data-clipboard-text="https://twitter.github.io/communitynotes/notifications/#other-notifications" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Other notifications" href="#other-notifications"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <p>Contributors also receive notifications with status updates about the notes they&rsquo;ve written and rated. At this time these are not configurable, but we plan to add more controls in the future.</p>
 

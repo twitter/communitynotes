@@ -13,8 +13,9 @@
       
       <guid>https://twitter.github.io/communitynotes/signing-up/</guid>
       <description>Sign ups are open to everyone. We want anyone to be able to participate and know that having contributors with different points of view is essential to Community Notes helpfully addressing misinformation.
-As there are important nuances in each market, we’ll expand the contributor base country-by-country. We’ll add contributors from a first new country soon.
-Sign up here     Eligibility To become a Community Notes contributor, accounts must have:</description>
+As there are important nuances in each market, we’ll expand the contributor base country-by-country.
+Sign up here     Eligibility To become a Community Notes contributor, accounts must have:
+  No recent notice of Twitter Rules violations Intended to reduce the likelihood of abusive contributions.</description>
     </item>
     
     <item>
@@ -23,9 +24,9 @@ Sign up here     Eligibility To become a Community Notes contributor, accounts m
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/additional-review/</guid>
-      <description>What is Community Notes? Community Notes is a program that allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading. The aim is to keep people on Twitter better informed by showing notes that people from different points of view will find helpful.
-Notes only appear on Tweets when they’ve been rated helpful by enough people from different points of view.
-This program is still in development.</description>
+      <description>Community Notes allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading.
+If you believe a note rated “helpful” on your Tweet doesn’t add helpful context or shouldn’t be there, you can request additional review. Reviews aren’t done by Twitter — they are done by regular people who use Twitter and have signed up to become Community Notes Contributors.
+How additional reviews work:  Tweet authors can request additional contributor review of notes that are rated helpful and are being shown on their Tweet.</description>
     </item>
     
     <item>
@@ -88,7 +89,7 @@ If you have questions or feedback about the Community Notes public data or would
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/faq/</guid>
-      <description>Who is eligible to participate in Community Notes? Is there an approval process?   Anyone can sign up to become contributors. Accounts must meet a few criteria to be eligible. Learn more here.   Are contributions anonymous? Or will my name be attached to my notes?   We want everyone to feel comfortable contributing to Community Notes. Because of that, all contributors get a new, auto-generated display name (or alias) when they join Community Notes.</description>
+      <description>Contributing to Community Notes Who is eligible to participate in Community Notes? Is there an approval process?   Anyone can sign up to become contributors. Accounts must meet a few criteria to be eligible. Learn more here.   Are contributions anonymous? Or will my name be attached to my notes?   We want everyone to feel comfortable contributing to Community Notes. Because of that, all contributors get a new, auto-generated display name (or alias) when they join Community Notes.</description>
     </item>
     
     <item>
@@ -122,6 +123,16 @@ Everyone who joins Community Notes can rate notes. They can unlock the ability t
     </item>
     
     <item>
+      <title>Needs Your Help ranking</title>
+      <link>https://twitter.github.io/communitynotes/timeline-tabs/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/communitynotes/timeline-tabs/</guid>
+      <description>Community Notes participants are able to see a tab of notes that could use their ratings, and also receive notifications about notes that can use their ratings.
+  Needs Your Help tab This tab is only visible to contributors. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Community Notes can ultimately elevate notes that people from a wide range of perspectives will find helpful.</description>
+    </item>
+    
+    <item>
       <title>Note ranking</title>
       <link>https://twitter.github.io/communitynotes/ranking-notes/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -129,16 +140,6 @@ Everyone who joins Community Notes can rate notes. They can unlock the ability t
       <guid>https://twitter.github.io/communitynotes/ranking-notes/</guid>
       <description>Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the Community Notes Site’s timelines, and which notes are displayed on Tweets.
 At this time, only notes that indicate a Tweet is “potentially misleading” are eligible to be displayed on Tweets. We observed that notes marking a Tweet as &amp;ldquo;not misleading&amp;rdquo; were often rated as “Unhelpful - Tweet doesn’t need a note”.</description>
-    </item>
-    
-    <item>
-      <title>Note ranking code</title>
-      <link>https://twitter.github.io/communitynotes/note-ranking-code/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://twitter.github.io/communitynotes/note-ranking-code/</guid>
-      <description>Here you can find links to code that reproduces the note scoring/ranking code that Twitter runs in production.
-If you download the data files made available on the Data Download page and put them in the same directory as the following code files, you can then run python main.py to produce a scoredNotes.tsv file that contains note scores, statuses, and explanation tags that will match what’s running in production (as of the time the data was from).</description>
     </item>
     
     <item>
@@ -159,7 +160,7 @@ Helpful attributes  Cites high-quality sources Easy to understand Directly addre
       
       <guid>https://twitter.github.io/communitynotes/notes-on-twitter/</guid>
       <description>Community Notes&#39; goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. Here&amp;rsquo;s how they show up:
-  If the Tweet has multiple notes with a status of Helpful, the card randomly cycles between the notes at periodic intervals in order to gather additional rating inputs on each.</description>
+  How do notes start showing on Twitter? All proposed notes start with the status of Needs More Ratings, and are shown to Contributors in order to gather ratings.</description>
     </item>
     
     <item>
@@ -170,7 +171,17 @@ Helpful attributes  Cites high-quality sources Easy to understand Directly addre
       <guid>https://twitter.github.io/communitynotes/notifications/</guid>
       <description>Alerts when a note needs your help Notes have the most impact when they get rated quickly and start showing on Tweets early. To ensure contributors don&amp;rsquo;t miss the opportunity to rate notes on Tweets getting a lot of attention, Community Notes sends alerts requesting help from time to time.
 If you are a contributor, you&amp;rsquo;ll see these alerts in your notifications tab. They look like this:
-  Configuring your alerts The default setting for all contributors is &amp;ldquo;Often&amp;rdquo;, which means you&amp;rsquo;ll start by getting a few alerts per week.</description>
+  To learn more about how Community Notes decides which notes trigger these alerts, see Under the Hood – Needs Your Help</description>
+    </item>
+    
+    <item>
+      <title>Open-source code</title>
+      <link>https://twitter.github.io/communitynotes/note-ranking-code/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://twitter.github.io/communitynotes/note-ranking-code/</guid>
+      <description>Here you can find links to code that reproduces the note scoring/ranking code that Twitter runs in production.
+If you download the data files made available on the Data Download page and put them in the same directory as the following code files, you can then run python main.py to produce a scoredNotes.tsv file that contains note scores, statuses, and explanation tags that will match what’s running in production (as of the time the data was from).</description>
     </item>
     
     <item>
@@ -192,8 +203,7 @@ If your phone number is associated with more than one Twitter account If your ph
       
       <guid>https://twitter.github.io/communitynotes/writing-and-rating-impact/</guid>
       <description>The two most important activities in Community Notes are writing notes and rating notes. Contributors can see the history of their past Writing Impact and Rating Impact on their profiles.
-In the future, newly admitted contributors will need to earn enough Rating Impact to unlock the ability to write notes.
-  Writing Impact Writing Impact reflects how often a contributor&amp;rsquo;s notes have earned a status of Helpful when rated by others.</description>
+  Writing Impact Writing Impact reflects how often a contributor&amp;rsquo;s notes have earned a status of Helpful when rated by others. Impact increases when a note earns the status of Helpful, and decreases when a note reaches the status of Not Helpful.</description>
     </item>
     
     <item>
@@ -202,9 +212,9 @@ In the future, newly admitted contributors will need to earn enough Rating Impac
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/rating-notes/</guid>
-      <description>There are two ways to find Tweets with Community Notes in order to rate their quality:
+      <description>Ratings help identify which notes are helpful enough to show on Twitter. They also help identify notes that are not helpful and should not be shown.
 Rating notes on the Community Notes site Go to the Community Notes Home page and choose any Tweet to see notes that contributors have added to it. There are three main timelines on this page:
-  Needs your help: Contains Tweets with notes where you can have the most impact when rating. This tab is only visible to Community Notes contributors.</description>
+  Needs your help: Contains Tweets with notes where you can have the most impact when rating.</description>
     </item>
     
     <item>
@@ -224,16 +234,6 @@ Rating notes on the Community Notes site Go to the Community Notes Home page and
       <guid>https://twitter.github.io/communitynotes/feedback/</guid>
       <description>Community Notes is early in its development, and our goal is to build it in the open with the public. We invite you on this journey to learn and shape Community Notes alongside us. Feel free to reach out with:
  Questions about the program Problems or issues you experience while contributing Risks and concerns we might not have considered Ideas for product updates or features for our roadmap Analyses done with our public data or feedback about the data.</description>
-    </item>
-    
-    <item>
-      <title>Timeline Tabs</title>
-      <link>https://twitter.github.io/communitynotes/timeline-tabs/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://twitter.github.io/communitynotes/timeline-tabs/</guid>
-      <description>Community Notes participants are able to view three different tabs on the Community Notes Home page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
-  New Contains Tweets sorted by reverse chronological order of when its latest note was written (Tweets are bumped to the top of the list when a new note is written on them).</description>
     </item>
     
     <item>
@@ -290,7 +290,7 @@ Decisions aren&amp;rsquo;t made by majority rules or popularity…So one group a
       
       <guid>https://twitter.github.io/communitynotes/writing-notes/</guid>
       <description>Anyone can read and rate Community Notes, but only contributors who&amp;rsquo;ve unlocked the ability to write can add new notes to Tweets. Here&amp;rsquo;s how to add a note:
-   Click or tap the ••• menu on the Tweet&#39;s top right and then **Write a Community Note**.       Before starting, you’ll see a reminder about Community Notes values, — a prompt to promote helpful contributions.</description>
+   Click or tap the ••• menu on the Tweet&#39;s top right and then **Write a Community Note**.      Answer the required multiple choice questions and write the context you feel would help others understand why that Tweet is or is not misleading.</description>
     </item>
     
   </channel>
