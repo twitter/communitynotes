@@ -4,7 +4,7 @@ geekdocBreadcrumb: false
 aliases: ["/rating-notes", "/contributing/rating-notes", "/contributing/rating"]
 ---
 
-There are two ways to find Tweets with Community Notes in order to rate their quality:
+Ratings help identify which notes are helpful enough to show on Twitter. They also help identify notes that are not helpful and should not be shown.
 
 ## Rating notes on the Community Notes site
 
@@ -18,25 +18,11 @@ Go to the [**Community Notes Home page**](https://communitynotes.twitter.com) an
 
 {{< figure src="../images/home.png">}}
 
-You can learn more about how Community Notes chooses notes for each of these views on the [**Note Ranking**](../note-ranking) page of the Guide.
-
 ## Rating notes on Twitter
 
-Community Notes contributors and people in limited test groups may also see cards to rate notes when browsing Twitter. You can tap to rate those notes.
+Community Notes contributors and people on Twitter may also see notes in their timeline when browsing Twitter.
 
 {{< figure src="../images/notes-on-twitter.png">}}
-
-## Note statuses
-
-All notes start with the status of **Needs More Ratings**.
-
-If notes have received enough ratings from other contributors, and [certain criteria are met](../diversity) — notes might reach the status of Helpful or Not Helpful.
-
-When notes reach one of these two statuses, they will be shown alongside the top two "reasons" selected by raters when rating that note.
-
-{{< figure src="../images/note-statuses.png">}}
-
-Learn how [**Note ranking**](../note-ranking) works under the hood.
 
 ## Rating Impact
 

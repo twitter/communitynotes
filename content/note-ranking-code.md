@@ -1,5 +1,5 @@
 ---
-title: Note ranking code
+title: Open-source code
 aliases: ["/note-ranking-code", "/ranking-code", "/code"]
 geekdocBreadcrumb: false
 geekdocToc: 1

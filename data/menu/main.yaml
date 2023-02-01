@@ -20,17 +20,17 @@ main:
         ref: "values"
       - name: Aliases
         ref: "aliases"
+      - name: Rating notes
+        ref: "rating-notes"
       - name: Writing notes
         ref: "writing-notes"
       - name: Locking and unlocking the ability to write notes
         ref: "writing-ability"
-      - name: Rating notes
-        ref: "rating-notes"
       - name: Rating and Writing Impact
         ref: "writing-and-rating-impact"
       - name: Diversity of perspectives
         ref: "diversity-of-perspectives"
-      - name: Notes on Twitter
+      - name: Notes shown on Twitter
         ref: "notes-on-twitter"
       - name: Examples
         ref: "examples"
@@ -45,13 +45,13 @@ main:
     sub:
       - name: Download data
         ref: "download-data"
-      - name: Note Ranking
+      - name: Note ranking logic
         ref: "ranking-notes"
-      - name: Note Ranking Code
-        ref: "note-ranking-code"
-      - name: Contributor Scores
+      - name: Contributor scores
         ref: "contributor-scores"
-      - name: "Timeline tabs"
+      - name: Open-source code
+        ref: "note-ranking-code"
+      - name: "Needs your help ranking"
         ref: "timeline-tabs"
       - name: "Guardrails and Circuit breakers"
         ref: "guardrails"

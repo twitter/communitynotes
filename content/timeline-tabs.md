@@ -1,29 +1,49 @@
 ---
-title: Timeline Tabs
+title: Needs Your Help ranking
 aliases: ["/timeline-tabs"]
 geekdocBreadcrumb: false
 geekdocToc: 1
 ---
 
-Community Notes participants are able to view three different tabs on the [Community Notes Home](https://communitynotes.twitter.com) page. Each tab contains different sets of Tweets in different orders. In order to appear in any of these tabs, a Tweet must have received at least 100 total likes plus Retweets.
+Community Notes participants are able to see a tab of notes that could use their ratings, and also receive notifications about notes that can use their ratings.
 
 {{< figure src="../images/home.png">}}
 
-### New
-
-Contains Tweets sorted by reverse chronological order of when its latest note was written (Tweets are bumped to the top of the list when a new note is written on them).
-
-### Rated Helpful
-
-Tweets in this tab have at least one note with the status of Helpful, at least one of those Helpful notes must have labeled the Tweet “misinformed or potentially misleading”. The Tweets that pass these filters are sorted reverse-chronologically by the timestamp of the Tweet’s first-created Helpful note.
-
-### Needs Your Help
+### Needs Your Help tab
 
 This tab is only visible to contributors. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Community Notes can ultimately elevate notes that people from a wide range of perspectives will find helpful. It also gives contributors an easy way to have immediate impact.
 
 It contains a set of 10 Tweets that have notes that need more ratings (although there may be fewer than 10 Tweets if one of the Tweets was recently deleted by the author, or if not enough Tweets have new notes that meet the criteria to appear in the NYH tab). Tweets in this tab are filtered to those that the contributor hasn’t rated any of the notes on, and Tweets with notes from the past day, unless no Tweets pass those filters for you (that will only happen if you’re a very active rater!). The tab is updated roughly every hour or two, so when the contributor has rated notes in the tab, they can come back later to see fresh Tweets.
 
+In order to appear in any of the tabs in the Community Notes site, a Tweet must have received at least 100 total likes plus Retweets.
+
 Additionally, Community Notes offers a way for Tweet authors to [request additional review](../additional-review) on notes on their Tweets. If an author requests additional review, the relevant Tweet will appear in all contributors’ Needs Your Help tabs. If there are more than 10 active requests for additional review, Tweets will be sorted by by the ranking score described below, which incorporates the viewpoints of raters.
+
+### Needs your help alerts
+
+To ensure contributors don't miss the opportunity to rate notes on Tweets getting a lot of attention, Community Notes sends alerts requesting help from time to time.
+
+{{< figure src="../images/alerts-settings.png">}}
+
+### How does Community Notes decide which notes trigger alerts for help?
+
+Alerts are optimized to increase the chance that potentially helpful notes on Tweets with high predicted visibility get rated by enough people that they have the chance to earn a status of Helpful quickly. Here's our current approach:
+
+**Tweets are chosen based on:**
+
+- Projected future Likes and Retweets the Tweet will receive.
+- The rater can see the Tweet (for example, excludes Tweets from authors you've blocked)
+
+**Notes are chosen based on meeting some of the following:**
+
+- Written by an author with high writing impact, or high average helpfulness score of notes they authored.
+- Currently have a status of "Needs More Ratings" (not already "Helpful")
+- Currently have a high helpfulness score, nearing the threshold to earn status of "Helpful"
+- Do not already have a large number of ratings (such that more ratings could change the note's status)
+
+Notes are sent to a random selection of contributors, excluding the note author and those who have already rated the note. Notifications are also limited by the recipient's notification frequency setting.
+
+We will continue to experiment with this logic to help ensure Needs Your Help notifications feel high impact and satisfying for contributors.
 
 ### Rater similarity score for Needs Your Help
 

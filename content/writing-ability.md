@@ -8,7 +8,7 @@ To keep the quality of Community Notes high, contributors earn (and can lose) th
 
 Everyone who joins Community Notes can rate notes. They can unlock the ability to write notes by helping to identify helpful and unhelpful notes. If notes they write are found helpful, they’ll continue to have greater impact. If notes they write are consistently found not helpful, their ability to write notes will be temporarily locked, and they’ll have to earn it back.
 
-## New contributors
+## Unlocking writing ability for the first time
 
 **New contributors start with the ability to rate notes, and must unlock the ability to write** before they can write their own notes.
 
@@ -16,13 +16,7 @@ To unlock the ability to write, new contributors need to earn a [Rating Impact](
 
 Rating notes is a great way for new contributors to better understand [what makes Helpful and Not Helpful notes](../examples), before they start writing their own notes.
 
-{{< hint info >}}
-
-Contributors admitted to Community Notes prior to September 2022 started with writing ability and did not have to unlock it. On December 20, 2022, we rolled out a change that retroactively requires all of those contributors to unlock writing ability as well. Those who had already earned a Rating Impact score of 5+, or a Writing Impact score of 1+, automatically and immediately unlocked writing ability. Those who haven’t earned that impact yet can unlock writing ability by earning a Rating Impact of 5. 
-
-{{< / hint >}}
-
-## All contributors
+## Losing writing ability
 
 **A contributor’s ability to write new notes is locked if they write too many notes that reach a status of Not Helpful** after being rated by other contributors.
 
@@ -44,4 +38,4 @@ You'll receive notifications about how your notes have been rated by other contr
 
 ### How does Community Notes prevent raters from intentionally trying to lock someone else's ability to write?
 
-Note statuses in Community Notes aren't achieved by popularity or majority rules. For a note to reach a status of Helpful or Not Helpful, the system requires agreement between contributors who have sometimes disagreed in their past ratings. Ratings are also weighted based on how helpful a contributor has been in the past. This helps reduce one-sided ratings and helps to prevent manipulation. Learn more here.
+Note statuses in Community Notes aren't achieved by popularity or majority rules. For a note to reach a status of Helpful or Not Helpful, the system requires agreement between contributors who have sometimes disagreed in their past ratings. Ratings are also weighted based on how helpful a contributor has been in the past. This helps reduce one-sided ratings and helps to prevent manipulation. [Learn more here](../diversity).
