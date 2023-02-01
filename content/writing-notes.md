@@ -11,17 +11,13 @@ Anyone can read and rate Community Notes, but only contributors who've [unlocked
       {{< figure src="../images/writing-notes.png">}}
    </div>
 
-2. <div> Before starting, you’ll see a reminder about <a href="../values">Community Notes values</a>, — a prompt to promote helpful contributions. </div>
+2. <div>Answer the required multiple choice questions and write the context you feel would help others understand why that Tweet is or is not misleading. <br/> If your note claims Tweet is potentially misleading and would benefit from added context, it will be eligible to show on the Tweet if it is rated as helpful by enough people. <br/> If you claim the Tweet is not misleading, you note will be shown to other raters as additional information, but won't show on the Tweet if it earns a status of Helpful.</div>
 
-3. <div>Answer the required multiple choice questions. These are designed to understand, in a structured way, why a Tweet might or might not be misleading.</div>
+3. <div>After it’s submitted, the note will be available on the Community Notes site for other contributors to read and rate. </div>
 
-4. <div> Finally, in the text field, write the context you feel would help others understand why that Tweet is or is not misleading. Citing sources is helpful. (Each URL counts as only 1 character towards the 280 characters limit). </div>
+4. <div> If your note earns the status of Helpful, it will be <a href="../notes-on-twitter/">shown on Twitter as context</a> and you'll earn <a href="../impact">Writing Impact</a>.</div>
 
-5. <div>After it’s submitted, the note will be available on the Community Notes site for other contributors to read and rate. </div>
-
-6. <div> If your note earns the status of Helpful, it will be <a href="../notes-on-twitter/">shown on Twitter as context</a> and you'll earn <a href="../impact">Writing Impact</a>.</div>
-
-7. <div> You can delete your notes at any time by clicking or tapping the ••• icon on a note. </div>
+5. <div> You can delete your notes at any time by clicking or tapping the ••• icon on a note. </div>
 
 <div class="info-box">
 
@@ -30,17 +26,5 @@ Anyone can read and rate Community Notes, but only contributors who've [unlocked
 {{< button href="../examples" >}}See examples{{< /button >}}
 
 </div>
-<hr>
+
 <br>
-
-There are two categories of Community Notes contributors can write:
-
-**Notes suggesting context to be shown with the Tweet**
-
-These notes are added by Community Notes contributors who believe the Tweet is potentially misleading, and would benefit from additional context.
-
-Notes are only shown in the Community Notes site, until they reach a status of Helpful when rated by other contributors. If these notes are rated Helpful by enough contributors, including those who typically disagree in their past ratings, they start showing publicly with the Tweet as added context.
-
-**Notes explaining why added context isn’t needed**
-
-These notes are added by contributors who believe the Tweet isn't misleading and does not need additional context. They are only shown as additional information to raters, and are not shown as context with the Tweet, even if they earn the status of Helpful.

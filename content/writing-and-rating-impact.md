@@ -12,8 +12,6 @@ aliases:
 
 The two most important activities in Community Notes are [writing notes](../writing-notes) and [rating notes](../rating-notes). Contributors can see the history of their past Writing Impact and Rating Impact on their profiles.
 
-In the future, newly admitted contributors will need to earn enough Rating Impact to unlock the ability to write notes.
-
 {{< figure src="../images/writing-and-rating-impact.png">}}
 
 ## Writing Impact

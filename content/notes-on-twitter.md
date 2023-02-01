@@ -15,34 +15,18 @@ Community Notes' goal is to show helpful context to people when they come across
 
 {{< figure src="../images/help-rate-this-note-expanded.png">}}
 
-If the Tweet has multiple notes with a status of Helpful, the card randomly cycles between the notes at periodic intervals in order to gather additional rating inputs on each.
+## How do notes start showing on Twitter?
 
-Notes that were written deeming the Tweet "not misleading" are only visible as additional information to raters, and are not shown as context with the Tweet, even if they earn the status of Helpful.
+All proposed notes start with the status of **Needs More Ratings**, and are shown to Contributors in order to gather ratings.
 
-## View counts
-
-Community Notes contributors can see how many times a note has been viewed on Twitter. This number only appears after the first 1000 views.
-
-{{< figure src="../images/views-on-twitter.png">}}
-
-{{< hint info >}}
-
-Views began being counted mid-day May 3, 2022, so notes before then are very unlikely to show any counts, and certainly not accurate counts. Notes written on or after May 4, 2022 should show correct counts.
-
-{{< / hint >}}
-
-### Increase the reach and impact of notes
-
-Many Tweets are seen by most people who will see them in a matter of hours. Notes have the greatest visibility, and potential for impact, when:
-
-- They’re written **soon after a Tweet was posted**
-- They’re written **on Tweets that have higher visibility**
-- They **quickly receive enough ratings from other contributors**. As a contributor, you can help make this happen by rating notes on the "Needs your help" tab in the Community Notes Home.
-
-### Notes on Tweets only visible to contributors
+If you are a Community Notes contributor, you'll see a prompt on Tweets that have proposed notes. Tap the prompt to rate those notes.
 
 {{< figure src="../images/help-rate-this-note.png">}}
 
-If a Tweet has notes but none yet have earned a status of Helpful, the card will show the number of notes, and allow people to tap to read and rate those notes on the Community Notes site.
+If enough contributors from [different points of view](../diversity) rate a note as **helpful**, it earns a status of "Helpful", and starts showing on Twitter.
 
-If all notes on a Tweet have reached a status of Not Helpful, no card will be shown. Community Notes contributors will still be able to access these notes via the Community Notes icon displayed in the Tweet details page.
+If enough contributors rate a note as **not helpful**, it reaches a status of "Not Helpful", and is not shown on Twitter. Contributors whose notes consistently reach this status may have their [writing ability temporarily locked](../writing-ability).
+
+{{< figure src="../images/note-statuses.png">}}
+
+Note statuses are updated as new ratings come in, so notes may show on Twitter and then dissappear. Statuses are locked after 2 weeks.

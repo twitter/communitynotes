@@ -31,8 +31,4 @@ Contributors can visit [this link](https://twitter.com/i/communitynotes/u/me) to
 
 With aliases, every contributor gets a public profile. On this page, everyone can see the notes people have written in the past, as well as their [Writing and Rating Impact](../impact). We'll continue to add information and evolve the profile pages as we learn more about what's important to contributors when using Community Notes.
 
-### Aliases are new! Did you contribute before the launch of aliases?
-
-Aliases launched on November 22, 2021. For those of you who were in the pilot and contributed under your Twitter username before that, your previous contributions will all now appear to come from your alias, not your Twitter username. Your Community Notes profile page will show all the notes you’ve written, all attributed to your new alias. That said, if someone who previously read one of your notes happened to recall the username that wrote it, they could possibly infer your alias. The only way to completely prevent this is by deleting all of your prior contributions and starting fresh. If you want to do that, we’re happy to help, just DM [@CommunityNotes](http://twitter.com/communitynotes).
-
 Don't hesitate to [send us feedback](http://twitter.com/communitynotes) at any time.

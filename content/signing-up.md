@@ -16,7 +16,7 @@ weight: 1
 
 Sign ups are open to everyone. We want anyone to be able to participate and know that having contributors with [different points of view](../diversity) is essential to Community Notes helpfully addressing misinformation.
 
-As there are important nuances in each market, we’ll expand the contributor base country-by-country. We’ll add contributors from a first new country soon.
+As there are important nuances in each market, we’ll expand the contributor base country-by-country.
 
 ## {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
 
