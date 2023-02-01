@@ -128,8 +128,8 @@ Everyone who joins Community Notes can rate notes. They can unlock the ability t
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/timeline-tabs/</guid>
-      <description>Community Notes participants are able to see a tab of notes that could use their ratings, and also receive notifications about notes that can use their ratings.
-  Needs Your Help tab This tab is only visible to contributors. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Community Notes can ultimately elevate notes that people from a wide range of perspectives will find helpful.</description>
+      <description>Community Notes participants are able to see a tab of notes that could use their ratings, and receive notifications about notes that need help.
+  Needs Your Help tab This tab is only visible to contributors. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Community Notes can elevate notes that people from a wide range of perspectives will find helpful. It gives contributors an easy way to have immediate impact.</description>
     </item>
     
     <item>
@@ -138,7 +138,7 @@ Everyone who joins Community Notes can rate notes. They can unlock the ability t
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/ranking-notes/</guid>
-      <description>Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the Community Notes Site’s timelines, and which notes are displayed on Tweets.
+      <description>Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses determine which notes are displayed on each of the Community Notes Site’s timelines, and which notes are displayed on Tweets.
 At this time, only notes that indicate a Tweet is “potentially misleading” are eligible to be displayed on Tweets. We observed that notes marking a Tweet as &amp;ldquo;not misleading&amp;rdquo; were often rated as “Unhelpful - Tweet doesn’t need a note”.</description>
     </item>
     
@@ -212,7 +212,7 @@ If your phone number is associated with more than one Twitter account If your ph
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://twitter.github.io/communitynotes/rating-notes/</guid>
-      <description>Ratings help identify which notes are helpful enough to show on Twitter. They also help identify notes that are not helpful and should not be shown.
+      <description>Ratings help identify which notes are helpful enough to show on Twitter and notes that are not helpful and should not be shown.
 Rating notes on the Community Notes site Go to the Community Notes Home page and choose any Tweet to see notes that contributors have added to it. There are three main timelines on this page:
   Needs your help: Contains Tweets with notes where you can have the most impact when rating.</description>
     </item>

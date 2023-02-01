@@ -852,7 +852,7 @@ media="screen"> <!--Made with Geekdoc theme https://github.com/xoxys/hugo-geekdo
     
 
 
-<p>Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses also determine which notes are displayed on each of the <a href="../birdwatch-timelines/">Community Notes Site’s timelines</a>, and which notes are displayed <a href="../notes-on-twitter/">on Tweets</a>.</p>
+<p>Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses determine which notes are displayed on each of the <a href="../birdwatch-timelines/">Community Notes Site’s timelines</a>, and which notes are displayed <a href="../notes-on-twitter/">on Tweets</a>.</p>
 <p>At this time, only notes that indicate a Tweet is “potentially misleading” are eligible to be displayed on Tweets.
 We observed that notes marking a Tweet as &ldquo;not misleading&rdquo; were often rated as “Unhelpful - Tweet doesn’t need a note”.
 On March 9, 2022 we paused assigning status to notes marking Tweets as &ldquo;not misleading&rdquo; pending improvements to the rating form.
@@ -880,7 +880,7 @@ As discussed in Note Status below, we have resumed assigning status to notes mar
     <img src="../images/note-statuses.png"/> 
 </figure>
 
-<p>All Community Notes start out with the Needs More Ratings status until they receive at least 5 total ratings.
+<p>All Community Notes start with the Needs More Ratings status until they receive at least 5 total ratings.
 Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful according to the algorithm described below.
 If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on Twitter even if its status is Helpful.</p>
 <p>Notes marking Tweets as &ldquo;potentially misleading&rdquo; with a Note Helpfulness Score of 0.40 and above earn the status of Helpful.
@@ -893,7 +893,7 @@ We plan to enable Helpful statuses for notes marking Tweets as &ldquo;not mislea
 <p>When a note reaches a status of Helpful / Not Helpful, they&rsquo;re shown alongside the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
 Notes with the status Needs More Ratings remain sorted by recency (newest first), and notes with a Helpful or Not Helpful status are sorted by their Helpfulness Score.</p>
 <p>This ranking mechanism is subject to continuous development and improvement with the aim that Community Notes consistently identifies notes that are found helpful to people from a wide variety of perspectives.</p>
-<p>Rating statuses are only computed at periodic intervals, so there is a time delay from when a note meets the Helpful / Not Helpful criteria and when that designation appears on the Community Notes site.
+<p>Rating statuses are computed at periodic intervals, so there is a time delay from when a note meets the Helpful / Not Helpful criteria and when that designation appears on the Community Notes site.
 This delay allows Community Notes to collect a set of independent ratings from people who haven’t yet been influenced by seeing status annotations on certain notes.</p>
 <div class="gdoc-page__anchorwrap"><h2 id="helpful-rating-mapping">Helpful Rating Mapping<a data-clipboard-text="https://twitter.github.io/communitynotes/ranking-notes/#helpful-rating-mapping" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Helpful Rating Mapping" href="#helpful-rating-mapping"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <figure>
@@ -908,7 +908,7 @@ This delay allows Community Notes to collect a set of independent ratings from p
 <li><code>Yes</code> from the original 2-option version of the rating form maps to <code>1.0</code>.</li>
 <li><code>No</code> from the original 2-option version of the rating form maps to <code>0.0</code>.</li>
 </ul>
-<p>Specific values in the mapping may change in the future, and will be updated here if so.</p>
+<p>Specific values in the mapping may change in the future, and will be updated here.</p>
 <div class="gdoc-page__anchorwrap"><h2 id="matrix-factorization">Matrix Factorization<a data-clipboard-text="https://twitter.github.io/communitynotes/ranking-notes/#matrix-factorization" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Matrix Factorization" href="#matrix-factorization"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <p>The main technique we use to determine which notes are helpful or unhelpful is matrix factorization on the note-rater matrix, a sparse matrix that encodes, for each note and rater, whether that rater found the note to be helpful or unhelpful. This approach, originally made famous by Funk in the 2006 Netflix prize recommender system competition, seeks a latent representation (embedding) of users and items which can explain the affinity of certain users for certain items [<a href="https://sifter.org/~simon/journal/20061211.html">1</a>] [<a href="https://datajobs.com/data-science-repo/Recommender-Systems-%5BNetflix%5D.pdf">2</a>]. In our application, this representation space identifies whether notes may appeal to raters with specific viewpoints, and as a result we are able to identify notes with broad appeal across viewpoints.</p>
 <p>One challenge is that not all raters evaluate all notes - in fact most raters do not rate most notes - and this sparsity leads to outliers and noise in the data. Regularization techniques are a common solution to these issues; a key distinction in our approach is that we use much higher regularization on the intercept terms, which capture the helpfulness of a note or rater that is not explained by viewpoint agreement, relative to the embedding factors. This encourages a representation that uses user and note embeddings to explain as much variation in the ratings as possible before fitting additional note- and user-specific intercepts. As a result, for a note to achieve a high intercept term (which is the note’s helpfulness score), it must be rated helpful by raters with a diversity of viewpoints (factor embeddings). Notes are given a single global score&ndash; their intercept term&ndash; rather than using this algorithm in the traditional way to personalize content as in a recommender system.</p>
@@ -931,7 +931,7 @@ This delay allows Community Notes to collect a set of independent ratings from p
 <div class="gdoc-page__anchorwrap"><h2 id="tag-outlier-filtering">Tag Outlier Filtering<a data-clipboard-text="https://twitter.github.io/communitynotes/ranking-notes/#tag-outlier-filtering" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Tag Outlier Filtering" href="#tag-outlier-filtering"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <p>In some cases, a note may appear helpful but miss key points about the tweet or lack sources.
 Reviewers who rate a note as &ldquo;Not Helpful&rdquo; can associate <a href="examples#helpful-attributes">tag</a> with their review to identify specific shortcomings of the note.
-When a note has receives especially high levels of a &ldquo;Not Helpful&rdquo; tag, we require a higher intercept before rating the note as &ldquo;Helpful&rdquo;.
+When a note has receives high levels of a &ldquo;Not Helpful&rdquo; tag, we require a higher intercept before rating the note as &ldquo;Helpful&rdquo;.
 This approach helps us to maintain data quality by recognizing when there is a troubling pattern on an otherwise strong note.</p>
 <p>We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:</p>
 <p>$$ a_{un} = \mathbb{1}_{aun} \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$</p>
@@ -970,7 +970,7 @@ Before a note is two weeks old, the helpfulness status will continue to be updat
 After a note turns two weeks old we store the helpfulness status for that note and use the stored status in the future, including for displaying notes on Twitter and calcualting user contribution statistics.</p>
 <div class="gdoc-page__anchorwrap"><h2 id="determining-note-status-explanation-tags">Determining Note Status Explanation Tags<a data-clipboard-text="https://twitter.github.io/communitynotes/ranking-notes/#determining-note-status-explanation-tags" class="gdoc-page__anchor gdoc-page__anchor--right clip" aria-label="Anchor Determining Note Status Explanation Tags" href="#determining-note-status-explanation-tags"><svg class="icon link"><use xlink:href="#link"></use></svg></a></h2></div>
 <p>When notes reach a status of Helpful or Not Helpful, they&rsquo;re displayed alongside the top two explanation tags that were given by raters to explain why they rated the note helpful or not.</p>
-<p>This is done by simply counting the number of times each explanation tag was given filtered to explanation tags that match the final note status (e.g., if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status is reverted back to “Needs More Ratings” (this is very rare).</p>
+<p>This is done by counting the number of times each explanation tag was given filtered to explanation tags that match the final note status (e.g., if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status is reverted to “Needs More Ratings” (this is rare).</p>
 <p>We break ties between multiple explanation tags by picking the less commonly used reasons, given in order below (#1 is the least commonly used and therefore wins all tiebreaks).</p>
 <p>For helpful notes:</p>
 <div class="highlight"><pre class="chroma"><code class="language-fallback" data-lang="fallback">1. UnbiasedLanguage
@@ -1062,7 +1062,7 @@ After a note turns two weeks old we store the helpfulness status for that note a
 </ul>
 <p><strong>Feb 28, 2022</strong></p>
 <ul>
-<li>Launched entirely new algorithm to compute note statuses (Helpful, Not Helpful), which looks for agreement across different viewpoints using a matrix factorization method. Updates contributor helpfulness scores to reflect helpfulness so that contributors whose contributions are helpful to people from a wide range of viewpoints earn higher scores. Uses helpfulness scores to identify a subset of contributor ratings to include in a final round of note scoring. This entirely replaces the previous algorithm which weighted ratings by raters’ helpfulness scores.</li>
+<li>Launched new algorithm to compute note statuses (Helpful, Not Helpful), which looks for agreement across different viewpoints using a matrix factorization method. Updates contributor helpfulness scores to reflect helpfulness so that contributors whose contributions are helpful to people from a wide range of viewpoints earn higher scores. Uses helpfulness scores to identify a subset of contributor ratings to include in a final round of note scoring. This replaces the previous algorithm which weighted ratings by raters’ helpfulness scores.</li>
 </ul>
 <p><strong>June 30, 2021</strong></p>
 <ul>
@@ -1070,7 +1070,7 @@ After a note turns two weeks old we store the helpfulness status for that note a
 </ul>
 <p><strong>June 14, 2021</strong></p>
 <ul>
-<li>New algorithm to compute note status, which weights ratings by raters’ helpfulness scores, rather than just taking a direct average of ratings.</li>
+<li>New algorithm to compute note status, which weights ratings by raters’ helpfulness scores, rather than taking a direct average of ratings.</li>
 </ul>
 <p><strong>January 28, 2021</strong></p>
 <ul>
