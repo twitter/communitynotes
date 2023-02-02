@@ -344,6 +344,7 @@ userEnrollmentTSVColumnsAndTypes = [
   (enrollmentState, np.str),
   (successfulRatingNeededToEarnIn, np.int64),
   (timestampOfLastStateChange, np.int64),
+  (timestampOfLastEarnOut, np.double),  # double because nullable.
 ]
 userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
@@ -435,6 +436,7 @@ raterModelOutputTSVColumnsAndTypes = [
   (aboveHelpfulnessThresholdKey, np.int32),
   (isEmergingWriterKey, np.bool_),
   (aggregateRatingReceivedTotal, np.int64),
+  (timestampOfLastEarnOut, np.double),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}

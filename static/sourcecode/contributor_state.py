@@ -200,7 +200,10 @@ def _sort_nmr_status_last(x: pd.Series) -> pd.Series:
 
 
 def _get_visible_note_counts(
-  scoredNotes: pd.DataFrame, lastNNotes: int = -1, countNMRNotesLast: bool = False
+  scoredNotes: pd.DataFrame,
+  lastNNotes: int = -1,
+  countNMRNotesLast: bool = False,
+  sinceLastEarnOut: bool = False,
 ):
   """
   Given scored notes from the algorithm, this function aggregates the note status by note author.
@@ -209,13 +212,21 @@ def _get_visible_note_counts(
       scoredNotes: Notes scored from MF + contributor stats
       lastNNotes: Only count the last n notes
       countNMRNotesLast: Count the NMR notes last. Only affects lastNNNotes counts.
+      sinceLastEarnOut: Only count notes since the last time the contributor earned out
   Returns:
       pd.DataFrame: noteCounts The visible note counts
   """
   sort_by = [c.ratingStatusKey, c.noteIdKey] if countNMRNotesLast else c.noteIdKey
   key_function = _sort_nmr_status_last if countNMRNotesLast else None
+  if not sinceLastEarnOut:
+    aggNotes = scoredNotes
+  else:
+    aggNotes = scoredNotes.loc[
+      scoredNotes[c.createdAtMillisKey] > scoredNotes[c.timestampOfLastEarnOut]
+    ].copy()
+
   groupAuthorCounts = (
-    scoredNotes.sort_values(sort_by, ascending=False, key=key_function)
+    aggNotes.sort_values(sort_by, ascending=False, key=key_function)
     .groupby(c.noteAuthorParticipantIdKey)
     .agg(
       {
@@ -226,7 +237,7 @@ def _get_visible_note_counts(
       }
     )
     if lastNNotes > 0
-    else scoredNotes.groupby(c.noteAuthorParticipantIdKey).sum(numeric_only=True)
+    else aggNotes.groupby(c.noteAuthorParticipantIdKey).sum(numeric_only=True)
   )
   authorCounts = pd.DataFrame(
     groupAuthorCounts[
@@ -314,10 +325,29 @@ def get_contributor_state(
       pd.DataFrame: contributorScoresWithEnrollment The contributor scores with enrollments
   """
 
+  # for users in state Earned Out Ack, update the timestamp of last earn out; this ensures they are only judged against
+  # their rating target until they resume writing notes
+  userEnrollment.loc[
+    userEnrollment[c.enrollmentState] == 3, c.timestampOfLastEarnOut
+  ] = c.epochMillis
+
   # We need to consider only the last 5 notes for enrollment state. The ratings are aggregated historically.
-  contributorScores = get_contributor_scores(
-    scoredNotes, ratings, noteStatusHistory, lastNNotes=c.maxHistoryEarnOut, countNMRNotesLast=True
+  # For users who have earned out, we should only consider notes written since the earn out event
+  scoredNotesWithLastEarnOut = scoredNotes.merge(
+    userEnrollment, left_on=c.noteAuthorParticipantIdKey, right_on=c.participantIdKey, how="left"
   )
+  # For users who don't appear in the userEnrollment file, set their timeStampOfLastEarnOut to default
+  scoredNotesWithLastEarnOut[c.timestampOfLastEarnOut].fillna(1, inplace=True)
+
+  contributorScores = get_contributor_scores(
+    scoredNotesWithLastEarnOut,
+    ratings,
+    noteStatusHistory,
+    lastNNotes=c.maxHistoryEarnOut,
+    countNMRNotesLast=True,
+    sinceLastEarnOut=True,
+  )
+  contributorScores.fillna(0, inplace=True)
 
   # We merge in the top not hellpful tags
   authorTopNotHelpfulTags = explanation_tags.get_top_nonhelpful_tags_per_author(
@@ -368,6 +398,7 @@ def get_contributor_state(
   contributorScoresWithEnrollment.loc[
     is_earned_out(contributorScoresWithEnrollment), c.enrollmentState
   ] = c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
+
   contributorScoresWithEnrollment.loc[
     is_earned_in(contributorScoresWithEnrollment), c.enrollmentState
   ] = c.enrollmentStateToThrift[c.earnedIn]
@@ -379,6 +410,7 @@ def get_contributor_state(
   # This addresses an issue in the TSV dump in HDFS getting corrupted. It removes lines
   # users that do not have an id.
   contributorScoresWithEnrollment.dropna(subset=[c.raterParticipantIdKey], inplace=True)
+
   if logging:
     print("Enrollment State")
     print(
@@ -411,6 +443,7 @@ def get_contributor_scores(
   statusHistory: pd.DataFrame,
   lastNNotes=-1,
   countNMRNotesLast: bool = False,
+  sinceLastEarnOut: bool = False,
   logging: bool = True,
 ) -> pd.DataFrame:
   """
@@ -423,12 +456,15 @@ def get_contributor_scores(
       statusHistory (pd.DataFrame): history of note statuses
       lastNNotes (int): count over the last n notes
       countNMRNotesLast (bool): count NMR notes last. Useful when you want to calculate over a limited set of CRH + CRNH notes
+      sinceLastEarnOut: only count notes since last Earn Out event
       logging (bool): Should we log?
   Returns:
       pd.DataFrame: contributorScores - rating + note aggregates per contributor.
   """
   visibleRatingCounts = _get_visible_rating_counts(scoredNotes, ratings, statusHistory)
-  visibleNoteCounts = _get_visible_note_counts(scoredNotes, lastNNotes, countNMRNotesLast)
+  visibleNoteCounts = _get_visible_note_counts(
+    scoredNotes, lastNNotes, countNMRNotesLast, sinceLastEarnOut
+  )
   contributorCounts = (
     visibleRatingCounts.join(visibleNoteCounts, lsuffix="note", rsuffix="rater", how="outer")
     .reset_index()
