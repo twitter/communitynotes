@@ -86,6 +86,16 @@ def note_post_processing(
     how="outer",
   )
 
+  # Pass timestampOfLastEarnOut through to raterModelOutput
+  helpfulnessScores = helpfulnessScores.merge(
+    userEnrollment[[c.participantIdKey, c.timestampOfLastEarnOut]],
+    left_on=c.raterParticipantIdKey,
+    right_on=c.participantIdKey,
+    how="left",
+  ).drop(c.participantIdKey, axis=1)
+  # If field is not set by userEvent or by update script, ok to default to 1
+  helpfulnessScores[c.timestampOfLastEarnOut].fillna(1, inplace=True)
+
   # Computes business results of scoring and update status history.
   assert ratings.columns.tolist() == c.ratingTSVColumns + [c.helpfulNumKey]
 
