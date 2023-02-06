@@ -19,13 +19,13 @@ aliases: ["/getting-started"]
 
 1. <div><strong>Begin rating notes</strong><label>
    Your ratings help determine which notes are made visible on Twitter. To start rating notes, navigate to Community Notes from your Twitter app navigation bar. There, you'll find the notes where your ratings can have the most impact.
-   {{< figure src="../images/navigate-to-home.png">}}
+   {{< figure src="../images/navigate-to-home.png" alt="Mockup of the Twitter app on a desktop and mobile devices. The main navigation menu is open, and the Community Notes option is highlighted.">}}
    {{< button href="https://twitter.com/i/communitynotes/needs_your_help" >}}Rate notes{{< /button >}}
      </label>
      </div>
 
 1. <div><strong>Soon, you'll unlock the ability to write your own notes!</strong><label>To unlock the ability to write notes, you need to earn a Rating Impact of 5. You earn Impact when your rating helps a note earn a helpful (or unhelpful) status! You can track your progress on the Rating Impact section of your Community Notes profile.
-   {{< figure src="../images/rating-impact-welcome.png">}}
+   {{< figure src="../images/rating-impact-welcome.png" alt="Mockup of the top half of a mobile screen displaying a Community Notes contributor profile. Image at the top shows an anonymous avatar with glasses. Contributor display name: Generous Carrot Sparrow. Highlighted section of the screen reads: 0 Rating Impact. You need an Impact of 5 to unlock note writing">}}
    {{< button href="https://twitter.com/i/communitynotes/u/me" >}}Track your impact{{< /button >}}
    </label></div>
 

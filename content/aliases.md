@@ -4,7 +4,7 @@ geekdocBreadcrumb: false
 aliases: ["/aliases", "/contributing/aliases"]
 ---
 
-{{< figure src="../images/alias-01.png">}}
+{{< figure src="../images/alias-01.png" alt="Mockup of a screen showing information about Community Notes. Image of an owl wearing sunglasses at the top. Text reads: Contribute privately - Write and rate notes without sharing your Twitter identity. Focus on the content – Aliases can help reduce bias by helping contributors focus more on content, and less on authors. Everyone remains accountable – You can see contributors' histories, and everyone is accountable through ratings they earn. Primary button: Choose your alias. Link at bottom of screen: Why is community Notes using aliases?">}}
 
 We want everyone to feel comfortable contributing to Community Notes. Aliases let contributors write and rate notes without sharing their Twitter usernames.
 
@@ -23,11 +23,11 @@ It’s important that the benefits of aliases don’t come at the expense of acc
 
 Contributors can visit [this link](https://twitter.com/i/communitynotes/u/me) to choose an alias. You'll have 5 random options to pick from, and at this time choices cannot be changed.
 
-{{< figure src="../images/alias-02.png">}}
+{{< figure src="../images/alias-02.png" alt="Mockup of a screen displaying alias options for the user to select. It reads: Choose your Community Notes alias. This alias will be your identity when writing and rating Community notes. It's not associated with your Twitter profile. List of options: Smart Carrot Finch, Joyous Book Sparrow, Friendly Cup Finch, Warm Candle Hawk, Joyous Mountain Skylark. Primary button: Confirm. Link at bottom of screen: Why is Community Notes using aliases? ">}}
 
 ## Contributor profiles
 
-{{< figure src="../images/alias-03.png">}}
+{{< figure src="../images/alias-03.png" alt="Mockup of the top half of a mobile screen displaying a Community Notes contributor profile. Image at the top shows an anonymous avatar with glasses. Contributor display name: Generous Carrot Sparrow. 22 Rating Impact, 3 Writing Impact.">}}
 
 With aliases, every contributor gets a public profile. On this page, everyone can see the notes people have written in the past, as well as their [Writing and Rating Impact](../impact). We'll continue to add information and evolve the profile pages as we learn more about what's important to contributors when using Community Notes.
 

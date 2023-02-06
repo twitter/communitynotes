@@ -56,7 +56,7 @@ The following are examples of notes that illustrate what makes a note helpful (v
     <h3> Tweet </h3>
     <div class="tweetBodyWrapper">
         <div class="tweetUserWrapper">
-            <img class="userAvatar"src="../images/user-avatar.jpeg"/>
+            <img class="userAvatar"src="../images/user-avatar.jpeg" alt="User profile avatar"/>
             <div class="tweetNameWrapper">
                 <div class="userName">Kian</div>
                 <div class="userHandle">@naurelvr49</div>
@@ -148,7 +148,7 @@ This is totally made up. There are no reports of a fire outside the Supreme Cour
     <h3> Tweet </h3>
     <div class="tweetBodyWrapper">
         <div class="tweetUserWrapper">
-            <img class="userAvatar"src="../images/user-avatar.jpeg"/>
+            <img class="userAvatar"src="../images/user-avatar.jpeg" alt="User profile avatar"/>
             <div class="tweetNameWrapper">
                 <div class="userName">Kian</div>
                 <div class="userHandle">@naurelvr49</div>

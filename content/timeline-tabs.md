@@ -7,7 +7,7 @@ geekdocToc: 1
 
 Community Notes participants are able to see a tab of notes that could use their ratings, and receive notifications about notes that need help.
 
-{{< figure src="../images/home.png">}}
+{{< figure src="../images/home.png" alt="Two side-by-side mockups of the Twitter app, in desktop and mobile versions. Both show the Community Notes home page. The header reads ”Community Notes”. The screen presents three tabs: Needs your help (selected), Rated Helpful, and New. The title of the selected tab reads: ”Rate these notes chosen for you. Notes on these Tweets need a more diverse range of feedback, and your point of view could help decide if they're helpful. This list refreshes regularly.” The list displays two Tweets that have prompts on them, each reading ”Help rate proposed Community Notes on this Tweet”.">}}
 
 ### Needs Your Help tab
 
@@ -23,7 +23,7 @@ Additionally, Community Notes offers a way for Tweet authors to [request additio
 
 To ensure contributors don't miss the opportunity to rate notes on Tweets getting a lot of attention, Community Notes sends alerts requesting help from time to time.
 
-{{< figure src="../images/alerts-settings.png">}}
+{{< figure src="../images/alerts-settings.png" alt="Two side-by-side screenshots of mobiles devices showing the Twitter app. The first one shows a Community Notes Contributor profile page, highlighting the settings button on the top right. The second one reads: Community Notes settings. Alerts when a note needs help: Receive notifications when a Community Note needs your rating. Options: I'm all in. As many as I can help with — up to a few per day. Often — a few alerts per week. Sometimes — A few alerts per month. Never”">}}
 
 ### How does Community Notes decide which notes trigger alerts for help?
 
@@ -37,7 +37,7 @@ Alerts are optimized to increase the chance that potentially helpful notes on Tw
 **Notes are chosen based on meeting some of the following:**
 
 - Written by an author with high writing impact, or high average helpfulness score of notes they authored.
-- Currently have a status of "Needs More Ratings" 
+- Currently have a status of "Needs More Ratings"
 - Currently have a high helpfulness score, nearing the threshold to earn status of "Helpful"
 - Do not have a large number of ratings (such that more ratings could change the note's status)
 

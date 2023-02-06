@@ -4,7 +4,7 @@ title: Home
 aliases: ["/learn-more", "/intro", "/overview"]
 ---
 
-{{< figure class="hero" src="./images/help-rate-this-note-expanded.png">}}
+{{< figure class="hero" src="./images/help-rate-this-note-expanded.png" alt="Screenshot of a mobile device showing a Tweet with a Community Note. Kian @naturelvr49: Whales are not actually mammals. If Humans (land mammals) can't drink seawater – just try it! – how can supposed sea mammals like whales stay hydrated? Readers added context they thought people might want to know: Whales are indeed mammals. marine mammals are able to “stay hydrated” because their kidneys have evolved to excrete more salt + reclaim more water than humans and many other mammals can. They also obtain water from their food. This is widely documented, for example in http://reputable... Is this note helpful? Rate it">}}
 
 ## Community Notes: a collaborative way to add helpful context to Tweets and keep people better informed
 
@@ -13,7 +13,7 @@ Community Notes aims to create a better-informed world, by empowering people on 
 <br/>
 
 <div class="info-item">
-<img src="./images/people.svg">
+<img src="./images/people.svg" alt="Vector icon of 3 people together">
 <div>
 
 **Contributors write and rate notes**
@@ -24,7 +24,7 @@ Contributors are people on Twitter, just like you, who [sign up](./join) to writ
 </div>
 
 <div class="info-item">
-<img src="./images/rate.svg">
+<img src="./images/rate.svg" alt="Vector icon of a star, half-filled with color">
 <div>
 
 **Only notes rated helpful by people from diverse perspectives appear on Tweets**
@@ -37,7 +37,7 @@ Learn more about how Community Notes handles [diverse perspectives](./diversity/
 </div>
 
 <div class="info-item">
-<img src="./images/world.svg">
+<img src="./images/world.svg" alt="Vector icon of the earth">
 <div>
 
 **Twitter doesn’t choose what shows up, the people do**
@@ -48,7 +48,7 @@ Twitter doesn’t write, rate or moderate notes (unless they break the Twitter r
 </div>
 
 <div class="info-item">
-<img src="./images/open-source.svg">
+<img src="./images/open-source.svg" alt="Vector icon of 3 a network with distributed nodes">
 <div>
 
 **Open-source and transparent**

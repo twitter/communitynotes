@@ -26,7 +26,7 @@ The sections below describe how notes are assigned statuses, which determines ho
 
 ## Note Status
 
-{{< figure src="../images/note-statuses.png">}}
+{{< figure src="../images/note-statuses.png" alt="Mockup showing a stack of three community notes in different statuses. The first one has a status of ”Note is currently rated helpful · Cites reliable sources · Easy to understand”, the second has a status of ”Note needs more ratings” and the third has a status of ”Note is currently not rated helpful · Sources missing or unreliable · Argumentative”">}}
 
 All Community Notes start with the Needs More Ratings status until they receive at least 5 total ratings.
 Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful according to the algorithm described below.
@@ -51,7 +51,7 @@ This delay allows Community Notes to collect a set of independent ratings from p
 
 ## Helpful Rating Mapping
 
-{{< figure src="../images/helpful-ranking.png">}}
+{{< figure src="../images/helpful-ranking.png" alt="Mockup of the rating prompt for rating notes. It reads: ”Is this note helpful?” And presents three options: Yes, Somewhat, or No">}}
 
 When rating notes, contributors answer the question “Is this note helpful?” Answers to that question are then used to rank notes. When Community Notes (formerly called Birdwatch) launched in January 2021, people could answer “yes” or “no” to that question. An update on June 30, 2021 allows people to choose between “yes,” “somewhat” and “no.” We map these responses to continuous values from 0.0 to 1.0, hereafter referred to as “helpful scores”:
 
@@ -77,7 +77,7 @@ Where the prediction is the sum of three intercept terms: $\mu$ is the global in
 
 To fit the model parameters, we minimize the following regularized least squared error loss function via gradient descent over the dataset of all observed ratings $r_{un}$:
 
-$$ \sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2) $$
+$$ \sum*{r*{un}} (r*{un} - \hat{r}*{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2) $$
 
 Where $\lambda_i=0.03$, the regularization on the intercept terms, is currently 5 times higher than $\lambda_f=0.15$, the regularization on the factors.
 
@@ -103,24 +103,27 @@ This approach helps us to maintain data quality by recognizing when there is a t
 
 We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
 
-$$ a_{un} = \mathbb{1}_{aun} \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$
+$$ a*{un} = \mathbb{1}*{aun} \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$
 
 Where:
-* $\tilde{f} = median_{r_{un}}(||f_n - f_r||)$ indicates the median distance between the reviewer and note latent factors over all observable reviews $r_{un}$
-* $\mathbb{1}_{aun}$ is 1 if reviewer $u$ assigned tag $a$ to note $n$ and 0 otherwise.
+
+- $\tilde{f} = median_{r_{un}}(||f_n - f_r||)$ indicates the median distance between the reviewer and note latent factors over all observable reviews $r_{un}$
+- $\mathbb{1}_{aun}$ is 1 if reviewer $u$ assigned tag $a$ to note $n$ and 0 otherwise.
 
 We define the total weight of an tag $a$ on note $n$ as:
 
-$$ n_{a} = \sum_{r_{un}} a_{un} $$
+$$ n*{a} = \sum*{r*{un}} a*{un} $$
 
 Notice the following:
-* No single review can achieve an tag weight $a_{un} > 1$.
-* Reviews where the reviewer factor and note factor are equal will achieve the maximum weight of 1.0, reviews at a median distance will achieve a weight of 0.5, and reviews at 2x the median distance will have a weight of 0.2.  All reviews will have positive weight.
-* Assigning higher weights to tags in reviews where the reviewer and note are closer in the embedding space effectively lends greater weight to critical reviews from reviewers who tend to share the same perspective as the note.
+
+- No single review can achieve an tag weight $a_{un} > 1$.
+- Reviews where the reviewer factor and note factor are equal will achieve the maximum weight of 1.0, reviews at a median distance will achieve a weight of 0.5, and reviews at 2x the median distance will have a weight of 0.2. All reviews will have positive weight.
+- Assigning higher weights to tags in reviews where the reviewer and note are closer in the embedding space effectively lends greater weight to critical reviews from reviewers who tend to share the same perspective as the note.
 
 Given the quantities defined above, we modify scoring as follows:
-* When the total weight $a_n$ of an tag exceeds 1.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
-* We disregard the "Typos or unclear language" and "Note not needed on this Tweet" tags, which do not relate to note accuracy.
+
+- When the total weight $a_n$ of an tag exceeds 1.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
+- We disregard the "Typos or unclear language" and "Note not needed on this Tweet" tags, which do not relate to note accuracy.
 
 ## CRH Inertia
 
@@ -201,7 +204,7 @@ For not-helpful notes:
 
 **January 20, 2022**
 
-- Updated the helpfulness status of all notes to the historical status on August 15, 2022 or two weeks after note creation, whichever was later.  Notes created within the last two weeks were unimpacted.  We selected August 15, 2022 to include as many scoring improvements as possible while still predating data changes caused by scaling Community Notes.
+- Updated the helpfulness status of all notes to the historical status on August 15, 2022 or two weeks after note creation, whichever was later. Notes created within the last two weeks were unimpacted. We selected August 15, 2022 to include as many scoring improvements as possible while still predating data changes caused by scaling Community Notes.
 
 **January 17, 2022**
 
@@ -222,11 +225,11 @@ For not-helpful notes:
 
 **November 25, 2022**
 
-- Resumed assigning statuses to notes that indicate the Tweet is “not misleading.” Only such notes written after October 3, 2022 will be eligible to receive statuses, as on that date we [updated the rating form](https://twitter.com/CommunityNotes/status/1576981914296102912) to better capture the helpfulness of notes indicating the Tweet is not misleading. 
+- Resumed assigning statuses to notes that indicate the Tweet is “not misleading.” Only such notes written after October 3, 2022 will be eligible to receive statuses, as on that date we [updated the rating form](https://twitter.com/CommunityNotes/status/1576981914296102912) to better capture the helpfulness of notes indicating the Tweet is not misleading.
 
 **November 10, 2022**
 
-- Launched scoring logic adjusting standards for "Helpful" notes based on tags assigned in reviews labeling the note as "Not Helpful." 
+- Launched scoring logic adjusting standards for "Helpful" notes based on tags assigned in reviews labeling the note as "Not Helpful."
 
 **July 13, 2022**
 

@@ -8,7 +8,7 @@ aliases:
 Anyone can read and rate Community Notes, but only contributors who've [unlocked the ability to write](../writing-ability) can add new notes to Tweets. Here's how to add a note:
 
 1. <div> Click or tap the ••• menu on the Tweet's top right and then **Write a Community Note**.
-      {{< figure src="../images/writing-notes.png">}}
+      {{< figure src="../images/writing-notes.png" alt="Mockup of the top half of a mobile device with the Twitter app open to the Home page. The options menu on the first Tweet is open, displaying the usual Tweet options. At the bottom of the list, a new item reads “Write a Community Note”">}}
    </div>
 
 2. <div>Answer the required multiple choice questions and write the context you feel would help others understand why that Tweet is or is not misleading. <br/> If your note claims Tweet is potentially misleading and would benefit from added context, it will be eligible to show on the Tweet if it is rated as helpful by enough people. <br/> If you claim the Tweet is not misleading, you note will be shown to other raters as additional information, but won't show on the Tweet if it earns a status of Helpful.</div>
