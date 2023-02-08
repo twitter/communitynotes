@@ -4,7 +4,7 @@ title: Home
 aliases: ["/learn-more", "/intro", "/overview"]
 ---
 
-{{< figure class="hero" src="./images/help-rate-this-note-expanded.png" alt="Screenshot of a mobile device showing a Tweet with a Community Note. Kian @naturelvr49: Whales are not actually mammals. If Humans (land mammals) can't drink seawater – just try it! – how can supposed sea mammals like whales stay hydrated? Readers added context they thought people might want to know: Whales are indeed mammals. marine mammals are able to “stay hydrated” because their kidneys have evolved to excrete more salt + reclaim more water than humans and many other mammals can. They also obtain water from their food. This is widely documented, for example in http://reputable... Is this note helpful? Rate it">}}
+{{< figure class="hero" src="./images/help-rate-this-note-expanded.png" alt="Screenshot of a mobile device showing a Tweet with a Community Note.">}}
 
 ## Community Notes: a collaborative way to add helpful context to Tweets and keep people better informed
 

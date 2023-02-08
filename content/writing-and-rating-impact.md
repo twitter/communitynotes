@@ -12,7 +12,7 @@ aliases:
 
 The two most important activities in Community Notes are [writing notes](../writing-notes) and [rating notes](../rating-notes). Contributors can see the history of their past Writing Impact and Rating Impact on their profiles.
 
-{{< figure src="../images/writing-and-rating-impact.png" alt="Mockup of the top half of a mobile screen displaying a Community Notes contributor profile. Image at the top shows an anonymous avatar with glasses. Contributor display name: Generous Carrot Sparrow. 22 Rating Impact, 3 Writing Impact.">}}
+{{< figure src="../images/writing-and-rating-impact.png" alt="Screen showing an anonymous contributor, their avatar, and alias name.">}}
 
 ## Writing Impact
 
@@ -20,7 +20,7 @@ Writing Impact reflects how often a contributor's notes have earned a status of 
 
 Notes in ‘Needs More Ratings’ status don't count towards Writing Impact.
 
-{{< figure src="../images/writing-impact.png" alt="Mockup of the top half of a pop up screen displaying details about a contributor's Writing Impact. It reads: 3 Writing Impact. Last updated: 5 days ago. Your notes that earned the status of Helpful: +4. Well done! These notes are now showing on Twitter, adding context to Tweets and helping keep people informed. Your notes that reached the status of Not Helpful: -1. These notes have been rated Not Helpful by enough contributors, including those who sometimes disagree in their past ratings.">}}
+{{< figure src="../images/writing-impact.png" alt="Screen with details about a Community Notes contributor's Writing Impact.">}}
 
 ### How can I increase my Writing Impact?
 
@@ -36,7 +36,7 @@ Rating Impact reflects how often a contributor's ratings helped the community id
 
 Note statuses can change any time as more ratings come in, and can be overturned if a [broad enough group of contributors agrees](../diversity) that it should change.
 
-{{< figure src="../images/rating-impact.png" alt="Mockup of the top half of a pop up screen displaying details about a contributor's Rating Impact. It reads: 22 Rating Impact. Last updated: 5 days ago. Ratings that helped a note earn the status of Helpful: +15. Nice work! These ratings identified Helpful notes that get shown on Twitter. Helpful notes add context to Tweets and help keep people informed. Ratings that helped a note reach the status of Not Helpful: +37. These ratings improve Community Notes by giving feedback to note authors, and allowing contributors to focus on the most promising notes.">}}
+{{< figure src="../images/rating-impact.png" alt="Screen with details about a Community Notes contributor's Rating Impact.">}}
 
 ### How do I increase my Rating Impact?
 

@@ -26,7 +26,7 @@ The sections below describe how notes are assigned statuses, which determines ho
 
 ## Note Status
 
-{{< figure src="../images/note-statuses.png" alt="Mockup showing a stack of three community notes in different statuses. The first one has a status of ”Note is currently rated helpful · Cites reliable sources · Easy to understand”, the second has a status of ”Note needs more ratings” and the third has a status of ”Note is currently not rated helpful · Sources missing or unreliable · Argumentative”">}}
+{{< figure src="../images/note-statuses.png" alt="Three Community notes in different statuses">}}
 
 All Community Notes start with the Needs More Ratings status until they receive at least 5 total ratings.
 Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful according to the algorithm described below.

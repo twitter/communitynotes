@@ -10,7 +10,7 @@ Notes have the most impact when they get rated quickly and start showing on Twee
 
 If you are a contributor, you'll see these alerts in your notifications tab. They look like this:
 
-{{< figure src="../images/alerts-tab.png" alt="Screenshot of a mobile device showing the Twitter app's Notifications screen. A new notification at the top reads: ”Community Notes needs your help! Your rating can help determine if this note should be shown on a Tweet that's getting a lot of attention.”">}}
+{{< figure src="../images/alerts-tab.png" alt="Twitter app with a new notification at the top requesting help from the contributor">}}
 
 To learn more about how Community Notes decides which notes trigger these alerts, see [Under the Hood – Needs Your Help](./timeline-tabs.md)
 
@@ -18,7 +18,7 @@ To learn more about how Community Notes decides which notes trigger these alerts
 
 The default setting for all contributors is "Often", which means you'll start by getting a few alerts per week. You can change that frequency by visiting your Community Notes profile and tapping the gear icon on the top right, or by clicking the button below:
 
-{{< figure src="../images/alerts-settings.png" alt="Two side-by-side screenshots of mobiles devices showing the Twitter app. The first one shows a Community Notes Contributor profile page, highlighting the settings button on the top right. The second one reads: Community Notes settings. Alerts when a note needs help: Receive notifications when a Community Note needs your rating. Options: I'm all in. As many as I can help with — up to a few per day. Often — a few alerts per week. Sometimes — A few alerts per month. Never”">}}
+{{< figure src="../images/alerts-settings.png" alt="One screenshot showing a Community Notes Contributor profile page, highlighting the settings button on the top right. Another screenshot showing the settings screen where contributors can edit their alert frequency">}}
 
 {{< button href="https://www.twitter.com/i/communitynotes/notification_settings">}} Open notification settings {{</ button>}}
 
