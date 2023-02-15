@@ -3,6 +3,7 @@ title: Writing notes
 geekdocBreadcrumb: false
 aliases:
   ["/writing-notes", "writing-and-rating-notes", "/contributing/writing-notes"]
+description: A step-by-step guide on how to write Community Notes on Twitter.
 ---
 
 Anyone can read and rate Community Notes, but only contributors who've [unlocked the ability to write](../writing-ability) can add new notes to Tweets. Here's how to add a note:

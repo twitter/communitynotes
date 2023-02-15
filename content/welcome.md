@@ -2,6 +2,7 @@
 title: Welcome to Community Notes!
 geekdocBreadcrumb: false
 aliases: ["/welcome"]
+description: Welcome to Community notes · Select an alias · Begin rating notes
 ---
 
 You're now a Community Notes contributor 🎉

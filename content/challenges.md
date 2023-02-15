@@ -2,6 +2,7 @@
 title: Challenges
 geekdocBreadcrumb: false
 aliases: ["/challenges", "/risks", "/about/challenges"]
+description: Learn how we're addressing the key challenges involved in building an open, participatory system like Community Notes.
 ---
 
 We know there are many challenges involved in building an open, participatory system like Community Notes — from making it resistant to manipulation attempts, to ensuring it isn’t dominated by a simple majority or biased because of the distribution of contributors.

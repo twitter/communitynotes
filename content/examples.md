@@ -9,6 +9,7 @@ aliases:
     "/tips/",
     "/note-writing-tips/",
   ]
+description: Learn what makes a helpful Community Note on Twitter.
 ---
 
 Great notes provide helpful context to Tweets and leave people better informed. But what makes a note helpful?

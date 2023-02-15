@@ -2,6 +2,7 @@
 title: Getting started
 geekdocBreadcrumb: false
 aliases: ["/getting-started"]
+description: Step-by-step guide for getting started with Community Notes on Twitter.
 ---
 
 1. <div><strong> Sign up</strong><label>

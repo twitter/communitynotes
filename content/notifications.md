@@ -2,6 +2,7 @@
 title: Notifications
 geekdocBreadcrumb: false
 aliases: ["/alerts"]
+description: Community Notes notification settings
 ---
 
 ## Alerts when a note needs your help

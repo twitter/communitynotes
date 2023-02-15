@@ -3,6 +3,7 @@ title: Needs Your Help ranking
 aliases: ["/timeline-tabs"]
 geekdocBreadcrumb: false
 geekdocToc: 1
+description: How Community Notes are ranked to become eligible for features and notifications
 ---
 
 Community Notes participants are able to see a tab of notes that could use their ratings, and receive notifications about notes that need help.

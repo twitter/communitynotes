@@ -2,6 +2,7 @@
 title: Home
 # type: post
 aliases: ["/learn-more", "/intro", "/overview"]
+description: Learn everything about Community Notes, Twitter's open-source program to create a better-informed world.
 ---
 
 {{< figure class="hero" src="./images/help-rate-this-note-expanded.png" alt="Screenshot of a mobile device showing a Tweet with a Community Note.">}}

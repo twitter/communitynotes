@@ -2,6 +2,7 @@
 title: Additional Community review
 geekdocBreadcrumb: false
 aliases: ["/additional-review"]
+description: Request additional review of Community Notes on your Tweets.
 ---
 
 [Community Notes](./_index.md) allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading.

@@ -2,6 +2,7 @@
 title: Community Notes Aliases
 geekdocBreadcrumb: false
 aliases: ["/aliases", "/contributing/aliases"]
+description: Aliases are auto-generated display names that contributors get when they join Community Notes on Twitter.
 ---
 
 {{< figure src="../images/alias-01.png" alt="Screenshot of a summary screen about Community Notes Aliases">}}

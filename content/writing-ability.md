@@ -2,6 +2,7 @@
 title: Locking and unlocking the ability to write notes
 geekdocBreadcrumb: false
 aliases: ["/writing-ability"]
+description: Unlocking writing ability for the first time · Losing writing ability
 ---
 
 To keep the quality of Community Notes high, contributors earn (and can lose) the ability to write notes.

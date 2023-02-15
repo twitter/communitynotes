@@ -2,6 +2,7 @@
 title: Rating notes
 geekdocBreadcrumb: false
 aliases: ["/rating-notes", "/contributing/rating-notes", "/contributing/rating"]
+description: A step-by-step guide to rating Community Notes
 ---
 
 Ratings help identify which notes are helpful enough to show on Twitter and notes that are not helpful and should not be shown.

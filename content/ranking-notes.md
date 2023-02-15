@@ -10,6 +10,7 @@ aliases:
 geekdocBreadcrumb: false
 geekdocToc: 1
 math: true
+description: How are Community Notes ranked?
 ---
 
 Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses determine which notes are displayed on each of the [Community Notes Site’s timelines](../birdwatch-timelines/), and which notes are displayed [on Tweets](../notes-on-twitter/).
