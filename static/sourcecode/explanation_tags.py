@@ -93,18 +93,10 @@ def get_top_nonhelpful_tags_per_author(
   def _set_top_tags(row: pd.Series) -> pd.Series:
     # Note that row[c.firstTagKey] and row[c.secondTagKey] are both Counter
     # objects mapping tags to counts due to the aggregation above.
-    tagTuples = []
-    for tag, count in (row[c.firstTagKey] + row[c.secondTagKey]).items():
-      if not tag:
-        # Skip the empty string, which indicates no tag was assigned.
-        continue
-      tagTuples.append(
-        (count, c.notHelpfulTagsTiebreakMapping[tag], c.notHelpfulTagsEnumMapping[tag])
-      )
-    tagTuples = sorted(tagTuples, reverse=True)
-    topNotHelpfulTags = ",".join(
-      map(str, sorted([tagTuples[i][2] for i in range(min(len(tagTuples), 2))]))
-    )
+    tagTuples = [(count, c.notHelpfulTagsTiebreakMapping[tag], c.notHelpfulTagsEnumMapping[tag]) for tag, count in (row[c.firstTagKey] + row[c.secondTagKey]).items() if tag]
+    tagTuples = sorted(tagTuples, reverse=True)[:2]
+    topNotHelpfulTags = ",".join(str(tagTuple[2]) for tagTuple in tagTuples)
+
     row[c.authorTopNotHelpfulTagValues] = topNotHelpfulTags
     return row
 
