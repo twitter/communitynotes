@@ -13,7 +13,7 @@ These appear in the notifications tab. They look like this:
 
 {{< figure src="../images/tweet-liked-alert.png" alt="Twitter app with a notification showing someone a note that's been added to a Tweet to which they replied, Liked or Rewteeted">}}
 
-These notifications are sent once a note has been showing on a Tweet for 24 hours, has been found particularly helpful (indicated by a [note intercept score](./ranking-notes.md) of 0.45 or higher), and the note was written within the past week.
+These notifications are sent when a note has been showing on a Tweet for 24 hours, has been found particularly helpful (indicated by a [note intercept score](./ranking-notes.md) of 0.45 or higher), and was written within the past week.
 
 ## Alerts when a note needs your help
 
