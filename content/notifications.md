@@ -7,13 +7,13 @@ description: Community Notes notification settings
 
 ## Readers added a note to a Tweet to which you replied, Liked or Retweeted
 
-Sometimes a note appears on a Tweet after you've read it. To give people more context in those cases, Community Notes sends notifications when a note is added to a Tweet to which you've replied, Liked or Retweeted. 
+Sometimes, people read a Tweet before a Community Note appears on it. To give people more context in those cases, Community Notes sends notifications to everyone who has replied to, Liked or Retweeted a Tweet after a note starts showing on it.
 
-You'll see these alerts in your notifications tab. They look like this:
+These appear in the notifications tab. They look like this:
 
 {{< figure src="../images/tweet-liked-alert.png" alt="Twitter app with a notification showing someone a note that's been added to a Tweet to which they replied, Liked or Rewteeted">}}
 
-They're sent once a note has been showing on a Tweet for 24 hours, has been found particularly helpful (indicated by a [note intercept score](./ranking-notes.md) of 0.45 or higher), and the note was written within the past week.
+These notifications are sent once a note has been showing on a Tweet for 24 hours, has been found particularly helpful (indicated by a [note intercept score](./ranking-notes.md) of 0.45 or higher), and the note was written within the past week.
 
 ## Alerts when a note needs your help
 
