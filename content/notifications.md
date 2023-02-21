@@ -11,7 +11,7 @@ Sometimes a note appears on a Tweet after you've read it. To give people more co
 
 You'll see these alerts in your notifications tab. They look like this:
 
-{{< figure src="../images/ZZZZZ.png" alt="Twitter app with a notification showing someone a note that's been added to a Tweet to which they replied, Liked or Rewteeted">}}
+{{< figure src="../images/tweet-liked-alert.png" alt="Twitter app with a notification showing someone a note that's been added to a Tweet to which they replied, Liked or Rewteeted">}}
 
 They're sent once a note has been showing on a Tweet for 24 hours, has been found particularly helpful (indicated by a [note intercept score](./ranking-notes.md) of 0.45 or higher), and the note was written within the past week.
 
