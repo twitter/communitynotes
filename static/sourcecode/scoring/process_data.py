@@ -328,7 +328,7 @@ def preprocess_data(
   ratings.loc[ratings[c.helpfulnessLevelKey] == c.helpfulValueTsv, c.helpfulNumKey] = 1
   ratings = ratings.loc[~pd.isna(ratings[c.helpfulNumKey])]
 
-  notes[c.tweetIdKey] = notes[c.tweetIdKey].astype(np.str)
+  notes[c.tweetIdKey] = notes[c.tweetIdKey].astype(np.str_)
 
   noteStatusHistory = note_status_history.merge_note_info(noteStatusHistory, notes)
 
