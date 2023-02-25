@@ -97,7 +97,7 @@ def tsv_parser(
     raise ValueError("invalid input")
 
 
-def tsv_reader(path: str, mapping, columns, header=False):
+def tsv_reader(path: str, mapping, columns, header=True):
   with open(path, "r") as handle:
     return tsv_parser(handle.read(), mapping, columns, header)
 
