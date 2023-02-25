@@ -1,4 +1,4 @@
-"""Utilites for tag based scoring logic."""
+"""Utilities for tag based scoring logic."""
 
 from typing import Dict
 
