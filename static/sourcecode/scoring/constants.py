@@ -5,36 +5,8 @@ import numpy as np
 
 epochMillis = 1000 * time.time()
 
-minRatingsNeeded = 5
-maxHistoricalValidRatings = 5
-crhThreshold = 0.40
-crnhThresholdIntercept = -0.05
-crnhThresholdNMIntercept = -0.15
-crnhThresholdNoteFactorMultiplier = -0.8
-tagFilteringPercentile = 95
-minAdjustedTagWeight = 1.5
-crhSuperThreshold = 0.50
-inertiaDelta = 0.01
-noteLockMillis = 14 * 24 * 60 * 60 * 1000
-
 minRatingsToGetTag = 2
 minTagsNeededForStatus = 2
-
-minMeanNoteScore = 0.05
-minCRHVsCRNHRatio = 0.00
-minRaterAgreeRatio = 0.66
-
-l2_lambda = 0.03
-l2_intercept_multiplier = 5
-numFactors = 1
-epochs = 200
-useGlobalIntercept = True
-convergence = 1e-7
-initLearningRate = 0.2
-noInitLearningRate = 1.0
-
-minNumRatingsPerRater = 10
-minNumRatersPerNote = 5
 
 scoredNotesOutputPath = "scoredNotes.tsv"
 enrollmentInputPath = "userEnrollment-00000.tsv"
@@ -49,6 +21,7 @@ helpfulnessLevelKey = "helpfulnessLevel"
 createdAtMillisKey = "createdAtMillis"
 summaryKey = "summary"
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
+modelingPopulationKey = "modelingPopulation"
 
 notHelpfulValueTsv = "NOT_HELPFUL"
 somewhatHelpfulValueTsv = "SOMEWHAT_HELPFUL"
@@ -64,14 +37,11 @@ deletedNoteTombstonesLaunchTime = 1652918400000  # May 19, 2022 UTC
 notMisleadingUILaunchTime = 1664755200000  # October 3, 2022 UTC
 publicTSVTimeDelay = 172800000  # 48 hours
 
-ratingStatusKey = "ratingStatus"
 tagCountsKey = "tagCounts"
 tiebreakOrderKey = "tiebreakOrder"
 firstTagKey = "firstTag"
 secondTagKey = "secondTag"
-activeRulesKey = "activeRules"
 activeFilterTagsKey = "activeFilterTags"
-unlockedRatingStatusKey = "unlockedRatingStatus"
 
 successfulRatingHelpfulCount = "successfulRatingHelpfulCount"
 successfulRatingNotHelpfulCount = "successfulRatingNotHelpfulCount"
@@ -85,35 +55,48 @@ notesCurrentlyRatedHelpful = "notesCurrentlyRatedHelpful"
 notesCurrentlyRatedNotHelpful = "notesCurrentlyRatedNotHelpful"
 notesAwaitingMoreRatings = "notesAwaitingMoreRatings"
 
-noteInterceptKey = "noteIntercept"
-raterInterceptKey = "raterIntercept"
-noteFactorKeyBase = "noteFactor"
-raterFactorKeyBase = "raterFactor"
+finalRatingStatusKey = "finalRatingStatus"
+unlockedRatingStatusKey = "unlockedRatingStatus"
+metaScorerActiveRulesKey = "metaScorerActiveRules"
+decidedByKey = "decidedBy"
+
+internalNoteInterceptKey = "internalNoteIntercept"
+internalRaterInterceptKey = "internalRaterIntercept"
+internalNoteFactorKeyBase = "internalNoteFactor"
+internalRaterFactorKeyBase = "internalRaterFactor"
+internalRatingStatusKey = "internalRatingStatus"
+internalActiveRulesKey = "internalActiveRules"
 
 
 def note_factor_key(i):
-  return noteFactorKeyBase + str(i)
+  return internalNoteFactorKeyBase + str(i)
 
 
 def rater_factor_key(i):
-  return raterFactorKeyBase + str(i)
+  return internalRaterFactorKeyBase + str(i)
 
 
-noteFactor1Key = note_factor_key(1)
-raterFactor1Key = rater_factor_key(1)
+internalNoteFactor1Key = note_factor_key(1)
+internalRaterFactor1Key = rater_factor_key(1)
 
-extraRaterInterceptKey = "extraRaterIntercept"
-extraRaterFactor1Key = "extraRaterFactor1"
-extraRatingHelpfulNumKey = "extraRatingHelpfulNum"
-
+coreNoteInterceptKey = "coreNoteIntercept"
+coreNoteFactor1Key = "coreNoteFactor1"
+coreRaterInterceptKey = "coreRaterIntercept"
+coreRaterFactor1Key = "coreRaterFactor1"
+coreRatingStatusKey = "coreRatingStatus"
+coreActiveRulesKey = "coreActiveRules"
+expansionNoteInterceptKey = "expansionNoteIntercept"
+expansionNoteFactor1Key = "expansionNoteFactor1"
+expansionRatingStatusKey = "expansionRatingStatus"
+coverageNoteInterceptKey = "coverageNoteIntercept"
+coverageNoteFactor1Key = "coverageNoteFactor1"
+coverageRatingStatusKey = "coverageRatingStatus"
 
 noteIdKey = "noteId"
 tweetIdKey = "tweetId"
 classificationKey = "classification"
 noteAuthorParticipantIdKey = "noteAuthorParticipantId"
 raterParticipantIdKey = "raterParticipantId"
-noteIndexKey = "noteIndex"
-raterIndexKey = "raterIndex"
 
 noteCountKey = "noteCount"
 ratingCountKey = "ratingCount"
@@ -312,6 +295,8 @@ isEmergingWriterKey = "isEmergingWriter"
 emergingMeanNoteScore = 0.3
 emergingRatingCount = 10
 aggregateRatingReceivedTotal = "aggregateRatingReceivedTotal"
+core = "CORE"
+expansion = "EXPANSION"
 
 userEnrollmentTSVColumnsAndTypes = [
   (participantIdKey, np.str),
@@ -319,10 +304,15 @@ userEnrollmentTSVColumnsAndTypes = [
   (successfulRatingNeededToEarnIn, np.int64),
   (timestampOfLastStateChange, np.int64),
   (timestampOfLastEarnOut, np.double),  # double because nullable.
+  (modelingPopulationKey, np.str),
 ]
 userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
+userEnrollmentTSVColumnsOld = [col for (col, _) in userEnrollmentTSVColumnsAndTypes[:5]]
+userEnrollmentTSVTypeMappingOld = {
+  col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes[:5]
+}
 
 noteParameterUncertaintyTSVColumnsAndTypes = [
   ("noteFactor1_max", np.double),
@@ -347,17 +337,15 @@ noteParameterUncertaintyTSVTypeMapping = {
   col: dtype for (col, dtype) in noteParameterUncertaintyTSVColumnsAndTypes
 }
 
-auxilaryScoredNotesTSVColumns = (
+auxiliaryScoredNotesTSVColumns = (
   [
     noteIdKey,
     ratingWeightKey,
-    helpfulNumKey,
     numRatingsKey,
     createdAtMillisKey,
     noteAuthorParticipantIdKey,
     awaitingMoreRatingsBoolKey,
     numRatingsLast28DaysKey,
-    noteCountKey,
     currentLabelKey,
     currentlyRatedHelpfulBoolKey,
     currentlyRatedNotHelpfulBoolKey,
@@ -372,23 +360,32 @@ auxilaryScoredNotesTSVColumns = (
 
 noteModelOutputTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
-  (noteInterceptKey, np.double),
-  (noteFactor1Key, np.double),
-  (ratingStatusKey, np.str),
+  (coreNoteInterceptKey, np.double),
+  (coreNoteFactor1Key, np.double),
+  (finalRatingStatusKey, np.str),
   (firstTagKey, np.str),
   (secondTagKey, np.str),
-  (activeRulesKey, np.str),
+  (coreActiveRulesKey, np.str),
   (activeFilterTagsKey, np.str),
   (classificationKey, np.str),
   (createdAtMillisKey, np.int64),
+  (coreRatingStatusKey, np.str),
+  (metaScorerActiveRulesKey, np.str),
+  (decidedByKey, np.str),
+  (expansionNoteInterceptKey, np.double),
+  (expansionNoteFactor1Key, np.double),
+  (expansionRatingStatusKey, np.str),
+  (coverageNoteInterceptKey, np.double),
+  (coverageNoteFactor1Key, np.double),
+  (coverageRatingStatusKey, np.str),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
 
 raterModelOutputTSVColumnsAndTypes = [
   (raterParticipantIdKey, np.int64),
-  (raterInterceptKey, np.double),
-  (raterFactor1Key, np.double),
+  (coreRaterInterceptKey, np.double),
+  (coreRaterFactor1Key, np.double),
   (crhCrnhRatioDifferenceKey, np.double),
   (meanNoteScoreKey, np.double),
   (raterAgreeRatioKey, np.double),
