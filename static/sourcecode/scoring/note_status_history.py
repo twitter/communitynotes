@@ -1,7 +1,11 @@
 from . import constants as c
+from .scoring_rules import RuleID
 
 import numpy as np
 import pandas as pd
+
+
+_noteLockMillis = 14 * 24 * 60 * 60 * 1000
 
 
 def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> pd.DataFrame:
@@ -74,16 +78,19 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   Returns:
       row of pd.DataFrame
   """
-  mergedNote[c.currentLabelKey] = mergedNote[c.ratingStatusKey]
+  assert not pd.isna(mergedNote[c.finalRatingStatusKey])
+  mergedNote[c.currentLabelKey] = mergedNote[c.finalRatingStatusKey]
   mergedNote[c.timestampMillisOfNoteCurrentLabelKey] = currentTimeMillis
 
+
   notAlreadyLocked = pd.isna(mergedNote[c.lockedStatusKey])
-  lockEligible = c.noteLockMillis < (currentTimeMillis - mergedNote[c.createdAtMillisKey])
-  if notAlreadyLocked and lockEligible:
-    lockedStatus = c.needsMoreRatings
-    if not pd.isna(mergedNote[c.ratingStatusKey]):
-      lockedStatus = mergedNote[c.ratingStatusKey]
-    mergedNote[c.lockedStatusKey] = lockedStatus
+  lockEligible = _noteLockMillis < (currentTimeMillis - mergedNote[c.createdAtMillisKey])
+  trustedRule = mergedNote[c.decidedByKey] in {
+    rule.get_name() for rule in RuleID if rule.value.lockingEnabled
+  }
+
+  if notAlreadyLocked and lockEligible and trustedRule:
+    mergedNote[c.lockedStatusKey] = mergedNote[c.finalRatingStatusKey]
     mergedNote[c.timestampMillisOfStatusLockKey] = currentTimeMillis
 
   if pd.isna(mergedNote[c.createdAtMillisKey + newScoredNotesSuffix]):
@@ -102,15 +109,15 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   if pd.isna(mergedNote[c.createdAtMillisKey]):
     raise Exception("This should be impossible, we already called add new notes")
 
-  if mergedNote[c.ratingStatusKey] != c.needsMoreRatings:
+  if mergedNote[c.finalRatingStatusKey] != c.needsMoreRatings:
     if pd.isna(mergedNote[c.firstNonNMRLabelKey]):
-      mergedNote[c.firstNonNMRLabelKey] = mergedNote[c.ratingStatusKey]
+      mergedNote[c.firstNonNMRLabelKey] = mergedNote[c.finalRatingStatusKey]
       mergedNote[c.timestampMillisOfNoteFirstNonNMRLabelKey] = currentTimeMillis
-      mergedNote[c.mostRecentNonNMRLabelKey] = mergedNote[c.ratingStatusKey]
+      mergedNote[c.mostRecentNonNMRLabelKey] = mergedNote[c.finalRatingStatusKey]
       mergedNote[c.timestampMillisOfNoteMostRecentNonNMRLabelKey] = currentTimeMillis
 
-    if mergedNote[c.ratingStatusKey] != mergedNote[c.mostRecentNonNMRLabelKey]:
-      mergedNote[c.mostRecentNonNMRLabelKey] = mergedNote[c.ratingStatusKey]
+    if mergedNote[c.finalRatingStatusKey] != mergedNote[c.mostRecentNonNMRLabelKey]:
+      mergedNote[c.mostRecentNonNMRLabelKey] = mergedNote[c.finalRatingStatusKey]
       mergedNote[c.timestampMillisOfNoteMostRecentNonNMRLabelKey] = currentTimeMillis
 
   return mergedNote
@@ -132,17 +139,18 @@ def update_note_status_history(
   currentTimeMillis = c.epochMillis
   newScoredNotesSuffix = "_sn"
   mergedStatuses = oldNoteStatusHistory.merge(
-    scoredNotes[
-      [c.noteIdKey, c.noteAuthorParticipantIdKey, c.createdAtMillisKey, c.ratingStatusKey]
-    ].rename(
+    scoredNotes[[c.noteIdKey, c.createdAtMillisKey, c.finalRatingStatusKey, c.decidedByKey]].rename(
       {
         c.createdAtMillisKey: c.createdAtMillisKey + newScoredNotesSuffix,
       },
       axis=1,
     ),
-    how="outer",
+    how="inner",
     suffixes=("", newScoredNotesSuffix),
   )
+  assert len(mergedStatuses) == len(
+    oldNoteStatusHistory
+  ), "scoredNotes and oldNoteStatusHistory should both contain all notes"
 
   def apply_update(mergedNote):
     return _update_single_note_status_history(

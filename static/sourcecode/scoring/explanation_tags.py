@@ -28,9 +28,9 @@ def top_tags(
   """
   if tagsConsidered:
     tagCounts = pd.DataFrame(row[tagsConsidered])
-  elif row[c.ratingStatusKey] == c.currentlyRatedHelpful:
+  elif row[c.finalRatingStatusKey] == c.currentlyRatedHelpful:
     tagCounts = pd.DataFrame(row[c.helpfulTagsTiebreakOrder])
-  elif row[c.ratingStatusKey] == c.currentlyRatedNotHelpful:
+  elif row[c.finalRatingStatusKey] == c.currentlyRatedNotHelpful:
     tagCounts = pd.DataFrame(row[c.notHelpfulTagsTiebreakOrder])
   else:
     return row
@@ -86,17 +86,13 @@ def get_top_nonhelpful_tags_per_author(
     .agg(Counter)
   )
   def _set_top_tags(row: pd.Series) -> pd.Series:
-    tagTuples = []
-    for tag, count in (row[c.firstTagKey] + row[c.secondTagKey]).items():
-      if not tag:
-        continue
-      tagTuples.append(
-        (count, c.notHelpfulTagsTiebreakMapping[tag], c.notHelpfulTagsEnumMapping[tag])
-      )
-    tagTuples = sorted(tagTuples, reverse=True)
-    topNotHelpfulTags = ",".join(
-      map(str, sorted([tagTuples[i][2] for i in range(min(len(tagTuples), 2))]))
-    )
+    tagTuples = [
+      (count, c.notHelpfulTagsTiebreakMapping[tag], c.notHelpfulTagsEnumMapping[tag])
+      for tag, count in (row[c.firstTagKey] + row[c.secondTagKey]).items()
+      if tag
+    ]
+    tags = sorted([tag for (_, _, tag) in sorted(tagTuples, reverse=True)[:2]])
+    topNotHelpfulTags = ",".join([str(tag) for tag in tags])
     row[c.authorTopNotHelpfulTagValues] = topNotHelpfulTags
     return row
 

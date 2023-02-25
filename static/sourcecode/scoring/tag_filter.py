@@ -64,12 +64,12 @@ def _get_rating_weight(
     pd.DataFrame containing the weight for reach rating, where a rating is identified by a
     {noteId, raterId} pair.
   """
-  normedNotes = _normalize_factors(noteParams, c.noteIdKey, c.noteFactor1Key)
-  normedRaters = _normalize_factors(raterParams, c.raterParticipantIdKey, c.raterFactor1Key)
+  normedNotes = _normalize_factors(noteParams, c.noteIdKey, c.internalNoteFactor1Key)
+  normedRaters = _normalize_factors(raterParams, c.raterParticipantIdKey, c.internalRaterFactor1Key)
   ratings = ratings.merge(normedNotes, on=c.noteIdKey, how="inner")
   ratings = ratings.merge(normedRaters, on=c.raterParticipantIdKey, how="inner")
   ratings[c.ratingWeightKey] = _get_weight_from_distance(
-    np.abs(ratings[c.raterFactor1Key] - ratings[c.noteFactor1Key])
+    np.abs(ratings[c.internalRaterFactor1Key] - ratings[c.internalNoteFactor1Key])
   )
   return ratings[[c.noteIdKey, c.raterParticipantIdKey, c.ratingWeightKey]]
 
