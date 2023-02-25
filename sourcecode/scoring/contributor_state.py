@@ -207,7 +207,7 @@ def _get_visible_note_counts(
   Returns:
       pd.DataFrame: noteCounts The visible note counts
   """
-  sort_by = [c.ratingStatusKey, c.noteIdKey] if countNMRNotesLast else c.noteIdKey
+  sort_by = [c.finalRatingStatusKey, c.noteIdKey] if countNMRNotesLast else c.noteIdKey
   key_function = _sort_nmr_status_last if countNMRNotesLast else None
   if not sinceLastEarnOut:
     aggNotes = scoredNotes
@@ -276,7 +276,7 @@ def is_emerging_writer(scoredNotes: pd.DataFrame):
   Returns:
     pd.DataFrame: emergingWriter The contributor scores with enrollments
   """
-  authorCounts = author_helpfulness(scoredNotes)
+  authorCounts = author_helpfulness(scoredNotes, c.coreNoteInterceptKey)
   raterCounts = scoredNotes.groupby(c.noteAuthorParticipantIdKey).sum(numeric_only=True)[
     c.numRatingsLast28DaysKey
   ]

@@ -8,9 +8,12 @@ import numpy as np
 import pandas as pd
 
 
+_maxHistoricalValidRatings = 5
+
+
 def is_crh(scoredNotes, minRatingsNeeded, crhThreshold) -> pd.Series:
   return (scoredNotes[c.numRatingsKey] >= minRatingsNeeded) & (
-    scoredNotes[c.noteInterceptKey] >= crhThreshold
+    scoredNotes[c.internalNoteInterceptKey] >= crhThreshold
   )
 
 
@@ -18,9 +21,9 @@ def is_crnh(
   scoredNotes, minRatingsNeeded, crnhThresholdIntercept, crnhThresholdNoteFactorMultiplier
 ) -> pd.Series:
   return (scoredNotes[c.numRatingsKey] >= minRatingsNeeded) & (
-    scoredNotes[c.noteInterceptKey]
+    scoredNotes[c.internalNoteInterceptKey]
     <= crnhThresholdIntercept
-    + crnhThresholdNoteFactorMultiplier * np.abs(scoredNotes[c.noteFactor1Key])
+    + crnhThresholdNoteFactorMultiplier * np.abs(scoredNotes[c.internalNoteFactor1Key])
   )
 
 
@@ -102,7 +105,7 @@ def get_ratings_before_note_status_and_public_tsv(
     ][[c.raterParticipantIdKey, c.noteIdKey, c.createdAtMillisKey]]
     .sort_values(c.createdAtMillisKey)
     .groupby(c.noteIdKey)
-    .head(c.maxHistoricalValidRatings)
+    .head(_maxHistoricalValidRatings)
   )[[c.raterParticipantIdKey, c.noteIdKey]].merge(ratingsWithNoteLabelInfo)
 
   ratingsBeforeStatusNewNotes = ratingsWithNoteLabelInfo[
@@ -154,7 +157,6 @@ def get_ratings_with_scores(
     scoredNotes[
       [
         c.noteIdKey,
-        c.noteInterceptKey,
         c.currentlyRatedHelpfulBoolKey,
         c.currentlyRatedNotHelpfulBoolKey,
         c.awaitingMoreRatingsBoolKey,
@@ -253,29 +255,27 @@ def get_valid_ratings(
   return binaryRatingsOnNotesWithStatusLabels
 
 
-def compute_scored_notes(
-  ratings: pd.DataFrame,
-  noteParams: pd.DataFrame,
-  raterParams: Optional[pd.DataFrame],
-  noteStatusHistory: pd.DataFrame,
-  minRatingsNeeded: int = c.minRatingsNeeded,
-  crhThreshold: float = c.crhThreshold,
-  crnhThresholdIntercept: float = c.crnhThresholdIntercept,
-  crnhThresholdNoteFactorMultiplier: float = c.crnhThresholdNoteFactorMultiplier,
-  finalRound: bool = False,
-  is_crh_function: Callable[..., pd.Series] = is_crh,
-  is_crnh_function: Callable[..., pd.Series] = is_crnh,
-) -> pd.DataFrame:
-  """
-  Merges note status history, ratings, and model output. It annotes the data frame with
-  different note statuses, and features needed to calculate contributor stats.
+def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -> pd.DataFrame:
+  """Compute aggregate note statics over available ratings and merge in noteStatusHistory fields.
+
+  This function computes note aggregates over ratings and then merges additional fields from
+  noteStatusHistory.  In general, we do not expect that every note in noteStatusHistory will
+  also appear in ratings (e.g. some notes have no ratings) so the aggregate values for some
+  notes will be NaN.  We do expect that all notes observed in ratings will appear in
+  noteStatusHistory, and verify that expectation with an assert.
+
+  Note that the content of both ratings and noteStatusHistory may vary across callsites.  For
+  example:
+  * Scoring models operating on subsets of notes and ratings may pre-filter both
+    ratings and noteStatusHistory to only include notes/ratings that are in-scope.
+  * During meta scoring we may invoke compute_note_stats with the full set of ratings
+    and notes to compute note stats supporting contributor helpfulness aggregates.
 
   Args:
-      ratings (pd.DataFrame): all ratings
-      noteStatusHistory (pd.DataFrame): history of note statuses
-      scoredNotes (pd.DataFrame): Notes scored from MF + contributor stats
+    ratings (pd.DataFrame): all ratings
+    noteStatusHistory (pd.DataFrame): history of note statuses
   Returns:
-      pd.DataFrame: scoredNotes The scored notes
+    pd.DataFrame containing stats about each note
   """
   last28Days = (
     1000
@@ -285,20 +285,13 @@ def compute_scored_notes(
     ).timestamp()
   )
   ratingsToUse = pd.DataFrame(
-    ratings[[c.noteIdKey, c.helpfulNumKey] + c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder]
+    ratings[[c.noteIdKey] + c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder]
   )
   ratingsToUse.loc[:, c.numRatingsKey] = 1
   ratingsToUse.loc[:, c.numRatingsLast28DaysKey] = False
   ratingsToUse.loc[ratings[c.createdAtMillisKey] > last28Days, c.numRatingsLast28DaysKey] = True
   noteStats = ratingsToUse.groupby(c.noteIdKey).sum()
 
-  noteParamsColsToKeep = [c.noteIdKey, c.noteInterceptKey, c.noteFactor1Key]
-  for col in c.noteParameterUncertaintyTSVColumns:
-    if col in noteParams.columns:
-      noteParamsColsToKeep.append(col)
-  noteStats = noteStats.merge(noteParams[noteParamsColsToKeep], on=c.noteIdKey)
-
-  how = "outer" if finalRound else "left"
   noteStats = noteStats.merge(
     noteStatusHistory[
       [
@@ -311,9 +304,77 @@ def compute_scored_notes(
       ]
     ],
     on=c.noteIdKey,
-    how=how,
+    how="outer",
   )
-  noteStats[c.noteCountKey] = 1
+
+  columns = [
+    c.numRatingsKey,
+    c.numRatingsLast28DaysKey,
+  ] + (c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder)
+  noteStats = noteStats.fillna({col: 0 for col in columns})
+  noteStats[columns] = noteStats[columns].astype(np.int64)
+
+  assert len(noteStats) == len(noteStatusHistory), "noteStatusHistory should contain all notes"
+  return noteStats
+
+
+def compute_scored_notes(
+  ratings: pd.DataFrame,
+  noteParams: pd.DataFrame,
+  raterParams: Optional[pd.DataFrame],
+  noteStatusHistory: pd.DataFrame,
+  minRatingsNeeded: int,
+  crhThreshold: float,
+  crnhThresholdIntercept: float,
+  crnhThresholdNoteFactorMultiplier: float,
+  crnhThresholdNMIntercept: float,
+  crhSuperThreshold: float,
+  inertiaDelta: float,
+  finalRound: bool = False,
+  is_crh_function: Callable[..., pd.Series] = is_crh,
+  is_crnh_function: Callable[..., pd.Series] = is_crnh,
+) -> pd.DataFrame:
+  """
+  Merges note status history, ratings, and model output. It annotes the data frame with
+  different note statuses, and features needed to calculate contributor stats.
+
+  Args:
+      ratings: All ratings from Community Notes contributors.
+      noteParams: Note intercepts and factors returned from matrix factorization.
+      raterParams: Rater intercepts and factors returned from matrix factorization.
+      noteStatusHistory: History of note statuses.
+      minRatingsNeeded: Minimum number of ratings for a note to achieve status.
+      crhThrehsold: Minimum intercept for most notes to achieve CRH status.
+      crnhThresholdIntercept: Minimum intercept for most notes to achieve CRNH status.
+      crnhThresholdNoteFactorMultiplier: Scaling factor making controlling the relationship between
+        CRNH threshold and note intercept.  Note that this constant is set negative so that notes with
+        larger (magnitude) factors must have proportionally lower intercepts to become CRNH.
+      crnhThresholdNMIntercept: Minimum intercept for notes which do not claim a tweet is misleading
+        to achieve CRNH status.
+      crhSuperThreshold: Minimum intercept for notes which have consistent and common patterns of
+        repeated reason tags in not-helpful ratings to achieve CRH status.
+      inertiaDelta: Minimum amount which a note that has achieve CRH status must drop below the
+        applicable threshold to lose CRH status.
+      finalRound: If true, enable additional status assignment logic which is only applied when
+        determining final status.  Given that these mechanisms add complexity we don't apply them
+        in earlier rounds.
+      is_crh_function: Function specifying default CRH critierai.
+      is_crnh_function: Function specifying default CRNH critierai.
+  Returns:
+      pd.DataFrame: scoredNotes The scored notes
+  """
+  noteStats = compute_note_stats(ratings, noteStatusHistory)
+  noteStats = noteStats.drop(
+    columns=[
+      c.numRatingsLast28DaysKey,
+      c.createdAtMillisKey,
+    ]
+  )
+  noteParamsColsToKeep = [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
+  for col in c.noteParameterUncertaintyTSVColumns:
+    if col in noteParams.columns:
+      noteParamsColsToKeep.append(col)
+  noteStats = noteStats.merge(noteParams[noteParamsColsToKeep], on=c.noteIdKey, how="left")
 
   rules = [
     scoring_rules.DefaultRule(RuleID.INITIAL_NMR, set(), c.needsMoreRatings),
@@ -331,7 +392,9 @@ def compute_scored_notes(
         noteStats, minRatingsNeeded, crnhThresholdIntercept, crnhThresholdNoteFactorMultiplier
       ),
     ),
-    scoring_rules.NMtoCRNH(RuleID.NM_CRNH, {RuleID.INITIAL_NMR}, c.currentlyRatedNotHelpful),
+    scoring_rules.NMtoCRNH(
+      RuleID.NM_CRNH, {RuleID.INITIAL_NMR}, c.currentlyRatedNotHelpful, crnhThresholdNMIntercept
+    ),
   ]
   if finalRound:
     tagAggregates = tag_filter.get_note_tag_aggregates(ratings, noteParams, raterParams)
@@ -344,58 +407,29 @@ def compute_scored_notes(
           RuleID.GENERAL_CRH_INERTIA,
           {RuleID.GENERAL_CRH},
           c.currentlyRatedHelpful,
-          c.crhThreshold - c.inertiaDelta,
-          c.crhThreshold,
+          crhThreshold - inertiaDelta,
+          crhThreshold,
+          minRatingsNeeded,
         ),
         scoring_rules.FilterTagOutliers(
           RuleID.TAG_OUTLIER,
           {RuleID.GENERAL_CRH},
           c.needsMoreRatings,
-          c.tagFilteringPercentile,
-          c.minAdjustedTagWeight,
-          c.crhSuperThreshold,
+          crhSuperThreshold,
         ),
         scoring_rules.AddCRHInertia(
           RuleID.ELEVATED_CRH_INERTIA,
           {RuleID.TAG_OUTLIER},
           c.currentlyRatedHelpful,
-          c.crhSuperThreshold - c.inertiaDelta,
-          c.crhSuperThreshold,
-        ),
-        scoring_rules.InsufficientExplanation(
-          RuleID.INSUFFICIENT_EXPLANATION,
-          {
-            RuleID.GENERAL_CRH,
-            RuleID.GENERAL_CRNH,
-            RuleID.GENERAL_CRH_INERTIA,
-            RuleID.ELEVATED_CRH_INERTIA,
-          },
-          c.needsMoreRatings,
-          c.minRatingsToGetTag,
-          c.minTagsNeededForStatus,
-        ),
-        scoring_rules.ScoringDriftGuard(
-          RuleID.SCORING_DRIFT_GUARD,
-          {RuleID.INSUFFICIENT_EXPLANATION},
+          crhSuperThreshold - inertiaDelta,
+          crhSuperThreshold,
+          minRatingsNeeded,
         ),
       ]
     )
-  else:
-    rules.append(
-      scoring_rules.InsufficientExplanation(
-        RuleID.INSUFFICIENT_EXPLANATION,
-        {
-          RuleID.GENERAL_CRH,
-          RuleID.GENERAL_CRNH,
-        },
-        c.needsMoreRatings,
-        c.minRatingsToGetTag,
-        c.minTagsNeededForStatus,
-      ),
-    )
-  noteStats[c.firstTagKey] = np.nan
-  noteStats[c.secondTagKey] = np.nan
-  scoredNotes = scoring_rules.apply_scoring_rules(noteStats, rules)
+  scoredNotes = scoring_rules.apply_scoring_rules(
+    noteStats, rules, c.internalRatingStatusKey, c.internalActiveRulesKey
+  )
   scoredNotes = scoredNotes.drop(columns=[c.lockedStatusKey])
 
   return scoredNotes

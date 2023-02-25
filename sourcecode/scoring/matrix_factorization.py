@@ -7,6 +7,13 @@ import pandas as pd
 import torch
 
 
+_noteIndexKey = "noteIndex"
+_raterIndexKey = "raterIndex"
+_extraRaterInterceptKey = "extraRaterIntercept"
+_extraRaterFactor1Key = "extraRaterFactor1"
+_extraRatingHelpfulNumKey = "extraRatingHelpfulNum"
+
+
 class BiasedMatrixFactorization(torch.nn.Module):
   """Matrix factorization algorithm class."""
 
@@ -49,233 +56,226 @@ class BiasedMatrixFactorization(torch.nn.Module):
     self.global_intercept.requires_grad = False
 
 
-def get_note_and_rater_id_maps(
-  ratings: pd.DataFrame,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-  """
-  Args:
-      ratings (pd.DataFrame)
+class MatrixFactorization:
+  def __init__(
+    self,
+    l2_lambda=0.03,
+    l2_intercept_multiplier=5,
+    initLearningRate=0.2,
+    noInitLearningRate=1.0,
+    convergence=1e-7,
+    numFactors=1,
+    useGlobalIntercept=True,
+    logging=True,
+    flipFactorsForIdentification=True,
+  ) -> None:
+    """Configure matrix factorization note ranking."""
+    self._l2_lambda = l2_lambda
+    self._l2_intercept_multiplier = l2_intercept_multiplier
+    self._initLearningRate = initLearningRate
+    self._noInitLearningRate = noInitLearningRate
+    self._convergence = convergence
+    self._numFactors = numFactors
+    self._useGlobalIntercept = useGlobalIntercept
+    self._logging = logging
+    self._flipFactorsForIdentification = flipFactorsForIdentification
 
-  Returns:
-      Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
-  """
-  noteData = ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]]
-  assert not pd.isna(noteData).values.any(), "noteData must not contain nan values"
+  def get_note_and_rater_id_maps(
+    self,
+    ratings: pd.DataFrame,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    Args:
+        ratings (pd.DataFrame)
 
-  raterIdMap = (
-    pd.DataFrame(noteData[c.raterParticipantIdKey].unique())
-    .reset_index()
-    .set_index(0)
-    .reset_index()
-    .rename(columns={0: c.raterParticipantIdKey, "index": c.raterIndexKey})
-  )
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
+    """
+    noteData = ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]]
+    assert not pd.isna(noteData).values.any(), "noteData must not contain nan values"
 
-  noteIdMap = (
-    pd.DataFrame(noteData[c.noteIdKey].unique())
-    .reset_index()
-    .set_index(0)
-    .reset_index()
-    .rename(columns={0: c.noteIdKey, "index": c.noteIndexKey})
-  )
-
-  noteRatingIds = noteData.merge(noteIdMap, on=c.noteIdKey)
-  noteRatingIds = noteRatingIds.merge(raterIdMap, on=c.raterParticipantIdKey)
-
-  return noteIdMap, raterIdMap, noteRatingIds
-
-
-def initialize_parameters(
-  mf_model: BiasedMatrixFactorization,
-  noteIdMap: pd.DataFrame,
-  raterIdMap: pd.DataFrame,
-  noteInit: Optional[pd.DataFrame] = None,
-  userInit: Optional[pd.DataFrame] = None,
-  globalInterceptInit: Optional[float] = None,
-  numFactors: int = 1,
-) -> None:
-  """If noteInit and userInit exist, use those to initialize note and user parameters.
-
-  Args:
-      mf_model (BiasedMatrixFactorization)
-      noteIdMap (pd.DataFrame)
-      raterIdMap (pd.DataFrame)
-      noteInit (pd.DataFrame, optional)
-      userInit (pd.DataFrame, optional)
-      globalInterceptInit (float, optional)
-  """
-  if noteInit is not None:
-    print("initializing notes")
-    noteInit = noteIdMap.merge(noteInit, on=c.noteIdKey, how="left")
-    mf_model.item_intercepts.weight.data = torch.tensor(
-      np.expand_dims(noteInit[c.noteInterceptKey].astype(np.float32).values, axis=1)
-    )
-    mf_model.item_factors.weight.data = torch.tensor(
-      noteInit[[c.note_factor_key(i) for i in range(1, numFactors + 1)]].astype(np.float32).values
+    raterIdMap = (
+      pd.DataFrame(noteData[c.raterParticipantIdKey].unique())
+      .reset_index()
+      .set_index(0)
+      .reset_index()
+      .rename(columns={0: c.raterParticipantIdKey, "index": _raterIndexKey})
     )
 
-  if userInit is not None:
-    print("initializing users")
-    userInit = raterIdMap.merge(userInit, on=c.raterParticipantIdKey, how="left")
-    mf_model.user_intercepts.weight.data = torch.tensor(
-      np.expand_dims(userInit[c.raterInterceptKey].astype(np.float32).values, axis=1)
-    )
-    mf_model.user_factors.weight.data = torch.tensor(
-      userInit[[c.rater_factor_key(i) for i in range(1, numFactors + 1)]].astype(np.float32).values
+    noteIdMap = (
+      pd.DataFrame(noteData[c.noteIdKey].unique())
+      .reset_index()
+      .set_index(0)
+      .reset_index()
+      .rename(columns={0: c.noteIdKey, "index": _noteIndexKey})
     )
 
-  if globalInterceptInit is not None:
-    print("initialized global intercept")
-    mf_model.global_intercept = torch.nn.parameter.Parameter(torch.ones(1, 1) * globalInterceptInit)
+    noteRatingIds = noteData.merge(noteIdMap, on=c.noteIdKey)
+    noteRatingIds = noteRatingIds.merge(raterIdMap, on=c.raterParticipantIdKey)
 
+    return noteIdMap, raterIdMap, noteRatingIds
 
-def get_parameters_from_trained_model(
-  mf_model: BiasedMatrixFactorization,
-  noteIdMap: pd.DataFrame,
-  raterIdMap: pd.DataFrame,
-  flipFactorsForIdentification: bool = True,
-  numFactors: int = 1,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-  """
-  Args:
-      mf_model (BiasedMatrixFactorization)
-      noteIdMap (pd.DataFrame)
-      raterIdMap (pd.DataFrame)
-      flipFactorsForIdentification (bool, optional)
+  def _initialize_parameters(
+    self,
+    mf_model: BiasedMatrixFactorization,
+    noteIdMap: pd.DataFrame,
+    raterIdMap: pd.DataFrame,
+    noteInit: Optional[pd.DataFrame] = None,
+    userInit: Optional[pd.DataFrame] = None,
+    globalInterceptInit: Optional[float] = None,
+  ) -> None:
+    """If noteInit and userInit exist, use those to initialize note and user parameters.
 
-  Returns:
-      Tuple[pd.DataFrame, pd.DataFrame]: noteIdMap, raterIdMap
-  """
-  noteParams = noteIdMap.copy(deep=True)
-  raterParams = raterIdMap.copy(deep=True)
+    Args:
+        mf_model (BiasedMatrixFactorization)
+        noteIdMap (pd.DataFrame)
+        raterIdMap (pd.DataFrame)
+        noteInit (pd.DataFrame, optional)
+        userInit (pd.DataFrame, optional)
+        globalInterceptInit (float, optional)
+    """
+    if noteInit is not None:
+      print("initializing notes")
+      noteInit = noteIdMap.merge(noteInit, on=c.noteIdKey, how="left")
+      mf_model.item_intercepts.weight.data = torch.tensor(
+        np.expand_dims(noteInit[c.internalNoteInterceptKey].astype(np.float32).values, axis=1)
+      )
+      mf_model.item_factors.weight.data = torch.tensor(
+        noteInit[[c.note_factor_key(i) for i in range(1, self._numFactors + 1)]]
+        .astype(np.float32)
+        .values
+      )
 
-  noteParams[c.noteInterceptKey] = mf_model.item_intercepts.weight.data.cpu().numpy()
-  raterParams[c.raterInterceptKey] = mf_model.user_intercepts.weight.data.cpu().numpy()
+    if userInit is not None:
+      print("initializing users")
+      userInit = raterIdMap.merge(userInit, on=c.raterParticipantIdKey, how="left")
+      mf_model.user_intercepts.weight.data = torch.tensor(
+        np.expand_dims(userInit[c.internalRaterInterceptKey].astype(np.float32).values, axis=1)
+      )
+      mf_model.user_factors.weight.data = torch.tensor(
+        userInit[[c.rater_factor_key(i) for i in range(1, self._numFactors + 1)]]
+        .astype(np.float32)
+        .values
+      )
 
-  for i in range(numFactors):
-    noteParams[c.note_factor_key(i + 1)] = mf_model.item_factors.weight.data.cpu().numpy()[:, i]
-    raterParams[c.rater_factor_key(i + 1)] = mf_model.user_factors.weight.data.cpu().numpy()[:, i]
+    if globalInterceptInit is not None:
+      print("initialized global intercept")
+      mf_model.global_intercept = torch.nn.parameter.Parameter(
+        torch.ones(1, 1) * globalInterceptInit
+      )
 
-  if flipFactorsForIdentification:
-    noteParams, raterParams = flip_factors_for_identification(noteParams, raterParams, numFactors)
+  def _get_parameters_from_trained_model(
+    self,
+    mf_model: BiasedMatrixFactorization,
+    noteIdMap: pd.DataFrame,
+    raterIdMap: pd.DataFrame,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Args:
+        mf_model (BiasedMatrixFactorization)
+        noteIdMap (pd.DataFrame)
+        raterIdMap (pd.DataFrame)
 
-  return noteParams, raterParams
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: noteIdMap, raterIdMap
+    """
+    noteParams = noteIdMap.copy(deep=True)
+    raterParams = raterIdMap.copy(deep=True)
 
+    noteParams[c.internalNoteInterceptKey] = mf_model.item_intercepts.weight.data.cpu().numpy()
+    raterParams[c.internalRaterInterceptKey] = mf_model.user_intercepts.weight.data.cpu().numpy()
 
-def create_mf_model(
-  noteIdMap: pd.DataFrame,
-  raterIdMap: pd.DataFrame,
-  noteRatingIds: pd.DataFrame,
-  useGlobalIntercept: bool,
-  numFactors: int,
-  logging: bool = True,
-  noteInit: Optional[pd.DataFrame] = None,
-  userInit: Optional[pd.DataFrame] = None,
-  globalInterceptInit: Optional[float] = None,
-) -> Tuple[BiasedMatrixFactorization, torch.optim.Optimizer, torch.nn.modules.loss._Loss]:
-  """Initialize BiasedMatrixFactorization model, optimizer, and loss.
+    for i in range(self._numFactors):
+      noteParams[c.note_factor_key(i + 1)] = mf_model.item_factors.weight.data.cpu().numpy()[:, i]
+      raterParams[c.rater_factor_key(i + 1)] = mf_model.user_factors.weight.data.cpu().numpy()[:, i]
 
-  Args:
-      noteIdMap (pd.DataFrame)
-      raterIdMap (pd.DataFrame)
-      noteRatingIds (pd.DataFrame)
-      useGlobalIntercept (bool)
-      numFactors (int)
-      logging (bool, optional)
-      noteInit (pd.DataFrame, optional)
-      userInit (pd.DataFrame, optional)
-      globalIntercept (float, optional)
+    if self._flipFactorsForIdentification:
+      noteParams, raterParams = self._flip_factors_for_identification(noteParams, raterParams)
 
-  Returns:
-      Tuple[BiasedMatrixFactorization, torch.optim.Optimizer, torch.nn.modules.loss._Loss]
-  """
-  n_users = noteRatingIds[c.raterIndexKey].nunique()
-  n_items = noteRatingIds[c.noteIndexKey].nunique()
-  if logging:
-    print("------------------")
-    print(f"Users: {n_users}, Notes: {n_items}")
+    return noteParams, raterParams
 
-  criterion = torch.nn.MSELoss()
+  def _create_mf_model(
+    self,
+    noteIdMap: pd.DataFrame,
+    raterIdMap: pd.DataFrame,
+    noteRatingIds: pd.DataFrame,
+    noteInit: Optional[pd.DataFrame] = None,
+    userInit: Optional[pd.DataFrame] = None,
+    globalInterceptInit: Optional[float] = None,
+  ) -> Tuple[BiasedMatrixFactorization, torch.optim.Optimizer, torch.nn.modules.loss._Loss]:
+    """Initialize BiasedMatrixFactorization model, optimizer, and loss.
 
-  mf_model = BiasedMatrixFactorization(
-    n_users, n_items, use_global_intercept=useGlobalIntercept, n_factors=numFactors
-  )
+    Args:
+        noteIdMap (pd.DataFrame)
+        raterIdMap (pd.DataFrame)
+        noteRatingIds (pd.DataFrame)
+        noteInit (pd.DataFrame, optional)
+        userInit (pd.DataFrame, optional)
+        globalIntercept (float, optional)
 
-  initialize_parameters(
-    mf_model, noteIdMap, raterIdMap, noteInit, userInit, globalInterceptInit, numFactors
-  )
+    Returns:
+        Tuple[BiasedMatrixFactorization, torch.optim.Optimizer, torch.nn.modules.loss._Loss]
+    """
+    n_users = noteRatingIds[_raterIndexKey].nunique()
+    n_items = noteRatingIds[_noteIndexKey].nunique()
+    if self._logging:
+      print("------------------")
+      print(f"Users: {n_users}, Notes: {n_items}")
 
-  if (noteInit is not None) and (userInit is not None):
-    optimizer = torch.optim.Adam(
-      mf_model.parameters(), lr=c.initLearningRate
-    )  # smaller learning rate
-  else:
-    optimizer = torch.optim.Adam(mf_model.parameters(), lr=c.noInitLearningRate)  # learning rate
+    criterion = torch.nn.MSELoss()
 
-  print(mf_model.device)
-  mf_model.to(mf_model.device)
+    mf_model = BiasedMatrixFactorization(
+      n_users, n_items, use_global_intercept=self._useGlobalIntercept, n_factors=self._numFactors
+    )
 
-  return mf_model, optimizer, criterion
+    self._initialize_parameters(
+      mf_model, noteIdMap, raterIdMap, noteInit, userInit, globalInterceptInit
+    )
 
-
-def fit_model(
-  mf_model: BiasedMatrixFactorization,
-  optimizer: torch.optim.Optimizer,
-  criterion: torch.nn.modules.loss._Loss,
-  l2_lambda: float,
-  l2_intercept_multiplier: float,
-  row: torch.LongTensor,
-  col: torch.LongTensor,
-  rating: torch.FloatTensor,
-  logging: bool = True,
-) -> None:
-  """Run gradient descent to train the model.
-
-  Args:
-      mf_model (BiasedMatrixFactorization)
-      optimizer (torch.optim.Optimizer)
-      criterion (torch.nn.modules.loss._Loss)
-      l2_lambda (float)
-      l2_intercept_multiplier (float)
-      row (torch.LongTensor)
-      col (torch.LongTensor)
-      rating (torch.FloatTensor)
-      logging (bool, optional)
-  """
-  l2_lambda_intercept = l2_lambda * l2_intercept_multiplier
-
-  def print_loss():
-    y_pred = mf_model(row, col)
-    train_loss = criterion(y_pred, rating)
-
-    if logging:
-      print("epoch", epoch, loss.item())
-      print("TRAIN FIT LOSS: ", train_loss.item())
-
-  prev_loss = 1e10
-
-  y_pred = mf_model(row, col)
-  loss = criterion(y_pred, rating)
-  l2_reg_loss = torch.tensor(0.0).to(mf_model.device)
-
-  for name, param in mf_model.named_parameters():
-    if "intercept" in name:
-      l2_reg_loss += l2_lambda_intercept * (param**2).mean()
+    if (noteInit is not None) and (userInit is not None):
+      optimizer = torch.optim.Adam(
+        mf_model.parameters(), lr=self._initLearningRate
+      )  # smaller learning rate
     else:
-      l2_reg_loss += l2_lambda * (param**2).mean()
+      optimizer = torch.optim.Adam(
+        mf_model.parameters(), lr=self._noInitLearningRate
+      )  # learning rate
 
-  loss += l2_reg_loss
+    print(mf_model.device)
+    mf_model.to(mf_model.device)
 
-  epoch = 0
+    return mf_model, optimizer, criterion
 
-  while abs(prev_loss - loss.item()) > c.convergence:
+  def _fit_model(
+    self,
+    mf_model: BiasedMatrixFactorization,
+    optimizer: torch.optim.Optimizer,
+    criterion: torch.nn.modules.loss._Loss,
+    row: torch.LongTensor,
+    col: torch.LongTensor,
+    rating: torch.FloatTensor,
+  ) -> None:
+    """Run gradient descent to train the model.
 
-    prev_loss = loss.item()
+    Args:
+        mf_model (BiasedMatrixFactorization)
+        optimizer (torch.optim.Optimizer)
+        criterion (torch.nn.modules.loss._Loss)
+        row (torch.LongTensor)
+        col (torch.LongTensor)
+        rating (torch.FloatTensor)
+    """
+    l2_lambda_intercept = self._l2_lambda * self._l2_intercept_multiplier
 
-    loss.backward()
+    def print_loss():
+      y_pred = mf_model(row, col)
+      train_loss = criterion(y_pred, rating)
 
-    optimizer.step()
+      if self._logging:
+        print("epoch", epoch, loss.item())
+        print("TRAIN FIT LOSS: ", train_loss.item())
 
-    optimizer.zero_grad()
+    prev_loss = 1e10
 
     y_pred = mf_model(row, col)
     loss = criterion(y_pred, rating)
@@ -285,458 +285,438 @@ def fit_model(
       if "intercept" in name:
         l2_reg_loss += l2_lambda_intercept * (param**2).mean()
       else:
-        l2_reg_loss += l2_lambda * (param**2).mean()
+        l2_reg_loss += self._l2_lambda * (param**2).mean()
 
     loss += l2_reg_loss
 
-    if epoch % 50 == 0:
+    epoch = 0
+
+    while abs(prev_loss - loss.item()) > self._convergence:
+
+      prev_loss = loss.item()
+
+      loss.backward()
+
+      optimizer.step()
+
+      optimizer.zero_grad()
+
+      y_pred = mf_model(row, col)
+      loss = criterion(y_pred, rating)
+      l2_reg_loss = torch.tensor(0.0).to(mf_model.device)
+
+      for name, param in mf_model.named_parameters():
+        if "intercept" in name:
+          l2_reg_loss += l2_lambda_intercept * (param**2).mean()
+        else:
+          l2_reg_loss += self._l2_lambda * (param**2).mean()
+
+      loss += l2_reg_loss
+
+      if epoch % 50 == 0:
+        print_loss()
+
+      epoch += 1
+
+    if self._logging:
+      print("Num epochs:", epoch)
       print_loss()
 
-    epoch += 1
+  def run_mf(
+    self,
+    ratings: pd.DataFrame,
+    noteInit: pd.DataFrame = None,
+    userInit: pd.DataFrame = None,
+    globalInterceptInit: Optional[float] = None,
+    specificNoteId: Optional[int] = None,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[float]]:
+    """Train matrix factorization model.
 
-  if logging:
-    print("Num epochs:", epoch)
-    print_loss()
+    See https://twitter.github.io/communitynotes/ranking-notes/#matrix-factorization
 
+    Args:
+        ratings (pd.DataFrame): pre-filtered ratings to train on
+        noteInit (pd.DataFrame, optional)
+        userInit (pd.DataFrame, optional)
+        globalInterceptInit (float, optional)
+        specificNoteId (int, optional)
 
-def run_mf(
-  ratings: pd.DataFrame,
-  l2_lambda: float,
-  l2_intercept_multiplier: float,
-  numFactors: int,
-  epochs: int,
-  useGlobalIntercept: bool,
-  runName: str = "prod",
-  logging: bool = True,
-  flipFactorsForIdentification: bool = True,
-  noteInit: pd.DataFrame = None,
-  userInit: pd.DataFrame = None,
-  globalInterceptInit: Optional[float] = None,
-  specificNoteId: Optional[int] = None,
-) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[float]]:
-  """Train matrix factorization model.
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame, float]:
+          noteParams: contains one row per note, including noteId and learned note parameters
+          raterParams: contains one row per rating, including raterId and learned rater parameters
+          globalIntercept: learned global intercept parameter
+    """
+    noteIdMap, raterIdMap, noteRatingIds = self.get_note_and_rater_id_maps(ratings)
 
-  See https://twitter.github.io/communitynotes/ranking-notes/#matrix-factorization
-
-  Args:
-      ratings (pd.DataFrame): pre-filtered ratings to train on
-      l2_lambda (float): regularization for factors
-      l2_intercept_multiplier (float): how much extra to regularize intercepts
-      numFactors (int): number of dimensions (only 1 is implemented)
-      epochs (int): number of rounds of training
-      useGlobalIntercept (bool): whether to fit global intercept parameter
-      runName (str, optional): name. Defaults to "prod".
-      logging (bool, optional): debug output. Defaults to True.
-      flipFactorsForIdentification (bool, optional): Default to True.
-      noteInit (pd.DataFrame, optional)
-      userInit (pd.DataFrame, optional)
-      globalInterceptInit (float, optional)
-      specificNoteId (int, optional)
-
-  Returns:
-      Tuple[pd.DataFrame, pd.DataFrame, float]:
-        noteParams: contains one row per note, including noteId and learned note parameters
-        raterParams: contains one row per rating, including raterId and learned rater parameters
-        globalIntercept: learned global intercept parameter
-  """
-  noteIdMap, raterIdMap, noteRatingIds = get_note_and_rater_id_maps(ratings)
-
-  mf_model, optimizer, criterion = create_mf_model(
-    noteIdMap,
-    raterIdMap,
-    noteRatingIds,
-    useGlobalIntercept,
-    numFactors,
-    logging,
-    noteInit,
-    userInit,
-    globalInterceptInit,
-  )
-
-  if specificNoteId is not None:
-    mf_model.freeze_rater_and_global_parameters()
-    noteRatingIdsForSpecificNote = noteRatingIds.loc[noteRatingIds[c.noteIdKey] == specificNoteId]
-    rating = torch.FloatTensor(noteRatingIdsForSpecificNote[c.helpfulNumKey].values).to(
-      mf_model.device
+    mf_model, optimizer, criterion = self._create_mf_model(
+      noteIdMap,
+      raterIdMap,
+      noteRatingIds,
+      noteInit,
+      userInit,
+      globalInterceptInit,
     )
-    row = torch.LongTensor(noteRatingIdsForSpecificNote[c.raterIndexKey].values).to(mf_model.device)
-    col = torch.LongTensor(noteRatingIdsForSpecificNote[c.noteIndexKey].values).to(mf_model.device)
-  else:
-    rating = torch.FloatTensor(noteRatingIds[c.helpfulNumKey].values).to(mf_model.device)
-    row = torch.LongTensor(noteRatingIds[c.raterIndexKey].values).to(mf_model.device)
-    col = torch.LongTensor(noteRatingIds[c.noteIndexKey].values).to(mf_model.device)
 
-  fit_model(
-    mf_model,
-    optimizer,
-    criterion,
-    l2_lambda,
-    l2_intercept_multiplier,
-    row,
-    col,
-    rating,
-    logging,
-  )
+    if specificNoteId is not None:
+      mf_model.freeze_rater_and_global_parameters()
+      noteRatingIdsForSpecificNote = noteRatingIds.loc[noteRatingIds[c.noteIdKey] == specificNoteId]
+      rating = torch.FloatTensor(noteRatingIdsForSpecificNote[c.helpfulNumKey].values).to(
+        mf_model.device
+      )
+      row = torch.LongTensor(noteRatingIdsForSpecificNote[_raterIndexKey].values).to(
+        mf_model.device
+      )
+      col = torch.LongTensor(noteRatingIdsForSpecificNote[_noteIndexKey].values).to(mf_model.device)
+    else:
+      rating = torch.FloatTensor(noteRatingIds[c.helpfulNumKey].values).to(mf_model.device)
+      row = torch.LongTensor(noteRatingIds[_raterIndexKey].values).to(mf_model.device)
+      col = torch.LongTensor(noteRatingIds[_noteIndexKey].values).to(mf_model.device)
 
-  assert mf_model.item_factors.weight.data.cpu().numpy().shape[0] == noteIdMap.shape[0]
+    self._fit_model(
+      mf_model,
+      optimizer,
+      criterion,
+      row,
+      col,
+      rating,
+    )
 
-  globalIntercept = None
-  if useGlobalIntercept:
-    globalIntercept = mf_model.global_intercept
+    assert mf_model.item_factors.weight.data.cpu().numpy().shape[0] == noteIdMap.shape[0]
 
-  fitNoteParams, fitRaterParams = get_parameters_from_trained_model(
-    mf_model, noteIdMap, raterIdMap, flipFactorsForIdentification, numFactors
-  )
+    globalIntercept = None
+    if self._useGlobalIntercept:
+      globalIntercept = mf_model.global_intercept
 
-  return fitNoteParams, fitRaterParams, globalIntercept
+    fitNoteParams, fitRaterParams = self._get_parameters_from_trained_model(
+      mf_model, noteIdMap, raterIdMap
+    )
 
+    fitRaterParams.drop(_raterIndexKey, axis=1, inplace=True)
+    return fitNoteParams, fitRaterParams, globalIntercept
 
-def flip_factors_for_identification(
-  noteIdMap: pd.DataFrame, raterIdMap: pd.DataFrame, numFactors: int = 1
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-  """Flip factors if needed, so that the larger group of raters gets a negative factor
+  def _flip_factors_for_identification(
+    self, noteIdMap: pd.DataFrame, raterIdMap: pd.DataFrame
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Flip factors if needed, so that the larger group of raters gets a negative factor
 
-  Args:
-      noteIdMap (pd.DataFrame)
-      raterIdMap (pd.DataFrame)
+    Args:
+        noteIdMap (pd.DataFrame)
+        raterIdMap (pd.DataFrame)
 
-  Returns:
-      Tuple[pd.DataFrame, pd.DataFrame]: noteIdMap, raterIdMap
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: noteIdMap, raterIdMap
+    """
+    for i in range(1, self._numFactors + 1):
+      noteFactorName = c.note_factor_key(i)
+      raterFactorName = c.rater_factor_key(i)
+
+      raterFactors = raterIdMap.loc[~pd.isna(raterIdMap[raterFactorName]), raterFactorName]
+      propNegativeRaterFactors = (raterFactors < 0).sum() / (raterFactors != 0).sum()
+
+      if propNegativeRaterFactors < 0.5:
+        noteIdMap[noteFactorName] = noteIdMap[noteFactorName] * -1
+        raterIdMap[raterFactorName] = raterIdMap[raterFactorName] * -1
+
+      raterFactors = raterIdMap.loc[~pd.isna(raterIdMap[raterFactorName]), raterFactorName]
+      propNegativeRaterFactors = (raterFactors < 0).sum() / (raterFactors != 0).sum()
+      assert propNegativeRaterFactors >= 0.5
+
+    return noteIdMap, raterIdMap
+
   """
-  for i in range(1, numFactors + 1):
-    noteFactorName = c.note_factor_key(i)
-    raterFactorName = c.rater_factor_key(i)
+  TODO: refactor all functions below this one, that have to do with estimating note parameter
+  uncertainty by adding pseudo-raters, into their own class to improve readability.
+  There are many variables passed around to every function that it'd be good to store as attributes.
+  """
 
-    raterFactors = raterIdMap.loc[~pd.isna(raterIdMap[raterFactorName]), raterFactorName]
-    propNegativeRaterFactors = (raterFactors < 0).sum() / (raterFactors != 0).sum()
+  def _check_rater_parameters_same(
+    self, mf_model_fixed_raters, raterParams, noteIdMap, raterIdMapWithExtreme
+  ):
+    noteParamsFromNewModel, raterParamsFromNewModel = self._get_parameters_from_trained_model(
+      mf_model_fixed_raters, noteIdMap, raterIdMapWithExtreme
+    )
+    rpCols = [c.raterParticipantIdKey, c.internalRaterInterceptKey, c.internalRaterFactor1Key]
+    assert ((raterParamsFromNewModel[rpCols]) == (raterParams[rpCols])).all().all()
 
-    if propNegativeRaterFactors < 0.5:
-      noteIdMap[noteFactorName] = noteIdMap[noteFactorName] * -1
-      raterIdMap[raterFactorName] = raterIdMap[raterFactorName] * -1
+  def _check_note_parameters_same(self, mf_model_fixed_raters, noteParams, noteIdMap, raterIdMap):
+    noteParamsFromNewModel, raterParamsFromNewModel = self._get_parameters_from_trained_model(
+      mf_model_fixed_raters, noteIdMap, raterIdMap
+    )
+    assert (noteParamsFromNewModel == noteParams).all().all()
 
-    raterFactors = raterIdMap.loc[~pd.isna(raterIdMap[raterFactorName]), raterFactorName]
-    propNegativeRaterFactors = (raterFactors < 0).sum() / (raterFactors != 0).sum()
-    assert propNegativeRaterFactors >= 0.5
+  def make_extreme_raters(self, raterParams, raterIdMap):
+    raterInterceptValues = [
+      raterParams[c.internalRaterInterceptKey].min(),
+      0.0,
+      raterParams[c.internalRaterInterceptKey].median(),
+      raterParams[c.internalRaterInterceptKey].max(),
+    ]
+    raterFactorValues = [
+      raterParams[c.internalRaterFactor1Key].min(),
+      raterParams[c.internalRaterFactor1Key].median(),
+      0.0,
+      raterParams[c.internalRaterFactor1Key].max(),
+    ]
 
-  return noteIdMap, raterIdMap
+    extremeRaters = []
+    i = 0
+    for raterIntercept in raterInterceptValues:
+      for raterFactor in raterFactorValues:
+        raterParticipantId = -1 - i
+        raterIndex = raterIdMap[_raterIndexKey].max() + 1 + i
 
+        extremeRaters.append(
+          {
+            c.raterParticipantIdKey: raterParticipantId,
+            _raterIndexKey: raterIndex,
+            c.internalRaterInterceptKey: raterIntercept,
+            c.internalRaterFactor1Key: raterFactor,
+          }
+        )
+        i += 1
+    return extremeRaters
 
-"""
-TODO: refactor all functions below this one, that have to do with estimating note parameter
-uncertainty by adding pseudo-raters, into their own class to improve readability.
-There are many variables passed around to every function that it'd be good to store as attributes.
-"""
+  def _add_extreme_raters(self, raterParams, raterIdMap, extremeRaters):
+    for i, raterDict in enumerate(extremeRaters):
+      if not (raterIdMap[c.raterParticipantIdKey] == raterDict[c.raterParticipantIdKey]).any():
+        raterIdMap = pd.concat(
+          [
+            raterIdMap,
+            pd.DataFrame(
+              {
+                c.raterParticipantIdKey: [raterDict[c.raterParticipantIdKey]],
+                _raterIndexKey: [raterDict[_raterIndexKey]],
+              }
+            ),
+          ]
+        )
+      if not (raterParams[c.raterParticipantIdKey] == raterDict[c.raterParticipantIdKey]).any():
+        raterParams = pd.concat(
+          [
+            raterParams,
+            pd.DataFrame(
+              {
+                c.raterParticipantIdKey: [raterDict[c.raterParticipantIdKey]],
+                c.internalRaterInterceptKey: [raterDict[c.internalRaterInterceptKey]],
+                c.internalRaterFactor1Key: [raterDict[c.internalRaterFactor1Key]],
+              }
+            ),
+          ]
+        )
+    return raterParams, raterIdMap
 
-
-def check_rater_parameters_same(
-  mf_model_fixed_raters, raterParams, noteIdMap, raterIdMapWithExtreme, numFactors
-):
-  noteParamsFromNewModel, raterParamsFromNewModel = get_parameters_from_trained_model(
-    mf_model_fixed_raters, noteIdMap, raterIdMapWithExtreme, True, numFactors
-  )
-  rpCols = [c.raterParticipantIdKey, c.raterInterceptKey, c.raterFactor1Key]
-  assert ((raterParamsFromNewModel[rpCols]) == (raterParams[rpCols])).all().all()
-
-
-def check_note_parameters_same(
-  mf_model_fixed_raters, noteParams, noteIdMap, raterIdMap, numFactors
-):
-  noteParamsFromNewModel, raterParamsFromNewModel = get_parameters_from_trained_model(
-    mf_model_fixed_raters, noteIdMap, raterIdMap, True, numFactors
-  )
-  assert (noteParamsFromNewModel == noteParams).all().all()
-
-
-def make_extreme_raters(raterParams, raterIdMap):
-  raterInterceptValues = [
-    raterParams[c.raterInterceptKey].min(),
-    0.0,
-    raterParams[c.raterInterceptKey].median(),
-    raterParams[c.raterInterceptKey].max(),
-  ]
-  raterFactorValues = [
-    raterParams[c.raterFactor1Key].min(),
-    raterParams[c.raterFactor1Key].median(),
-    0.0,
-    raterParams[c.raterFactor1Key].max(),
-  ]
-
-  extremeRaters = []
-  i = 0
-  for raterIntercept in raterInterceptValues:
-    for raterFactor in raterFactorValues:
-      raterParticipantId = -1 - i
-      raterIndex = raterIdMap[c.raterIndexKey].max() + 1 + i
-
-      extremeRaters.append(
-        {
-          c.raterParticipantIdKey: raterParticipantId,
-          c.raterIndexKey: raterIndex,
-          c.raterInterceptKey: raterIntercept,
-          c.raterFactor1Key: raterFactor,
-        }
-      )
-      i += 1
-  return extremeRaters
-
-
-def add_extreme_raters(raterParams, raterIdMap, extremeRaters):
-  for i, raterDict in enumerate(extremeRaters):
-    if not (raterIdMap[c.raterParticipantIdKey] == raterDict[c.raterParticipantIdKey]).any():
-      raterIdMap = pd.concat(
-        [
-          raterIdMap,
-          pd.DataFrame(
-            {
-              c.raterParticipantIdKey: [raterDict[c.raterParticipantIdKey]],
-              c.raterIndexKey: [raterDict[c.raterIndexKey]],
-            }
-          ),
-        ]
-      )
-    if not (raterParams[c.raterParticipantIdKey] == raterDict[c.raterParticipantIdKey]).any():
-      raterParams = pd.concat(
-        [
-          raterParams,
-          pd.DataFrame(
-            {
-              c.raterParticipantIdKey: [raterDict[c.raterParticipantIdKey]],
-              c.raterInterceptKey: [raterDict[c.raterInterceptKey]],
-              c.raterFactor1Key: [raterDict[c.raterFactor1Key]],
-            }
-          ),
-        ]
-      )
-  return raterParams, raterIdMap
-
-
-def create_new_model_with_extreme_raters_from_original_params(
-  ratings,
-  noteParams,
-  raterParams,
-  globalInterceptInit,
-  extremeRaters,
-  logging=True,
-  useGlobalIntercept=True,
-  numFactors=1,
-  l2_lambda=c.l2_lambda,
-  l2_intercept_multiplier=c.l2_intercept_multiplier,
-):
-
-  noteIdMap, raterIdMap, noteRatingIds = get_note_and_rater_id_maps(ratings)
-  raterParamsWithExtreme, raterIdMapWithExtreme = add_extreme_raters(
-    raterParams, raterIdMap, extremeRaters
-  )
-
-  noteInit = noteParams.copy(deep=True)
-  userInit = raterParamsWithExtreme.copy(deep=True)
-
-  n_users = len(userInit)
-  n_items = len(noteInit)
-  if logging:
-    print("------------------")
-    print(f"Users: {n_users}, Notes: {n_items}")
-
-  mf_model_fixed_raters_new = BiasedMatrixFactorization(
-    n_users, n_items, use_global_intercept=useGlobalIntercept, n_factors=numFactors
-  )
-
-  print(mf_model_fixed_raters_new.device)
-  mf_model_fixed_raters_new.to(mf_model_fixed_raters_new.device)
-
-  initialize_parameters(
-    mf_model_fixed_raters_new,
-    noteIdMap,
-    raterIdMapWithExtreme,
-    noteInit,
-    userInit,
-    globalInterceptInit,
-    numFactors,
-  )
-  mf_model_fixed_raters_new.freeze_rater_and_global_parameters()
-
-  notesOnlyOptim = torch.optim.Adam(
-    list(mf_model_fixed_raters_new.item_intercepts.parameters())
-    + list(mf_model_fixed_raters_new.item_factors.parameters()),
-    lr=c.initLearningRate,
-  )
-  criterion = torch.nn.MSELoss()
-
-  check_note_parameters_same(
-    mf_model_fixed_raters_new, noteParams, noteIdMap, raterIdMapWithExtreme, numFactors
-  )
-  check_rater_parameters_same(
-    mf_model_fixed_raters_new, raterParamsWithExtreme, noteIdMap, raterIdMapWithExtreme, numFactors
-  )
-
-  return (
-    mf_model_fixed_raters_new,
-    noteIdMap,
-    raterIdMapWithExtreme,
-    notesOnlyOptim,
-    criterion,
-    raterParamsWithExtreme,
-  )
-
-
-def fit_all_notes_with_raters_constant(
-  noteRatingIdsWithExtremeRatings,
-  noteParams,
-  raterParams,
-  ratings,
-  globalInterceptInit,
-  extremeRaters,
-  logging=True,
-):
-  (
-    mf_model_fixed_raters,
-    noteIdMap,
-    raterIdMap,
-    notesOnlyOptim,
-    criterion,
-    raterParamsNew,
-  ) = create_new_model_with_extreme_raters_from_original_params(
+  def _create_new_model_with_extreme_raters_from_original_params(
+    self,
     ratings,
     noteParams,
     raterParams,
     globalInterceptInit,
     extremeRaters,
-    logging=logging,
-    useGlobalIntercept=True,
-    numFactors=1,
-    l2_lambda=c.l2_lambda,
-    l2_intercept_multiplier=c.l2_intercept_multiplier,
-  )
+  ):
 
-  rating = torch.FloatTensor(noteRatingIdsWithExtremeRatings[c.helpfulNumKey].values).to(
-    mf_model_fixed_raters.device
-  )
-  row = torch.LongTensor(noteRatingIdsWithExtremeRatings[c.raterIndexKey].values).to(
-    mf_model_fixed_raters.device
-  )
-  col = torch.LongTensor(noteRatingIdsWithExtremeRatings[c.noteIndexKey].values).to(
-    mf_model_fixed_raters.device
-  )
+    noteIdMap, raterIdMap, noteRatingIds = self.get_note_and_rater_id_maps(ratings)
+    raterParamsWithExtreme, raterIdMapWithExtreme = self._add_extreme_raters(
+      raterParams, raterIdMap, extremeRaters
+    )
 
-  fit_model(
-    mf_model_fixed_raters,
-    notesOnlyOptim,
-    criterion,
-    c.l2_lambda,
-    c.l2_intercept_multiplier,
-    row,
-    col,
-    rating,
-    logging=logging,
-  )
+    noteInit = noteParams.copy(deep=True)
+    userInit = raterParamsWithExtreme.copy(deep=True)
 
-  check_rater_parameters_same(
-    mf_model_fixed_raters, raterParamsNew, noteIdMap, raterIdMap, c.numFactors
-  )
-
-  fitNoteParams, fitRaterParams = get_parameters_from_trained_model(
-    mf_model_fixed_raters, noteIdMap, raterIdMap
-  )
-
-  return fitNoteParams
-
-
-def fit_note_params_for_each_dataset_with_extreme_ratings(
-  extremeRaters,
-  noteRatingIds,
-  ratings,
-  noteParams,
-  raterParams,
-  globalInterceptInit,
-  logging=True,
-  useGlobalIntercept=True,
-  numFactors=1,
-  l2_lambda=c.l2_lambda,
-  l2_intercept_multiplier=c.l2_intercept_multiplier,
-  joinOrig=False,
-):
-  extremeRatingsToAddWithoutNotes = []
-  extremeRatingsToAddWithoutNotes.append(
-    {
-      c.raterInterceptKey: None,
-      c.raterFactor1Key: None,
-      c.helpfulNumKey: None,
-    }
-  )
-  for r in extremeRaters:
-    r[c.raterParticipantIdKey] = str(r[c.raterParticipantIdKey])
-
-    for helpfulNum in (0.0, 1.0):
-      r[c.helpfulNumKey] = helpfulNum
-      extremeRatingsToAddWithoutNotes.append(r.copy())
-
-  noteParamsList = []
-  for ratingToAddWithoutNoteId in extremeRatingsToAddWithoutNotes:
-    if ratingToAddWithoutNoteId[c.helpfulNumKey] is not None:
-      ratingsWithNoteIds = []
-      for i, noteRow in noteRatingIds[[c.noteIdKey, c.noteIndexKey]].drop_duplicates().iterrows():
-        ratingToAdd = ratingToAddWithoutNoteId.copy()
-        ratingToAdd[c.noteIdKey] = noteRow[c.noteIdKey]
-        ratingToAdd[c.noteIndexKey] = noteRow[c.noteIndexKey]
-        ratingsWithNoteIds.append(ratingToAdd)
-      extremeRatingsToAdd = pd.DataFrame(ratingsWithNoteIds).drop(
-        [c.raterInterceptKey, c.raterFactor1Key], axis=1
-      )
-      noteRatingIdsWithExtremeRatings = pd.concat([noteRatingIds, extremeRatingsToAdd])
-    else:
-      noteRatingIdsWithExtremeRatings = noteRatingIds
-
-    if logging:
+    n_users = len(userInit)
+    n_items = len(noteInit)
+    if self._logging:
       print("------------------")
-      print(f"Re-scoring all notes with extra rating added: {ratingToAddWithoutNoteId}")
-    fitNoteParams = fit_all_notes_with_raters_constant(
-      noteRatingIdsWithExtremeRatings,
+      print(f"Users: {n_users}, Notes: {n_items}")
+
+    mf_model_fixed_raters_new = BiasedMatrixFactorization(
+      n_users, n_items, use_global_intercept=self._useGlobalIntercept, n_factors=self._numFactors
+    )
+
+    print(mf_model_fixed_raters_new.device)
+    mf_model_fixed_raters_new.to(mf_model_fixed_raters_new.device)
+
+    self._initialize_parameters(
+      mf_model_fixed_raters_new,
+      noteIdMap,
+      raterIdMapWithExtreme,
+      noteInit,
+      userInit,
+      globalInterceptInit,
+    )
+    mf_model_fixed_raters_new.freeze_rater_and_global_parameters()
+
+    notesOnlyOptim = torch.optim.Adam(
+      list(mf_model_fixed_raters_new.item_intercepts.parameters())
+      + list(mf_model_fixed_raters_new.item_factors.parameters()),
+      lr=self._initLearningRate,
+    )
+    criterion = torch.nn.MSELoss()
+
+    self._check_note_parameters_same(
+      mf_model_fixed_raters_new, noteParams, noteIdMap, raterIdMapWithExtreme
+    )
+    self._check_rater_parameters_same(
+      mf_model_fixed_raters_new, raterParamsWithExtreme, noteIdMap, raterIdMapWithExtreme
+    )
+
+    return (
+      mf_model_fixed_raters_new,
+      noteIdMap,
+      raterIdMapWithExtreme,
+      notesOnlyOptim,
+      criterion,
+      raterParamsWithExtreme,
+    )
+
+  def _fit_all_notes_with_raters_constant(
+    self,
+    noteRatingIdsWithExtremeRatings,
+    noteParams,
+    raterParams,
+    ratings,
+    globalInterceptInit,
+    extremeRaters,
+  ):
+    (
+      mf_model_fixed_raters,
+      noteIdMap,
+      raterIdMap,
+      notesOnlyOptim,
+      criterion,
+      raterParamsNew,
+    ) = self._create_new_model_with_extreme_raters_from_original_params(
+      ratings,
       noteParams,
       raterParams,
-      ratings,
       globalInterceptInit,
       extremeRaters,
-      logging,
     )
-    fitNoteParams[c.extraRaterInterceptKey] = ratingToAddWithoutNoteId[c.raterInterceptKey]
-    fitNoteParams[c.extraRaterFactor1Key] = ratingToAddWithoutNoteId[c.raterFactor1Key]
-    fitNoteParams[c.extraRatingHelpfulNumKey] = ratingToAddWithoutNoteId[c.helpfulNumKey]
-    noteParamsList.append(fitNoteParams)
 
-  unp = pd.concat(noteParamsList)
-  unp.drop(c.noteIndexKey, axis=1, inplace=True)
-  unp = unp.sort_values(by=[c.noteIdKey, c.extraRaterInterceptKey])
+    rating = torch.FloatTensor(noteRatingIdsWithExtremeRatings[c.helpfulNumKey].values).to(
+      mf_model_fixed_raters.device
+    )
+    row = torch.LongTensor(noteRatingIdsWithExtremeRatings[_raterIndexKey].values).to(
+      mf_model_fixed_raters.device
+    )
+    col = torch.LongTensor(noteRatingIdsWithExtremeRatings[_noteIndexKey].values).to(
+      mf_model_fixed_raters.device
+    )
 
-  unpAgg = (
-    unp[["noteId", "noteIntercept", "noteFactor1"]].groupby("noteId").agg({"min", "median", "max"})
-  )
+    self._fit_model(
+      mf_model_fixed_raters,
+      notesOnlyOptim,
+      criterion,
+      row,
+      col,
+      rating,
+    )
 
-  refitSameRatings = unp[pd.isna(unp[c.extraRaterInterceptKey])][
-    [c.noteIdKey, c.noteInterceptKey, c.noteFactor1Key]
-  ].set_index(c.noteIdKey)
-  refitSameRatings.columns = pd.MultiIndex.from_product([refitSameRatings.columns, ["refit_orig"]])
-  n = refitSameRatings.join(unpAgg)
+    self._check_rater_parameters_same(mf_model_fixed_raters, raterParamsNew, noteIdMap, raterIdMap)
 
-  if joinOrig:
-    orig = noteParams[[c.noteIdKey, c.noteInterceptKey, c.noteFactor1Key]].set_index(c.noteIdKey)
-    orig.columns = pd.MultiIndex.from_product([orig.columns, ["original"]])
-    n = n.join(orig)
+    fitNoteParams, fitRaterParams = self._get_parameters_from_trained_model(
+      mf_model_fixed_raters, noteIdMap, raterIdMap
+    )
 
-  raterFacs = noteRatingIds.merge(raterParams, on=c.raterParticipantIdKey)
-  raterFacs["all"] = 1
-  raterFacs["neg_fac"] = raterFacs[c.raterFactor1Key] < 0
-  raterFacs["pos_fac"] = raterFacs[c.raterFactor1Key] > 0
-  r = raterFacs.groupby(c.noteIdKey).sum()[["all", "neg_fac", "pos_fac"]]
-  r.columns = pd.MultiIndex.from_product([[c.ratingCountKey], r.columns])
-  n = n.join(r)
+    return fitNoteParams
 
-  def flatten_column_names(c):
-    if type(c) == tuple:
-      return f"{c[0]}_{c[1]}"
-    else:
-      return c
+  def fit_note_params_for_each_dataset_with_extreme_ratings(
+    self,
+    extremeRaters,
+    noteRatingIds,
+    ratings,
+    noteParams,
+    raterParams,
+    globalInterceptInit,
+    joinOrig=False,
+  ):
+    extremeRatingsToAddWithoutNotes = []
+    extremeRatingsToAddWithoutNotes.append(
+      {
+        c.internalRaterInterceptKey: None,
+        c.internalRaterFactor1Key: None,
+        c.helpfulNumKey: None,
+      }
+    )
+    for r in extremeRaters:
+      r[c.raterParticipantIdKey] = str(r[c.raterParticipantIdKey])
 
-  n.columns = [flatten_column_names(c) for c in n.columns]
-  n = n[n.columns.sort_values()]
+      for helpfulNum in (0.0, 1.0):
+        r[c.helpfulNumKey] = helpfulNum
+        extremeRatingsToAddWithoutNotes.append(r.copy())
 
-  return unp, n
+    noteParamsList = []
+    for ratingToAddWithoutNoteId in extremeRatingsToAddWithoutNotes:
+      if ratingToAddWithoutNoteId[c.helpfulNumKey] is not None:
+        ratingsWithNoteIds = []
+        for i, noteRow in noteRatingIds[[c.noteIdKey, _noteIndexKey]].drop_duplicates().iterrows():
+          ratingToAdd = ratingToAddWithoutNoteId.copy()
+          ratingToAdd[c.noteIdKey] = noteRow[c.noteIdKey]
+          ratingToAdd[_noteIndexKey] = noteRow[_noteIndexKey]
+          ratingsWithNoteIds.append(ratingToAdd)
+        extremeRatingsToAdd = pd.DataFrame(ratingsWithNoteIds).drop(
+          [c.internalRaterInterceptKey, c.internalRaterFactor1Key], axis=1
+        )
+        noteRatingIdsWithExtremeRatings = pd.concat([noteRatingIds, extremeRatingsToAdd])
+      else:
+        noteRatingIdsWithExtremeRatings = noteRatingIds
+
+      if self._logging:
+        print("------------------")
+        print(f"Re-scoring all notes with extra rating added: {ratingToAddWithoutNoteId}")
+      fitNoteParams = self._fit_all_notes_with_raters_constant(
+        noteRatingIdsWithExtremeRatings,
+        noteParams,
+        raterParams,
+        ratings,
+        globalInterceptInit,
+        extremeRaters,
+      )
+      fitNoteParams[_extraRaterInterceptKey] = ratingToAddWithoutNoteId[c.internalRaterInterceptKey]
+      fitNoteParams[_extraRaterFactor1Key] = ratingToAddWithoutNoteId[c.internalRaterFactor1Key]
+      fitNoteParams[_extraRatingHelpfulNumKey] = ratingToAddWithoutNoteId[c.helpfulNumKey]
+      noteParamsList.append(fitNoteParams)
+
+    unp = pd.concat(noteParamsList)
+    unp.drop(_noteIndexKey, axis=1, inplace=True)
+    unp = unp.sort_values(by=[c.noteIdKey, _extraRaterInterceptKey])
+
+    unpAgg = (
+      unp[[c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]]
+      .groupby(c.noteIdKey)
+      .agg({"min", "median", "max"})
+    )
+
+    refitSameRatings = unp[pd.isna(unp[_extraRaterInterceptKey])][
+      [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
+    ].set_index(c.noteIdKey)
+    refitSameRatings.columns = pd.MultiIndex.from_product(
+      [refitSameRatings.columns, ["refit_orig"]]
+    )
+    n = refitSameRatings.join(unpAgg)
+
+    if joinOrig:
+      orig = noteParams[
+        [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
+      ].set_index(c.noteIdKey)
+      orig.columns = pd.MultiIndex.from_product([orig.columns, ["original"]])
+      n = n.join(orig)
+
+    raterFacs = noteRatingIds.merge(raterParams, on=c.raterParticipantIdKey)
+    raterFacs["all"] = 1
+    raterFacs["neg_fac"] = raterFacs[c.internalRaterFactor1Key] < 0
+    raterFacs["pos_fac"] = raterFacs[c.internalRaterFactor1Key] > 0
+    r = raterFacs.groupby(c.noteIdKey).sum()[["all", "neg_fac", "pos_fac"]]
+    r.columns = pd.MultiIndex.from_product([[c.ratingCountKey], r.columns])
+    n = n.join(r)
+
+    def flatten_column_names(c):
+      if type(c) == tuple:
+        return f"{c[0]}_{c[1]}"
+      else:
+        return c
+
+    n.columns = [flatten_column_names(c) for c in n.columns]
+    n = n[n.columns.sort_values()]
+
+    return unp, n

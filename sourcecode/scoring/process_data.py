@@ -1,5 +1,5 @@
 from io import StringIO
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 from . import constants as c, note_status_history
 
@@ -67,12 +67,39 @@ def read_from_strings(
   return notes, ratings, noteStatusHistory
 
 
-def tsv_reader(path: str, mapping, columns):
+def tsv_parser(
+  rawTSV: str, mapping: Dict[str, type], columns: List[str], header: bool
+) -> pd.DataFrame:
+  """Parse a TSV input and raise an Exception if the input is not formatted as expected.
+
+  Args:
+    rawTSV: str contianing entire TSV input
+    mapping: Dict mapping column names to types
+    columns: List of column names
+    header: bool indicating whether the input will have a header
+
+  Returns:
+    pd.DataFrame containing parsed data
+  """
   try:
-    return pd.read_csv(path, sep="\t", dtype=mapping, names=columns)
-  except ValueError as e:
-    print(e)
-    return pd.read_csv(path, sep="\t", dtype=mapping)
+    firstLine = rawTSV.split("\n")[0]
+    if len(firstLine.split("\t")) != len(columns):
+      raise ValueError
+    return pd.read_csv(
+      StringIO(rawTSV),
+      sep="\t",
+      names=columns,
+      dtype=mapping,
+      header=0 if header else None,
+      index_col=[],
+    )
+  except (ValueError, IndexError):
+    raise ValueError("invalid input")
+
+
+def tsv_reader(path: str, mapping, columns, header=False):
+  with open(path, "r") as handle:
+    return tsv_parser(handle.read(), mapping, columns, header)
 
 
 def read_from_tsv(
@@ -96,9 +123,15 @@ def read_from_tsv(
   noteStatusHistory = tsv_reader(
     noteStatusHistoryPath, c.noteStatusHistoryTSVTypeMapping, c.noteStatusHistoryTSVColumns
   )
-  userEnrollment = tsv_reader(
-    userEnrollmentPath, c.userEnrollmentTSVTypeMapping, c.userEnrollmentTSVColumns
-  )
+  try:
+    userEnrollment = tsv_reader(
+      userEnrollmentPath, c.userEnrollmentTSVTypeMapping, c.userEnrollmentTSVColumns
+    )
+  except ValueError:
+    userEnrollment = tsv_reader(
+      userEnrollmentPath, c.userEnrollmentTSVTypeMappingOld, c.userEnrollmentTSVColumnsOld
+    )
+    userEnrollment[c.modelingPopulationKey] = c.core
 
   assert len(notes.columns) == len(c.noteTSVColumns) and all(notes.columns == c.noteTSVColumns), (
     f"note columns don't match: \n{[col for col in notes.columns if not col in c.noteTSVColumns]} are extra columns, "
@@ -314,20 +347,26 @@ def preprocess_data(
   return notes, ratings, noteStatusHistory
 
 
-def filter_ratings(ratings: pd.DataFrame, logging: bool = True) -> pd.DataFrame:
+def filter_ratings(
+  ratings: pd.DataFrame, minNumRatingsPerRater: int, minNumRatersPerNote: int, logging: bool = True
+) -> pd.DataFrame:
   """Apply min number of ratings for raters & notes. Instead of iterating these filters
   until convergence, simply stop after going back and force once.
 
   Args:
-      ratings (pd.DataFrame): unfiltered ratings
-      logging (bool, optional): debug output. Defaults to True.
+      ratings: All ratings from Community Notes contributors.
+      minNumRatingsPerRater: Minimum number of ratings which a rater must produce to be
+        included in scoring.  Raters with fewer ratings are removed.
+      minNumRatersPerNote: Minimum number of ratings which a note must have to be included
+        in scoring.  Notes with fewer ratings are removed.
+      logging: Debug output. Defaults to True.
 
   Returns:
       pd.DataFrame: filtered ratings
   """
 
   n = ratings.groupby(c.noteIdKey).size().reset_index()
-  notesWithMinNumRatings = n[n[0] >= c.minNumRatersPerNote]
+  notesWithMinNumRatings = n[n[0] >= minNumRatersPerNote]
 
   ratingsNoteFiltered = ratings.merge(notesWithMinNumRatings[[c.noteIdKey]], on=c.noteIdKey)
 
@@ -336,14 +375,14 @@ def filter_ratings(ratings: pd.DataFrame, logging: bool = True) -> pd.DataFrame:
     print(
       "  After Filtering Notes w/less than %d Ratings, Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d"
       % (
-        c.minNumRatersPerNote,
+        minNumRatersPerNote,
         len(ratingsNoteFiltered),
         len(np.unique(ratingsNoteFiltered[c.noteIdKey])),
         len(np.unique(ratingsNoteFiltered[c.raterParticipantIdKey])),
       )
     )
   r = ratingsNoteFiltered.groupby(c.raterParticipantIdKey).size().reset_index()
-  ratersWithMinNumRatings = r[r[0] >= c.minNumRatingsPerRater]
+  ratersWithMinNumRatings = r[r[0] >= minNumRatingsPerRater]
 
   ratingsDoubleFiltered = ratingsNoteFiltered.merge(
     ratersWithMinNumRatings[[c.raterParticipantIdKey]], on=c.raterParticipantIdKey
@@ -352,14 +391,14 @@ def filter_ratings(ratings: pd.DataFrame, logging: bool = True) -> pd.DataFrame:
     print(
       "  After Filtering Raters w/less than %s Notes, Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d"
       % (
-        c.minNumRatingsPerRater,
+        minNumRatingsPerRater,
         len(ratingsDoubleFiltered),
         len(np.unique(ratingsDoubleFiltered[c.noteIdKey])),
         len(np.unique(ratingsDoubleFiltered[c.raterParticipantIdKey])),
       )
     )
   n = ratingsDoubleFiltered.groupby(c.noteIdKey).size().reset_index()
-  notesWithMinNumRatings = n[n[0] >= c.minNumRatersPerNote]
+  notesWithMinNumRatings = n[n[0] >= minNumRatersPerNote]
   ratingsForTraining = ratingsDoubleFiltered.merge(
     notesWithMinNumRatings[[c.noteIdKey]], on=c.noteIdKey
   )
@@ -367,7 +406,7 @@ def filter_ratings(ratings: pd.DataFrame, logging: bool = True) -> pd.DataFrame:
     print(
       "  After Final Filtering of Notes w/less than %d Ratings, Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d"
       % (
-        c.minNumRatersPerNote,
+        minNumRatersPerNote,
         len(ratingsForTraining),
         len(np.unique(ratingsForTraining[c.noteIdKey])),
         len(np.unique(ratingsForTraining[c.raterParticipantIdKey])),
@@ -386,21 +425,21 @@ def visualize_parameters(noteParams: pd.DataFrame, raterParams: pd.DataFrame) ->
   print(noteParams.describe())
 
   plt.figure()
-  noteParams[c.noteInterceptKey].plot(kind="hist", bins=20)
+  noteParams[c.coreNoteInterceptKey].plot(kind="hist", bins=20)
 
   plt.figure()
-  noteParams[c.noteFactor1Key].plot(kind="hist", bins=20)
+  noteParams[c.coreNoteFactor1Key].plot(kind="hist", bins=20)
 
   plt.figure()
-  noteParams.plot(kind="scatter", x=c.noteFactor1Key, y=c.noteInterceptKey, alpha=0.05)
+  noteParams.plot(kind="scatter", x=c.coreNoteFactor1Key, y=c.coreNoteInterceptKey, alpha=0.05)
 
   print(raterParams.describe())
 
   plt.figure()
-  raterParams[c.raterInterceptKey].plot(kind="hist", bins=20)
+  raterParams[c.coreRaterInterceptKey].plot(kind="hist", bins=20)
 
   plt.figure()
-  raterParams[c.raterFactor1Key].plot(kind="hist", bins=20)
+  raterParams[c.coreRaterFactor1Key].plot(kind="hist", bins=20)
 
 
 def visualize_helpfulness(helpfulness_scores: pd.DataFrame) -> None:
