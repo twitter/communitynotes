@@ -1,4 +1,4 @@
-import constants as c
+from . import constants as c
 
 import numpy as np
 import pandas as pd
