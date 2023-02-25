@@ -1,6 +1,6 @@
 from typing import Optional, Tuple
 
-import constants as c
+from . import constants as c
 
 import numpy as np
 import pandas as pd
@@ -59,8 +59,6 @@ def get_note_and_rater_id_maps(
   Returns:
       Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
   """
-  # We are extracting only the subset of note data from the ratings data frame that is needed to
-  # run matrix factorization. This avoids accidentally losing data through `dropna`.
   noteData = ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]]
   assert not pd.isna(noteData).values.any(), "noteData must not contain nan values"
 
@@ -273,16 +271,12 @@ def fit_model(
 
     prev_loss = loss.item()
 
-    # Backpropagate
     loss.backward()
 
-    # Update the parameters
     optimizer.step()
 
-    # Set gradients to zero
     optimizer.zero_grad()
 
-    # Predict and calculate loss
     y_pred = mf_model(row, col)
     loss = criterion(y_pred, rating)
     l2_reg_loss = torch.tensor(0.0).to(mf_model.device)
@@ -360,7 +354,6 @@ def run_mf(
   )
 
   if specificNoteId is not None:
-    # Only used for quick, approximate analysis to score a particular note
     mf_model.freeze_rater_and_global_parameters()
     noteRatingIdsForSpecificNote = noteRatingIds.loc[noteRatingIds[c.noteIdKey] == specificNoteId]
     rating = torch.FloatTensor(noteRatingIdsForSpecificNote[c.helpfulNumKey].values).to(
@@ -369,7 +362,6 @@ def run_mf(
     row = torch.LongTensor(noteRatingIdsForSpecificNote[c.raterIndexKey].values).to(mf_model.device)
     col = torch.LongTensor(noteRatingIdsForSpecificNote[c.noteIndexKey].values).to(mf_model.device)
   else:
-    # Normal case
     rating = torch.FloatTensor(noteRatingIds[c.helpfulNumKey].values).to(mf_model.device)
     row = torch.LongTensor(noteRatingIds[c.raterIndexKey].values).to(mf_model.device)
     col = torch.LongTensor(noteRatingIds[c.noteIndexKey].values).to(mf_model.device)
@@ -419,7 +411,6 @@ def flip_factors_for_identification(
     propNegativeRaterFactors = (raterFactors < 0).sum() / (raterFactors != 0).sum()
 
     if propNegativeRaterFactors < 0.5:
-      # Flip all factors, on notes and raters
       noteIdMap[noteFactorName] = noteIdMap[noteFactorName] * -1
       raterIdMap[raterFactorName] = raterIdMap[raterFactorName] * -1
 
@@ -474,7 +465,6 @@ def make_extreme_raters(raterParams, raterIdMap):
   i = 0
   for raterIntercept in raterInterceptValues:
     for raterFactor in raterFactorValues:
-      # These pseudo-raters need to have IDs that don't conflict with real raterParticipantIds
       raterParticipantId = -1 - i
       raterIndex = raterIdMap[c.raterIndexKey].max() + 1 + i
 
@@ -491,7 +481,6 @@ def make_extreme_raters(raterParams, raterIdMap):
 
 
 def add_extreme_raters(raterParams, raterIdMap, extremeRaters):
-  # TODO: should concat all at once for efficiency instead of iterative appends
   for i, raterDict in enumerate(extremeRaters):
     if not (raterIdMap[c.raterParticipantIdKey] == raterDict[c.raterParticipantIdKey]).any():
       raterIdMap = pd.concat(
@@ -641,7 +630,6 @@ def fit_all_notes_with_raters_constant(
     logging=logging,
   )
 
-  # Double check that we kept rater parameters fixed during re-training of note parameters.
   check_rater_parameters_same(
     mf_model_fixed_raters, raterParamsNew, noteIdMap, raterIdMap, c.numFactors
   )
@@ -684,7 +672,6 @@ def fit_note_params_for_each_dataset_with_extreme_ratings(
 
   noteParamsList = []
   for ratingToAddWithoutNoteId in extremeRatingsToAddWithoutNotes:
-    ## for each rating (ided by raterParticipantId and raterIndex)
     if ratingToAddWithoutNoteId[c.helpfulNumKey] is not None:
       ratingsWithNoteIds = []
       for i, noteRow in noteRatingIds[[c.noteIdKey, c.noteIndexKey]].drop_duplicates().iterrows():

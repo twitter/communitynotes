@@ -1,53 +1,80 @@
-import argparse
+"""Invoke Community Notes scoring and user contribution algorithms.
 
-import algorithm, constants as c, process_data
-
-
-"""
 Example Usage:
   python main.py \
-    --enrollment userEnrollment-00000.tsv \
-    --notes_path notes-00000.tsv  \
-    --ratings_path ratings-00000.tsv \
-    --note_status_history_path noteStatusHistory-00000.tsv
+    --enrollment data/user_enrollment_tsv \
+    --notes data/all_birdwatch_notes.tsv \
+    --output data/scored_notes.tsv \
+    --ratings data/all_birdwatch_note_ratings.tsv \
+    --status data/note_status_history_public.tsv
 """
 
+import argparse
+import os
 
-def get_args():
-  """Parse command line arguments for running on command line.
+import scoring.constants as c
+from scoring.process_data import get_data, write_tsv_local
+from scoring.run_scoring import run_scoring
 
-  Returns:
-      args: the parsed arguments
-  """
-  parser = argparse.ArgumentParser(description="Birdwatch Algorithm.")
+
+def parse_args():
+  parser = argparse.ArgumentParser("Community Notes Scoring")
   parser.add_argument(
-    "-e", "--enrollment", default=c.enrollmentInputPath, help="user enrollment dataset"
+    "-e", "--enrollment", default=c.enrollmentInputPath, help="note enrollment dataset"
   )
-  parser.add_argument("-n", "--notes_path", default=c.notesInputPath, help="note dataset")
-  parser.add_argument("-r", "--ratings_path", default=c.ratingsInputPath, help="rating dataset")
   parser.add_argument(
-    "-s",
-    "--note_status_history_path",
-    default=c.noteStatusHistoryInputPath,
-    help="note status history dataset",
+    "--epoch-millis",
+    default=None,
+    type=float,
+    dest="epoch_millis",
+    help="timestamp in milliseconds since epoch to treat as now",
   )
-  parser.add_argument("-o", "--output_path", default=c.scoredNotesOutputPath, help="output path")
+  parser.add_argument("-n", "--notes", default=c.notesInputPath, help="note dataset")
+  parser.add_argument(
+    "-o", "--outdir", default=".", help="directory for output files"
+  )
+  parser.add_argument(
+    "--pseudoraters",
+    dest="pseudoraters",
+    help="Include calculation of pseudorater intervals",
+    action="store_true",
+  )
+  parser.add_argument(
+    "--nopseudoraters",
+    dest="pseudoraters",
+    help="Exclude calculation of pseudorater intervals (faster)",
+    action="store_false",
+  )
+  parser.set_defaults(pseudoraters=False)
+  parser.add_argument("-r", "--ratings", default=c.ratingsInputPath, help="rating dataset")
+  parser.add_argument(
+    "--seed", default=None, type=int, help="set to an int to seed matrix factorization"
+  )
+  parser.add_argument(
+    "-s", "--status", default=c.noteStatusHistoryInputPath, help="note status history dataset"
+  )
+
   return parser.parse_args()
 
 
-def run_scoring():
-  """
-  Run the complete Birdwatch algorithm, including parsing command line args,
-  reading data and writing scored output; mean to be invoked from main.
-  """
-  args = get_args()
-  _, ratings, noteStatusHistory, userEnrollment = process_data.get_data(
-    args.notes_path, args.ratings_path, args.note_status_history_path, args.enrollment
+def main():
+  args = parse_args()
+  if args.epoch_millis:
+    c.epochMillis = args.epoch_millis
+
+  _, ratings, statusHistory, userEnrollment = get_data(
+    args.notes, args.ratings, args.status, args.enrollment
   )
-  scoredNotes, _, _, _ = algorithm.run_algorithm(ratings, noteStatusHistory, userEnrollment)
-  process_data.write_tsv_local(scoredNotes, c.scoredNotesOutputPath)
-  print("Finished.")
+
+  scoredNotes, helpfulnessScores, newStatus, auxNoteInfo = run_scoring(
+    ratings, statusHistory, userEnrollment, seed=args.seed, pseudoraters=args.pseudoraters
+  )
+
+  write_tsv_local(scoredNotes, os.path.join(args.outdir, "scored_notes.tsv"))
+  write_tsv_local(helpfulnessScores, os.path.join(args.outdir, "helpfulness_scores.tsv"))
+  write_tsv_local(newStatus, os.path.join(args.outdir, "note_status_history.tsv"))
+  write_tsv_local(auxNoteInfo, os.path.join(args.outdir, "aux_note_info.tsv"))
 
 
 if __name__ == "__main__":
-  run_scoring()
+  main()
