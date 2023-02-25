@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+
+docker run -ti \
+	-v $PWD/opendata:/app/opendata \
+	--rm \
+	--gpus all \
+	-w /app \
+	communitynotes:latest

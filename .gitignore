@@ -1,3 +1,5 @@
 public
 _gen
 .DS_Store
+opendata/
+__pycache__/
