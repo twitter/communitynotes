@@ -1,7 +1,7 @@
 from io import StringIO
 from typing import Tuple
 
-import constants as c, note_status_history
+from . import constants as c, note_status_history
 
 from matplotlib import pyplot as plt
 import numpy as np
@@ -220,7 +220,6 @@ def remove_duplicate_ratings(ratings: pd.DataFrame) -> pd.DataFrame:
   Returns:
       pd.DataFrame: ratings, with one record per userId, noteId.
   """
-  # Construct a new DataFrame to avoid SettingWithCopyWarning
   ratings = pd.DataFrame(ratings.drop_duplicates())
 
   numRatings = len(ratings)
@@ -240,7 +239,6 @@ def remove_duplicate_notes(notes: pd.DataFrame) -> pd.DataFrame:
   Returns:
       notes (pd.DataFrame) with one record per noteId
   """
-  # Construct a new DataFrame to avoid SettingWithCopyWarning
   notes = pd.DataFrame(notes.drop_duplicates())
 
   numNotes = len(notes)

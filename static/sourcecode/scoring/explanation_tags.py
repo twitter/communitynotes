@@ -1,7 +1,7 @@
 from collections import Counter
 from typing import List, Optional
 
-import constants as c
+from . import constants as c
 
 import pandas as pd
 
@@ -38,7 +38,6 @@ def top_tags(
   tagCounts[c.tiebreakOrderKey] = range(len(tagCounts))
   tagCounts = tagCounts[tagCounts[c.tagCountsKey] >= minRatingsToGetTag]
   topTags = tagCounts.sort_values(by=[c.tagCountsKey, c.tiebreakOrderKey], ascending=False)[:2]
-  # Note: this currently only allows for minTagsNeededForStatus between 0-2
   if len(topTags) >= minTagsNeededForStatus:
     if len(topTags):
       row[c.firstTagKey] = topTags.index[0]
@@ -66,11 +65,9 @@ def get_top_nonhelpful_tags_per_author(
     pd.DataFrame with one row per author containing the author ID and top
     two non-helpful tags associated with the author
   """
-  # Finds the top two non-helpful tags per note.
   noteTagTotals = (
     reputationFilteredRatings.groupby(c.noteIdKey).sum(numeric_only=True).reset_index()
   )
-  # Default tags to the empty string.
   noteTagTotals[c.firstTagKey] = ""
   noteTagTotals[c.secondTagKey] = ""
   noteTopTags = noteTagTotals.apply(
@@ -82,21 +79,24 @@ def get_top_nonhelpful_tags_per_author(
     ),
     axis=1,
   )[[c.noteIdKey, c.firstTagKey, c.secondTagKey]]
-  # Aggreagtes top two tags per author.
   notesToUse = noteStatusHistory[[c.noteAuthorParticipantIdKey, c.noteIdKey]]
   authorTagsAgg = (
     notesToUse.merge(noteTopTags, on=[c.noteIdKey])
     .groupby(c.noteAuthorParticipantIdKey)
     .agg(Counter)
   )
-  # Chooses top two tags per author.
   def _set_top_tags(row: pd.Series) -> pd.Series:
-    # Note that row[c.firstTagKey] and row[c.secondTagKey] are both Counter
-    # objects mapping tags to counts due to the aggregation above.
-    tagTuples = [(count, c.notHelpfulTagsTiebreakMapping[tag], c.notHelpfulTagsEnumMapping[tag]) for tag, count in (row[c.firstTagKey] + row[c.secondTagKey]).items() if tag]
-    tagTuples = sorted(tagTuples, reverse=True)[:2]
-    topNotHelpfulTags = ",".join(str(tagTuple[2]) for tagTuple in tagTuples)
-
+    tagTuples = []
+    for tag, count in (row[c.firstTagKey] + row[c.secondTagKey]).items():
+      if not tag:
+        continue
+      tagTuples.append(
+        (count, c.notHelpfulTagsTiebreakMapping[tag], c.notHelpfulTagsEnumMapping[tag])
+      )
+    tagTuples = sorted(tagTuples, reverse=True)
+    topNotHelpfulTags = ",".join(
+      map(str, sorted([tagTuples[i][2] for i in range(min(len(tagTuples), 2))]))
+    )
     row[c.authorTopNotHelpfulTagValues] = topNotHelpfulTags
     return row
 
