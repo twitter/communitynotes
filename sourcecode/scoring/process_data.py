@@ -1,11 +1,13 @@
 from io import StringIO
-from typing import Dict, List, Tuple
+from typing import Tuple
 
-from . import constants as c, note_status_history
-
-from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
+
+from scoring import constants as c
+from scoring import note_status_history
+from scoring import tsv_readers
 
 
 def get_data(
@@ -67,41 +69,6 @@ def read_from_strings(
   return notes, ratings, noteStatusHistory
 
 
-def tsv_parser(
-  rawTSV: str, mapping: Dict[str, type], columns: List[str], header: bool
-) -> pd.DataFrame:
-  """Parse a TSV input and raise an Exception if the input is not formatted as expected.
-
-  Args:
-    rawTSV: str contianing entire TSV input
-    mapping: Dict mapping column names to types
-    columns: List of column names
-    header: bool indicating whether the input will have a header
-
-  Returns:
-    pd.DataFrame containing parsed data
-  """
-  try:
-    firstLine = rawTSV.split("\n")[0]
-    if len(firstLine.split("\t")) != len(columns):
-      raise ValueError
-    return pd.read_csv(
-      StringIO(rawTSV),
-      sep="\t",
-      names=columns,
-      dtype=mapping,
-      header=0 if header else None,
-      index_col=[],
-    )
-  except (ValueError, IndexError):
-    raise ValueError("invalid input")
-
-
-def tsv_reader(path: str, mapping, columns, header=True):
-  with open(path, "r") as handle:
-    return tsv_parser(handle.read(), mapping, columns, header)
-
-
 def read_from_tsv(
   notesPath: str,
   ratingsPath: str,
@@ -118,46 +85,13 @@ def read_from_tsv(
   Returns:
       Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
   """
-  notes = tsv_reader(notesPath, c.noteTSVTypeMapping, c.noteTSVColumns)
-  ratings = tsv_reader(ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns)
-  noteStatusHistory = tsv_reader(
-    noteStatusHistoryPath, c.noteStatusHistoryTSVTypeMapping, c.noteStatusHistoryTSVColumns
-  )
+  notes = tsv_readers.NotesTSVReader(path=notesPath).read()
+  ratings = tsv_readers.RatingsTSVReader(path=ratingsPath).read()
+  noteStatusHistory = tsv_readers.NotesStatusHistoryTSVReader(path=noteStatusHistoryPath).read()
   try:
-    userEnrollment = tsv_reader(
-      userEnrollmentPath, c.userEnrollmentTSVTypeMapping, c.userEnrollmentTSVColumns
-    )
+    userEnrollment = tsv_readers.UserEnrollmentsNewFormatTSVReader(path=userEnrollmentPath).read()
   except ValueError:
-    userEnrollment = tsv_reader(
-      userEnrollmentPath, c.userEnrollmentTSVTypeMappingOld, c.userEnrollmentTSVColumnsOld
-    )
-    userEnrollment[c.modelingPopulationKey] = c.core
-
-  assert len(notes.columns) == len(c.noteTSVColumns) and all(notes.columns == c.noteTSVColumns), (
-    f"note columns don't match: \n{[col for col in notes.columns if not col in c.noteTSVColumns]} are extra columns, "
-    + f"\n{[col for col in c.noteTSVColumns if not col in notes.columns]} are missing."
-  )  # ensure constants file is up to date.
-
-  assert len(ratings.columns.values) == len(c.ratingTSVColumns) and all(
-    ratings.columns == c.ratingTSVColumns
-  ), (
-    f"ratings columns don't match: \n{[col for col in ratings.columns if not col in c.ratingTSVColumns]} are extra columns, "
-    + f"\n{[col for col in c.ratingTSVColumns if not col in ratings.columns]} are missing."
-  )  # ensure constants file is up to date.
-
-  assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
-    noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
-  ), (
-    f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
-    + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
-  )
-
-  assert len(userEnrollment.columns.values) == len(c.userEnrollmentTSVColumns) and all(
-    userEnrollment.columns == c.userEnrollmentTSVColumns
-  ), (
-    f"userEnrollment columns don't match: \n{[col for col in userEnrollment.columns if not col in c.userEnrollmentTSVColumns]} are extra columns, "
-    + f"\n{[col for col in c.userEnrollmentTSVColumns if not col in userEnrollment.columns]} are missing."
-  )
+    userEnrollment = tsv_readers.UserEnrollmentOldFormatTSVReader(path=userEnrollmentPath).read()
 
   return notes, ratings, noteStatusHistory, userEnrollment
 
