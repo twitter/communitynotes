@@ -65,11 +65,11 @@ def get_ratings_before_note_status_and_public_tsv(
     ratingsWithNoteLabelInfoTypes = c.ratingTSVTypeMapping
     ratingsWithNoteLabelInfoTypes[
       c.createdAtMillisKey + "_note"
-    ] = np.float  # float because nullable after merge.
+    ] = np.float64  # float because nullable after merge.
     ratingsWithNoteLabelInfoTypes[
       c.timestampMillisOfNoteMostRecentNonNMRLabelKey
-    ] = np.float  # float because nullable.
-    ratingsWithNoteLabelInfoTypes[c.helpfulNumKey] = np.float
+    ] = np.float64  # float because nullable.
+    ratingsWithNoteLabelInfoTypes[c.helpfulNumKey] = np.float64
 
     assert len(ratingsWithNoteLabelInfo) == len(ratings)
     mismatches = [
