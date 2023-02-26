@@ -299,8 +299,8 @@ core = "CORE"
 expansion = "EXPANSION"
 
 userEnrollmentTSVColumnsAndTypes = [
-  (participantIdKey, np.str__),
-  (enrollmentState, np.str__),
+  (participantIdKey, np.str_),
+  (enrollmentState, np.str_),
   (successfulRatingNeededToEarnIn, np.int64),
   (timestampOfLastStateChange, np.int64),
   (timestampOfLastEarnOut, np.double),  # double because nullable.
@@ -402,7 +402,7 @@ raterModelOutputTSVColumnsAndTypes = [
   (notesAwaitingMoreRatings, np.int64),
   (enrollmentState, np.int32),
   (successfulRatingNeededToEarnIn, np.int64),
-  (authorTopNotHelpfulTagValues, np.str__),
+  (authorTopNotHelpfulTagValues, np.str_),
   (timestampOfLastStateChange, np.int64),
   (aboveHelpfulnessThresholdKey, np.int32),
   (isEmergingWriterKey, np.bool_),
