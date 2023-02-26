@@ -80,7 +80,7 @@ To fit the model parameters, we minimize the following regularized least squared
 
 $$ \sum*{r*{un}} (r*{un} - \hat{r}*{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2) $$
 
-Where $\lambda_i=0.03$, the regularization on the intercept terms, is currently 5 times higher than $\lambda_f=0.15$, the regularization on the factors.
+Where $\lambda_i=0.15$, the regularization on the intercept terms, is currently 5 times higher than $\lambda_f=0.03$, the regularization on the factors.
 
 The resulting scores that we use for each note are the note intercept terms $i_n$. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.
 
@@ -136,6 +136,22 @@ To help ensure that changes in Helpful status reflect a clear shift in consensus
 For example, if a note achieved Helpful status with note intercept $i_n>0.40$, then the note would need $i_n<0.39$ before losing Helpful status.
 Similarly, if a note was impacted by tag outlier filter and required note intercedpt $i_n>0.50$ to achieve Helpful status, the note would need $i_n<0.49$ to lose Helpful status.
 
+## Multi-Model Note Ranking
+
+Multi-Model ranking allows Community Notes to run multiple ranking algorithms before reconciling the results to assign final note status.
+We use this ability to test new models, refine current approaches and support expanding the Community Notes contributor base.
+We currently run three note ranking models:
+
+- The _Core model_ runs the matrix factorization approach described above to determine status for notes with most ratings from areas where Community Notes is well established.  We refer to established areas as Core areas and areas where Community Notes has recently launched as Expansion areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
+- The _Expansion model_ runs the same ranking algorithm with the same parameters as the Core model, with the difference that the Expansion model includes all notes with all ratings across Core and Expansion areas.
+- The _Coverage model_ runs the same ranking algorithm and processes the same notes and ratings as the Core model, except the intercept regularization $\lambda_i$ and Helpful note threshold have been [tuned differently](https://github.com/twitter/communitynotes/blob/main/static/sourcecode/scoring/mf_coverage_scorer.py) in an attempt to increase the number of Helpful notes.
+
+In cases where a note is ranked by both the Core and Expansion models the Core model is always authoritative.
+This approach allows us to grow Community Notes as quickly as possible in experimental Expansion areas without the risk of compromising quality in Core areas where Community Notes is well established.
+In cases where the Core and Coverage models disagree, a Helpful rating from the Core model always takes precedence.
+If a note is only rated as Helpful by the Coverage model, then the note must surpass a safeguard threshold for the Core model intercept to receive a final Helpful rating.
+We have initialized the Core model safeguard threshold to 0.39, 0.01 below the Core model default Helpfulness threshold of 0.40, and will lower the safeguard threshold as the Coverage model continues to launch.
+
 ## Status Stabilization
 
 As Community Notes has scaled from inception to global availability we've seen an increasing number of notes and ratings spanning a widening array of topics.
@@ -146,6 +162,11 @@ To maintain Helpful note quality as Community Notes continues to grow, we are ad
 This approach allows us to continue optimizing the ranking algorithm with a focus on the impact on current data while persisting helpful community contributions on older topics.
 Before a note is two weeks old, the helpfulness status will continue to be updated each time time the ranking algorithm is run.
 After a note turns two weeks old we store the helpfulness status for that note and use the stored status in the future, including for displaying notes on Twitter and calcualting user contribution statistics.
+
+While a note may be scored by the Core, Expansion and Coverage models, we only finalize note status based on the Core model.
+Notes that are only ranked by the Expansion model are not eligible for stabilization since the Expansion model is under development and may be revised to improve quality at any time.
+Similarly, if a note is rated Helpful by the Coverage model and Needs More Ratings by the Core model, we will allow the note status to remain at Helpful even after the note is two weeks old.
+If at any point both models agree and the Core model scores the note as Helpful or the Coverage model scores the note as Needs More Ratings, then the status will be finalized in agreement with both models.
 
 ## Determining Note Status Explanation Tags
 
@@ -196,12 +217,20 @@ For not-helpful notes:
 2. <div>Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.</div>
 3. <div>Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in <a href="../contributor-scores/#filtering-ratings-based-on-helpfulness-scores">Filtering Ratings Based on Helpfulness Scores</a>.</div>
 4. <div>Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3.</div>
-5. <div>Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags.  Stabilize helpfulness status for any notes older than two weeks.</div>
-6. <div>Assign the top two explanation tags that match the note’s final status label as in <a href="./#determining-note-status-explanation-tags">Determining Note Status Explanation Tags</a>, or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.</div>
+5. <div>Reconcile scoring results from the Core, Expansion and Coverage models to generate final status for each note.</div>
+6. <div>Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags.  Stabilize helpfulness status for any notes older than two weeks.</div>
+7. <div>Assign the top two explanation tags that match the note’s final status label as in <a href="./#determining-note-status-explanation-tags">Determining Note Status Explanation Tags</a>, or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.</div>
 
 <br/>
 
 ## What’s New?
+
+**February 24, 2023**
+
+- Introduced support for running multiple ranking models.
+- Launched ranking support for Community Notes global expansion, partitioning notes and ratings by Core and Expansion to maintain note ranking quality while growing globally.
+- Launched Coverage model with increased intercept regularization.  This model will run along-side the Core note ranking model to increase Helpful note coverage.
+
 
 **January 20, 2022**
 
