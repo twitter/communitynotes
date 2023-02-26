@@ -3,3 +3,4 @@ _gen
 .DS_Store
 opendata/
 __pycache__/
+*.tsv
