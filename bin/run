@@ -6,5 +6,10 @@ docker run -ti \
 	-v $PWD/opendata:/app/opendata \
 	--rm \
 	--gpus all \
-	-w /app \
-	communitynotes:latest
+	--entrypoint python \
+	communitynotes:latest \
+	main.py \
+  		-e opendata/userEnrollment-00000.tsv \
+  		-n opendata/notes-00000.tsv \
+  		-r opendata/ratings-00000.tsv \
+  		-s opendata/noteStatusHistory-00000.tsv
