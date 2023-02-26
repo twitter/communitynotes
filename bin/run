@@ -2,6 +2,7 @@
 
 
 docker run -ti \
+	-v $PWD/static/sourcecode:/app \
 	-v $PWD/opendata:/app/opendata \
 	--rm \
 	--gpus all \
