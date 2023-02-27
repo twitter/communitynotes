@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Invoke Community Notes scoring and user contribution algorithms.
 
 Example Usage:
