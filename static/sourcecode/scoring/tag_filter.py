@@ -118,4 +118,6 @@ def get_tag_thresholds(ratings: pd.DataFrame, percentile: int) -> Dict[str, floa
   Returns:
     Dictionary mapping adjusted ratio columns to a threshold value
   """
-  return {column: np.quantile(ratings[column], percentile) for column in c.notHelpfulTagsAdjustedRatioColumns}
+  thresholds = ratings.quantile(q=percentile/100)
+  return {col: thresholds[col] for col in thresholds.columns}
+
