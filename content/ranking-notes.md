@@ -144,7 +144,7 @@ We currently run three note ranking models:
 
 - The _Core_ model runs the matrix factorization approach described above to determine status for notes with most ratings from areas where Community Notes is well established.  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
 - The _Expansion_ model runs the same ranking algorithm with the same parameters as the Core model, with the difference that the Expansion model includes all notes with all ratings across Core and Expansion areas.
-- The _Coverage_ model runs the same ranking algorithm and processes the same notes and ratings as the Core model, except the intercept regularization $\lambda_i$ and Helpful note threshold have been [tuned differently](https://github.com/twitter/communitynotes/blob/main/static/sourcecode/scoring/mf_coverage_scorer.py) in an attempt to increase the number of Helpful notes.
+- The _Coverage_ model runs the same ranking algorithm and processes the same notes and ratings as the Core model, except the intercept regularization $\lambda_i$ and Helpful note threshold have been [tuned differently](https://github.com/twitter/communitynotes/blob/main/static/sourcecode/scoring/mf_coverage_scorer.py) to increase the number of Helpful notes.
 
 In cases where a note is ranked by both the Core and Expansion models the Core model is always authoritative.
 This approach allows us to grow Community Notes as quickly as possible in experimental Expansion areas without the risk of compromising quality in Core areas where Community Notes is well established.
