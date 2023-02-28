@@ -72,7 +72,7 @@ One challenge is that not all raters evaluate all notes - in fact most raters do
 
 We predict each rating as:
 
-$$ \hat{r}\_{un} = \mu + i_u + i_n + f_u \cdot f_n $$
+$$ \hat{r}_{un} = \mu + i_u + i_n + f_u \cdot f_n $$
 
 Where the prediction is the sum of three intercept terms: $\mu$ is the global intercept term, $i_u$ is the user’s intercept term, and $i_n$ is the note’s intercept term, added to the dot product of the user and notes’ factor vectors $f_u$ and $f_n$ (note that when user and note factors are close, a user is expected to give a higher rating to the note).
 
