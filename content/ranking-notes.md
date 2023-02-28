@@ -78,7 +78,7 @@ Where the prediction is the sum of three intercept terms: $\mu$ is the global in
 
 To fit the model parameters, we minimize the following regularized least squared error loss function via gradient descent over the dataset of all observed ratings $r_{un}$:
 
-$$ \sum*{r*{un}} (r*{un} - \hat{r}*{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2) $$
+$$ \sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2) $$
 
 Where $\lambda_i=0.15$, the regularization on the intercept terms, is currently 5 times higher than $\lambda_f=0.03$, the regularization on the factors.
 
@@ -104,7 +104,7 @@ This approach helps us to maintain data quality by recognizing when there is a t
 
 We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
 
-$$ a*{un} = \mathbb{1}*{aun} \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$
+$$ a_{un} = \mathbb{1}_{aun} \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$
 
 Where:
 
@@ -113,7 +113,7 @@ Where:
 
 We define the total weight of an tag $a$ on note $n$ as:
 
-$$ n*{a} = \sum*{r*{un}} a*{un} $$
+$$ n_{a} = \sum_{r_{un}} a_{un} $$
 
 Notice the following:
 
