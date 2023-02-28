@@ -919,7 +919,7 @@ This delay allows Community Notes to collect a set of independent ratings from p
 <p>$$ \hat{r}_{un} = \mu + i_u + i_n + f_u \cdot f_n $$</p>
 <p>Where the prediction is the sum of three intercept terms: $\mu$ is the global intercept term, $i_u$ is the user’s intercept term, and $i_n$ is the note’s intercept term, added to the dot product of the user and notes’ factor vectors $f_u$ and $f_n$ (note that when user and note factors are close, a user is expected to give a higher rating to the note).</p>
 <p>To fit the model parameters, we minimize the following regularized least squared error loss function via gradient descent over the dataset of all observed ratings $r_{un}$:</p>
-<p>$$ \sum*{r*{un}} (r*{un} - \hat{r}*{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2) $$</p>
+<p>$$ \sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2) $$</p>
 <p>Where $\lambda_i=0.15$, the regularization on the intercept terms, is currently 5 times higher than $\lambda_f=0.03$, the regularization on the factors.</p>
 <p>The resulting scores that we use for each note are the note intercept terms $i_n$. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.</p>
 <p>In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 * abs(f_n)$. The <a href="#tag-outlier-filtering">Tag Outlier Filtering</a> section describes an extension to the general thresholds.</p>
@@ -937,14 +937,14 @@ Reviewers who rate a note as &ldquo;Not Helpful&rdquo; can associate <a href="ex
 When a note has receives high levels of a &ldquo;Not Helpful&rdquo; tag, we require a higher intercept before rating the note as &ldquo;Helpful&rdquo;.
 This approach helps us to maintain data quality by recognizing when there is a troubling pattern on an otherwise strong note.</p>
 <p>We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:</p>
-<p>$$ a*{un} = \mathbb{1}*{aun} \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$</p>
+<p>$$ a_{un} = \mathbb{1}_{aun} \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$</p>
 <p>Where:</p>
 <ul>
 <li>$\tilde{f} = median_{r_{un}}(||f_n - f_r||)$ indicates the median distance between the reviewer and note latent factors over all observable reviews $r_{un}$</li>
 <li>$\mathbb{1}_{aun}$ is 1 if reviewer $u$ assigned tag $a$ to note $n$ and 0 otherwise.</li>
 </ul>
 <p>We define the total weight of an tag $a$ on note $n$ as:</p>
-<p>$$ n*{a} = \sum*{r*{un}} a*{un} $$</p>
+<p>$$ n_{a} = \sum_{r_{un}} a_{un} $$</p>
 <p>Notice the following:</p>
 <ul>
 <li>No single review can achieve an tag weight $a_{un} &gt; 1$.</li>
