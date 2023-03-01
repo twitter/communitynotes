@@ -4,7 +4,7 @@
 
 ## Welcome to Community Notes's public repository
 
-This repository is a place for us to transparently host our content, algorightms, and share updates about the program.
+This repository is a place for us to transparently host our content, algorithms, and share updates about the program.
 
 The folder `/sourcecode` holds the [open-source code](https://github.com/twitter/communitynotes/tree/main/sourcecode) powering Community Notes under the hood.
 
