@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <title>Redirecting to communitynotes.twitter.com/guide</title>
+    <script>
+      // Extract the requested path from the URL and remove the "/communitynotes/" subdirectory
+      var requestedPath = window.location.pathname.replace(
+        /^\/communitynotes/,
+        ""
+      );
+
+      // If the requested path ends in ".html", remove the extension
+      if (requestedPath.match(/\.html$/)) {
+        requestedPath = requestedPath.replace(/\.html$/, "");
+      }
+
+      // Redirect variations of subroutes to a single URL
+      var aliases = {
+        "/learn-more": "/",
+        "/intro": "/",
+        "/overview": "/",
+        "/additional-review": "/contributing/additional-review",
+        "/aliases": "/contributing/aliases",
+        "/contributing/aliases": "/contributing/aliases",
+        "/challenges": "/about/challenges",
+        "/risks": "/about/challenges",
+        "/about/challenges": "/about/challenges",
+        "/contributor-scores": "/under-the-hood/contributor-scores",
+        "/contributor-reputation": "/under-the-hood/contributor-scores",
+        "/diversity-of-perspectives": "/contributing/diversity-of-perspectives",
+        "/diversity": "/contributing/diversity-of-perspectives",
+        "/perspectives": "/contributing/diversity-of-perspectives",
+        "/data": "/under-the-hood/download-data",
+        "/about/data": "/under-the-hood/download-data",
+        "/contributing/data": "/under-the-hood/download-data",
+        "/note-examples": "/contributing/examples",
+        "/examples": "/contributing/examples",
+        "/contributing/examples": "/contributing/examples",
+        "/tips/": "/contributing/examples",
+        "/note-writing-tips/": "/contributing/examples",
+        "/faq": "/about/faq",
+        "/about/faq": "/about/faq",
+        "/submit-feedback": "/contributing/feedback",
+        feedback: "/contributing/feedback",
+        "/contributing/submit-feedback": "/contributing/feedback",
+        "/contributing/feedback": "/contributing/feedback",
+        "/getting-started": "/contributing/getting-started",
+        "/guardrails": "/under-the-hood/guardrails",
+        "/note-ranking-code": "/under-the-hood/note-ranking-code",
+        "/ranking-code": "/under-the-hood/note-ranking-code",
+        "/code": "/under-the-hood/note-ranking-code",
+        "/notes-on-twitter": "/contributing/notes-on-twitter",
+        "/cards-on-twitter": "/contributing/notes-on-twitter",
+        "/notes-on-tweets": "/contributing/notes-on-twitter",
+        "/contributing/notes-on-twitter": "/contributing/notes-on-twitter",
+        "/alerts": "/contributing/notifications",
+        "/ranking-notes": "/under-the-hood/ranking-notes",
+        "/note-ranking": "/under-the-hood/ranking-notes",
+        "/about/note-ranking": "/under-the-hood/ranking-notes",
+        "/about/ranking-notes": "/under-the-hood/ranking-notes",
+        "/rating-notes": "/contributing/rating-notes",
+        "/contributing/rating-notes": "/contributing/rating-notes",
+        "/contributing/rating": "/contributing/rating-notes",
+        "/join": "/contributing/sign-up",
+        "/signup": "/contributing/sign-up",
+        "/contributing/signup": "/contributing/sign-up",
+        "/sign-up": "/contributing/sign-up",
+        "/signing-up": "/contributing/sign-up",
+        "/timeline-tabs": "/under-the-hood/timeline-tabs",
+        "/values": "/contirbuting/values",
+        "/writing-ability": "/contributing/writing-ability",
+        "/impact": "/contributing/writing-and-rating-impact",
+        "/birdwatch-scores": "/contributing/writing-and-rating-impact",
+        "/writing-and-rating-impact": "/contributing/writing-and-rating-impact",
+        "/rating-and-writing-impact": "/contributing/writing-and-rating-impact",
+        "/writing-notes": "/contributing/writing-notes",
+        "/writing-and-rating-notes": "/contributing/writing-notes",
+      };
+
+      // Find alias in object, or alias minus a trailing slash
+      if (aliases[requestedPath]) {
+        window.location.replace(
+          "https://communitynotes.twiter.com/guide" + aliases[requestedPath]
+        );
+      } else if (aliases[requestedPath.slice(0, -1)]) {
+        window.location.replace(
+          "https://communitynotes.twiter.com/guide" +
+            aliases[requestedPath.slice(0, -1)]
+        );
+      } else {
+        window.location.replace(
+          "https://communitynotes.twiter.com/guide" + requestedPath
+        );
+      }
+    </script>
+  </head>
+  <body></body>
+</html>
