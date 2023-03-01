@@ -16,6 +16,6 @@ If you download the data files made available on the [Data Download](https://twi
 - [explanation_tags.py](../sourcecode/explanation_tags.py)
 - [helpfulness_scores.py](../sourcecode/helpfulness_scores.py)
 - [matrix_factorization.py](../sourcecode/matrix_factorization.py)
-- [process_data](../sourcecode/process_data.py)
+- [process_data.py](../sourcecode/process_data.py)
 
-You can also see this code on [Github](https://github.com/twitter/communitynotes/tree/main/static/sourcecode).
+You can also see this code on [Github](https://github.com/twitter/communitynotes/tree/main/sourcecode).
