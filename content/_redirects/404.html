@@ -81,16 +81,16 @@
       // Find alias in object, or alias minus a trailing slash
       if (aliases[requestedPath]) {
         window.location.replace(
-          "https://communitynotes.twiter.com/guide" + aliases[requestedPath]
+          "https://communitynotes.twitter.com/guide" + aliases[requestedPath]
         );
       } else if (aliases[requestedPath.slice(0, -1)]) {
         window.location.replace(
-          "https://communitynotes.twiter.com/guide" +
+          "https://communitynotes.twitter.com/guide" +
             aliases[requestedPath.slice(0, -1)]
         );
       } else {
         window.location.replace(
-          "https://communitynotes.twiter.com/guide" + requestedPath
+          "https://communitynotes.twitter.com/guide" + requestedPath
         );
       }
     </script>
