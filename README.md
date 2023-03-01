@@ -1,6 +1,6 @@
 # Twitter Community Notes
 
-![](/static/images/help-rate-this-note-expanded.png)
+![](/documentation/images/help-rate-this-note-expanded.png)
 
 ## Welcome to Community Notes's public repository
 
