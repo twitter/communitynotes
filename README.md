@@ -1,10 +1,16 @@
 # Twitter Community Notes
 
-![](/static/images/help-rate-this-note-expanded.png)
+![](/documentation/images/help-rate-this-note-expanded.png)
 
 ## Welcome to Community Notes's public repository
 
-This repository holds the Markdown content that is used to generate our [documentation website](https://communitynotes.twitter.com/guide), the [source code](https://github.com/twitter/communitynotes/tree/main/static/sourcecode) powering Community Notes under the hood, our [research paper](https://github.com/twitter/communitynotes/blob/main/birdwatch_paper_2022_10_27.pdf), and is a place for us to transparently share updates about the program.
+This repository is a place for us to transparently host our content, algorithms, and share updates about the program.
+
+The folder `/sourcecode` holds the [open-source code](https://github.com/twitter/communitynotes/tree/main/sourcecode) powering Community Notes under the hood.
+
+The folder `/documentation` holds the [Markdown content](https://github.com/twitter/communitynotes/tree/main/documentation) that is used to generate our [documentation website](https://communitynotes.twitter.com/guide).
+
+Here you can also find our [research paper](https://github.com/twitter/communitynotes/blob/main/birdwatch_paper_2022_10_27.pdf).
 
 ## About Community Notes
 
@@ -22,7 +28,7 @@ As there are important nuances in each market, we’ll expand the contributor ba
 
 ## How to contribute to this repo
 
-We welcome Pull Requests with fixes or improvements to our ranking source code as well as the Guide documentation content.
+We welcome Pull Requests with fixes or improvements to our ranking source code as well as the documentation content.
 
 You can also talk directly with the team building Community Notes on Twitter, at [@CommunityNotes](https://twitter.com/communitynotes).
 
@@ -38,7 +44,7 @@ The algorithm that powers Community Notes can be found on the [sourcecode folder
 
 ### Community Notes data
 
-All notes, ratings, and contributor data are [publicly available](https://twitter.com/i/communitynotes/download-data). Instructions on how to use them can be found in the [Community Notes Guide](https://twitter.github.io/communitynotes/download-data/).
+All notes, ratings, and contributor data are [publicly available and published daily here](https://twitter.com/i/communitynotes/download-data). Instructions on how to use them can be found in the [Community Notes Guide](https://communitynotes.twitter.com/guide/under-the-hood/download-data/).
 
 ### Community Notes paper
 
