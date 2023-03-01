@@ -44,7 +44,7 @@ The algorithm that powers Community Notes can be found on the [sourcecode folder
 
 ### Community Notes data
 
-All notes, ratings, and contributor data are [publicly available and published daily here](https://twitter.com/i/communitynotes/download-data). Instructions on how to use them can be found in the [Community Notes Guide](https://twitter.github.io/communitynotes/download-data/).
+All notes, ratings, and contributor data are [publicly available and published daily here](https://twitter.com/i/communitynotes/download-data). Instructions on how to use them can be found in the [Community Notes Guide](https://communitynotes.twitter.com/guide/under-the-hood/download-data/).
 
 ### Community Notes paper
 
