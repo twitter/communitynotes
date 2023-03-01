@@ -3,11 +3,11 @@
 
 Example Usage:
   python main.py \
-    --enrollment data/user_enrollment_tsv \
-    --notes data/all_birdwatch_notes.tsv \
-    --output data/scored_notes.tsv \
-    --ratings data/all_birdwatch_note_ratings.tsv \
-    --status data/note_status_history_public.tsv
+    --enrollment data/userEnrollment-00000.tsv \
+    --notes data/notes-00000.tsv \
+    --ratings data/ratings-00000.tsv \
+    --status data/noteStatusHistory-00000.tsv \
+    --outdir data/scored_notes.tsv
 """
 
 import argparse
