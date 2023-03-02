@@ -37,7 +37,7 @@ jobs:
         uses: actions/upload-pages-artifact@v1
         with:
           # Upload entire repository
-          path: './content/_redirects/'
+          path: './documentation/_redirects/'
       - name: Deploy Redirects
         id: deployment
         uses: actions/deploy-pages@v1
