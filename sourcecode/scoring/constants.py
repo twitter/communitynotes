@@ -3,17 +3,28 @@ import time
 import numpy as np
 
 
+# Store the timestamp at which the constants module is initialized.  Note
+# that module initialization occurs only once regardless of how many times
+# the module is imported (see link below).  Storing a designated timestamp
+# as a constant allow us to:
+#  -Use a consistent notion of "now" throughout scorer execution.
+#  -Overwrite "now" when system testing to reduce spurious diffs.
+#
+# https://docs.python.org/3/tutorial/modules.html#more-on-modules
 epochMillis = 1000 * time.time()
 
+# Explanation Tags
 minRatingsToGetTag = 2
 minTagsNeededForStatus = 2
 
+# Data Filenames
 scoredNotesOutputPath = "scoredNotes.tsv"
 enrollmentInputPath = "userEnrollment-00000.tsv"
 notesInputPath = "notes-00000.tsv"
 ratingsInputPath = "ratings-00000.tsv"
 noteStatusHistoryInputPath = "noteStatusHistory-00000.tsv"
 
+# TSV Column Names
 participantIdKey = "participantId"
 helpfulKey = "helpful"
 notHelpfulKey = "notHelpful"
@@ -23,26 +34,31 @@ summaryKey = "summary"
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 modelingPopulationKey = "modelingPopulation"
 
+# TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
 somewhatHelpfulValueTsv = "SOMEWHAT_HELPFUL"
 helpfulValueTsv = "HELPFUL"
 notesSaysTweetIsMisleadingKey = "MISINFORMED_OR_POTENTIALLY_MISLEADING"
 noteSaysTweetIsNotMisleadingKey = "NOT_MISLEADING"
 
+# Fields Transformed From the Raw Data
 helpfulNumKey = "helpfulNum"
 ratingCreatedBeforeMostRecentNMRLabelKey = "ratingCreatedBeforeMostRecentNMRLabel"
 ratingCreatedBeforePublicTSVReleasedKey = "ratingCreatedBeforePublicTSVReleased"
 
+# Timestamps
 deletedNoteTombstonesLaunchTime = 1652918400000  # May 19, 2022 UTC
 notMisleadingUILaunchTime = 1664755200000  # October 3, 2022 UTC
 publicTSVTimeDelay = 172800000  # 48 hours
 
+# Explanation Tags
 tagCountsKey = "tagCounts"
 tiebreakOrderKey = "tiebreakOrder"
 firstTagKey = "firstTag"
 secondTagKey = "secondTag"
 activeFilterTagsKey = "activeFilterTags"
 
+# Contributor Counts
 successfulRatingHelpfulCount = "successfulRatingHelpfulCount"
 successfulRatingNotHelpfulCount = "successfulRatingNotHelpfulCount"
 successfulRatingTotal = "successfulRatingTotal"
@@ -55,11 +71,13 @@ notesCurrentlyRatedHelpful = "notesCurrentlyRatedHelpful"
 notesCurrentlyRatedNotHelpful = "notesCurrentlyRatedNotHelpful"
 notesAwaitingMoreRatings = "notesAwaitingMoreRatings"
 
+# Meta Scoring Columns
 finalRatingStatusKey = "finalRatingStatus"
 unlockedRatingStatusKey = "unlockedRatingStatus"
 metaScorerActiveRulesKey = "metaScorerActiveRules"
 decidedByKey = "decidedBy"
 
+# Internal Scoring Columns.  These columns should be renamed before writing to disk.
 internalNoteInterceptKey = "internalNoteIntercept"
 internalRaterInterceptKey = "internalRaterIntercept"
 internalNoteFactorKeyBase = "internalNoteFactor"
@@ -79,30 +97,37 @@ def rater_factor_key(i):
 internalNoteFactor1Key = note_factor_key(1)
 internalRaterFactor1Key = rater_factor_key(1)
 
+# Output Scoring Columns.
+# Core Model
 coreNoteInterceptKey = "coreNoteIntercept"
 coreNoteFactor1Key = "coreNoteFactor1"
 coreRaterInterceptKey = "coreRaterIntercept"
 coreRaterFactor1Key = "coreRaterFactor1"
 coreRatingStatusKey = "coreRatingStatus"
 coreActiveRulesKey = "coreActiveRules"
+# Expansion Model
 expansionNoteInterceptKey = "expansionNoteIntercept"
 expansionNoteFactor1Key = "expansionNoteFactor1"
 expansionRatingStatusKey = "expansionRatingStatus"
+# Coverage Model
 coverageNoteInterceptKey = "coverageNoteIntercept"
 coverageNoteFactor1Key = "coverageNoteFactor1"
 coverageRatingStatusKey = "coverageRatingStatus"
 
+# Ids and Indexes
 noteIdKey = "noteId"
 tweetIdKey = "tweetId"
 classificationKey = "classification"
 noteAuthorParticipantIdKey = "noteAuthorParticipantId"
 raterParticipantIdKey = "raterParticipantId"
 
+# Aggregations
 noteCountKey = "noteCount"
 ratingCountKey = "ratingCount"
 numRatingsKey = "numRatings"
 numRatingsLast28DaysKey = "numRatingsLast28"
 
+# Helpfulness Score Keys
 crhRatioKey = "CRHRatio"
 crnhRatioKey = "CRNHRatio"
 crhCrnhRatioDifferenceKey = "crhCrnhRatioDifference"
@@ -111,10 +136,12 @@ raterAgreeRatioKey = "raterAgreeRatio"
 ratingAgreesWithNoteStatusKey = "ratingAgreesWithNoteStatus"
 aboveHelpfulnessThresholdKey = "aboveHelpfulnessThreshold"
 
+# Note Status Labels
 currentlyRatedHelpful = "CURRENTLY_RATED_HELPFUL"
 currentlyRatedNotHelpful = "CURRENTLY_RATED_NOT_HELPFUL"
 needsMoreRatings = "NEEDS_MORE_RATINGS"
 
+# Boolean Note Status Labels
 currentlyRatedHelpfulBoolKey = "crhBool"
 currentlyRatedNotHelpfulBoolKey = "crnhBool"
 awaitingMoreRatingsBoolKey = "awaitingBool"
@@ -134,6 +161,9 @@ helpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in helpfulTagsAndTieBreakOrd
 helpfulTagsAndTypesTSVOrder = [(tag, np.int64) for tag in helpfulTagsTSVOrder]
 helpfulTagsTiebreakOrder = [tag for (tiebreakOrder, tag) in sorted(helpfulTagsAndTieBreakOrder)]
 
+# NOTE: Always add new tags to the end of this list, and *never* change the order of
+# elements which are already in the list to maintain compatibility with
+# BirdwatchNoteNotHelpfulTags.get in Scala.
 
 notHelpfulSpamHarassmentOrAbuseTagKey = "notHelpfulSpamHarassmentOrAbuse"
 notHelpfulArgumentativeOrBiasedTagKey = "notHelpfulArgumentativeOrBiased"
@@ -268,6 +298,7 @@ noteStatusHistoryTSVTypeMapping = {
   col: dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes
 }
 
+# Earn In + Earn Out
 enrollmentState = "enrollmentState"
 successfulRatingNeededToEarnIn = "successfulRatingNeededToEarnIn"
 timestampOfLastStateChange = "timestampOfLastStateChange"
@@ -309,6 +340,7 @@ userEnrollmentTSVColumnsAndTypes = [
 userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
+# TODO: Remove the "old" user enrollment schemas below once modelingPopulation is in production
 userEnrollmentTSVColumnsOld = [col for (col, _) in userEnrollmentTSVColumnsAndTypes[:5]]
 userEnrollmentTSVTypeMappingOld = {
   col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes[:5]
@@ -365,6 +397,10 @@ noteModelOutputTSVColumnsAndTypes = [
   (finalRatingStatusKey, np.str),
   (firstTagKey, np.str),
   (secondTagKey, np.str),
+  # Note that this column was formerly named "activeRules" and the name is now
+  # updated to "coreActiveRules".  The data values remain the compatible,
+  # but the new column only contains rules that ran when deciding status based on
+  # the core model.
   (coreActiveRulesKey, np.str),
   (activeFilterTagsKey, np.str),
   (classificationKey, np.str),

@@ -1,4 +1,4 @@
-"""Utilities for tag based scoring logic."""
+"""Utilites for tag based scoring logic."""
 
 from typing import Dict
 
@@ -64,13 +64,18 @@ def _get_rating_weight(
     pd.DataFrame containing the weight for reach rating, where a rating is identified by a
     {noteId, raterId} pair.
   """
+  # obtain normalized factors
   normedNotes = _normalize_factors(noteParams, c.noteIdKey, c.internalNoteFactor1Key)
   normedRaters = _normalize_factors(raterParams, c.raterParticipantIdKey, c.internalRaterFactor1Key)
+  # prune ratings to eliminate cases where the note or rater isn't included
+  # and simultaneously add factor data
   ratings = ratings.merge(normedNotes, on=c.noteIdKey, how="inner")
   ratings = ratings.merge(normedRaters, on=c.raterParticipantIdKey, how="inner")
+  # normalize impact factors
   ratings[c.ratingWeightKey] = _get_weight_from_distance(
     np.abs(ratings[c.internalRaterFactor1Key] - ratings[c.internalNoteFactor1Key])
   )
+  # return relevant columns
   return ratings[[c.noteIdKey, c.raterParticipantIdKey, c.ratingWeightKey]]
 
 
@@ -89,15 +94,23 @@ def get_note_tag_aggregates(
     aggregates for the Not-Helpful tags, including raw totals, totals adjusted based on the
     distance between the rater and the note and ratios based on the adjusted weight totals.
   """
+  # Obtain a weight for each rating.  Note that since weights are defined using the note and rater
+  # embedding factors, obtaining a weight inherently filters out ratings where either the note or
+  # rater were not included in matrix factorization.
   ratingWeights = _get_rating_weight(ratings, noteParams, raterParams)
+  # Filter ratings to only the columns which we need.
   ratings = ratings[[c.noteIdKey, c.raterParticipantIdKey] + c.notHelpfulTagsTSVOrder]
+  # Add weights to ratings, which will inherently filter out ratings where either the note or
+  # rater were not included in matrix factorization.
   ratings = ratings.merge(ratingWeights, on=[c.noteIdKey, c.raterParticipantIdKey], how="inner")
+  # Introduce scaled tag columns, and drop original columns
   adjustedRatings = ratings[c.notHelpfulTagsTSVOrder].multiply(
     ratings[c.ratingWeightKey], axis="rows"
   )
   adjustedRatings.columns = c.notHelpfulTagsAdjustedColumns
   ratings = ratings.drop(columns=c.notHelpfulTagsTSVOrder)
   ratings = pd.concat([ratings, adjustedRatings], axis="columns")
+  # Aggregate by note to get adjusted tag and weight totals for each note.
   ratings = ratings.drop(columns=c.raterParticipantIdKey)
   noteTagAggregates = ratings.groupby(c.noteIdKey).sum().reset_index()
   adjustedRatioRatings = noteTagAggregates[c.notHelpfulTagsAdjustedColumns].divide(

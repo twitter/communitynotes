@@ -8,6 +8,10 @@ import pandas as pd
 import torch
 
 
+# TODO: Consider merging compute_scored_notes, is_crh, is_crnh, filter_ratings,
+# compute_general_helpfulness_scores and filter_ratings_by_helpfulness_scores into this class.
+# These functions are only called by this class, and merging them in will allow accessing
+# member state and simplify the callsites.
 class MFBaseScorer(Scorer):
   """Runs MatrixFactorization to determine raw note scores and ultimately note status."""
 
@@ -145,14 +149,18 @@ class MFBaseScorer(Scorer):
     if self._seed is not None:
       torch.manual_seed(self._seed)
 
+    # Removes ratings where either (1) the note did not receive enough ratings, or
+    # (2) the rater did not rate enough notes.
     ratingsForTraining = process_data.filter_ratings(
       ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote
     )
 
+    # TODO: Save parameters from this first run in note_model_output next time we add extra fields to model output TSV.
     noteParamsUnfiltered, raterParamsUnfiltered, globalBias = self._mfRanker.run_mf(
       ratingsForTraining,
     )
 
+    # Get a dataframe of scored notes based on the algorithm results above
     scoredNotes = note_ratings.compute_scored_notes(
       ratings,
       noteParamsUnfiltered,
@@ -167,6 +175,7 @@ class MFBaseScorer(Scorer):
       inertiaDelta=self._inertiaDelta,
     )
 
+    # Determine "valid" ratings
     validRatings = note_ratings.get_valid_ratings(
       ratings,
       noteStatusHistory,
@@ -180,6 +189,8 @@ class MFBaseScorer(Scorer):
       ],
     )
 
+    # Assigns contributor (author & rater) helpfulness bit based on (1) performance
+    # authoring and reviewing previous and current notes.
     helpfulnessScores = helpfulness_scores.compute_general_helpfulness_scores(
       scoredNotes[
         [
@@ -195,16 +206,21 @@ class MFBaseScorer(Scorer):
       self._minRaterAgreeRatio,
     )
 
+    # Filters ratings matrix to include only rows (ratings) where the rater was
+    # considered helpful.
     ratingsHelpfulnessScoreFiltered = helpfulness_scores.filter_ratings_by_helpfulness_scores(
       ratingsForTraining, helpfulnessScores
     )
 
+    # Re-runs matrix factorization using only ratings given by helpful raters.
     noteParams, raterParams, globalBias = self._mfRanker.run_mf(
       ratingsHelpfulnessScoreFiltered,
       noteInit=noteParamsUnfiltered,
       userInit=raterParamsUnfiltered,
     )
 
+    # Add pseudo-raters with the most extreme parameters and re-score notes, to estimate
+    #  upper and lower confidence bounds on note parameters.
     if self._pseudoraters:
       noteIdMap, raterIdMap, noteRatingIds = self._mfRanker.get_note_and_rater_id_maps(
         ratingsHelpfulnessScoreFiltered
@@ -232,6 +248,8 @@ class MFBaseScorer(Scorer):
       for col in c.noteParameterUncertaintyTSVColumns:
         noteParams[col] = np.nan
 
+    # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
+    # and ML output.
     scoredNotes = note_ratings.compute_scored_notes(
       ratings,
       noteParams,
@@ -246,6 +264,8 @@ class MFBaseScorer(Scorer):
       inertiaDelta=self._inertiaDelta,
       finalRound=True,
     )
+    # Takes raterParams from most recent MF run, but use the pre-computed
+    # helpfulness scores.
     helpfulnessScores = raterParams.merge(
       helpfulnessScores[
         [

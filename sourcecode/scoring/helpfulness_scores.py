@@ -86,6 +86,7 @@ def compute_general_helpfulness_scores(
   Returns:
       helpfulness_scores pandas.DataFrame: 1 row per user, with helpfulness scores as columns.
   """
+  # don't consider any notes which we didn't score
   scoredNotes = scoredNotes[~pd.isna(scoredNotes[c.internalNoteInterceptKey])]
   authorCounts = author_helpfulness(scoredNotes, c.internalNoteInterceptKey)
   raterCounts = _rater_helpfulness(validRatings)

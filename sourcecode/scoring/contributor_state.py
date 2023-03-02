@@ -146,6 +146,8 @@ def _get_visible_rating_counts(
   historyCounts[c.ratingsAwaitingMoreRatings] = historyCounts[c.awaitingMoreRatingsBoolKey]
   ratedAfterDecision = _get_rated_after_decision(ratings, noteStatusHistory)
   historyCounts = historyCounts.merge(ratedAfterDecision, on=c.raterParticipantIdKey, how="left")
+  # Fill in zero for any rater who didn't rate any notes after status was assigned and consequently
+  # doesn't appear in the dataframe.
   historyCounts = historyCounts.fillna({c.ratedAfterDecision: 0})
 
   ratingCounts = ratingCounts.merge(historyCounts, on=c.raterParticipantIdKey, how="outer")
@@ -180,6 +182,11 @@ def _sort_nmr_status_last(x: pd.Series) -> pd.Series:
   A helper that sorts notes with NMR status last. This key function is used by sort_values
   to transform the ratingStatus to the ints in nmrSortLast
   """
+  # We perform this complex sort because we need to make sure to count NMR notes for users that
+  # have no CRH / CRNH notes. Explicitly filtering out these notes would lead to situations where
+  # the user would end up without an enrollment state. We perform a key based sorting in descending
+  # order. The nmrSortLast transforms CRH + CRNH notes to the beginning of the frame. The noteIdkey
+  # (snowflake id) acts a secondary filter to make sure that we are checking for recent notes.
   nmrSortLast = DictCopyMissing(
     {
       c.needsMoreRatings: 0,
@@ -316,13 +323,18 @@ def get_contributor_state(
       pd.DataFrame: contributorScoresWithEnrollment The contributor scores with enrollments
   """
 
+  # for users in state Earned Out Ack, update the timestamp of last earn out; this ensures they are only judged against
+  # their rating target until they resume writing notes
   userEnrollment.loc[
     userEnrollment[c.enrollmentState] == 3, c.timestampOfLastEarnOut
   ] = c.epochMillis
 
+  # We need to consider only the last 5 notes for enrollment state. The ratings are aggregated historically.
+  # For users who have earned out, we should only consider notes written since the earn out event
   scoredNotesWithLastEarnOut = scoredNotes.merge(
     userEnrollment, left_on=c.noteAuthorParticipantIdKey, right_on=c.participantIdKey, how="left"
   )
+  # For users who don't appear in the userEnrollment file, set their timeStampOfLastEarnOut to default
   scoredNotesWithLastEarnOut[c.timestampOfLastEarnOut].fillna(1, inplace=True)
 
   contributorScores = get_contributor_scores(
@@ -335,6 +347,7 @@ def get_contributor_state(
   )
   contributorScores.fillna(0, inplace=True)
 
+  # We merge in the top not hellpful tags
   authorTopNotHelpfulTags = explanation_tags.get_top_nonhelpful_tags_per_author(
     noteStatusHistory, ratings
   )
@@ -345,6 +358,7 @@ def get_contributor_state(
     how="outer",
   ).drop(columns=[c.noteAuthorParticipantIdKey])
 
+  # We merge in the emerging writer data.
   emergingWriter = is_emerging_writer(scoredNotes)
   contributorScores = contributorScores.merge(
     emergingWriter,
@@ -353,10 +367,12 @@ def get_contributor_state(
     how="outer",
   ).drop(columns=[c.noteAuthorParticipantIdKey])
 
+  # We merge the current enrollment state
   contributorScoresWithEnrollment = contributorScores.merge(
     userEnrollment, left_on=c.raterParticipantIdKey, right_on=c.participantIdKey, how="outer"
   )
 
+  # We set the new contributor state.
   contributorScoresWithEnrollment[c.timestampOfLastStateChange] = c.epochMillis
   contributorScoresWithEnrollment.fillna(
     inplace=True,
@@ -389,6 +405,8 @@ def get_contributor_state(
     c.enrollmentState
   ].map(_transform_to_thrift_code)
 
+  # This addresses an issue in the TSV dump in HDFS getting corrupted. It removes lines
+  # users that do not have an id.
   contributorScoresWithEnrollment.dropna(subset=[c.raterParticipantIdKey], inplace=True)
 
   if logging:
