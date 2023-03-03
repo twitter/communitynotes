@@ -28,9 +28,15 @@ As there are important nuances in each market, we’ll expand the contributor ba
 
 ## How to contribute to this repo
 
-We welcome Pull Requests with fixes or improvements to our ranking source code as well as the documentation content.
+Thank you for your interest in contributing to Community Notes! Currently, we will consider pull requests that contribute to the following areas:
+* Downstream analyses of scoring model output
+* Alternate scoring algorithm ideas (outside the core algorithm)
+* Documentation
+* Open issues
 
-You can also talk directly with the team building Community Notes on Twitter, at [@CommunityNotes](https://twitter.com/communitynotes).
+Note that we aren’t currently accepting changes that alter existing APIs, as there is other utility and production infrastructure code at Twitter that depends on these APIs remaining stable.
+
+We are also exploring ways to make it easier for people to contribute directly to the core algorithm. For example, by making available testing and evaluation frameworks that would allow open source contributors to evaluate the impact of their PRs on note quality. 
 
 ---
 
