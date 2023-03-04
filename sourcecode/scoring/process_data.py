@@ -1,5 +1,4 @@
-from io import StringIO
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -53,20 +52,40 @@ def read_from_strings(
   Returns:
      Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory
   """
-  notes = pd.read_csv(
-    StringIO(notesStr), sep="\t", names=c.noteTSVColumns, dtype=c.noteTSVTypeMapping
-  )
-  ratings = pd.read_csv(
-    StringIO(ratingsStr), sep="\t", names=c.ratingTSVColumns, dtype=c.ratingTSVTypeMapping
-  )
-  noteStatusHistory = pd.read_csv(
-    StringIO(noteStatusHistoryStr),
-    sep="\t",
-    names=c.noteStatusHistoryTSVColumns,
-    dtype=c.noteStatusHistoryTSVTypeMapping,
-  )
-
+  notes = tsv_readers.NotesTSVReader.from_string(raw=notesStr)
+  ratings = tsv_readers.RatingsTSVReader.from_string(raw=ratingsStr)
+  noteStatusHistory = tsv_readers.NotesStatusHistoryTSVReader.from_string(raw=noteStatusHistoryStr)
   return notes, ratings, noteStatusHistory
+
+
+def tsv_parser(
+  rawTSV: str, mapping: Dict[str, type], columns: List[str], header: bool
+) -> pd.DataFrame:
+  """Parse a TSV input and raise an Exception if the input is not formatted as expected.
+
+  Args:
+    rawTSV: str contianing entire TSV input
+    mapping: Dict mapping column names to types
+    columns: List of column names
+    header: bool indicating whether the input will have a header
+
+  Returns:
+    pd.DataFrame containing parsed data
+  """
+  class TSVReader(tsv_readers.TSVReaderBase):
+    @property
+    def _datatype_mapping(self) -> Dict[str, type]:
+      return mapping
+
+    def _columns(self) -> Tuple[str, ...]:
+      return tuple(columns)
+
+  return TSVReader.from_string(raw=rawTSV, has_header=header)
+
+
+def tsv_reader(path: str, mapping, columns, header=True):
+  with open(path, "r") as handle:
+    return tsv_parser(handle.read(), mapping, columns, header)
 
 
 def read_from_tsv(
@@ -85,13 +104,13 @@ def read_from_tsv(
   Returns:
       Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
   """
-  notes = tsv_readers.NotesTSVReader(path=notesPath).read()
-  ratings = tsv_readers.RatingsTSVReader(path=ratingsPath).read()
-  noteStatusHistory = tsv_readers.NotesStatusHistoryTSVReader(path=noteStatusHistoryPath).read()
+  notes = tsv_readers.NotesTSVReader.from_file(path=notesPath)
+  ratings = tsv_readers.RatingsTSVReader.from_file(path=ratingsPath)
+  noteStatusHistory = tsv_readers.NotesStatusHistoryTSVReader.from_file(path=noteStatusHistoryPath)
   try:
-    userEnrollment = tsv_readers.UserEnrollmentsNewFormatTSVReader(path=userEnrollmentPath).read()
+    userEnrollment = tsv_readers.UserEnrollmentsNewFormatTSVReader.from_file(path=userEnrollmentPath)
   except ValueError:
-    userEnrollment = tsv_readers.UserEnrollmentOldFormatTSVReader(path=userEnrollmentPath).read()
+    userEnrollment = tsv_readers.UserEnrollmentOldFormatTSVReader.from_file(path=userEnrollmentPath)
 
   return notes, ratings, noteStatusHistory, userEnrollment
 

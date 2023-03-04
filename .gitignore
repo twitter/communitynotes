@@ -2,5 +2,6 @@ public
 _gen
 .DS_Store
 .idea
-__pycache__
 *.pyc
+__pycache__/
+.pytest_cache/
