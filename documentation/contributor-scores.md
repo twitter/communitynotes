@@ -17,7 +17,7 @@ In order to get enough data from new raters to be able to assess how similarly t
 
 This score is the proportion of notes you’ve written (that have gotten at least 5 ratings) that have reached the status of Helpful ("Currently Rated Helpful", or CRH), minus 5 times the proportion of notes you wrote that reached the status of Not Helpful ("Currently Rated Not Helpful", or CRNH).
 
-Contributors must have a ratio greater than 0.0 to be included in the [second round of note scoring](../ranking-notes/#complete-algorithm-steps) (contributors need to write at least 5 CRH notes for every 1 CRNH note they write in order for their ratings to count); this filters out a small percentage of raters. Labels on notes that have been deleted after May 19, 2022 continue to affect this score, so that the score can’t be trivially changed by deleting CRNH notes.
+Contributors must have a ratio of at least 0.0 to be included in the [second round of note scoring](../ranking-notes/#complete-algorithm-steps) (contributors need to write at least 5 CRH notes for every 1 CRNH note they write in order for their ratings to count); this filters out a small percentage of raters. Labels on notes that have been deleted after May 19, 2022 continue to affect this score, so that the score can’t be trivially changed by deleting CRNH notes.
 
 ### Author Mean Note Score
 
