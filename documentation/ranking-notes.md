@@ -221,6 +221,14 @@ For not-helpful notes:
 
 ## What’s New?
 
+**March 13, 2023**
+
+- Start labeling notes that were scored by the Expansion model, which has resulted in multiple notes from the expansion countries (e.g. Brazil) becoming CRH and CRNH.
+- Update tag weighting formula for tag filtering, to reduce weights for raters further from the note.
+- Decrease CRH threshold of the coverage model from 0.39 to 0.38, thereby increasing the coverage of the coverage model.
+- Add logic to improve the stability of the optimization between re-trainings, to prevent status flipping when the optimization occasionally gets stuck in a bad local mode.
+- Release a new modelingPopulation column in the user enrollment file, which indicates whether a user is included in the core or expansion model.
+
 **February 24, 2023**
 
 - Introduced support for running multiple ranking models.
