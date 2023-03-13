@@ -89,6 +89,8 @@ This approach has a few nice properties:
 
 Note: for now, to avoid overfitting on our very small dataset, we only use 1-dimensional factors. We expect to increase this dimensionality as our dataset size grows significantly.
 
+Additionally, because the matrix factorization is re-trained from scratch every hour, we have added additional logic to detect if the loss is more than expected (currently by detecting if the loss is above a hard threshold of 0.09) that may have resulted from an unlucky initialization and local mode, and then re-fit the model if so.
+
 ## Tag Outlier Filtering
 
 In some cases, a note may appear helpful but miss key points about the tweet or lack sources.
