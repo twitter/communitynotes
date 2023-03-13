@@ -98,12 +98,12 @@ This approach helps us to maintain data quality by recognizing when there is a t
 
 We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
 
-$$ a_{un} = \mathbb{1}_{a_{un}} \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$
+$$ a_{un} = \frac{\mathbb{1}_{a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5  }  $$
 
 Where:
 
-- $\tilde{f} = median_{r_{un}}(||f_n - f_r||)$ indicates the median distance between the reviewer and note latent factors over all observable reviews $r_{un}$
-- $\mathbb{1}_{a_{un}}$ is 1 if reviewer $u$ assigned tag $a$ to note $n$ and 0 otherwise.
+- $\tilde{f} = \eta_{40}^{r_{un}}(||f_n - f_||)$ indicates the 40th percentile of the distances between the rater (user) and note latent factors over all observable ratings $r_{un}$
+- $\mathbb{1}_{a_{un}}$ is 1 if rater $u$ assigned tag $a$ to note $n$ and 0 otherwise.
 
 We define the total weight of an tag $a$ on note $n$ as:
 
@@ -111,13 +111,13 @@ $$ n_{a} = \sum_{r_{un}} a_{un} $$
 
 Notice the following:
 
-- No single review can achieve an tag weight $a_{un} > 1$.
-- Reviews where the reviewer factor and note factor are equal will achieve the maximum weight of 1.0, reviews at a median distance will achieve a weight of 0.5, and reviews at 2x the median distance will have a weight of 0.2. All reviews will have positive weight.
-- Assigning higher weights to tags in reviews where the reviewer and note are closer in the embedding space effectively lends greater weight to critical reviews from reviewers who tend to share the same perspective as the note.
+- No single rating can achieve an tag weight $a_{un} > 1$.
+- Ratings where the rater factor and note factor are equal will achieve the maximum weight of 1.0, ratings at a 40th percentile distance will achieve a weight of 0.5, and reviews at 2x the 40th percentile distance will have a weight of ~0.03. All ratings will have positive weight.
+- Assigning higher weights to tags in ratings where the rater and note are closer in the embedding space effectively lends greater weight to critical ratings from raters who tend to share the same perspective as the note.
 
 Given the quantities defined above, we modify scoring as follows:
 
-- When the total weight $a_n$ of an tag exceeds 1.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
+- When the total weight $a_n$ of an tag exceeds 2.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
 - We disregard the "Typos or unclear language" and "Note not needed on this Tweet" tags, which do not relate to note accuracy.
 
 ## CRH Inertia
