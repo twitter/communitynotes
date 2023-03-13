@@ -144,7 +144,7 @@ In cases where a note is ranked by both the Core and Expansion models the Core m
 This approach allows us to grow Community Notes as quickly as possible in experimental Expansion areas without the risk of compromising quality in Core areas where Community Notes is well established.
 In cases where the Core and Coverage models disagree, a Helpful rating from the Core model always takes precedence.
 If a note is only rated as Helpful by the Coverage model, then the note must surpass a safeguard threshold for the Core model intercept to receive a final Helpful rating.
-We have initialized the Core model safeguard threshold to 0.39, 0.01 below the Core model default Helpfulness threshold of 0.40, and will lower the safeguard threshold as the Coverage model continues to launch.
+We have initialized the Core model safeguard threshold to 0.38, 0.02 below the Core model default Helpfulness threshold of 0.40, and will lower the safeguard threshold as the Coverage model continues to launch.
 
 ## Status Stabilization
 
