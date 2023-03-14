@@ -43,11 +43,13 @@ Note statuses can change any time as more ratings come in, and can be overturned
 
 To increase this impact, you should look for notes that need more ratings, and rate them. The best ways to do this are by browsing the [Needs Your Help](https://twitter.com/i/communitynotes/needs_your_help) tab in Community Notes, and by looking out for alerts when a note needs your rating.
 
-1. <div><strong> Help identify notes as Helpful</strong>
-   <label>When you help a note earn the status of Helpful, it gets shown on Twitter as context, helping keep people informed.</label></div>
+1. **Help identify notes as Helpful**
 
-2. <div><strong> Help identify notes as Not Helpful</strong>
-   <label>When you help a note reach a status of Not Helpful, you're also improving Community Notes. Note authors get feedback based on your rating, and other raters can more easily focus on the most promising notes.</label></div>
+    When you help a note earn the status of Helpful, it gets shown on Twitter as context, helping keep people informed.
+
+2. **Help identify notes as Not Helpful**
+
+    When you help a note reach a status of Not Helpful, you're also improving Community Notes. Note authors get feedback based on your rating, and other raters can more easily focus on the most promising notes.
 
 Here are [tips on how to identify Helpful and Not Helpful notes](../examples).
 

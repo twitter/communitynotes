@@ -22,13 +22,15 @@ If you believe a note rated “helpful” on your Tweet doesn’t add helpful co
 
 ## Request additional review
 
-1. <div><strong> Copy your Tweet's link.</strong><label> It should look like this: <code>https://twitter.com/{{yourdisplayname}}/status/123456789</code> </label></div>
+1. Copy your Tweet's link
 
-2. <div><strong> Paste the link into the form below.</strong></div>
+    It should look like this: <code>https://twitter.com/{{yourdisplayname}}/status/123456789</code>
 
-3. <div><strong> Click the `Go to Community Notes` button.</strong></div>
+2. Paste the link into the form below.
 
-4. <div><strong> In Community Notes, look for the note that you believe requires additional review and click "Request additional review".</strong></div>
+3. Click the `Go to Community Notes` button.
+
+4. In Community Notes, look for the note that you believe requires additional review and click "Request additional review".
 
 <form style="display: flex; flex-direction: column;">
 <label for="Tweet URL">Tweet URL</label>

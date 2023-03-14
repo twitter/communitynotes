@@ -19,14 +19,23 @@ Community Notes measures and monitors three top-line metrics to understand the q
 
 Evidence of consistent or systematic problems in top rated notes that earn the status of Helpful on any of the following measures can trigger a guardrail or circuit breaker procedure:
 
-1. <div> <strong>Accuracy: Whether notes that earn the status of Helpful contain accurate, high-quality information</strong><label>
-   <br/>This is measured via partnerships with <a href="https://blog.twitter.com/en_us/topics/company/2021/bringing-more-reliable-context-to-conversations-on-twitter" target="_blank">professional reviewers</a> who provide evaluations of note accuracy. These evaluations provide a tracking measure of how often Helpful notes that are rated as accurate vs. inaccurate by reviewers over time; they don't impact notes’ ratings/status. <br/> <br/>We don't expect perfect consensus among expert reviewers that all notes are accurate, nor do professionals always <a href="https://www.science.org/doi/10.1126/sciadv.abf4393" target="_blank">agree with one another on accuracy ratings</a>. However, this gives us an indicator of whether there might be broad or consistent issues emerging with note accuracy.</label></div>
+1. **Accuracy: Whether notes that earn the status of Helpful contain accurate, high-quality information**
 
-2. <div> <strong>Informativeness: Whether notes that earn the status of Helpful help inform people’s understanding of the subject matter in Tweets</strong><label>
-   <br/> This is measured via survey experiments of random samples of Twitter users in the US, comparing whether people who see potentially misleading Tweets with notes tend to have a different view of the Tweet’s main claim vs those who see Tweets without notes. </br><br/> While notes may vary in their ability to inform, we want to ensure that on average notes that earn the status of Helpful are effective at helping people understand the topics in Tweets (vs having no impact or an adverse effect).</label></div>
+    This is measured via partnerships with <a href="https://blog.twitter.com/en_us/topics/company/2021/bringing-more-reliable-context-to-conversations-on-twitter" target="_blank">professional reviewers</a> who provide evaluations of note accuracy. These evaluations provide a tracking measure of how often Helpful notes that are rated as accurate vs. inaccurate by reviewers over time; they don't impact notes’ ratings/status.
 
-3. <div> <strong>Helpfulness: Whether Twitter users beyond the contributor pool tend to find notes that earn the status of Helpful to be helpful</strong><label>
-   <br/> This is measured via surveys of random samples of Twitter users in the US. The surveys allow these Twitter users to give feedback on the helpfulness of Community Notes.</br><br/> We don’t expect all notes to be perceived as helpful by all people all the time. Instead, the goal is to ensure that on average notes that earn the status of Helpful are likely to be seen as helpful by a wide range of people from different points of view, and not only be seen as helpful by people from one viewpoint.</label></div>
+    We don't expect perfect consensus among expert reviewers that all notes are accurate, nor do professionals always <a href="https://www.science.org/doi/10.1126/sciadv.abf4393" target="_blank">agree with one another on accuracy ratings</a>. However, this gives us an indicator of whether there might be broad or consistent issues emerging with note accuracy.
+
+2. **Informativeness: Whether notes that earn the status of Helpful help inform people’s understanding of the subject matter in Tweets**
+
+    This is measured via survey experiments of random samples of Twitter users in the US, comparing whether people who see potentially misleading Tweets with notes tend to have a different view of the Tweet’s main claim vs those who see Tweets without notes.
+
+    While notes may vary in their ability to inform, we want to ensure that on average notes that earn the status of Helpful are effective at helping people understand the topics in Tweets (vs having no impact or an adverse effect).
+
+3. **Helpfulness: Whether Twitter users beyond the contributor pool tend to find notes that earn the status of Helpful to be helpful**
+
+    This is measured via surveys of random samples of Twitter users in the US. The surveys allow these Twitter users to give feedback on the helpfulness of Community Notes.
+
+    We don’t expect all notes to be perceived as helpful by all people all the time. Instead, the goal is to ensure that on average notes that earn the status of Helpful are likely to be seen as helpful by a wide range of people from different points of view, and not only be seen as helpful by people from one viewpoint.
 
 In addition to the three top-line metrics listed above, Community Notes monitors additional operational quality metrics, like whether any notes violate Twitter Rules.
 

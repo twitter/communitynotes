@@ -22,27 +22,24 @@ As there are important nuances in each market, we’ll expand the contributor ba
 ## {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
 
 ---
-
-<br>
-<br>
-
 ## Eligibility
 
 To become a Community Notes contributor, accounts must have:
 
-1. <div><strong>No recent notice of Twitter Rules violations</strong>
-   <label>Intended to reduce the likelihood of abusive contributions.</label>
-   </div>
-2. <div><strong>Joined Twitter at least 6 months ago</strong>
-   <label>Intended to reduce spam.</label>
-   </div>
-3. <div><strong>A verified phone number</strong>
-   </div>
+1. **No recent notice of Twitter Rules violations**
 
-That phone number must be:
+    Intended to reduce the likelihood of abusive contributions.
 
-- **From a trusted phone carrier**
-- **Not associated with other Community Notes accounts**
+2. **Joined Twitter at least 6 months ago**
+
+    Intended to reduce spam.
+
+3. **A verified phone number**
+
+    That phone number must be:
+
+    - From a trusted phone carrier
+    - Not associated with other Community Notes accounts
 
 These make it more likely that contributors are real people instead of bots or adversarial actors.
 
