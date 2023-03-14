@@ -98,16 +98,20 @@ class Scorer(ABC):
         helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
         auxiliaryNoteInfo: one row per note containing adjusted and ratio tag values
     """
+    # Transform input, run core scoring algorithm, transform output.
     ratings, noteStatusHistory = self._filter_input(ratings, noteStatusHistory, userEnrollment)
     noteScores, userScores = self._score_notes_and_users(ratings, noteStatusHistory)
     noteScores = noteScores.rename(columns=self._get_note_col_mapping())
     userScores = userScores.rename(columns=self._get_user_col_mapping())
+    # Process noteScores
     noteScores = noteScores.drop(columns=self._get_dropped_note_cols())
     assert set(noteScores.columns) == set(
       self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols()
     ), "all columns must be either dropped or explicitly defined in an output"
+    # Process userScores
     userScores = userScores.drop(columns=self._get_dropped_user_cols())
     assert set(userScores.columns) == set(self.get_helpfulness_scores_cols())
+    # Return dataframes with specified columns in specified order
     return (
       noteScores[self.get_scored_notes_cols()],
       userScores[self.get_helpfulness_scores_cols()]

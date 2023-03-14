@@ -13,6 +13,7 @@ def get_data(
   ratingsPath: str,
   noteStatusHistoryPath: str,
   userEnrollmentPath: str,
+  headers: bool,
   shouldFilterNotMisleadingNotes: bool = True,
   logging: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -23,6 +24,7 @@ def get_data(
       notesPath (str): file path
       ratingsPath (str): file path
       noteStatusHistoryPath (str): file path
+      headers: If true, expect first row of input files to be headers.
       shouldFilterNotMisleadingNotes (bool, optional): Throw out not-misleading notes if True. Defaults to True.
       logging (bool, optional): Print out debug output. Defaults to True.
 
@@ -30,7 +32,7 @@ def get_data(
       Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
   """
   notes, ratings, noteStatusHistory, userEnrollment = read_from_tsv(
-    notesPath, ratingsPath, noteStatusHistoryPath, userEnrollmentPath
+    notesPath, ratingsPath, noteStatusHistoryPath, userEnrollmentPath, headers
   )
   notes, ratings, noteStatusHistory = preprocess_data(
     notes, ratings, noteStatusHistory, shouldFilterNotMisleadingNotes, logging
@@ -97,7 +99,7 @@ def tsv_parser(
     raise ValueError("invalid input")
 
 
-def tsv_reader(path: str, mapping, columns, header=True):
+def tsv_reader(path: str, mapping, columns, header=False):
   with open(path, "r") as handle:
     return tsv_parser(handle.read(), mapping, columns, header)
 
@@ -107,6 +109,7 @@ def read_from_tsv(
   ratingsPath: str,
   noteStatusHistoryPath: str,
   userEnrollmentPath: str,
+  headers: bool,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Mini function to read notes, ratings, and noteStatusHistory from TSVs.
 
@@ -115,23 +118,21 @@ def read_from_tsv(
       ratingsPath (str): path
       noteStatusHistoryPath (str): path
       userEnrollmentPath (str): path
+      headers: If true, expect first row of input files to be headers.
   Returns:
       Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
   """
-  notes = tsv_reader(notesPath, c.noteTSVTypeMapping, c.noteTSVColumns)
-  ratings = tsv_reader(ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns)
+  notes = tsv_reader(notesPath, c.noteTSVTypeMapping, c.noteTSVColumns, header=headers)
+  ratings = tsv_reader(ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns, header=headers)
   noteStatusHistory = tsv_reader(
-    noteStatusHistoryPath, c.noteStatusHistoryTSVTypeMapping, c.noteStatusHistoryTSVColumns
+    noteStatusHistoryPath,
+    c.noteStatusHistoryTSVTypeMapping,
+    c.noteStatusHistoryTSVColumns,
+    header=headers,
   )
-  try:
-    userEnrollment = tsv_reader(
-      userEnrollmentPath, c.userEnrollmentTSVTypeMapping, c.userEnrollmentTSVColumns
-    )
-  except ValueError:
-    userEnrollment = tsv_reader(
-      userEnrollmentPath, c.userEnrollmentTSVTypeMappingOld, c.userEnrollmentTSVColumnsOld
-    )
-    userEnrollment[c.modelingPopulationKey] = c.core
+  userEnrollment = tsv_reader(
+    userEnrollmentPath, c.userEnrollmentTSVTypeMapping, c.userEnrollmentTSVColumns, header=headers
+  )
 
   assert len(notes.columns) == len(c.noteTSVColumns) and all(notes.columns == c.noteTSVColumns), (
     f"note columns don't match: \n{[col for col in notes.columns if not col in c.noteTSVColumns]} are extra columns, "
@@ -253,6 +254,7 @@ def remove_duplicate_ratings(ratings: pd.DataFrame) -> pd.DataFrame:
   Returns:
       pd.DataFrame: ratings, with one record per userId, noteId.
   """
+  # Construct a new DataFrame to avoid SettingWithCopyWarning
   ratings = pd.DataFrame(ratings.drop_duplicates())
 
   numRatings = len(ratings)
@@ -272,6 +274,7 @@ def remove_duplicate_notes(notes: pd.DataFrame) -> pd.DataFrame:
   Returns:
       notes (pd.DataFrame) with one record per noteId
   """
+  # Construct a new DataFrame to avoid SettingWithCopyWarning
   notes = pd.DataFrame(notes.drop_duplicates())
 
   numNotes = len(notes)

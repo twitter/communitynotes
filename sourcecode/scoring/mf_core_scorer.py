@@ -93,8 +93,10 @@ class MFCoreScorer(MFBaseScorer):
         ratings: ratings filtered to only contain rows of interest
         noteStatusHistory: noteStatusHistory filtered to only contain rows of interest
     """
+    # Prepare userEnrollment for join with ratings.
     userEnrollment[_CORE_BOOL] = userEnrollment[c.modelingPopulationKey] == c.core
     userEnrollment = userEnrollment.rename(columns={c.participantIdKey: c.raterParticipantIdKey})
+    # Compute stats to identify notes which are in scope.
     print("Identifying core notes and ratings")
     print(f"  Total ratings: {len(ratings)}")
     ratings = ratings.merge(
@@ -107,12 +109,20 @@ class MFCoreScorer(MFBaseScorer):
     counts[_TOTAL] = 1
     counts = counts.groupby(c.noteIdKey).sum(numeric_only=True).reset_index()
     counts[_RATIO] = counts[_CORE_BOOL] / counts[_TOTAL]
+    # Identify CORE notes.  We define an EXPANSION note to be any note which (1) has ratings
+    # and (2) less than half of the ratings are from CORE users.  Any other note is considered
+    # a CORE note.  This construction means that we only count a note as EXPANSION when there
+    # is reason to believe that the EXPANSION model could assign the note status.  In all other
+    # case we leave the note as CORE so that the note will be eligble for locking.  In effect,
+    # this approach biases us towards locking note status at 2 weeks and only avoiding locking
+    # when a note is scored by the EXPANSION model.
     print(f"  Total notes: {len(noteStatusHistory)}")
     print(f"  Total notes with ratings: {len(counts)}")
     expansionNotes = set(counts[counts[_RATIO] <= self._core_threshold][c.noteIdKey])
     coreNotes = set(noteStatusHistory[c.noteIdKey]) - expansionNotes
     print(f"  Total core notes: {len(coreNotes)}")
     print(f"  Total expansion notes: {len(expansionNotes)}")
+    # Prune notes and ratings to ratings from CORE users on CORE notes.
     ratings = ratings[ratings[_CORE_BOOL]]
     ratings = ratings.drop(columns=_CORE_BOOL)
     ratings = ratings[ratings[c.noteIdKey].isin(coreNotes)]

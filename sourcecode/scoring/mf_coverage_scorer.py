@@ -12,7 +12,7 @@ class MFCoverageScorer(MFCoreScorer):
       seed: if not None, seed value to ensure deterministic execution
     """
     super().__init__(seed)
-    self._crhThreshold = 0.374
+    self._crhThreshold = 0.338
     self._pseudoraters = False
     self._mfRanker = matrix_factorization.MatrixFactorization(l2_intercept_multiplier=7)
 

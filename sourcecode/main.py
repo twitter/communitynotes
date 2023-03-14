@@ -30,10 +30,21 @@ def parse_args():
     dest="epoch_millis",
     help="timestamp in milliseconds since epoch to treat as now",
   )
-  parser.add_argument("-n", "--notes", default=c.notesInputPath, help="note dataset")
   parser.add_argument(
-    "-o", "--outdir", default=".", help="directory for output files"
+    "--headers",
+    dest="headers",
+    help="First row of input files should be a header",
+    action="store_true",
   )
+  parser.add_argument(
+    "--noheaders",
+    dest="headers",
+    help="First row of input files should be data.  There should be no headers.",
+    action="store_false",
+  )
+  parser.set_defaults(headers=True)
+  parser.add_argument("-n", "--notes", default=c.notesInputPath, help="note dataset")
+  parser.add_argument("-o", "--outdir", default=".", help="directory for output files")
   parser.add_argument(
     "--pseudoraters",
     dest="pseudoraters",
@@ -59,18 +70,22 @@ def parse_args():
 
 
 def main():
+  # Parse arguments and fix timestamp, if applicable.
   args = parse_args()
   if args.epoch_millis:
     c.epochMillis = args.epoch_millis
 
+  # Load input dataframes.
   _, ratings, statusHistory, userEnrollment = get_data(
-    args.notes, args.ratings, args.status, args.enrollment
+    args.notes, args.ratings, args.status, args.enrollment, args.headers
   )
 
+  # Invoke scoring and user contribution algorithms.
   scoredNotes, helpfulnessScores, newStatus, auxNoteInfo = run_scoring(
     ratings, statusHistory, userEnrollment, seed=args.seed, pseudoraters=args.pseudoraters
   )
 
+  # Write outputs to local disk.
   write_tsv_local(scoredNotes, os.path.join(args.outdir, "scored_notes.tsv"))
   write_tsv_local(helpfulnessScores, os.path.join(args.outdir, "helpfulness_scores.tsv"))
   write_tsv_local(newStatus, os.path.join(args.outdir, "note_status_history.tsv"))

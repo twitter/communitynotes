@@ -8,6 +8,7 @@ intergrated into main files for execution in internal and external environments.
 from typing import List, Optional, Tuple
 
 from . import constants as c, contributor_state, note_ratings, note_status_history, scoring_rules
+from .mf_base_scorer import MFBaseScorer
 from .mf_core_scorer import MFCoreScorer
 from .mf_coverage_scorer import MFCoverageScorer
 from .mf_expansion_scorer import MFExpansionScorer
@@ -56,12 +57,14 @@ def _merge_results(
   Returns:
     Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
   """
+  # Merge scoredNotes
   assert (set(modelScoredNotes.columns) & set(scoredNotes.columns)) == {
     c.noteIdKey
   }, "column names must be globally unique"
   scoredNotesSize = len(scoredNotes)
   scoredNotes = scoredNotes.merge(modelScoredNotes, on=c.noteIdKey, how="outer")
   assert len(scoredNotes) == scoredNotesSize, "scoredNotes should not expand"
+  # Merge helpfulnessScores
   if modelHelpfulnessScores is not None:
     assert (set(modelHelpfulnessScores.columns) & set(helpfulnessScores.columns)) == {
       c.raterParticipantIdKey
@@ -69,6 +72,7 @@ def _merge_results(
     helpfulnessScores = helpfulnessScores.merge(
       modelHelpfulnessScores, on=c.raterParticipantIdKey, how="outer"
     )
+  # Merge auxiliaryNoteInfo
   if modelauxiliaryNoteInfo is not None:
     assert (set(modelauxiliaryNoteInfo.columns) & set(auxiliaryNoteInfo.columns)) == {
       c.noteIdKey
@@ -104,14 +108,24 @@ def _run_scorers(
       helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
       auxiliaryNoteInfo pd.DataFrame: one row per note containing supplemental values used in scoring.
   """
+  # Initialize return data frames.
   scoredNotes = noteStatusHistory[[c.noteIdKey]].drop_duplicates()
   auxiliaryNoteInfo = noteStatusHistory[[c.noteIdKey]].drop_duplicates()
   helpfulnessScores = pd.DataFrame({c.raterParticipantIdKey: []})
 
+  # Apply scoring algorithms and merge results
   for scorer in scorers:
-    modelScoredNotes, modelHelpfulnessScores, modelauxiliaryNoteInfo = scorer.score(
-      ratings, noteStatusHistory, userEnrollment
-    )
+    if isinstance(scorer, (MFBaseScorer, MFCoreScorer, MFCoverageScorer, MFExpansionScorer)):
+      while (len(scorer._mfRanker.train_errors) == 0) or (
+        scorer._mfRanker.train_errors[-1] > c.maxTrainError
+      ):
+        modelScoredNotes, modelHelpfulnessScores, modelauxiliaryNoteInfo = scorer.score(
+          ratings, noteStatusHistory, userEnrollment
+        )
+    else:
+      modelScoredNotes, modelHelpfulnessScores, modelauxiliaryNoteInfo = scorer.score(
+        ratings, noteStatusHistory, userEnrollment
+      )
     scoredNotes, helpfulnessScores, auxiliaryNoteInfo = _merge_results(
       scoredNotes,
       helpfulnessScores,
@@ -144,6 +158,7 @@ def meta_score(
       scoredNotesCols pd.DataFrame: one row per note contained note scores and parameters.
       auxiliaryNoteInfoCols pd.DataFrame: one row per note containing adjusted and ratio tag values
   """
+  # Temporarily merge helpfulness tag aggregates into scoredNotes so we can run InsufficientExplanation
   assert len(scoredNotes) == len(auxiliaryNoteInfo)
   scoredNotes = scoredNotes.merge(
     auxiliaryNoteInfo[[c.noteIdKey] + c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder],
@@ -153,12 +168,21 @@ def meta_score(
   rules = [
     scoring_rules.DefaultRule(RuleID.META_INITIAL_NMR, set(), c.needsMoreRatings),
     scoring_rules.ApplyModelResult(
-      RuleID.CORE_MODEL, {RuleID.META_INITIAL_NMR}, c.coreRatingStatusKey
+      RuleID.EXPANSION_MODEL, {RuleID.META_INITIAL_NMR}, c.expansionRatingStatusKey
+    ),
+    scoring_rules.ApplyModelResult(
+      RuleID.CORE_MODEL, {RuleID.EXPANSION_MODEL}, c.coreRatingStatusKey
     ),
     scoring_rules.ApplyAdditiveModelResult(
-      RuleID.COVERAGE_MODEL, {RuleID.CORE_MODEL}, c.coverageRatingStatusKey, 0.39
+      RuleID.COVERAGE_MODEL, {RuleID.CORE_MODEL}, c.coverageRatingStatusKey, 0.38
     ),
     scoring_rules.ScoringDriftGuard(RuleID.SCORING_DRIFT_GUARD, {RuleID.CORE_MODEL}, lockedStatus),
+    # TODO: The rule below both sets tags for notes which are CRH / CRNH and unsets status for
+    # any notes which are CRH / CRNH but don't have enough ratings to assign two tags.  The later
+    # behavior can lead to unsetting locked status.  We should refactor this code to (1) remove
+    # the behavior which unsets status (instead tags will be assigned on a best effort basis) and
+    # (2) set tags in logic which is not run as a ScoringRule (since ScoringRules function to
+    # update note status).
     scoring_rules.InsufficientExplanation(
       RuleID.INSUFFICIENT_EXPLANATION,
       {RuleID.CORE_MODEL},
@@ -264,8 +288,10 @@ def _compute_helpfulness_scores(
   Returns:
       helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
   """
+  # Generate a uunified view of note scoring information for computing contributor stats
   assert len(scoredNotes) == len(auxiliaryNoteInfo), "notes in both note inputs must match"
   scoredNotesWithStats = scoredNotes.merge(
+    # noteId and timestamp are the only common fields, and should always be equal.
     auxiliaryNoteInfo,
     on=[c.noteIdKey, c.createdAtMillisKey],
     how="inner",
@@ -285,6 +311,7 @@ def _compute_helpfulness_scores(
   ]
   assert len(scoredNotesWithStats) == len(scoredNotes)
 
+  # Return one row per rater with stats including trackrecord identifying note labels.
   contributorScores = contributor_state.get_contributor_scores(
     scoredNotesWithStats,
     ratings,
@@ -297,6 +324,8 @@ def _compute_helpfulness_scores(
     userEnrollment,
   )
 
+  # We need to do an outer merge because the contributor can have a state (be a new user)
+  # without any notes or ratings.
   contributorScores = contributorScores.merge(
     contributorState[
       [
@@ -312,18 +341,21 @@ def _compute_helpfulness_scores(
     how="outer",
   )
 
+  # Consolidates all information on raters / authors.
   helpfulnessScores = helpfulnessScores.merge(
     contributorScores,
     on=c.raterParticipantIdKey,
     how="outer",
   )
 
+  # Pass timestampOfLastEarnOut through to raterModelOutput.
   helpfulnessScores = helpfulnessScores.merge(
     userEnrollment[[c.participantIdKey, c.timestampOfLastEarnOut]],
     left_on=c.raterParticipantIdKey,
     right_on=c.participantIdKey,
     how="left",
   ).drop(c.participantIdKey, axis=1)
+  # If field is not set by userEvent or by update script, ok to default to 1
   helpfulnessScores[c.timestampOfLastEarnOut].fillna(1, inplace=True)
 
   return helpfulnessScores
@@ -374,27 +406,33 @@ def run_scoring(
     pseudoraters (bool, optional): if True, compute optional pseudorater confidence intervals
 
   Returns:
-    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
       scoredNotes pd.DataFrame: one row per note contained note scores and parameters.
       helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
       noteStatusHistory pd.DataFrame: one row per note containing when they got their most recent statuses.
       auxiliaryNoteInfo: one row per note containing adjusted and ratio tag values
   """
+  # Apply individual scoring models and obtained merged result.
   scorers = _get_scorers(seed, pseudoraters)
   scoredNotes, helpfulnessScores, auxiliaryNoteInfo = _run_scorers(
     scorers, ratings, noteStatusHistory, userEnrollment
   )
 
+  # Augment scoredNotes and auxiliaryNoteInfo with additional attributes for each note
+  # which are computed over the corpus of notes / ratings as a whole and are independent
+  # of any particular model.
   scoredNotesCols, auxiliaryNoteInfoCols = _compute_note_stats(ratings, noteStatusHistory)
   scoredNotes = scoredNotes.merge(scoredNotesCols, on=c.noteIdKey)
   auxiliaryNoteInfo = auxiliaryNoteInfo.merge(auxiliaryNoteInfoCols, on=c.noteIdKey)
 
+  # Assign final status to notes based on individual model scores and note attributes.
   scoredNotesCols, auxiliaryNoteInfoCols = meta_score(
     scoredNotes, auxiliaryNoteInfo, noteStatusHistory[[c.noteIdKey, c.lockedStatusKey]]
   )
   scoredNotes = scoredNotes.merge(scoredNotesCols, on=c.noteIdKey)
   auxiliaryNoteInfo = auxiliaryNoteInfo.merge(auxiliaryNoteInfoCols, on=c.noteIdKey)
 
+  # Validate that no notes were dropped or duplicated.
   assert len(scoredNotes) == len(
     noteStatusHistory
   ), "noteStatusHistory should be complete, and all notes should be scored."
@@ -402,10 +440,12 @@ def run_scoring(
     noteStatusHistory
   ), "noteStatusHistory should be complete, and all notes should be scored."
 
+  # Compute contribution statistics and enrollment state for users.
   helpfulnessScores = _compute_helpfulness_scores(
     ratings, scoredNotes, auxiliaryNoteInfo, helpfulnessScores, noteStatusHistory, userEnrollment
   )
 
+  # Merge scoring results into noteStatusHistory.
   newNoteStatusHistory = note_status_history.update_note_status_history(
     noteStatusHistory, scoredNotes
   )
@@ -413,4 +453,5 @@ def run_scoring(
     noteStatusHistory
   ), "noteStatusHistory should contain all notes after preprocessing"
 
+  # Finalize output dataframes with correct columns.
   return _validate(scoredNotes, helpfulnessScores, newNoteStatusHistory, auxiliaryNoteInfo)
