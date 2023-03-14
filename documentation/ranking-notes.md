@@ -136,7 +136,7 @@ Multi-Model ranking allows Community Notes to run multiple ranking algorithms be
 We use this ability to test new models, refine current approaches and support expanding the Community Notes contributor base.
 We currently run three note ranking models:
 
-- The _Core_ model runs the matrix factorization approach described above to determine status for notes with most ratings from areas where Community Notes is well established.  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
+- The _Core_ model runs the matrix factorization approach described above to determine status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
 - The _Expansion_ model runs the same ranking algorithm with the same parameters as the Core model, with the difference that the Expansion model includes all notes with all ratings across Core and Expansion areas.
 - The _Coverage_ model runs the same ranking algorithm and processes the same notes and ratings as the Core model, except the intercept regularization $\lambda_i$ and Helpful note threshold have been [tuned differently](https://github.com/twitter/communitynotes/blob/main/sourcecode/scoring/mf_coverage_scorer.py) to increase the number of Helpful notes.
 
@@ -145,6 +145,13 @@ This approach allows us to grow Community Notes as quickly as possible in experi
 In cases where the Core and Coverage models disagree, a Helpful rating from the Core model always takes precedence.
 If a note is only rated as Helpful by the Coverage model, then the note must surpass a safeguard threshold for the Core model intercept to receive a final Helpful rating.
 We have initialized the Core model safeguard threshold to 0.39, 0.01 below the Core model default Helpfulness threshold of 0.40, and will lower the safeguard threshold as the Coverage model continues to launch.
+
+When using Twitter, you can see which model computed the status a given note by looking at the Note Details screen.
+It might list one of the following models:
+- CoreModel (vX.X). The _Core_ model described above.
+- ExpansionModel (vX.X). The _Expansion_ model described above.
+- CoverageModel (vX.X). The _Coverage_ model described above.
+- ScoringDriftGuard. This is a scoring rule that locks note statuses after two weeks. See the [next section](#status-stabilization) for more details.
 
 ## Status Stabilization
 
