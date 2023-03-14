@@ -7,7 +7,7 @@ description: Step-by-step guide for getting started with Community Notes on Twit
 
 ## 1. Sign up
 
-Anyone who meets the <a href="../join/">eligibility criteria</a> can sign up to become a Community Notes contributor. As there are important nuances in each market, we’ll expand the contributor base country-by-country.
+Anyone who meets the [eligibility criteria](../join/) can sign up to become a Community Notes contributor. As there are important nuances in each market, we’ll expand the contributor base country-by-country.
 
 {{< button href="../join/" >}}Sign up{{< /button >}}
 

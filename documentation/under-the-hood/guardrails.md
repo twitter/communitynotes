@@ -21,9 +21,9 @@ Evidence of consistent or systematic problems in top rated notes that earn the s
 
 1. **Accuracy: Whether notes that earn the status of Helpful contain accurate, high-quality information**
 
-    This is measured via partnerships with <a href="https://blog.twitter.com/en_us/topics/company/2021/bringing-more-reliable-context-to-conversations-on-twitter" target="_blank">professional reviewers</a> who provide evaluations of note accuracy. These evaluations provide a tracking measure of how often Helpful notes that are rated as accurate vs. inaccurate by reviewers over time; they don't impact notes’ ratings/status.
+    This is measured via partnerships with [professional reviewers](https://blog.twitter.com/en_us/topics/company/2021/bringing-more-reliable-context-to-conversations-on-twitter) who provide evaluations of note accuracy. These evaluations provide a tracking measure of how often Helpful notes that are rated as accurate vs. inaccurate by reviewers over time; they don't impact notes’ ratings/status.
 
-    We don't expect perfect consensus among expert reviewers that all notes are accurate, nor do professionals always <a href="https://www.science.org/doi/10.1126/sciadv.abf4393" target="_blank">agree with one another on accuracy ratings</a>. However, this gives us an indicator of whether there might be broad or consistent issues emerging with note accuracy.
+    We don't expect perfect consensus among expert reviewers that all notes are accurate, nor do professionals always [agree with one another on accuracy ratings](https://www.science.org/doi/10.1126/sciadv.abf4393). However, this gives us an indicator of whether there might be broad or consistent issues emerging with note accuracy.
 
 2. **Informativeness: Whether notes that earn the status of Helpful help inform people’s understanding of the subject matter in Tweets**
 

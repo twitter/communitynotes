@@ -20,7 +20,7 @@ Anyone can read and rate Community Notes, but only contributors who've [unlocked
 
 3. After it’s submitted, the note will be available on the Community Notes site for other contributors to read and rate.
 
-4.  If your note earns the status of Helpful, it will be <a href="../notes-on-twitter/">shown on Twitter as context</a> and you'll earn <a href="../impact">Writing Impact</a>.
+4.  If your note earns the status of Helpful, it will be [shown on Twitter as context](../notes-on-twitter/) and you'll earn [Writing Impact](../impact).
 
 5.  You can delete your notes at any time by clicking or tapping the ••• icon on a note.
 ### What makes a good Community Note?
