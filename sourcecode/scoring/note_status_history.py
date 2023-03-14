@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 
+# Delay specifying when to lock note status, currently set to two weeks.
 _noteLockMillis = 14 * 24 * 60 * 60 * 1000
 
 
@@ -26,17 +27,21 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
   newNoteStatusHistory = oldNoteStatusHistory.merge(
     notes[[c.noteIdKey, c.createdAtMillisKey, c.noteAuthorParticipantIdKey, c.classificationKey]],
     on=c.noteIdKey,
+    # use outer so we don't drop deleted notes from "oldNoteStatusHistory" or new notes from "notes"
     how="outer",
     suffixes=("", noteSuffix),
   )
   newNotes = pd.isna(newNoteStatusHistory[c.createdAtMillisKey])
   print(f"total notes added to noteStatusHistory: {sum(newNotes)}")
+  # Copy timestamp and authorship data over for new notes.
   newNoteStatusHistory.loc[newNotes, c.createdAtMillisKey] = newNoteStatusHistory.loc[
     newNotes, c.createdAtMillisKey + noteSuffix
   ]
   newNoteStatusHistory.loc[newNotes, c.noteAuthorParticipantIdKey] = newNoteStatusHistory.loc[
     newNotes, c.noteAuthorParticipantIdKey + noteSuffix
   ]
+  # Validate expectations that notes is a subset of noteStatusHistory, and that timestamp
+  # and authorship data match when applicable.
   assert len(notes) == len(
     notes[[c.noteIdKey]].drop_duplicates()
   ), "notes must not contain duplicates"
@@ -58,6 +63,7 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
     )
   ), "authorship from notes and noteStatusHistory must match"
 
+  # Drop cols which were artifacts of the merge
   noteStatusHistory = newNoteStatusHistory.drop(
     columns=[c.createdAtMillisKey + noteSuffix, c.noteAuthorParticipantIdKey + noteSuffix]
   )
@@ -78,13 +84,27 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   Returns:
       row of pd.DataFrame
   """
+  # Update the current status in accordance with this scoring run.
   assert not pd.isna(mergedNote[c.finalRatingStatusKey])
   mergedNote[c.currentLabelKey] = mergedNote[c.finalRatingStatusKey]
   mergedNote[c.timestampMillisOfNoteCurrentLabelKey] = currentTimeMillis
 
+  # Lock notes which are (1) not already locked, (2) old enough to lock and (3)
+  # were decided by logic which has global display impact.  Criteria (3) guarantees
+  # that any CRH note which is shown to all users will have the status locked, but
+  # also means that if a note is scored as NMR by all trusted models and CRH by an
+  # expimental model we will avoid locking the note to NMR even though the note was
+  # in scope for a trusted model and scored as NMR at the time of status locking.
+  # The note will continue to be CRH only as long as an experimental model continues
+  # scoring the note as CRH (or a core model scores the note as CRH).  If at any point
+  # both experimental models and core models score the note as NMR, then the note will
+  # lock to NMR.
 
+  # Check whether the note has already been locked.
   notAlreadyLocked = pd.isna(mergedNote[c.lockedStatusKey])
+  # Check whether the note is old enough to be eligble for locking.
   lockEligible = _noteLockMillis < (currentTimeMillis - mergedNote[c.createdAtMillisKey])
+  # Check whether the note was decided by a rule which dispalys globally
   trustedRule = mergedNote[c.decidedByKey] in {
     rule.get_name() for rule in RuleID if rule.value.lockingEnabled
   }
@@ -94,8 +114,11 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
     mergedNote[c.timestampMillisOfStatusLockKey] = currentTimeMillis
 
   if pd.isna(mergedNote[c.createdAtMillisKey + newScoredNotesSuffix]):
+    # note used to be scored but isn't now; just retain old info
     return mergedNote
 
+  # If the notes created before the deleted note cutfoff. Retain
+  # the old data.
   if mergedNote[c.createdAtMillisKey] < c.deletedNoteTombstonesLaunchTime:
     return mergedNote
 
@@ -111,12 +134,14 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
 
   if mergedNote[c.finalRatingStatusKey] != c.needsMoreRatings:
     if pd.isna(mergedNote[c.firstNonNMRLabelKey]):
+      # first time note has a status
       mergedNote[c.firstNonNMRLabelKey] = mergedNote[c.finalRatingStatusKey]
       mergedNote[c.timestampMillisOfNoteFirstNonNMRLabelKey] = currentTimeMillis
       mergedNote[c.mostRecentNonNMRLabelKey] = mergedNote[c.finalRatingStatusKey]
       mergedNote[c.timestampMillisOfNoteMostRecentNonNMRLabelKey] = currentTimeMillis
 
     if mergedNote[c.finalRatingStatusKey] != mergedNote[c.mostRecentNonNMRLabelKey]:
+      # NOTE: By design, this branch captures label flips between CRH and CRNH but not NMR.
       mergedNote[c.mostRecentNonNMRLabelKey] = mergedNote[c.finalRatingStatusKey]
       mergedNote[c.timestampMillisOfNoteMostRecentNonNMRLabelKey] = currentTimeMillis
 

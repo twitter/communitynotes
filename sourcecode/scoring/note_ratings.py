@@ -8,6 +8,10 @@ import numpy as np
 import pandas as pd
 
 
+# Threshold limiting the number of ratings which can be counted as "valid" for the purpose of
+# determining rating performance for notes which were created before noteStatusHistory was
+# introduced.  Notice that this value coincides with the minimum number of ratings necessary to
+# achieve status.
 _maxHistoricalValidRatings = 5
 
 
@@ -57,6 +61,14 @@ def get_ratings_before_note_status_and_public_tsv(
     how="left",
     suffixes=("", right_suffix),
   )
+  # Note that the column types for c.createdAtMillisKey and
+  # c.timestampMillisOfNoteMostRecentNonNMRLabelKey are determined at runtime and cannot be statically
+  # determined from the code above.  If noteStatusHistory is missing any noteIdKey which is found in
+  # ratings, then the missing rows will have NaN values for c.createdAtMillisKey and
+  # c.timestampMillisOfNoteMostRecentNonNMRLabelKey, forcing the entire colum to have type np.float.
+  # However, if there are no missing values in column noteIdKey then c.createdAtMillisKey and
+  # c.timestampMillisOfNoteMostRecentNonNMRLabelKey will retain their int64 types.  The code below
+  # coerces both columns to always have float types so the typecheck below will pass.
   ratingsWithNoteLabelInfo[
     [c.createdAtMillisKey + right_suffix, c.timestampMillisOfNoteMostRecentNonNMRLabelKey]
   ] *= 1.0
@@ -307,6 +319,8 @@ def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -
     how="outer",
   )
 
+  # Fill in nan values resulting from the outer merge with zero since these values were not
+  # present during aggregation.
   columns = [
     c.numRatingsKey,
     c.numRatingsLast28DaysKey,
@@ -314,10 +328,17 @@ def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -
   noteStats = noteStats.fillna({col: 0 for col in columns})
   noteStats[columns] = noteStats[columns].astype(np.int64)
 
+  # Validate that notes in ratings were a subset of noteStatusHistory.
   assert len(noteStats) == len(noteStatusHistory), "noteStatusHistory should contain all notes"
   return noteStats
 
 
+# TODO: compute_scored_notes is only called from matrix_factorization_scorer and the behavior is directly
+# coupled to the matrix_factorization_scorer results.  When we define a model object, this function should
+# become a member of matrix_factorization_scorer and the composure of "rules" should be explicitly factored
+# out into a helper function.  This approach would better encapsulate our code / logic and reduce how much
+# is in the global namespace, and allow variants of matrix_factorization_scorer to more easily override
+# the scoring rule behaviors.
 def compute_scored_notes(
   ratings: pd.DataFrame,
   noteParams: pd.DataFrame,
@@ -331,6 +352,7 @@ def compute_scored_notes(
   crhSuperThreshold: float,
   inertiaDelta: float,
   finalRound: bool = False,
+  # TODO: We might want to consider inputing only the series here, instead of the whole callable
   is_crh_function: Callable[..., pd.Series] = is_crh,
   is_crnh_function: Callable[..., pd.Series] = is_crnh,
 ) -> pd.DataFrame:
@@ -363,6 +385,7 @@ def compute_scored_notes(
   Returns:
       pd.DataFrame: scoredNotes The scored notes
   """
+  # Compute noteStats and drop columns which won't be needed
   noteStats = compute_note_stats(ratings, noteStatusHistory)
   noteStats = noteStats.drop(
     columns=[
@@ -370,6 +393,7 @@ def compute_scored_notes(
       c.createdAtMillisKey,
     ]
   )
+  # Merge with noteParams as necessary
   noteParamsColsToKeep = [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
   for col in c.noteParameterUncertaintyTSVColumns:
     if col in noteParams.columns:
@@ -397,10 +421,12 @@ def compute_scored_notes(
     ),
   ]
   if finalRound:
+    # Compute tag aggregates only if they are required for tag filtering.
     tagAggregates = tag_filter.get_note_tag_aggregates(ratings, noteParams, raterParams)
     assert len(tagAggregates) == len(noteParams), "there should be one aggregate per scored note"
     noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer")
 
+    # Add tag filtering and sticky scoring logic.
     rules.extend(
       [
         scoring_rules.AddCRHInertia(
@@ -430,6 +456,8 @@ def compute_scored_notes(
   scoredNotes = scoring_rules.apply_scoring_rules(
     noteStats, rules, c.internalRatingStatusKey, c.internalActiveRulesKey
   )
+  # Discard the locked status column since it is captured in noteStatusHistory and
+  # not necessary for the rest of scoring.
   scoredNotes = scoredNotes.drop(columns=[c.lockedStatusKey])
 
   return scoredNotes
