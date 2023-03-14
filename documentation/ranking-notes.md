@@ -89,6 +89,8 @@ This approach has a few nice properties:
 
 Note: for now, to avoid overfitting on our very small dataset, we only use 1-dimensional factors. We expect to increase this dimensionality as our dataset size grows significantly.
 
+Additionally, because the matrix factorization is re-trained from scratch every hour, we have added additional logic to detect if the loss is more than expected (currently by detecting if the loss is above a hard threshold of 0.09) that may have resulted from an unlucky initialization and local mode, and then re-fit the model if so.
+
 ## Tag Outlier Filtering
 
 In some cases, a note may appear helpful but miss key points about the tweet or lack sources.
@@ -98,12 +100,12 @@ This approach helps us to maintain data quality by recognizing when there is a t
 
 We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
 
-$$ a_{un} = \mathbb{1}_{aun} \left( 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^2 \right) ^{-1} $$
+$$ a_{un} = \frac{\mathbb{1}_{a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5  }  $$
 
 Where:
 
-- $\tilde{f} = median_{r_{un}}(||f_n - f_r||)$ indicates the median distance between the reviewer and note latent factors over all observable reviews $r_{un}$
-- $\mathbb{1}_{aun}$ is 1 if reviewer $u$ assigned tag $a$ to note $n$ and 0 otherwise.
+- $\tilde{f} = \eta_{40}^{r_{un}}(||f_n - f_||)$ indicates the 40th percentile of the distances between the rater (user) and note latent factors over all observable ratings $r_{un}$
+- $\mathbb{1}_{a_{un}}$ is 1 if rater $u$ assigned tag $a$ to note $n$ and 0 otherwise.
 
 We define the total weight of an tag $a$ on note $n$ as:
 
@@ -111,13 +113,13 @@ $$ n_{a} = \sum_{r_{un}} a_{un} $$
 
 Notice the following:
 
-- No single review can achieve an tag weight $a_{un} > 1$.
-- Reviews where the reviewer factor and note factor are equal will achieve the maximum weight of 1.0, reviews at a median distance will achieve a weight of 0.5, and reviews at 2x the median distance will have a weight of 0.2. All reviews will have positive weight.
-- Assigning higher weights to tags in reviews where the reviewer and note are closer in the embedding space effectively lends greater weight to critical reviews from reviewers who tend to share the same perspective as the note.
+- No single rating can achieve an tag weight $a_{un} > 1$.
+- Ratings where the rater factor and note factor are equal will achieve the maximum weight of 1.0, ratings at a 40th percentile distance will achieve a weight of 0.5, and reviews at 2x the 40th percentile distance will have a weight of ~0.03. All ratings will have positive weight.
+- Assigning higher weights to tags in ratings where the rater and note are closer in the embedding space effectively lends greater weight to critical ratings from raters who tend to share the same perspective as the note.
 
 Given the quantities defined above, we modify scoring as follows:
 
-- When the total weight $a_n$ of an tag exceeds 1.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
+- When the total weight $a_n$ of an tag exceeds 2.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
 - We disregard the "Typos or unclear language" and "Note not needed on this Tweet" tags, which do not relate to note accuracy.
 
 ## CRH Inertia
@@ -144,7 +146,7 @@ In cases where a note is ranked by both the Core and Expansion models the Core m
 This approach allows us to grow Community Notes as quickly as possible in experimental Expansion areas without the risk of compromising quality in Core areas where Community Notes is well established.
 In cases where the Core and Coverage models disagree, a Helpful rating from the Core model always takes precedence.
 If a note is only rated as Helpful by the Coverage model, then the note must surpass a safeguard threshold for the Core model intercept to receive a final Helpful rating.
-We have initialized the Core model safeguard threshold to 0.39, 0.01 below the Core model default Helpfulness threshold of 0.40, and will lower the safeguard threshold as the Coverage model continues to launch.
+We have initialized the Core model safeguard threshold to 0.38, 0.02 below the Core model default Helpfulness threshold of 0.40, and will lower the safeguard threshold as the Coverage model continues to launch.
 
 When using Twitter, you can see which model computed the status a given note by looking at the Note Details screen.
 It might list one of the following models:
@@ -225,6 +227,14 @@ For not-helpful notes:
 <br/>
 
 ## What’s New?
+
+**March 13, 2023**
+
+- Start labeling notes that were scored by the Expansion model, which has resulted in multiple notes from the expansion countries (e.g. Brazil) becoming CRH and CRNH.
+- Update tag weighting formula for tag filtering, to reduce weights for raters further from the note.
+- Decrease CRH threshold of the coverage model from 0.39 to 0.38, thereby increasing the coverage of the coverage model.
+- Add logic to improve the stability of the optimization between re-trainings, to prevent status flipping when the optimization occasionally gets stuck in a bad local mode.
+- Release a new modelingPopulation column in the user enrollment file, which indicates whether a user is included in the core or expansion model.
 
 **February 24, 2023**
 
