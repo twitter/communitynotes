@@ -1,7 +1,5 @@
 ---
 title: Home
-# type: post
-aliases: ["/learn-more", "/intro", "/overview"]
 description: Learn everything about Community Notes, Twitter's open-source program to create a better-informed world.
 ---
 

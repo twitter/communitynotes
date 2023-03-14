@@ -1,7 +1,5 @@
 ---
 title: Downloading data
-geekdocBreadcrumb: false
-aliases: ["/data", "/about/data", "/contributing/data"]
 description: All Community Notes contributions are publicly available so that anyone has free access to analyze the data.
 ---
 

@@ -1,14 +1,5 @@
 ---
 title: Note ranking algorithm
-aliases:
-  [
-    "/ranking-notes",
-    "/note-ranking",
-    "/about/note-ranking",
-    "/about/ranking-notes",
-  ]
-geekdocBreadcrumb: false
-geekdocToc: 1
 enableMathJax: true
 description: How are Community Notes ranked? Learn more about our open-source algorithm
 ---

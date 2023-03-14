@@ -1,7 +1,5 @@
 ---
 title: FAQs
-geekdocBreadcrumb: false
-aliases: ["/faq", "/about/faq"]
 description: Who is eligible to participate in Community Notes? · Are contributions anonymous?
 ---
 

@@ -1,7 +1,5 @@
 ---
 title: Locking and unlocking the ability to write notes
-geekdocBreadcrumb: false
-aliases: ["/writing-ability"]
 description: Unlocking writing ability for the first time · Losing writing ability
 ---
 

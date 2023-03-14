@@ -1,7 +1,5 @@
 ---
 title: Additional Community review
-geekdocBreadcrumb: false
-aliases: ["/additional-review"]
 description: Request additional review of Community Notes on your Tweets.
 ---
 

@@ -1,8 +1,5 @@
 ---
 title: Writing notes
-geekdocBreadcrumb: false
-aliases:
-  ["/writing-notes", "writing-and-rating-notes", "/contributing/writing-notes"]
 description: A step-by-step guide on how to write Community Notes on Twitter.
 ---
 

@@ -1,7 +1,5 @@
 ---
 title: Rating notes
-geekdocBreadcrumb: false
-aliases: ["/rating-notes", "/contributing/rating-notes", "/contributing/rating"]
 description: A step-by-step guide to rating Community Notes
 ---
 

@@ -1,7 +1,5 @@
 ---
 title: Values
-aliases: ["/values", "/contributing/values"]
-geekdocBreadcrumb: false
 description: Contribute to build understanding · Act in good faith · Be helpful, even to those who disagree
 ---
 

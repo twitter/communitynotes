@@ -1,7 +1,5 @@
 ---
 title: Diversity of perspectives
-geekdocBreadcrumb: false
-aliases: ["/diversity-of-perspectives", "diversity", "perspectives"]
 description: Learn more about how Community Notes identifies notes that many people on Twitter will find helpful, including people with different points of view.
 ---
 

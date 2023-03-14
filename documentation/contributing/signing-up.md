@@ -1,17 +1,5 @@
 ---
 title: Signing up
-aliases:
-  [
-    "/join",
-    "/signup",
-    "/sign-up",
-    "/signing-up",
-    "/contributing/signing-up",
-    "/contributing/sign-up",
-    "/contributing/signup",
-  ]
-geekdocBreadcrumb: false
-weight: 1
 description: Sign up now and become a Community Notes contributor on Twitter
 ---
 

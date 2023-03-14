@@ -1,13 +1,5 @@
 ---
 title: Rating and Writing Impact
-geekdocBreadcrumb: false
-aliases:
-  [
-    "/impact",
-    "/birdwatch-scores",
-    "/writing-and-rating-impact",
-    "/rating-and-writing-impact",
-  ]
 description: The two most important activities in Community Notes are writing notes and rating notes.
 ---
 

@@ -1,13 +1,5 @@
 ---
 title: Submit Feedback
-geekdocBreadcrumb: false
-aliases:
-  [
-    "/submit-feedback",
-    "feedback",
-    "/contributing/submit-feedback",
-    "/contributing/feedback",
-  ]
 description: Talk directly with the team building Community Notes.
 ---
 

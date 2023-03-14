@@ -1,7 +1,5 @@
 ---
 title: Guardrails and Circuit Breakers
-geekdocBreadcrumb: false
-aliases: ["/guardrails"]
 description: Community Notes tracks a number of quality measures, with a corresponding set of operational guardrails.
 ---
 
