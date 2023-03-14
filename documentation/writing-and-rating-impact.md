@@ -13,7 +13,7 @@ description: The two most important activities in Community Notes are writing no
 
 The two most important activities in Community Notes are [writing notes](../writing-notes) and [rating notes](../rating-notes). Contributors can see the history of their past Writing Impact and Rating Impact on their profiles.
 
-{{< figure src="../images/writing-and-rating-impact.png" alt="Screen showing an anonymous contributor, their avatar, and alias name.">}}
+![Screen showing an anonymous contributor, their avatar, and alias name.](../images/writing-and-rating-impact.png)
 
 ## Writing Impact
 
@@ -21,7 +21,7 @@ Writing Impact reflects how often a contributor's notes have earned a status of 
 
 Notes in ‘Needs More Ratings’ status don't count towards Writing Impact.
 
-{{< figure src="../images/writing-impact.png" alt="Screen with details about a Community Notes contributor's Writing Impact.">}}
+![Screen with details about a Community Notes contributor's Writing Impact.](../images/writing-impact.png)
 
 ### How can I increase my Writing Impact?
 
@@ -37,7 +37,7 @@ Rating Impact reflects how often a contributor's ratings helped the community id
 
 Note statuses can change any time as more ratings come in, and can be overturned if a [broad enough group of contributors agrees](../diversity) that it should change.
 
-{{< figure src="../images/rating-impact.png" alt="Screen with details about a Community Notes contributor's Rating Impact.">}}
+![Screen with details about a Community Notes contributor's Rating Impact.](../images/rating-impact.png)
 
 ### How do I increase my Rating Impact?
 

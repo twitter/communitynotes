@@ -5,7 +5,7 @@ aliases: ["/learn-more", "/intro", "/overview"]
 description: Learn everything about Community Notes, Twitter's open-source program to create a better-informed world.
 ---
 
-{{< figure class="hero" src="./images/help-rate-this-note-expanded.png" alt="Screenshot of a mobile device showing a Tweet with a Community Note.">}}
+![Screenshot of a mobile device showing a Tweet with a Community Note.](./images/help-rate-this-note-expanded.png)
 
 ## Community Notes: a collaborative way to add helpful context to Tweets and keep people better informed
 

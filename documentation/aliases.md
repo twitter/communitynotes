@@ -5,7 +5,7 @@ aliases: ["/aliases", "/contributing/aliases"]
 description: Aliases are auto-generated display names that contributors get when they join Community Notes on Twitter.
 ---
 
-{{< figure src="../images/alias-01.png" alt="Screenshot of a summary screen about Community Notes Aliases">}}
+![Screenshot of a summary screen about Community Notes Aliases](../images/alias-01.png)
 
 We want everyone to feel comfortable contributing to Community Notes. Aliases let contributors write and rate notes without sharing their Twitter usernames.
 
@@ -24,11 +24,11 @@ It’s important that the benefits of aliases don’t come at the expense of acc
 
 Contributors can visit [this link](https://twitter.com/i/communitynotes/u/me) to choose an alias. You'll have 5 random options to pick from, and at this time choices cannot be changed.
 
-{{< figure src="../images/alias-02.png" alt="Screen presenting different alias options the user can pick from">}}
+![Screen presenting different alias options the user can pick from](../images/alias-02.png)
 
 ## Contributor profiles
 
-{{< figure src="../images/alias-03.png" alt="Screen showing an anonymous contributor, their avatar, and alias name">}}
+![Screen showing an anonymous contributor, their avatar, and alias name](./images/alias-03.png)
 
 With aliases, every contributor gets a public profile. On this page, everyone can see the notes people have written in the past, as well as their [Writing and Rating Impact](../impact). We'll continue to add information and evolve the profile pages as we learn more about what's important to contributors when using Community Notes.
 

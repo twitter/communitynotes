@@ -8,7 +8,7 @@ description: How Community Notes are ranked to become eligible for features and 
 
 Community Notes participants are able to see a tab of notes that could use their ratings, and receive notifications about notes that need help.
 
-{{< figure src="../images/home.png" alt="Community Notes home page, showing Tweets with notes to be rated">}}
+![Community Notes home page, showing Tweets with notes to be rated](../images/home.png)
 
 ### Needs Your Help tab
 
@@ -24,7 +24,7 @@ Additionally, Community Notes offers a way for Tweet authors to [request additio
 
 To ensure contributors don't miss the opportunity to rate notes on Tweets getting a lot of attention, Community Notes sends alerts requesting help from time to time.
 
-{{< figure src="../images/alerts-settings.png" alt="One screenshot showing a Community Notes Contributor profile page, highlighting the settings button on the top right. Another screenshot showing the settings screen where contributors can edit their alert frequency">}}
+![One screenshot showing a Community Notes Contributor profile page, highlighting the settings button on the top right. Another screenshot showing the settings screen where contributors can edit their alert frequency](../images/alerts-settings.png)
 
 ### How does Community Notes decide which notes trigger alerts for help?
 

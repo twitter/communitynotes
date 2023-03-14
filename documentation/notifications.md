@@ -11,7 +11,7 @@ Sometimes, people read a Tweet before a Community Note appears on it. To give pe
 
 These appear in the notifications tab. They look like this:
 
-{{< figure src="../images/tweet-liked-alert.png" alt="Twitter app with a notification showing someone a note that's been added to a Tweet to which they replied, Liked or Rewteeted">}}
+![Twitter app with a notification showing someone a note that's been added to a Tweet to which they replied, Liked or Rewteeted](../images/tweet-liked-alert.png)
 
 These notifications are sent when a note has been showing on a Tweet for 24 hours, has been found particularly helpful (indicated by a [note intercept score](./ranking-notes.md) of 0.45 or higher), and was written within the past week.
 
@@ -21,7 +21,7 @@ Notes have the most impact when they get rated quickly and start showing on Twee
 
 If you are a contributor, you'll see these alerts in your notifications tab. They look like this:
 
-{{< figure src="../images/alerts-tab.png" alt="Twitter app with a new notification at the top requesting help from the contributor">}}
+![Twitter app with a new notification at the top requesting help from the contributor](../images/alerts-tab.png)
 
 To learn more about how Community Notes decides which notes trigger these alerts, see [Under the Hood – Needs Your Help](./timeline-tabs.md)
 
@@ -29,7 +29,7 @@ To learn more about how Community Notes decides which notes trigger these alerts
 
 The default setting for all contributors is "Often", which means you'll start by getting a few alerts per week. You can change that frequency by visiting your Community Notes profile and tapping the gear icon on the top right, or by clicking the button below:
 
-{{< figure src="../images/alerts-settings.png" alt="One screenshot showing a Community Notes Contributor profile page, highlighting the settings button on the top right. Another screenshot showing the settings screen where contributors can edit their alert frequency">}}
+![One screenshot showing a Community Notes Contributor profile page, highlighting the settings button on the top right. Another screenshot showing the settings screen where contributors can edit their alert frequency](../images/alerts-settings.png)
 
 {{< button href="https://www.twitter.com/i/communitynotes/notification_settings">}} Open notification settings {{</ button>}}
 

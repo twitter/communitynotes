@@ -19,7 +19,7 @@ The algorithm used to rank Community Notes and compute their statuses is open-so
 
 ## Note Status
 
-{{< figure src="../images/note-statuses.png" alt="Three Community notes in different statuses">}}
+![Three Community notes in different statuses](../images/note-statuses.png)
 
 Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses determine which notes are displayed on each of the [Community Notes Site’s timelines](../birdwatch-timelines/), and which notes are displayed [on Tweets](../notes-on-twitter/).
 
@@ -46,7 +46,7 @@ This delay allows Community Notes to collect a set of independent ratings from p
 
 ## Helpful Rating Mapping
 
-{{< figure src="../images/helpful-ranking.png" alt="Mockup of the rating prompt for rating notes. It reads: ”Is this note helpful?” And presents three options: Yes, Somewhat, or No">}}
+![Mockup of the rating prompt for rating notes. It reads: ”Is this note helpful?” And presents three options: Yes, Somewhat, or No](../images/helpful-ranking.png)
 
 When rating notes, contributors answer the question “Is this note helpful?” Answers to that question are then used to rank notes. When Community Notes (formerly called Birdwatch) launched in January 2021, people could answer “yes” or “no” to that question. An update on June 30, 2021 allows people to choose between “yes,” “somewhat” and “no.” We map these responses to continuous values from 0.0 to 1.0, hereafter referred to as “helpful scores”:
 

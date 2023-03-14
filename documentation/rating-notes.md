@@ -17,13 +17,13 @@ Go to the [**Community Notes Home page**](https://communitynotes.twitter.com) an
 
 - **Rated Helpful:** Contains Tweets with at least one note rated helpful by the community.
 
-{{< figure src="../images/home.png" alt="Community Notes home page, showing Tweets with notes to be rated">}}
+![Community Notes home page, showing Tweets with notes to be rated](../images/home.png)
 
 ## Rating notes on Twitter
 
 Community Notes contributors and people on Twitter may also see notes and prompts in their timeline when browsing Twitter.
 
-{{< figure src="../images/notes-on-twitter.png" alt="Tweet with a community notes prompt">}}
+![Tweet with a community notes prompt](../images/notes-on-twitter.png)
 
 ## Rating Impact
 
