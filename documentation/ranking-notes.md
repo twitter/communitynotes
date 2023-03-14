@@ -15,7 +15,7 @@ description: How are Community Notes ranked? Learn more about our open-source al
 
 The algorithm used to rank Community Notes and compute their statuses is open-source, so anyone can help us identify bugs, biases, and opportunities for improvement. This page describes in detail how that algorithm works and how we've improved it over time. The algorithm source code can be [found here](https://github.com/twitter/communitynotes/tree/main/sourcecode).
 
-{{< toc >}}
+{% toc /%}
 
 ## Note Status
 
