@@ -69,21 +69,22 @@ It’s important for people to understand how Community Notes works, and to be a
 
 ## Frequently asked questions
 
-{{< expand "How does a Tweet get a note?" >}}
+{% accordionSection %}
+{% accordionItem title="How does a Tweet get a note?"  %}
 
 Contributors can suggest a note on any Tweet. Notes are then rated for helpfulness by other contributors. Notes are only shown on Tweets if they are rated helpful by enough people from different perspectives. See how Community Notes defines and uses [differences of perspectives here](diversity-of-perspectives/).
 
-{{< /expand >}}
+{% /accordionItem %}
 
-{{< expand "How does Community Notes prevent abuse?" >}}
+{% accordionItem title="How does Community Notes prevent abuse?"  %}
 
 Community Notes works differently than the rest of Twitter. It is not a popularity contest. It aims to find notes that many people from different points of view will find helpful. It takes into account not only how many ratings a note has received, but also whether people who rated it helpful seem to come from different perspectives. Because notes need to genuinely be found helpful by people who tend to disagree, the program is more likely to identify notes that many people find helpful. Read the full details of [how this works](diversity-of-perspectives/).
 
 Notes are also subject to Twitter rules and can be reported.
 
-{{< /expand >}}
+{% /accordionItem %}
 
-{{< expand "Can regular people be trusted to do this?" >}}
+{% accordionItem title="Can regular people be trusted to do this?"  %}
 
 We believe regular people can valuably contribute to identifying and adding helpful context to potentially misleading information. Many of the internet’s existing collaborative sites thrive with the help of non-expert contributions — Wikipedia, for example — and, while it’s not a cure-all, research has shown the potential of incorporating crowdsourced based approaches as part of a broader toolkit to address misleading information on the internet, for example:
 
@@ -100,12 +101,14 @@ In our pilot test of Community Notes, we evaluated notes would be shown on Tweet
 
 The people on Twitter span a wide gamut of backgrounds and experiences, and we believe that, working together, they can help create a better-informed world.
 
-{{< /expand >}}
+{% /accordionItem %}
 
-{{< expand "I have a note on my Tweet. What can I do?" >}}
+{% accordionItem title="I have a note on my Tweet. What can I do?"  %}
 
 As a Tweet author, if you disagree that a note provides important context about your Tweet, you can request [additional review](./additional-review/).
 
-{{< /expand >}}
+{% /accordionItem %}
+
+{% /accordionSection %}
 
 Explore other [Frequently Asked Questions](./faq)

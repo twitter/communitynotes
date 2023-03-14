@@ -40,34 +40,33 @@ Each data snapshot table is stored in tsv (tab-separated values) file format wit
 
 <br>
 
-{{< hint info >}}
-
 ### Updates to the Data
 
 As we iterate and improve Community Notes, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms, or additional metadata shared about notes and rating. When we do this, some question fields / columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and other updates we have made to the data, as well as when those changes were made.
 
-{{< expand "2022-11-25 - New User Enrollment dataset " >}}
+{% accordionSection %}
+{% accordionItem title="2022-11-25 - New User Enrollment dataset "  %}
 
 - New dataset with user enrollment states. These states define what actions users can take in the system (eg. rating, writing).
 
-{{< / expand >}}
+{% /accordionItem %}
 
-{{< expand "2022-10-27 - Deprecated fields in note writing form " >}}
+{% accordionItem title="2022-10-27 - Deprecated fields in note writing form "  %}
 
 - Deprecated Columns
   - `believable`
   - `harmful`
   - `validationDifficulty`
 
-{{< / expand >}}
+{% /accordionItem %}
 
-{{< expand "2022-07-19 - New Note Status History dataset " >}}
+{% accordionItem title="2022-07-19 - New Note Status History dataset "  %}
 
 - Added entirely new note status history dataset
 
-{{< / expand >}}
+{% /accordionItem %}
 
-{{< expand "2021-12-15 - Updated Note Rating Questions" >}}
+{% accordionItem title="2021-12-15 - Updated Note Rating Questions"  %}
 
 **Updated Columns**
 
@@ -81,8 +80,8 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 - `notHelpfulOpinionSpeculation`
 - `notHelpfulNoteNotNeeded`
 
-{{< / expand >}}
-{{< expand "2021-06-30 - Updated Note Rating Questions" >}}
+{% /accordionItem %}
+{% accordionItem title="2021-06-30 - Updated Note Rating Questions"  %}
 
 - Note Helpfulness question now has 3 response categories (Yes, Somewhat, No), rather than 2 (originally: Yes, No)
 - We have removed the ‘Agree’ note rating question
@@ -110,9 +109,10 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 - `helpfulImportantContext`
 - `notHelpfulIrrelevantSources`
 
-{{< / expand >}}
+{% /accordionItem %}
 
-{{< / hint >}}
+{% /accordionSection %}
+
 
 <br>
 
