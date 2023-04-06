@@ -37,7 +37,7 @@ Alerts are optimized to increase the chance that potentially helpful notes on Tw
 
 **Notes are chosen based on meeting some of the following:**
 
-- Written by an author with high writing impact, or high average helpfulness score of notes they authored.
+- Written by an author with positive Writing Impact and a high ratio of Helpful notes (Writing Impact / Total Notes Written) or high average helpfulness score of notes they authored.
 - Currently have a status of "Needs More Ratings"
 - Currently have a high helpfulness score, nearing the threshold to earn status of "Helpful"
 - Do not have a large number of ratings (such that more ratings could change the note's status)
