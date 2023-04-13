@@ -100,7 +100,7 @@ def tsv_parser(
 
 
 def tsv_reader(path: str, mapping, columns, header=False):
-  with open(path, "r") as handle:
+  with open(path, "r", encoding='utf-8') as handle:
     return tsv_parser(handle.read(), mapping, columns, header)
 
 
