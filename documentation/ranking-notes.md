@@ -28,12 +28,10 @@ Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful 
 If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on Twitter even if its status is Helpful.
 
 Notes marking Tweets as "potentially misleading" with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. At this time, only notes that indicate a Tweet is “potentially misleading” and earn the status of Helpful are eligible to be displayed on Tweets.
-Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization).
+Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Additionally, notes with an upper confidence bound estimate of their Note Helpfulness Score (as computed via pseudo-raters) less than -0.04 are assigned Not Helpful, as described in [Modeling Uncertainty](#modeling-uncertainty).
 Notes with scores in between remain with a status of Needs more Ratings.
 
-Notes marking Tweets as "not misleading" with a Note Helpfulness Score below -0.15 earn the status of Not Helpful.
 Identifying notes as Not Helpful improves contributor helpfulness scoring and reduces time contributors spend reviewing low quality notes.
-At this time, any note marking a Tweet as "not misleading" with a Note Helpfulness Score above -0.15 remains in the status of Needs More Ratings.
 We plan to enable Helpful statuses for notes marking Tweets as "not misleading" as we continue to evaluate ranking quality and utility to users.
 
 When a note reaches a status of Helpful / Not Helpful, they're shown alongside the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
@@ -78,7 +76,7 @@ Where $\lambda_i=0.15$, the regularization on the intercept terms, is currently 
 
 The resulting scores that we use for each note are the note intercept terms $i_n$. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.
 
-In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$. We also apply "Not Helpful" status to notes based based the upper bound of the uncertainty interval of their intercept (at $-0.05) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section. The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
+In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$. We also apply "Not Helpful" status to notes based based the upper bound of the uncertainty interval of their intercept (at $-0.04$) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section. The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
 
 This approach has a few nice properties:
 
@@ -226,13 +224,21 @@ For not-helpful notes:
 2. Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.
 3. Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](../contributor-scores/#filtering-ratings-based-on-helpfulness-scores).
 4. Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3.
-5. Reconcile scoring results from the Core, Expansion and Coverage models to generate final status for each note.
-6. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags.  Stabilize helpfulness status for any notes older than two weeks.
-7. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](./#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
+5. Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
+6. Reconcile scoring results from the Core, Expansion and Coverage models to generate final status for each note.
+7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags.  Stabilize helpfulness status for any notes older than two weeks.
+8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](./#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 <br/>
 
 ## What’s New?
+
+**April 14, 2023**
+
+- Add additional rule to label more notes "Not Helpful", by computing an upper confidence bound on each note's intercept by adding pseudo-ratings, and marking notes "Not Helpful" if their intercet's upper confidence bound is less than -0.04.
+- Previously, we had different logic to determine which notes were "Not Helpful" depending on whether the note said the Tweet was misleading or not. In this change, we apply the same logic to notes that say the Tweet is *not* misleading as was already applied to notes that say the Tweet is misleading.
+- Due to the large change, increment the model version to 1.1 from 1.0.
+- Train models in parallel with multiprocessing, because we are now training multiple models that do not need to all run sequentially.
 
 **March 13, 2023**
 
