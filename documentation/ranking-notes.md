@@ -78,7 +78,7 @@ Where $\lambda_i=0.15$, the regularization on the intercept terms, is currently 
 
 The resulting scores that we use for each note are the note intercept terms $i_n$. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.
 
-In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$. The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
+In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$. We also apply "Not Helpful" status to notes based based the upper bound of the uncertainty interval of their intercept (at $-0.05) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section. The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
 
 This approach has a few nice properties:
 
@@ -90,6 +90,12 @@ This approach has a few nice properties:
 Note: for now, to avoid overfitting on our very small dataset, we only use 1-dimensional factors. We expect to increase this dimensionality as our dataset size grows significantly.
 
 Additionally, because the matrix factorization is re-trained from scratch every hour, we have added additional logic to detect if the loss is more than expected (currently by detecting if the loss is above a hard threshold of 0.09) that may have resulted from an unlucky initialization and local mode, and then re-fit the model if so.
+
+## Modeling Uncertainty
+
+While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are adding. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirtit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
+
+We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.05, in addition to the rules on the raw intercept values defined in the previous section.
 
 ## Tag Outlier Filtering
 
