@@ -18,6 +18,7 @@ maxTrainError = 0.09
 # Explanation Tags
 minRatingsToGetTag = 2
 minTagsNeededForStatus = 2
+tagPercentileForNormalization = 40
 
 # Data Filenames
 scoredNotesOutputPath = "scoredNotes.tsv"
@@ -107,14 +108,20 @@ coreRaterInterceptKey = "coreRaterIntercept"
 coreRaterFactor1Key = "coreRaterFactor1"
 coreRatingStatusKey = "coreRatingStatus"
 coreActiveRulesKey = "coreActiveRules"
+coreNoteInterceptMaxKey = "coreNoteInterceptMax"
+coreNoteInterceptMinKey = "coreNoteInterceptMin"
 # Expansion Model
 expansionNoteInterceptKey = "expansionNoteIntercept"
 expansionNoteFactor1Key = "expansionNoteFactor1"
 expansionRatingStatusKey = "expansionRatingStatus"
+expansionNoteInterceptMaxKey = "expansionNoteInterceptMax"
+expansionNoteInterceptMinKey = "expansionNoteInterceptMin"
 # Coverage Model
 coverageNoteInterceptKey = "coverageNoteIntercept"
 coverageNoteFactor1Key = "coverageNoteFactor1"
 coverageRatingStatusKey = "coverageRatingStatus"
+coverageNoteInterceptMaxKey = "coverageNoteInterceptMax"
+coverageNoteInterceptMinKey = "coverageNoteInterceptMin"
 
 # Ids and Indexes
 noteIdKey = "noteId"
@@ -343,21 +350,34 @@ userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
 
-noteParameterUncertaintyTSVColumnsAndTypes = [
-  ("noteFactor1_max", np.double),
-  ("noteFactor1_median", np.double),
-  ("noteFactor1_min", np.double),
-  ("noteFactor1_refit_orig", np.double),
-  ("noteIntercept_max", np.double),
-  ("noteIntercept_median", np.double),
-  ("noteIntercept_min", np.double),
-  ("noteIntercept_refit_orig", np.double),
+noteInterceptMaxKey = "internalNoteIntercept_max"
+noteInterceptMinKey = "internalNoteIntercept_min"
+noteParameterUncertaintyTSVMainColumnsAndTypes = [
+  (noteInterceptMaxKey, np.double),
+  (noteInterceptMinKey, np.double),
+]
+noteParameterUncertaintyTSVAuxColumnsAndTypes = [
+  ("internalNoteFactor1_max", np.double),
+  ("internalNoteFactor1_median", np.double),
+  ("internalNoteFactor1_min", np.double),
+  ("internalNoteFactor1_refit_orig", np.double),
+  ("internalNoteIntercept_median", np.double),
+  ("internalNoteIntercept_refit_orig", np.double),
   ("ratingCount_all", np.int64),
   ("ratingCount_neg_fac", np.int64),
   ("ratingCount_pos_fac", np.int64),
 ]
+noteParameterUncertaintyTSVColumnsAndTypes = (
+  noteParameterUncertaintyTSVAuxColumnsAndTypes + noteParameterUncertaintyTSVMainColumnsAndTypes
+)
 noteParameterUncertaintyTSVColumns = [
   col for (col, _) in noteParameterUncertaintyTSVColumnsAndTypes
+]
+noteParameterUncertaintyTSVAuxColumns = [
+  col for (col, _) in noteParameterUncertaintyTSVAuxColumnsAndTypes
+]
+noteParameterUncertaintyTSVMainColumns = [
+  col for (col, _) in noteParameterUncertaintyTSVMainColumnsAndTypes
 ]
 noteParameterUncertaintyTSVTypes = [
   dtype for (_, dtype) in noteParameterUncertaintyTSVColumnsAndTypes
@@ -384,7 +404,6 @@ auxiliaryScoredNotesTSVColumns = (
   + notHelpfulTagsTSVOrder
   + notHelpfulTagsAdjustedColumns
   + notHelpfulTagsAdjustedRatioColumns
-  + noteParameterUncertaintyTSVColumns
 )
 
 noteModelOutputTSVColumnsAndTypes = [
@@ -411,6 +430,12 @@ noteModelOutputTSVColumnsAndTypes = [
   (coverageNoteInterceptKey, np.double),
   (coverageNoteFactor1Key, np.double),
   (coverageRatingStatusKey, np.str),
+  (coreNoteInterceptMinKey, np.double),
+  (coreNoteInterceptMaxKey, np.double),
+  (expansionNoteInterceptMinKey, np.double),
+  (expansionNoteInterceptMaxKey, np.double),
+  (coverageNoteInterceptMinKey, np.double),
+  (coverageNoteInterceptMaxKey, np.double),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}

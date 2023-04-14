@@ -107,7 +107,9 @@ class Scorer(ABC):
     noteScores = noteScores.drop(columns=self._get_dropped_note_cols())
     assert set(noteScores.columns) == set(
       self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols()
-    ), "all columns must be either dropped or explicitly defined in an output"
+    ), f"""all columns must be either dropped or explicitly defined in an output. 
+    Extra columns that were in noteScores: {set(noteScores.columns) - set(self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols())}
+    Missing expected columns that should've been in noteScores: {set(self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols()) - set(noteScores.columns)}"""
     # Process userScores
     userScores = userScores.drop(columns=self._get_dropped_user_cols())
     assert set(userScores.columns) == set(self.get_helpfulness_scores_cols())
