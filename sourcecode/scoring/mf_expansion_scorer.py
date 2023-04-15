@@ -22,6 +22,8 @@ class MFExpansionScorer(MFBaseScorer):
       c.internalNoteInterceptKey: c.expansionNoteInterceptKey,
       c.internalNoteFactor1Key: c.expansionNoteFactor1Key,
       c.internalRatingStatusKey: c.expansionRatingStatusKey,
+      c.noteInterceptMinKey: c.expansionNoteInterceptMinKey,
+      c.noteInterceptMaxKey: c.expansionNoteInterceptMaxKey,
     }
 
   def get_scored_notes_cols(self) -> List[str]:
@@ -31,6 +33,8 @@ class MFExpansionScorer(MFBaseScorer):
       c.expansionNoteInterceptKey,
       c.expansionNoteFactor1Key,
       c.expansionRatingStatusKey,
+      c.expansionNoteInterceptMinKey,
+      c.expansionNoteInterceptMaxKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
@@ -51,7 +55,7 @@ class MFExpansionScorer(MFBaseScorer):
       ]
       + c.notHelpfulTagsAdjustedColumns
       + c.notHelpfulTagsAdjustedRatioColumns
-      + c.noteParameterUncertaintyTSVColumns
+      + c.noteParameterUncertaintyTSVAuxColumns
     )
 
   def _get_dropped_user_cols(self) -> List[str]:

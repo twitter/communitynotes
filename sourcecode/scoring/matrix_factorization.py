@@ -401,6 +401,8 @@ class MatrixFactorization:
     globalIntercept = None
     if self._useGlobalIntercept:
       globalIntercept = mf_model.global_intercept
+      if self._logging:
+        print("Global Intercept: ", globalIntercept.item())
 
     fitNoteParams, fitRaterParams = self._get_parameters_from_trained_model(
       mf_model, noteIdMap, raterIdMap
@@ -463,13 +465,10 @@ class MatrixFactorization:
   def make_extreme_raters(self, raterParams, raterIdMap):
     raterInterceptValues = [
       raterParams[c.internalRaterInterceptKey].min(),
-      0.0,
-      raterParams[c.internalRaterInterceptKey].median(),
       raterParams[c.internalRaterInterceptKey].max(),
     ]
     raterFactorValues = [
       raterParams[c.internalRaterFactor1Key].min(),
-      raterParams[c.internalRaterFactor1Key].median(),
       0.0,
       raterParams[c.internalRaterFactor1Key].max(),
     ]

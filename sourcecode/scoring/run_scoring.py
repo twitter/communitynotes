@@ -5,6 +5,10 @@ merges results and computes contribution statistics for users.  run_scoring shou
 intergrated into main files for execution in internal and external environments.
 """
 
+from collections import namedtuple
+import concurrent.futures
+import multiprocessing
+import time
 from typing import List, Optional, Tuple
 
 from . import constants as c, contributor_state, note_ratings, note_status_history, scoring_rules
@@ -17,6 +21,9 @@ from .scoring_rules import RuleID
 
 import numpy as np
 import pandas as pd
+
+
+ModelResult = namedtuple("ModelResult", ["scoredNotes", "helpfulnessScores", "auxiliaryNoteInfo"])
 
 
 def _get_scorers(seed: Optional[int], pseudoraters: Optional[bool]) -> List[Scorer]:
@@ -83,11 +90,31 @@ def _merge_results(
   return scoredNotes, helpfulnessScores, auxiliaryNoteInfo
 
 
+def _run_scorer_parallelizable(scorer, ratings, noteStatusHistory, userEnrollment):
+  runCounter = 0
+  scorerStartTime = time.perf_counter()
+  result = None
+
+  if isinstance(scorer, (MFBaseScorer, MFCoreScorer, MFCoverageScorer, MFExpansionScorer)):
+    while (len(scorer._mfRanker.train_errors) == 0) or (
+      scorer._mfRanker.train_errors[-1] > c.maxTrainError
+    ):
+      runCounter += 1
+      result = ModelResult(*scorer.score(ratings, noteStatusHistory, userEnrollment))
+  else:
+    result = ModelResult(*scorer.score(ratings, noteStatusHistory, userEnrollment))
+    runCounter += 1
+
+  scorerEndTime = time.perf_counter()
+  return result, (scorerEndTime - scorerStartTime), runCounter
+
+
 def _run_scorers(
   scorers: List[Scorer],
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
+  runParallel: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Applies all Community Notes models to user ratings and returns merged result.
 
@@ -108,31 +135,48 @@ def _run_scorers(
       helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
       auxiliaryNoteInfo pd.DataFrame: one row per note containing supplemental values used in scoring.
   """
+  # Apply scoring algorithms
+  overallStartTime = time.perf_counter()
+  if runParallel:
+    with concurrent.futures.ProcessPoolExecutor(
+      mp_context=multiprocessing.get_context("spawn")
+    ) as executor:
+      print(f"Starting parallel scorer execution with {len(scorers)} scorers.")
+      futures = [
+        executor.submit(_run_scorer_parallelizable, s, ratings, noteStatusHistory, userEnrollment)
+        for s in scorers
+      ]
+      modelResultsAndTimes = [f.result() for f in futures]
+  else:
+    modelResultsAndTimes = [
+      _run_scorer_parallelizable(s, ratings, noteStatusHistory, userEnrollment) for s in scorers
+    ]
+
+  modelResults, scorerTimes, runCounts = zip(*modelResultsAndTimes)
+
+  overallTime = time.perf_counter() - overallStartTime
+  print(
+    f"""----
+  Completed individual scorers. Ran in parallel: {runParallel}
+  Succeeded in {overallTime:.2f} seconds. Individual scorers: {['{:.2f}'.format(t) for t in scorerTimes]} seconds.
+  Run Counters (>1 if loss was too high, forcing a re-train): {dict(zip([type(scorer) for scorer in scorers], runCounts))}
+  ----"""
+  )
+
   # Initialize return data frames.
   scoredNotes = noteStatusHistory[[c.noteIdKey]].drop_duplicates()
   auxiliaryNoteInfo = noteStatusHistory[[c.noteIdKey]].drop_duplicates()
   helpfulnessScores = pd.DataFrame({c.raterParticipantIdKey: []})
 
-  # Apply scoring algorithms and merge results
-  for scorer in scorers:
-    if isinstance(scorer, (MFBaseScorer, MFCoreScorer, MFCoverageScorer, MFExpansionScorer)):
-      while (len(scorer._mfRanker.train_errors) == 0) or (
-        scorer._mfRanker.train_errors[-1] > c.maxTrainError
-      ):
-        modelScoredNotes, modelHelpfulnessScores, modelauxiliaryNoteInfo = scorer.score(
-          ratings, noteStatusHistory, userEnrollment
-        )
-    else:
-      modelScoredNotes, modelHelpfulnessScores, modelauxiliaryNoteInfo = scorer.score(
-        ratings, noteStatusHistory, userEnrollment
-      )
+  # Merge the results
+  for modelResult in modelResults:
     scoredNotes, helpfulnessScores, auxiliaryNoteInfo = _merge_results(
       scoredNotes,
       helpfulnessScores,
       auxiliaryNoteInfo,
-      modelScoredNotes,
-      modelHelpfulnessScores,
-      modelauxiliaryNoteInfo,
+      modelResult.scoredNotes,
+      modelResult.helpfulnessScores,
+      modelResult.auxiliaryNoteInfo,
     )
 
   return scoredNotes, helpfulnessScores, auxiliaryNoteInfo
@@ -378,13 +422,21 @@ def _validate(
   Returns:
     Input arguments with columns potentially re-ordered.
   """
-  assert set(scoredNotes.columns) == set(c.noteModelOutputTSVColumns)
+  assert set(scoredNotes.columns) == set(
+    c.noteModelOutputTSVColumns
+  ), f"Got {sorted(scoredNotes.columns)}, expected {sorted(c.noteModelOutputTSVColumns)}"
   scoredNotes = scoredNotes[c.noteModelOutputTSVColumns]
-  assert set(helpfulnessScores.columns) == set(c.raterModelOutputTSVColumns)
+  assert set(helpfulnessScores.columns) == set(
+    c.raterModelOutputTSVColumns
+  ), f"Got {sorted(helpfulnessScores.columns)}, expected {sorted(c.raterModelOutputTSVColumns)}"
   helpfulnessScores = helpfulnessScores[c.raterModelOutputTSVColumns]
-  assert set(noteStatusHistory.columns) == set(c.noteStatusHistoryTSVColumns)
+  assert set(noteStatusHistory.columns) == set(
+    c.noteStatusHistoryTSVColumns
+  ), f"Got {sorted(noteStatusHistory.columns)}, expected {sorted(c.noteStatusHistoryTSVColumns)}"
   noteStatusHistory = noteStatusHistory[c.noteStatusHistoryTSVColumns]
-  assert set(auxiliaryNoteInfo.columns) == set(c.auxiliaryScoredNotesTSVColumns)
+  assert set(auxiliaryNoteInfo.columns) == set(
+    c.auxiliaryScoredNotesTSVColumns
+  ), f"Got {sorted(auxiliaryNoteInfo.columns)}, expected {sorted(c.auxiliaryScoredNotesTSVColumns)}"
   auxiliaryNoteInfo = auxiliaryNoteInfo[c.auxiliaryScoredNotesTSVColumns]
   return (scoredNotes, helpfulnessScores, noteStatusHistory, auxiliaryNoteInfo)
 

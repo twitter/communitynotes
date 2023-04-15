@@ -57,7 +57,7 @@ def parse_args():
     help="Exclude calculation of pseudorater intervals (faster)",
     action="store_false",
   )
-  parser.set_defaults(pseudoraters=False)
+  parser.set_defaults(pseudoraters=True)
   parser.add_argument("-r", "--ratings", default=c.ratingsInputPath, help="rating dataset")
   parser.add_argument(
     "--seed", default=None, type=int, help="set to an int to seed matrix factorization"

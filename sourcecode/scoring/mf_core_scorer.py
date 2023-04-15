@@ -37,6 +37,8 @@ class MFCoreScorer(MFBaseScorer):
       c.internalNoteFactor1Key: c.coreNoteFactor1Key,
       c.internalRatingStatusKey: c.coreRatingStatusKey,
       c.internalActiveRulesKey: c.coreActiveRulesKey,
+      c.noteInterceptMinKey: c.coreNoteInterceptMinKey,
+      c.noteInterceptMaxKey: c.coreNoteInterceptMaxKey,
     }
 
   def _get_user_col_mapping(self) -> Dict[str, str]:
@@ -55,6 +57,8 @@ class MFCoreScorer(MFBaseScorer):
       c.coreRatingStatusKey,
       c.coreActiveRulesKey,
       c.activeFilterTagsKey,
+      c.coreNoteInterceptMinKey,
+      c.coreNoteInterceptMaxKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:

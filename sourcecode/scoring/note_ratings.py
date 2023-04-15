@@ -21,7 +21,16 @@ def is_crh(scoredNotes, minRatingsNeeded, crhThreshold) -> pd.Series:
   )
 
 
-def is_crnh(
+def is_crnh_ucb(scoredNotes, minRatingsNeeded, crnhThresholdUCBIntercept) -> pd.Series:
+  enoughRatings = scoredNotes[c.numRatingsKey] >= minRatingsNeeded
+  if c.noteInterceptMaxKey in scoredNotes.columns:
+    return enoughRatings & (scoredNotes[c.noteInterceptMaxKey] < crnhThresholdUCBIntercept)
+  else:
+    # all False
+    return enoughRatings & (~enoughRatings)
+
+
+def is_crnh_diamond(
   scoredNotes, minRatingsNeeded, crnhThresholdIntercept, crnhThresholdNoteFactorMultiplier
 ) -> pd.Series:
   return (scoredNotes[c.numRatingsKey] >= minRatingsNeeded) & (
@@ -349,12 +358,14 @@ def compute_scored_notes(
   crnhThresholdIntercept: float,
   crnhThresholdNoteFactorMultiplier: float,
   crnhThresholdNMIntercept: float,
+  crnhThresholdUCBIntercept: float,
   crhSuperThreshold: float,
   inertiaDelta: float,
   finalRound: bool = False,
   # TODO: We might want to consider inputing only the series here, instead of the whole callable
   is_crh_function: Callable[..., pd.Series] = is_crh,
-  is_crnh_function: Callable[..., pd.Series] = is_crnh,
+  is_crnh_diamond_function: Callable[..., pd.Series] = is_crnh_diamond,
+  is_crnh_ucb_function: Callable[..., pd.Series] = is_crnh_ucb,
 ) -> pd.DataFrame:
   """
   Merges note status history, ratings, and model output. It annotes the data frame with
@@ -381,7 +392,8 @@ def compute_scored_notes(
         determining final status.  Given that these mechanisms add complexity we don't apply them
         in earlier rounds.
       is_crh_function: Function specifying default CRH critierai.
-      is_crnh_function: Function specifying default CRNH critierai.
+      is_crnh_diamond_function: Function specifying default CRNH critierai.
+      is_crnh_ucb_function: Function specifying default CRNH critierai, ORed together with previous.
   Returns:
       pd.DataFrame: scoredNotes The scored notes
   """
@@ -393,6 +405,7 @@ def compute_scored_notes(
       c.createdAtMillisKey,
     ]
   )
+
   # Merge with noteParams as necessary
   noteParamsColsToKeep = [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
   for col in c.noteParameterUncertaintyTSVColumns:
@@ -407,14 +420,25 @@ def compute_scored_notes(
       {RuleID.INITIAL_NMR},
       c.currentlyRatedHelpful,
       lambda noteStats: is_crh_function(noteStats, minRatingsNeeded, crhThreshold),
+      onlyApplyToNotesThatSayTweetIsMisleading=True,
     ),
     scoring_rules.RuleFromFunction(
       RuleID.GENERAL_CRNH,
       {RuleID.INITIAL_NMR},
       c.currentlyRatedNotHelpful,
-      lambda noteStats: is_crnh_function(
+      lambda noteStats: is_crnh_diamond_function(
         noteStats, minRatingsNeeded, crnhThresholdIntercept, crnhThresholdNoteFactorMultiplier
       ),
+      onlyApplyToNotesThatSayTweetIsMisleading=False,
+    ),
+    scoring_rules.RuleFromFunction(
+      RuleID.UCB_CRNH,
+      {RuleID.INITIAL_NMR},
+      c.currentlyRatedNotHelpful,
+      lambda noteStats: is_crnh_ucb_function(
+        noteStats, minRatingsNeeded, crnhThresholdUCBIntercept
+      ),
+      onlyApplyToNotesThatSayTweetIsMisleading=False,
     ),
     scoring_rules.NMtoCRNH(
       RuleID.NM_CRNH, {RuleID.INITIAL_NMR}, c.currentlyRatedNotHelpful, crnhThresholdNMIntercept

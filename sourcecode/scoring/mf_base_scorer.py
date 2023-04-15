@@ -29,6 +29,7 @@ class MFBaseScorer(Scorer):
     crnhThresholdIntercept: float = -0.05,
     crnhThresholdNoteFactorMultiplier: float = -0.8,
     crnhThresholdNMIntercept: float = -0.15,
+    crnhThresholdUCBIntercept: float = -0.04,
     crhSuperThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
   ):
@@ -50,12 +51,14 @@ class MFBaseScorer(Scorer):
       minRaterAgreeRatio: Raters in the second MF round must exceed this minimum standard for how
         often a rater must predict the eventual outcome when rating before a note is assigned status.
       crhThreshold: Minimum intercept for most notes to achieve CRH status.
-      crnhThresholdIntercept: Minimum intercept for most notes to achieve CRNH status.
+      crnhThresholdIntercept: Maximum intercept for most notes to achieve CRNH status.
       crnhThresholdNoteFactorMultiplier: Scaling factor making controlling the relationship between
         CRNH threshold and note intercept.  Note that this constant is set negative so that notes with
         larger (magnitude) factors must have proportionally lower intercepts to become CRNH.
-      crnhThresholdNMIntercept: Minimum intercept for notes which do not claim a tweet is misleading
+      crnhThresholdNMIntercept: Maximum intercept for notes which do not claim a tweet is misleading
         to achieve CRNH status.
+      crnhThresholdUCBIntercept: Maximum UCB of the intercept (determined with pseudoraters) for
+        most notes (the ones that say the Tweet is misleading) to achieve CRNH status.
       crhSuperThreshold: Minimum intercept for notes which have consistent and common patterns of
         repeated reason tags in not-helpful ratings to achieve CRH status.
       inertiaDelta: Minimum amount which a note that has achieve CRH status must drop below the
@@ -73,6 +76,7 @@ class MFBaseScorer(Scorer):
     self._crnhThresholdIntercept = crnhThresholdIntercept
     self._crnhThresholdNoteFactorMultiplier = crnhThresholdNoteFactorMultiplier
     self._crnhThresholdNMIntercept = crnhThresholdNMIntercept
+    self._crnhThresholdUCBIntercept = crnhThresholdUCBIntercept
     self._crhSuperThreshold = crhSuperThreshold
     self._inertiaDelta = inertiaDelta
     self._mfRanker = matrix_factorization.MatrixFactorization()
@@ -86,6 +90,8 @@ class MFBaseScorer(Scorer):
       c.internalRatingStatusKey,
       c.internalActiveRulesKey,
       c.activeFilterTagsKey,
+      c.noteInterceptMaxKey,
+      c.noteInterceptMinKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
@@ -102,11 +108,10 @@ class MFBaseScorer(Scorer):
 
   def get_auxiliary_note_info_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the auxiliaryNoteInfo output."""
-    return [c.noteIdKey, c.ratingWeightKey,] + (
-      c.notHelpfulTagsAdjustedColumns
-      + c.notHelpfulTagsAdjustedRatioColumns
-      + c.noteParameterUncertaintyTSVColumns
-    )
+    return [
+      c.noteIdKey,
+      c.ratingWeightKey,
+    ] + (c.notHelpfulTagsAdjustedColumns + c.notHelpfulTagsAdjustedRatioColumns)
 
   def _get_dropped_note_cols(self) -> List[str]:
     """Returns a list of columns which should be excluded from scoredNotes and auxiliaryNoteInfo."""
@@ -122,6 +127,7 @@ class MFBaseScorer(Scorer):
       ]
       + c.helpfulTagsTSVOrder
       + c.notHelpfulTagsTSVOrder
+      + c.noteParameterUncertaintyTSVAuxColumns
     )
 
   def _get_dropped_user_cols(self) -> List[str]:
@@ -171,6 +177,7 @@ class MFBaseScorer(Scorer):
       crnhThresholdIntercept=self._crnhThresholdIntercept,
       crnhThresholdNoteFactorMultiplier=self._crnhThresholdNoteFactorMultiplier,
       crnhThresholdNMIntercept=self._crnhThresholdNMIntercept,
+      crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
       crhSuperThreshold=self._crhSuperThreshold,
       inertiaDelta=self._inertiaDelta,
     )
@@ -260,6 +267,7 @@ class MFBaseScorer(Scorer):
       crnhThresholdIntercept=self._crnhThresholdIntercept,
       crnhThresholdNoteFactorMultiplier=self._crnhThresholdNoteFactorMultiplier,
       crnhThresholdNMIntercept=self._crnhThresholdNMIntercept,
+      crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
       crhSuperThreshold=self._crhSuperThreshold,
       inertiaDelta=self._inertiaDelta,
       finalRound=True,

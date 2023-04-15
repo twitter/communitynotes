@@ -22,6 +22,8 @@ class MFCoverageScorer(MFCoreScorer):
       c.internalNoteInterceptKey: c.coverageNoteInterceptKey,
       c.internalNoteFactor1Key: c.coverageNoteFactor1Key,
       c.internalRatingStatusKey: c.coverageRatingStatusKey,
+      c.noteInterceptMinKey: c.coverageNoteInterceptMinKey,
+      c.noteInterceptMaxKey: c.coverageNoteInterceptMaxKey,
     }
 
   def _get_user_col_mapping(self) -> Dict[str, str]:
@@ -35,6 +37,8 @@ class MFCoverageScorer(MFCoreScorer):
       c.coverageNoteInterceptKey,
       c.coverageNoteFactor1Key,
       c.coverageRatingStatusKey,
+      c.coverageNoteInterceptMinKey,
+      c.coverageNoteInterceptMaxKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
@@ -55,7 +59,7 @@ class MFCoverageScorer(MFCoreScorer):
       ]
       + c.notHelpfulTagsAdjustedColumns
       + c.notHelpfulTagsAdjustedRatioColumns
-      + c.noteParameterUncertaintyTSVColumns
+      + c.noteParameterUncertaintyTSVAuxColumns
     )
 
   def _get_dropped_user_cols(self) -> List[str]:

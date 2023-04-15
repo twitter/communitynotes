@@ -21,6 +21,7 @@ class RuleID(Enum):
   INITIAL_NMR = RuleAndVersion("InitialNMR", "1.0", False)
   GENERAL_CRH = RuleAndVersion("GeneralCRH", "1.0", False)
   GENERAL_CRNH = RuleAndVersion("GeneralCRNH", "1.0", False)
+  UCB_CRNH = RuleAndVersion("UcbCRNH", "1.0", False)
   TAG_OUTLIER = RuleAndVersion("TagFilter", "1.0", False)
   NM_CRNH = RuleAndVersion("NmCRNH", "1.0", False)
   GENERAL_CRH_INERTIA = RuleAndVersion("GeneralCRHInertia", "1.0", False)
@@ -28,9 +29,9 @@ class RuleID(Enum):
 
   # Rules used in _meta_score.
   META_INITIAL_NMR = RuleAndVersion("MetaInitialNMR", "1.0", False)
-  EXPANSION_MODEL = RuleAndVersion("ExpansionModel", "1.0", False)
-  CORE_MODEL = RuleAndVersion("CoreModel", "1.0", True)
-  COVERAGE_MODEL = RuleAndVersion("CoverageModel", "1.0", False)
+  EXPANSION_MODEL = RuleAndVersion("ExpansionModel", "1.1", False)
+  CORE_MODEL = RuleAndVersion("CoreModel", "1.1", True)
+  COVERAGE_MODEL = RuleAndVersion("CoverageModel", "1.1", False)
   INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
   SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
 
@@ -115,6 +116,7 @@ class RuleFromFunction(ScoringRule):
     dependencies: Set[RuleID],
     status: str,
     function: Callable[[pd.DataFrame], pd.Series],
+    onlyApplyToNotesThatSayTweetIsMisleading: bool = True,
   ):
     """Creates a ScoringRule which wraps a boolean function.
 
@@ -125,21 +127,24 @@ class RuleFromFunction(ScoringRule):
       function: accepts noteStats as input and returns a boolean pd.Series corresponding to
         rows matched by the function.  For example, a valid function would be:
         "lambda noteStats: noteStats[c.internalNoteInterceptKey] > 0.4"
+      onlyApplyToNotesThatSayTweetIsMisleading: if True, only apply the rule to that subset of notes.
     """
     super().__init__(ruleID, dependencies)
     self._status = status
     self._function = function
+    self._onlyApplyToNotesThatSayTweetIsMisleading = onlyApplyToNotesThatSayTweetIsMisleading
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
     """Returns noteIDs for notes matched by the boolean function."""
-    noteStatusUpdates = noteStats.loc[
-      self._function(noteStats)
+    mask = self._function(noteStats)
+    if self._onlyApplyToNotesThatSayTweetIsMisleading:
       # Check for inequality with "not misleading" to include notes whose classificaiton
       # is nan (i.e. deleted notes).
-      & (noteStats[c.classificationKey] != c.noteSaysTweetIsNotMisleadingKey)
-    ][[c.noteIdKey]]
+      mask = mask & (noteStats[c.classificationKey] != c.noteSaysTweetIsNotMisleadingKey)
+
+    noteStatusUpdates = noteStats.loc[mask][[c.noteIdKey]]
     noteStatusUpdates[statusColumn] = self._status
     return (noteStatusUpdates, None)
 
@@ -481,7 +486,11 @@ class AddCRHInertia(ScoringRule):
     noteIntercepts = noteStats.merge(noteIds, on=c.noteIdKey, how="inner")[
       c.internalNoteInterceptKey
     ]
-    assert sum(noteIntercepts > self._expectedMax) == 0, "note exceeded expected maximum"
+
+    assert (
+      sum(noteIntercepts > self._expectedMax) == 0
+    ), f"""{sum(noteIntercepts > self._expectedMax)} notes (out of {len(noteIntercepts)}) had intercepts above expected maximum of {self._expectedMax}. 
+      The highest was {max(noteIntercepts)}."""
     noteStatusUpdates = noteIds[[c.noteIdKey]]
     noteStatusUpdates[statusColumn] = self._status
     return (noteStatusUpdates, None)
