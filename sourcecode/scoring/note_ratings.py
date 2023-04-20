@@ -21,6 +21,15 @@ def is_crh(scoredNotes, minRatingsNeeded, crhThreshold) -> pd.Series:
   )
 
 
+def is_crh_lcb(scoredNotes, minRatingsNeeded, crhThresholdLCBIntercept) -> pd.Series:
+  enoughRatings = scoredNotes[c.numRatingsKey] >= minRatingsNeeded
+  if c.noteInterceptMinKey in scoredNotes.columns:
+    return enoughRatings & (scoredNotes[c.noteInterceptMinKey] >= crhThresholdLCBIntercept)
+  else:
+    # all False
+    return enoughRatings & (~enoughRatings)
+
+
 def is_crnh_ucb(scoredNotes, minRatingsNeeded, crnhThresholdUCBIntercept) -> pd.Series:
   enoughRatings = scoredNotes[c.numRatingsKey] >= minRatingsNeeded
   if c.noteInterceptMaxKey in scoredNotes.columns:
@@ -359,6 +368,7 @@ def compute_scored_notes(
   crnhThresholdNoteFactorMultiplier: float,
   crnhThresholdNMIntercept: float,
   crnhThresholdUCBIntercept: float,
+  crhThresholdLCBIntercept: float,
   crhSuperThreshold: float,
   inertiaDelta: float,
   finalRound: bool = False,
@@ -366,6 +376,7 @@ def compute_scored_notes(
   is_crh_function: Callable[..., pd.Series] = is_crh,
   is_crnh_diamond_function: Callable[..., pd.Series] = is_crnh_diamond,
   is_crnh_ucb_function: Callable[..., pd.Series] = is_crnh_ucb,
+  is_crh_lcb_function: Callable[..., pd.Series] = is_crh_lcb,
 ) -> pd.DataFrame:
   """
   Merges note status history, ratings, and model output. It annotes the data frame with
@@ -384,6 +395,10 @@ def compute_scored_notes(
         larger (magnitude) factors must have proportionally lower intercepts to become CRNH.
       crnhThresholdNMIntercept: Minimum intercept for notes which do not claim a tweet is misleading
         to achieve CRNH status.
+      crnhThresholdUCBIntercept: Maximum UCB of the intercept (determined with pseudoraters) for
+        notes to achieve CRNH status.
+      crhThresholdLCBIntercept: Minimum LCB of the intercept (determined with pseudoraters) for
+        notes to achieve CRH status.
       crhSuperThreshold: Minimum intercept for notes which have consistent and common patterns of
         repeated reason tags in not-helpful ratings to achieve CRH status.
       inertiaDelta: Minimum amount which a note that has achieve CRH status must drop below the
@@ -420,6 +435,13 @@ def compute_scored_notes(
       {RuleID.INITIAL_NMR},
       c.currentlyRatedHelpful,
       lambda noteStats: is_crh_function(noteStats, minRatingsNeeded, crhThreshold),
+      onlyApplyToNotesThatSayTweetIsMisleading=True,
+    ),
+    scoring_rules.RuleFromFunction(
+      RuleID.LCB_CRH,
+      {RuleID.INITIAL_NMR},
+      c.currentlyRatedHelpful,
+      lambda noteStats: is_crh_lcb_function(noteStats, minRatingsNeeded, crhThresholdLCBIntercept),
       onlyApplyToNotesThatSayTweetIsMisleading=True,
     ),
     scoring_rules.RuleFromFunction(

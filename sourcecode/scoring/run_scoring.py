@@ -114,7 +114,7 @@ def _run_scorers(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
-  runParallel: bool = True,
+  runParallel: bool = False,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Applies all Community Notes models to user ratings and returns merged result.
 

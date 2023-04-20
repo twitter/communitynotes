@@ -22,6 +22,7 @@ class RuleID(Enum):
   GENERAL_CRH = RuleAndVersion("GeneralCRH", "1.0", False)
   GENERAL_CRNH = RuleAndVersion("GeneralCRNH", "1.0", False)
   UCB_CRNH = RuleAndVersion("UcbCRNH", "1.0", False)
+  LCB_CRH = RuleAndVersion("LcbCRH", "1.0", False)
   TAG_OUTLIER = RuleAndVersion("TagFilter", "1.0", False)
   NM_CRNH = RuleAndVersion("NmCRNH", "1.0", False)
   GENERAL_CRH_INERTIA = RuleAndVersion("GeneralCRHInertia", "1.0", False)
