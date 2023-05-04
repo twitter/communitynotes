@@ -23,4 +23,4 @@ Anyone can read and rate Community Notes, but only contributors who've [unlocked
 
 ### What makes a good Community Note?
 
-{{< button href="../examples" >}}See examples{{< /button >}}
+{% button buttonTitle="See examples" buttonHref="https://communitynotes.twitter.com/guide/en/contributing/examples" /%}

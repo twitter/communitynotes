@@ -50,7 +50,7 @@ It’s important for people to understand how Community Notes works, and to be a
 {% inline align="space-between" alignY="center" %}
 **Become a Community Notes contributor**
 
-{{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
+{% button buttonTitle="Sign up here" buttonHref="https://twitter.com/i/flow/join-birdwatch" /%}
 
 {% /inline %}
 {% /box %}

@@ -29,7 +29,7 @@ The default setting for all contributors is "Often", which means you'll start by
 
 ![One screenshot showing a Community Notes Contributor profile page, highlighting the settings button on the top right. Another screenshot showing the settings screen where contributors can edit their alert frequency](../images/alerts-settings.png)
 
-{{< button href="https://www.twitter.com/i/communitynotes/notification_settings">}} Open notification settings {{</ button>}}
+{% button buttonTitle="Open notification settings" buttonHref="https://www.twitter.com/i/communitynotes/notification_settings" /%}
 
 ## Other notifications
 

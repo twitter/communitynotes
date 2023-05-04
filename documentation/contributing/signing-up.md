@@ -7,7 +7,7 @@ Sign ups are open to everyone. We want anyone to be able to participate and know
 
 As there are important nuances in each market, we’ll expand the contributor base country-by-country.
 
-## {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
+{% button buttonTitle="Sign up here" buttonHref="https://twitter.com/i/flow/join-birdwatch" /%}
 
 ---
 
