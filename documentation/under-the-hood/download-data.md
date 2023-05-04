@@ -101,8 +101,8 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 
 {% /accordionSection %}
 
-{{< tabs "uniqueid" >}}
-{{< tab "Notes" >}}
+### Notes
+
 | Field | Type | Descripton | Response values |
 | ---------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `noteId` | Long | The unique ID of this note | |
@@ -128,9 +128,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `trustworthySources` | Int | Binary indicator, based on user-entered multiple choice in response to note writing question “Did you link to sources you believe most people would consider trustworthy?” | 1 if “Yes” is selected, 0 if “No” is selected |
 | `summary` | String | User-entered text, in response to the note writing prompt “Please explain the evidence behind your choices, to help others who see this tweet understand why it is not misleading” | User entered text explanation, with some characters escaped (e.g. tabs converted to spaces). |
 
-{{< /tab >}}
-
-{{< tab "Note Status History" >}}
+### Note Status History
 
 | Field                                 | Type   | Descripton                                                                                                                                                                                                                                                                                                                                                                                           | Response values                                                                |
 | ------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -144,9 +142,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `timestampMillisOfLatestNonNMRStatus` | String | The timestamp, in milliseconds since epoch, of when the note most recently received a status of either “Currently Rated Helpful” or “Currently Rated Not Helpful”. This value will be the same as timestampMillisOfFirstNonNMRStatus if the note has never switched status after receiving its first non-”Needs More Rating” status. Value is -1 if the note never left “Needs More Ratings” status. | "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |
 | `latestNonNMRStatus`                  | String | The latest status the note received, when it got a status besides “Needs More Ratings”. Value is -1 if the note never left “Needs More Ratings” status.                                                                                                                                                                                                                                              | "", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL"                   |
 
-{{< /tab >}}
-
-{{< tab "Ratings" >}}
+### Ratings
 
 | Field                                    | Type   | Descripton                                                                                                                                                                                                          | Response values                                                  |
 | ---------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -181,9 +177,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `notHelpfulOpinionSpeculation`           | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Opinion or speculation” is selected, else 0.               |
 | `notHelpfulNoteNotNeeded`                | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Note not needed on this Tweet” is selected, else 0.        |
 
-{{< /tab >}}
-
-{{< tab "User Enrollment" >}}
+### User Enrollment
 
 | Field                            | Type   | Descripton                                                                                                                                                                   | Response values                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | -------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -193,7 +187,3 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `timestampOfLastStateChange`     | Long   | The timestamp, in milliseconds since epoch, of the most recent user enrollment state change                                                                                  |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `timestampOfLastEarnOut`         | Long   | The timestamp, in milliseconds since epoch, of the most recent time the user earned-out. If the user never earned out, its value will be 1                                   |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `modelingPopulation`             | String | Indicates which modeling population the user is, and therefore which models will score the user's ratings:.                                                                  | "CORE" or "EXPANSION"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-
-{{< /tab >}}
-
-{{< /tabs >}}
