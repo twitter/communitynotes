@@ -27,9 +27,9 @@ All Community Notes start with the Needs More Ratings status until they receive 
 Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful according to the algorithm described below.
 If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on Twitter even if its status is Helpful.
 
-Notes marking Tweets as "potentially misleading" with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. At this time, only notes that indicate a Tweet is “potentially misleading” and earn the status of Helpful are eligible to be displayed on Tweets.
-Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Additionally, notes with an upper confidence bound estimate of their Note Helpfulness Score (as computed via pseudo-raters) less than -0.04 are assigned Not Helpful, as described in [Modeling Uncertainty](#modeling-uncertainty).
-Notes with scores in between remain with a status of Needs more Ratings.
+Notes marking Tweets as "potentially misleading" with a Note Helpfulness Score of 0.4 and above earn the status of Helpful. At this time, only notes that indicate a Tweet is “potentially misleading” and earn the status of Helpful are eligible to be displayed on Tweets.
+Notes with a Note Helpfulness Score less than $-0.05 -0.8 \* abs(noteFactorScore)$ are assigned Not Helpful, where $noteFactorScore$ is described in [Matrix Factorization](#matrix-factorization). Additionally, notes with an upper confidence bound estimate of their Note Helpfulness Score (as computed via pseudo-raters) less than $-0.04$ are assigned Not Helpful, as described in [Modeling Uncertainty](#modeling-uncertainty).
+Notes with scores in between remain with a status of Needs More Ratings.
 
 Identifying notes as Not Helpful improves contributor helpfulness scoring and reduces time contributors spend reviewing low quality notes.
 We plan to enable Helpful statuses for notes marking Tweets as "not misleading" as we continue to evaluate ranking quality and utility to users.
@@ -48,7 +48,7 @@ This delay allows Community Notes to collect a set of independent ratings from p
 
 When rating notes, contributors answer the question “Is this note helpful?” Answers to that question are then used to rank notes. When Community Notes (formerly called Birdwatch) launched in January 2021, people could answer “yes” or “no” to that question. An update on June 30, 2021 allows people to choose between “yes,” “somewhat” and “no.” We map these responses to continuous values from 0.0 to 1.0, hereafter referred to as “helpful scores”:
 
-- `Yes` maps to `1.0`
+- `Yes` maps to `1.0`.
 - `Somewhat` maps to `0.5`.
 - `No` maps to `0.0`.
 - `Yes` from the original 2-option version of the rating form maps to `1.0`.
@@ -138,7 +138,7 @@ Similarly, if a note was impacted by tag outlier filter and required note interc
 
 ## Multi-Model Note Ranking
 
-Multi-Model ranking allows Community Notes to run multiple ranking algorithms before reconciling the results to assign final note status.
+Multi-Model Note Ranking allows Community Notes to run multiple ranking algorithms before reconciling the results to assign final note status.
 We use this ability to test new models, refine current approaches and support expanding the Community Notes contributor base.
 We currently run three note ranking models:
 

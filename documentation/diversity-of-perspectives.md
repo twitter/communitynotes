@@ -13,6 +13,6 @@ Community Notes assesses "different perspectives" entirely based on how people h
 
 This approach has a number of benefits. First, it reflects the reality that people’s views can be nuanced, rather than defined by demographics. Second, in support of our focus on transparency, it allows people working with [Community Notes public data](../data) to replicate, analyze and audit how Community Notes works, as it allows Community Notes to run entirely on publicly available data.
 
-We are constantly evaluating ways to improve this approach (and [welcome suggestions](../feedback)) This current method has shown promising results in helping find quality notes: in surveys of people on Twitter in the US, the majority of respondents found notes that earned a status of "Helpful" by Community Notes contributors to be “somewhat” or “extremely” helpful — this includes people from across the political spectrum.
+We are constantly evaluating ways to improve this approach (and [welcome suggestions](../feedback)). This current method has shown promising results in helping find quality notes: in surveys of people on Twitter in the US, the majority of respondents found notes that earned a status of "Helpful" by Community Notes contributors to be “somewhat” or “extremely” helpful — this includes people from across the political spectrum.
 
 If you're interested in the math and code powering Community Notes, take a look at our [Note Ranking: Under the Hood](../note-ranking/) section.

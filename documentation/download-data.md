@@ -21,22 +21,22 @@ If you have questions or feedback about the Community Notes public data or would
 
 The [Community Notes data](https://twitter.com/i/communitynotes/download-data) is released as four separate files:
 
-- **Notes:** Contains a table representing all notes
-- **Ratings:** Contains a table representing all ratings
-- **Note Status History:** Contains a table with metadata about notes including what statuses they received and when.
-- **User Enrollment:** Contains a table with metadata about each user's enrollment state.
+- **Notes:** contains a table representing all notes.
+- **Ratings:** contains a table representing all ratings.
+- **Note Status History:** contains a table with metadata about notes including what statuses they received and when.
+- **User Enrollment:** contains a table with metadata about each user's enrollment state.
 
-These tables can be joined on the noteId field to create a combined dataset with information about users, notes, and their ratings. The data is released in separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model).
+These tables can be joined on the `noteId` field to create a combined dataset with information about users, notes, and their ratings. The data is released in separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model).
 
 Currently, we release one cumulative file each for notes, notes status history, note ratings, and user enrollment. However, in the future, if the data ever grows too large, we will split the data into multiple files as needed.
 
-A new snapshot of the Community Notes public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshots are cumulative files, but only contain notes and ratings that were created as of 48 hours before the dataset release time. When notes and ratings are deleted, they will no longer be released in any future versions of the data downloads, although the note status history dataset will continue to contain metadata about all scored notes even after they’ve been deleted, which includes noteId, creation time, the hashed participant ID of the note’s author, and a history of which statuses each notes received and when; however, all the content of the note itself e.g. the note’s text will no longer be available.
+A new snapshot of the Community Notes public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshots are cumulative files, but only contain notes and ratings that were created as of 48 hours before the dataset release time. When notes and ratings are deleted, they will no longer be released in any future versions of the data downloads, although the note status history dataset will continue to contain metadata about all scored notes even after they’ve been deleted, which includes note's ID, creation time, the hashed participant ID of the note’s author, and a history of which statuses each notes received and when; however, all the content of the note itself e.g. the note’s text will no longer be available.
 
 The [data download page in Community Notes](https://twitter.com/i/communitynotes/download-data) displays a date stamp indicating the most recent date of data included in the downloadable files.
 
 ### File structure
 
-Each data snapshot table is stored in tsv (tab-separated values) file format with a header row. This means that each row is separated by a newline, each column is separated by a tab, and the first row contains the column names instead of data. The note and note rating data is directly taken from the user-submitted note creation and note rating forms, with minimal added metadata (like ids and timestamp). The note status history file contains metadata derived from the raw notes and ratings, and contains the outputs of the [note scoring algorithm](../ranking-notes). Below, we will describe each column’s data, including the question or source that generated the data, data type, and other relevant information.
+Each data snapshot table is stored in TSV (Tab-Separated Values) file format with a header row. This means that each row is separated by a newline, each column is separated by a tab, and the first row contains the column names instead of data. The note and note rating data is directly taken from the user-submitted note creation and note rating forms, with minimal added metadata (like IDs and timestamp). The note status history file contains metadata derived from the raw notes and ratings, and contains the outputs of the [note scoring algorithm](../ranking-notes). Below, we will describe each column’s data, including the question or source that generated the data, data type, and other relevant information.
 
 <br>
 
