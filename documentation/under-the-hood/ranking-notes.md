@@ -1,14 +1,5 @@
 ---
 title: Note ranking algorithm
-aliases:
-  [
-    "/ranking-notes",
-    "/note-ranking",
-    "/about/note-ranking",
-    "/about/ranking-notes",
-  ]
-geekdocBreadcrumb: false
-geekdocToc: 1
 enableMathJax: true
 description: How are Community Notes ranked? Learn more about our open-source algorithm
 ---
@@ -197,8 +188,6 @@ For helpful notes:
 9. Other
 ```
 
-<br/>
-
 For not-helpful notes:
 
 ```
@@ -228,8 +217,6 @@ For not-helpful notes:
 6. Reconcile scoring results from the Core, Expansion and Coverage models to generate final status for each note.
 7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags.  Stabilize helpfulness status for any notes older than two weeks.
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](./#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
-
-<br/>
 
 ## What’s New?
 

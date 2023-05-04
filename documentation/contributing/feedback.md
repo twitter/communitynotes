@@ -1,13 +1,5 @@
 ---
 title: Submit Feedback
-geekdocBreadcrumb: false
-aliases:
-  [
-    "/submit-feedback",
-    "feedback",
-    "/contributing/submit-feedback",
-    "/contributing/feedback",
-  ]
 description: Talk directly with the team building Community Notes.
 ---
 
@@ -19,8 +11,6 @@ Community Notes is early in its development, and our goal is to build it in the 
 - Ideas for product updates or features for our roadmap
 - Analyses done with our [public data](../data) or feedback about the data.
 
-<br>
-
 Talk directly with the team building Community Notes — follow, Tweet or DM us [@CommunityNotes](https://twitter.com/communitynotes). We can't wait to hear from you.
 
-{{< button href="https://twitter.com/communitynotes" >}}Tweet @CommunityNotes{{< /button >}}
+{% button buttonTitle=Tweet @CommunityNotes" buttonHref="https://twitter.com/communitynotes" /%}

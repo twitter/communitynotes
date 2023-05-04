@@ -1,7 +1,5 @@
 ---
 title: Challenges
-geekdocBreadcrumb: false
-aliases: ["/challenges", "/risks", "/about/challenges"]
 description: Learn how we're addressing the key challenges involved in building an open, participatory system like Community Notes.
 ---
 

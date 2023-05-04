@@ -1,7 +1,5 @@
 ---
 title: Additional Community review
-geekdocBreadcrumb: false
-aliases: ["/additional-review"]
 description: Request additional review of Community Notes on your Tweets.
 ---
 
@@ -24,7 +22,7 @@ If you believe a note rated “helpful” on your Tweet doesn’t add helpful co
 
 1. Copy your Tweet's link
 
-    It should look like this: <code>https://twitter.com/{{yourdisplayname}}/status/123456789</code>
+   It should look like this: <code>https://twitter.com/{{yourdisplayname}}/status/123456789</code>
 
 2. Paste the link into the form below.
 

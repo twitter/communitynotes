@@ -1,8 +1,5 @@
 ---
 title: Open-source code
-aliases: ["/note-ranking-code", "/ranking-code", "/code"]
-geekdocBreadcrumb: false
-geekdocToc: 1
 description: Download the open-source files that power Community Notes on Twitter.
 ---
 

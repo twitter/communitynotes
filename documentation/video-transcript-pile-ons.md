@@ -1,7 +1,5 @@
 ---
 title: Video transcript
-geekdocBreadcrumb: false
-aliases: ["/video-transcript-pile-ons"]
 ---
 
 How do Community Notes (formerly called Birdwatch) avoid one-sided bias? Pile-ons? Brigading? Manipulation? Abuse?

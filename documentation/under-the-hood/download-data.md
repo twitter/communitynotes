@@ -1,7 +1,5 @@
 ---
 title: Downloading data
-geekdocBreadcrumb: false
-aliases: ["/data", "/about/data", "/contributing/data"]
 description: All Community Notes contributions are publicly available so that anyone has free access to analyze the data.
 ---
 
@@ -10,8 +8,6 @@ We can't wait to learn with you!
 All Community Notes contributions are publicly available on the [Download Data](https://twitter.com/i/communitynotes/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
 
 If you have questions or feedback about the Community Notes public data or would like to share your analyses of this data with us, please DM us at [@CommunityNotes](http://twitter.com/communitynotes).
-
-<br>
 
 ---
 
@@ -37,8 +33,6 @@ The [data download page in Community Notes](https://twitter.com/i/communitynotes
 ### File structure
 
 Each data snapshot table is stored in tsv (tab-separated values) file format with a header row. This means that each row is separated by a newline, each column is separated by a tab, and the first row contains the column names instead of data. The note and note rating data is directly taken from the user-submitted note creation and note rating forms, with minimal added metadata (like ids and timestamp). The note status history file contains metadata derived from the raw notes and ratings, and contains the outputs of the [note scoring algorithm](../ranking-notes). Below, we will describe each column’s data, including the question or source that generated the data, data type, and other relevant information.
-
-<br>
 
 ### Updates to the Data
 
@@ -72,8 +66,6 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 
 - `notHelpfulArgumentativeOrInflammatory` - Changed name to `notHelpfulArgumentativeOrBiased`
 
-<br>
-
 **Added Columns**
 
 - `helpfulUnbiasedLanguage`
@@ -87,8 +79,6 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 - We have removed the ‘Agree’ note rating question
 - We have updated the set of categories contributors can use to describe why a note is helpful or unhelpful. (Note: both helpful and unhelpful descriptors can be selected for notes that are rated as ‘Somewhat’ Helpful)
 
-<br>
-
 **Deprecated Columns**
 
 - `helpful` - Replaced with helpfulnessLevel
@@ -99,8 +89,6 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 - `notHelpfulOpinionSpeculationOrBias`
 - `notHelpfulOutdated`
 - `notHelpfulOffTopic`
-
-<br>
 
 **Added Columns**
 
@@ -113,11 +101,8 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 
 {% /accordionSection %}
 
+### Notes
 
-<br>
-
-{{< tabs "uniqueid" >}}
-{{< tab "Notes" >}}
 | Field | Type | Descripton | Response values |
 | ---------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `noteId` | Long | The unique ID of this note | |
@@ -143,9 +128,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `trustworthySources` | Int | Binary indicator, based on user-entered multiple choice in response to note writing question “Did you link to sources you believe most people would consider trustworthy?” | 1 if “Yes” is selected, 0 if “No” is selected |
 | `summary` | String | User-entered text, in response to the note writing prompt “Please explain the evidence behind your choices, to help others who see this tweet understand why it is not misleading” | User entered text explanation, with some characters escaped (e.g. tabs converted to spaces). |
 
-{{< /tab >}}
-
-{{< tab "Note Status History" >}}
+### Note Status History
 
 | Field                                 | Type   | Descripton                                                                                                                                                                                                                                                                                                                                                                                           | Response values                                                                |
 | ------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -159,9 +142,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `timestampMillisOfLatestNonNMRStatus` | String | The timestamp, in milliseconds since epoch, of when the note most recently received a status of either “Currently Rated Helpful” or “Currently Rated Not Helpful”. This value will be the same as timestampMillisOfFirstNonNMRStatus if the note has never switched status after receiving its first non-”Needs More Rating” status. Value is -1 if the note never left “Needs More Ratings” status. | "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |
 | `latestNonNMRStatus`                  | String | The latest status the note received, when it got a status besides “Needs More Ratings”. Value is -1 if the note never left “Needs More Ratings” status.                                                                                                                                                                                                                                              | "", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL"                   |
 
-{{< /tab >}}
-
-{{< tab "Ratings" >}}
+### Ratings
 
 | Field                                    | Type   | Descripton                                                                                                                                                                                                          | Response values                                                  |
 | ---------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
@@ -196,20 +177,13 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `notHelpfulOpinionSpeculation`           | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Opinion or speculation” is selected, else 0.               |
 | `notHelpfulNoteNotNeeded`                | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Note not needed on this Tweet” is selected, else 0.        |
 
-{{< /tab >}}
-
-{{< tab "User Enrollment" >}}
+### User Enrollment
 
 | Field                            | Type   | Descripton                                                                                                                                                                   | Response values                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | -------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `participantId`                  | String | A Community Notes-specific user identifier of the user who authored the rating. This is a permanent id, which remains stable even if the user changes their username/handle. |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `enrollmentState`                | String | Defines the user's enrollment state and the actions they can take on the system                                                                                              | `newUser`: newly admitted users, who only have rating ability. <br/> `earnedIn`: users who've earned writing ability. <br/> `atRisk`: users who are one Not Helpful note away from having writing ability locked. <br/> `earnedOutNoAcknowledge`: users with writing ability locked that have not yet clicked the acknowledgement button it in the product. <br/> `earnedOutAcknowledge`: users who've lost the ability to write and acknowledged it in the product, at which point their ratings start counting towards going back to `earnedIn`. |
-| `successfulRatingNeededToEarnIn` | Int | The target Rating Impact a user has to reach to earn the ability to write notes. Starts                                                                                      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `timestampOfLastStateChange`     | Long | The timestamp, in milliseconds since epoch, of the most recent user enrollment state change                                                                                  |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `timestampOfLastEarnOut`     | Long | The timestamp, in milliseconds since epoch, of the most recent time the user earned-out. If the user never earned out, its value will be 1                                                                                   |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `modelingPopulation`     | String | Indicates which modeling population the user is, and therefore which models will score the user's ratings:.                                                                                   | "CORE" or "EXPANSION"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-
-
-{{< /tab >}}
-
-{{< /tabs >}}
+| `successfulRatingNeededToEarnIn` | Int    | The target Rating Impact a user has to reach to earn the ability to write notes. Starts                                                                                      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `timestampOfLastStateChange`     | Long   | The timestamp, in milliseconds since epoch, of the most recent user enrollment state change                                                                                  |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `timestampOfLastEarnOut`         | Long   | The timestamp, in milliseconds since epoch, of the most recent time the user earned-out. If the user never earned out, its value will be 1                                   |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `modelingPopulation`             | String | Indicates which modeling population the user is, and therefore which models will score the user's ratings:.                                                                  | "CORE" or "EXPANSION"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |

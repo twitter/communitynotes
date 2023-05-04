@@ -1,8 +1,5 @@
 ---
 title: Needs Your Help ranking
-aliases: ["/timeline-tabs"]
-geekdocBreadcrumb: false
-geekdocToc: 1
 description: How Community Notes are ranked to become eligible for features and notifications
 ---
 

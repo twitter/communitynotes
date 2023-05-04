@@ -1,8 +1,5 @@
 ---
 title: Contributor helpfulness scores
-aliases: ["/contributor-scores", "/contributor-reputation"]
-geekdocBreadcrumb: false
-geekdocToc: 1
 enableMathJax: true
 description: Helpfulness scores are a way to give more influence to people with a track record of making high-quality contributions to Community Notes.
 ---

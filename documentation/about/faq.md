@@ -1,12 +1,9 @@
 ---
 title: FAQs
-geekdocBreadcrumb: false
-aliases: ["/faq", "/about/faq"]
 description: Who is eligible to participate in Community Notes? · Are contributions anonymous?
 ---
 
 ## Contributing to Community Notes
-
 
 {% accordionSection %}
 {% accordionItem title="Who is eligible to participate in Community Notes? Is there an approval process?" %}
@@ -72,6 +69,7 @@ Contributors who consistently write unhelpful notes may also have their [ability
 Community Notes will only be successful if the context it produces is found to be helpful and appropriate by a wide range of people with diverse views. This won’t be true if it can be taken over by a single group or ideology, or used in an abusive manner. We believe this is possible, and will be experimenting with different mechanics and incentives than Twitter to help make it happen. Learn more about how we are approaching these issues [here](../challenges).
 {% /accordionItem %}
 {% /accordionSection %}
+
 ## Research
 
 {% accordionSection %}

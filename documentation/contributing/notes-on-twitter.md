@@ -1,14 +1,5 @@
 ---
 title: Notes shown on Twitter
-geekdocBreadcrumb: false
-aliases:
-  [
-    "/notes-on-twitter",
-    "/cards-on-twitter",
-    "notes-on-tweets",
-    "cards-on-tweets",
-    "/contributing/notes-on-twitter",
-  ]
 description: How do Community Notes start showing on Twitter?
 ---
 
