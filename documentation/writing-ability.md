@@ -29,7 +29,7 @@ To determine if a contributor is eligible to keep writing notes:
 
 Contributors can unlock their note writing ability by increasing their Rating Impact by 5.
 
-For example: If a contributor's Rating Impact was 22 when their ability to write became locked, they must increase this score to 27 to unlock their ability to write.
+For example: if a contributor's Rating Impact was 22 when their ability to write became locked, they must increase this score to 27 to unlock their ability to write.
 
 [Learn more about Rating Impact](../impact) and get tips on how to increase it.
 
@@ -39,4 +39,4 @@ You'll receive notifications about how your notes have been rated by other contr
 
 ### How does Community Notes prevent raters from intentionally trying to lock someone else's ability to write?
 
-Note statuses in Community Notes aren't achieved by popularity or majority rules. For a note to reach a status of Helpful or Not Helpful, the system requires agreement between contributors who have sometimes disagreed in their past ratings. Ratings are also weighted based on how helpful a contributor has been in the past. This helps reduce one-sided ratings and helps to prevent manipulation. [Learn more here](../diversity).
+Note statuses in Community Notes aren't achieved by popularity or majority rules. For a note to reach a status of Helpful or Not Helpful, the system requires agreement between contributors who have sometimes disagreed in their past ratings. Ratings are also weighted based on how helpful a contributor has been in the past. This helps reduce one-sided ratings and helps to prevent manipulation. Learn more [here](../diversity).

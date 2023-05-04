@@ -20,7 +20,7 @@ In order to appear in any of the tabs in the Community Notes site, a Tweet must 
 
 Additionally, Community Notes offers a way for Tweet authors to [request additional review](../additional-review) on notes on their Tweets. If an author requests additional review, the relevant Tweet will appear in all contributors’ Needs Your Help tabs. If there are more than 10 active requests for additional review, Tweets will be sorted by by the ranking score described below, which incorporates the viewpoints of raters.
 
-### Needs your help alerts
+### Needs Your help alerts
 
 To ensure contributors don't miss the opportunity to rate notes on Tweets getting a lot of attention, Community Notes sends alerts requesting help from time to time.
 
@@ -33,14 +33,14 @@ Alerts are optimized to increase the chance that potentially helpful notes on Tw
 **Tweets are chosen based on:**
 
 - Projected future Likes and Retweets the Tweet will receive.
-- The rater can see the Tweet (for example, excludes Tweets from authors you've blocked)
+- The rater can see the Tweet (for example, excludes Tweets from authors you've blocked).
 
 **Notes are chosen based on meeting some of the following:**
 
 - Written by an author with positive Writing Impact and a high ratio of Helpful notes (Writing Impact / Total Notes Written) or high average helpfulness score of notes they authored.
-- Currently have a status of "Needs More Ratings"
-- Currently have a high helpfulness score, nearing the threshold to earn status of "Helpful"
-- Do not have a large number of ratings (such that more ratings could change the note's status)
+- Currently have a status of "Needs More Ratings".
+- Currently have a high helpfulness score, nearing the threshold to earn status of "Helpful".
+- Do not have a large number of ratings (such that more ratings could change the note's status).
 
 Notes are sent to a random selection of contributors, excluding the note author and those who have already rated the note. Notifications are also limited by the recipient's notification frequency setting.
 
@@ -48,4 +48,4 @@ We will continue to experiment with this logic to help ensure Needs Your Help no
 
 ### Rater similarity score for Needs Your Help
 
-Tweets on the Needs Your Help tab are sorted by a ranking score, where Tweets are ranked higher based on the proportion of notes on the Tweet that are labeled Needs More Rating. Tweets are also ranked higher if they have notes with moderately high intercept scores (>=0.25) but which don’t have at least 3 raters with a similar viewpoint as yours (measured by whether your viewpoint factor is positive or negative). This is a mechanism to increase the likelihood that people from diverse perspectives rate each note.
+Tweets on the Needs Your Help tab are sorted by a ranking score, where Tweets are ranked higher based on the proportion of notes on the Tweet that are labeled Needs More Rating. Tweets are also ranked higher if they have notes with moderately high intercept scores ($≥ 0.25$) but which don’t have at least 3 raters with a similar viewpoint as yours (measured by whether your viewpoint factor is positive or negative). This is a mechanism to increase the likelihood that people from diverse perspectives rate each note.
