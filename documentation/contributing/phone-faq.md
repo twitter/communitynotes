@@ -1,7 +1,5 @@
 ---
 title: Phone number troubleshooting
-geekdocBreadcrumb: false
-aliases: ["/phone-faq"]
 description: All Community Notes accounts must have phone numbers that are verified, use a trusted carrier, and are unique among all contributors.
 ---
 

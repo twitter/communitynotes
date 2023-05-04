@@ -1,7 +1,5 @@
 ---
 title: Getting started
-geekdocBreadcrumb: false
-aliases: ["/getting-started"]
 description: Step-by-step guide for getting started with Community Notes on Twitter.
 ---
 
@@ -33,5 +31,6 @@ To unlock the ability to write notes, you need to earn a Rating Impact of 5. You
 {{< button href="https://twitter.com/i/communitynotes/u/me" >}}Track your impact{{< /button >}}
 
 ### Confused? Need a hand? Have feedback?
+
 Don’t hesitate to get in touch with the Community Notes team! You can reach us by Tweeting to or DMing
 [@CommunityNotes](https://twitter.com/communitynotes). We’re so glad you’re here!

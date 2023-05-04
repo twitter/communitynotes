@@ -1,17 +1,5 @@
 ---
 title: Signing up
-aliases:
-  [
-    "/join",
-    "/signup",
-    "/sign-up",
-    "/signing-up",
-    "/contributing/signing-up",
-    "/contributing/sign-up",
-    "/contributing/signup",
-  ]
-geekdocBreadcrumb: false
-weight: 1
 description: Sign up now and become a Community Notes contributor on Twitter
 ---
 
@@ -22,24 +10,25 @@ As there are important nuances in each market, we’ll expand the contributor ba
 ## {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
 
 ---
+
 ## Eligibility
 
 To become a Community Notes contributor, accounts must have:
 
 1. **No recent notice of Twitter Rules violations**
 
-    Intended to reduce the likelihood of abusive contributions.
+   Intended to reduce the likelihood of abusive contributions.
 
 2. **Joined Twitter at least 6 months ago**
 
-    Intended to reduce spam.
+   Intended to reduce spam.
 
 3. **A verified phone number**
 
-    That phone number must be:
+   That phone number must be:
 
-    - From a trusted phone carrier
-    - Not associated with other Community Notes accounts
+   - From a trusted phone carrier
+   - Not associated with other Community Notes accounts
 
 These make it more likely that contributors are real people instead of bots or adversarial actors.
 

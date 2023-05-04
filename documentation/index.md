@@ -1,7 +1,5 @@
 ---
 title: Home
-# type: post
-aliases: ["/learn-more", "/intro", "/overview"]
 description: Learn everything about Community Notes, Twitter's open-source program to create a better-informed world.
 ---
 
@@ -11,61 +9,51 @@ description: Learn everything about Community Notes, Twitter's open-source progr
 
 Community Notes aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
 
-<br/>
-
-<div class="info-item">
-<img src="./images/people.svg" alt="Vector icon of 3 people together">
-<div>
+{% inline %}
+{% atmImage width="40" src="./images/people.svg" alt="Vector icon of 3 people together" /%}
 
 **Contributors write and rate notes**
-
 Contributors are people on Twitter, just like you, who [sign up](./join) to write and rate notes. The more people that participate, the better the program becomes.
 
-</div>
-</div>
+{% /inline %}
 
-<div class="info-item">
-<img src="./images/rate.svg" alt="Vector icon of a star, half-filled with color">
-<div>
+{% inline %}
+{% atmImage width="40" src="./images/rate.svg" alt="Vector icon of a star, half-filled with color" /%}
 
 **Only notes rated helpful by people from diverse perspectives appear on Tweets**
-
 Community Notes doesn't work by majority rules. To identify notes that are helpful to a wide range of people, notes require agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings.
 
 Learn more about how Community Notes handles [diverse perspectives](./diversity/).
 
-</div>
-</div>
+{% /inline %}
 
-<div class="info-item">
-<img src="./images/world.svg" alt="Vector icon of the earth">
-<div>
+{% inline %}
+{% atmImage width="40" src="./images/world.svg" alt="Vector icon of the earth" /%}
 
 **Twitter doesn’t choose what shows up, the people do**
 
 Twitter doesn’t write, rate or moderate notes (unless they break the Twitter rules.) We believe giving people a voice to make these choices together is a fair and effective way to add information that helps people stay better informed.
 
-</div>
-</div>
+{% /inline %}
 
-<div class="info-item">
-<img src="./images/open-source.svg" alt="Vector icon of 3 a network with distributed nodes">
-<div>
+{% inline %}
+{% atmImage width="40" src="./images/open-source.svg" alt="Vector icon of 3 a network with distributed nodes" /%}
 
 **Open-source and transparent**
 
 It’s important for people to understand how Community Notes works, and to be able to help shape it. The program is built on transparency: all contributions are published daily, and our ranking algorithm can be inspected by anyone. Learn more how it works [under the hood](./download-data.md).
 
-</div>
-</div>
+{% /inline %}
 
-<div class="info-box">
+{% box backgroundColor="gray-100" cornerRadius="radius-16" topPadding="space-12" bottomPadding="space-12" leftPadding="space-24" rightPadding="space-24" %}
 
-### Become a Community Notes contributor
+{% inline align="space-between" alignY="center" %}
+**Become a Community Notes contributor**
 
 {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
 
-</div>
+{% /inline %}
+{% /box %}
 
 ## Frequently asked questions
 

@@ -1,7 +1,5 @@
 ---
 title: Notifications
-geekdocBreadcrumb: false
-aliases: ["/alerts"]
 description: Community Notes notification settings
 ---
 

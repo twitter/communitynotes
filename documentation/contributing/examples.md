@@ -1,14 +1,5 @@
 ---
 title: Note-writing tips
-geekdocBreadcrumb: false
-aliases:
-  [
-    "/note-examples",
-    "/examples",
-    "/contributing/examples",
-    "/tips/",
-    "/note-writing-tips/",
-  ]
 description: Learn what makes a helpful Community Note on Twitter.
 ---
 

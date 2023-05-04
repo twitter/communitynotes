@@ -1,14 +1,5 @@
 ---
 title: Note ranking algorithm
-aliases:
-  [
-    "/ranking-notes",
-    "/note-ranking",
-    "/about/note-ranking",
-    "/about/ranking-notes",
-  ]
-geekdocBreadcrumb: false
-geekdocToc: 1
 enableMathJax: true
 description: How are Community Notes ranked? Learn more about our open-source algorithm
 ---
@@ -64,13 +55,13 @@ One challenge is that not all raters evaluate all notes - in fact most raters do
 
 We predict each rating as:
 
-$$ \hat{r}_{un} = \mu + i_u + i_n + f_u \cdot f_n $$
+$$ \hat{r}\_{un} = \mu + i_u + i_n + f_u \cdot f_n $$
 
 Where the prediction is the sum of three intercept terms: $\mu$ is the global intercept term, $i_u$ is the user’s intercept term, and $i_n$ is the note’s intercept term, added to the dot product of the user and notes’ factor vectors $f_u$ and $f_n$ (note that when user and note factors are close, a user is expected to give a higher rating to the note).
 
 To fit the model parameters, we minimize the following regularized least squared error loss function via gradient descent over the dataset of all observed ratings $r_{un}$:
 
-$$ \sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2) $$
+$$ \sum*{r*{un}} (r*{un} - \hat{r}*{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (||f_u||^2 + ||f_n||^2) $$
 
 Where $\lambda_i=0.15$, the regularization on the intercept terms, is currently 5 times higher than $\lambda_f=0.03$, the regularization on the factors.
 
@@ -104,7 +95,7 @@ This approach helps us to maintain data quality by recognizing when there is a t
 
 We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
 
-$$ a_{un} = \frac{\mathbb{1}_{a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5  }  $$
+$$ a*{un} = \frac{\mathbb{1}*{a\_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5 } $$
 
 Where:
 
@@ -113,7 +104,7 @@ Where:
 
 We define the total weight of an tag $a$ on note $n$ as:
 
-$$ n_{a} = \sum_{r_{un}} a_{un} $$
+$$ n*{a} = \sum*{r*{un}} a*{un} $$
 
 Notice the following:
 
@@ -142,7 +133,7 @@ Multi-Model ranking allows Community Notes to run multiple ranking algorithms be
 We use this ability to test new models, refine current approaches and support expanding the Community Notes contributor base.
 We currently run three note ranking models:
 
-- The _Core_ model runs the matrix factorization approach described above to determine status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
+- The _Core_ model runs the matrix factorization approach described above to determine status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years). We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
 - The _Expansion_ model runs the same ranking algorithm with the same parameters as the Core model, with the difference that the Expansion model includes all notes with all ratings across Core and Expansion areas.
 - The _Coverage_ model runs the same ranking algorithm and processes the same notes and ratings as the Core model, except the intercept regularization $\lambda_i$ and Helpful note threshold have been [tuned differently](https://github.com/twitter/communitynotes/blob/main/sourcecode/scoring/mf_coverage_scorer.py) to increase the number of Helpful notes.
 
@@ -154,6 +145,7 @@ We have initialized the Core model safeguard threshold to 0.38, 0.02 below the C
 
 When using Twitter, you can see which model computed the status a given note by looking at the Note Details screen.
 It might list one of the following models:
+
 - CoreModel (vX.X). The _Core_ model described above.
 - ExpansionModel (vX.X). The _Expansion_ model described above.
 - CoverageModel (vX.X). The _Coverage_ model described above.
@@ -197,8 +189,6 @@ For helpful notes:
 9. Other
 ```
 
-<br/>
-
 For not-helpful notes:
 
 ```
@@ -216,8 +206,6 @@ For not-helpful notes:
 12. Other
 ```
 
-</br>
-
 ## Complete Algorithm Steps:
 
 1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence).
@@ -226,10 +214,8 @@ For not-helpful notes:
 4. Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3.
 5. Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
 6. Reconcile scoring results from the Core, Expansion and Coverage models to generate final status for each note.
-7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags.  Stabilize helpfulness status for any notes older than two weeks.
+7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags. Stabilize helpfulness status for any notes older than two weeks.
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](./#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
-
-<br/>
 
 ## What’s New?
 
@@ -240,7 +226,7 @@ For not-helpful notes:
 **April 14, 2023**
 
 - Add additional rule to label more notes "Not Helpful", by computing an upper confidence bound on each note's intercept by adding pseudo-ratings, and marking notes "Not Helpful" if their intercept's upper confidence bound is less than -0.04.
-- Previously, we had different logic to determine which notes were "Not Helpful" depending on whether the note said the Tweet was misleading or not. In this change, we apply the same logic to notes that say the Tweet is *not* misleading as was already applied to notes that say the Tweet is misleading.
+- Previously, we had different logic to determine which notes were "Not Helpful" depending on whether the note said the Tweet was misleading or not. In this change, we apply the same logic to notes that say the Tweet is _not_ misleading as was already applied to notes that say the Tweet is misleading.
 - Due to the large change, increment the model version to 1.1 from 1.0.
 - Train models in parallel with multiprocessing, because we are now training multiple models that do not need to all run sequentially.
 
@@ -256,8 +242,7 @@ For not-helpful notes:
 
 - Introduced support for running multiple ranking models.
 - Launched ranking support for Community Notes global expansion, partitioning notes and ratings by Core and Expansion to maintain note ranking quality while growing globally.
-- Launched Coverage model with increased intercept regularization.  This model will run along-side the Core note ranking model to increase Helpful note coverage.
-
+- Launched Coverage model with increased intercept regularization. This model will run along-side the Core note ranking model to increase Helpful note coverage.
 
 **January 20, 2023**
 
@@ -289,6 +274,7 @@ For not-helpful notes:
 - Launched scoring logic adjusting standards for "Helpful" notes based on tags assigned in reviews labeling the note as "Not Helpful."
 
 **October 3, 2022**
+
 - Updated the rating form to better capture the strengths of notes which add context without indicating the Tweet is misleading. We have resumed assigning status to notes marking Tweets as "not misleading" in select circumstances as we evaluate ranking quality and utility to users.
 
 **July 13, 2022**

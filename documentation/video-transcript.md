@@ -1,7 +1,5 @@
 ---
 title: Video transcript
-geekdocBreadcrumb: false
-aliases: ["/video-transcript"]
 ---
 
 Introducing Community Notes (formerly called Birdwatch).
