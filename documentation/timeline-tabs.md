@@ -20,7 +20,7 @@ In order to appear in any of the tabs in the Community Notes site, a Tweet must 
 
 Additionally, Community Notes offers a way for Tweet authors to [request additional review](../additional-review) on notes on their Tweets. If an author requests additional review, the relevant Tweet will appear in all contributors’ Needs Your Help tabs. If there are more than 10 active requests for additional review, Tweets will be sorted by by the ranking score described below, which incorporates the viewpoints of raters.
 
-### Needs Your help alerts
+### Needs Your Help alerts
 
 To ensure contributors don't miss the opportunity to rate notes on Tweets getting a lot of attention, Community Notes sends alerts requesting help from time to time.
 
