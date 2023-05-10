@@ -37,7 +37,7 @@ This delay allows Community Notes to collect a set of independent ratings from p
 
 ![Mockup of the rating prompt for rating notes. It reads: ”Is this note helpful?” And presents three options: Yes, Somewhat, or No](../images/helpful-ranking.png)
 
-When rating notes, contributors answer the question “Is this note helpful?” Answers to that question are then used to rank notes. When Community Notes (formerly called Birdwatch) launched in January 2021, people could answer “yes” or “no” to that question. An update on June 30, 2021, allows people to choose between “yes,” “somewhat” and “no.” We map these responses to continuous values from 0.0 to 1.0, hereafter referred to as “helpful scores”:
+When rating notes, contributors answer the question “Is this note helpful?”. Answers to that question are then used to rank notes. When Community Notes (formerly called Birdwatch) launched in January 2021, people could answer “yes” or “no” to that question. An update on June 30, 2021 allows people to choose between “yes,” “somewhat” and “no.” We map these responses to continuous values from 0.0 to 1.0, hereafter referred to as “helpful scores”:
 
 - `Yes` maps to `1.0`
 - `Somewhat` maps to `0.5`.
@@ -49,7 +49,7 @@ Specific values in the mapping may change in the future and will be updated here
 
 ## Matrix Factorization
 
-The main technique we use to determine which notes are helpful or unhelpful is matrix factorization on the note-rater matrix, a sparse matrix that encodes, for each note and rater, whether that rater found the note to be helpful or unhelpful. This approach, originally made famous by Funk in the 2006 Netflix prize recommender system competition, seeks a latent representation (embedding) of users and items which can explain the affinity of certain users for certain items [[1](https://sifter.org/~simon/journal/20061211.html)] [[2](https://datajobs.com/data-science-repo/Recommender-Systems-[Netflix].pdf)]. In our application, this representation space identifies whether notes may appeal to raters with specific viewpoints, and as a result, we can identify notes with broad appeal across viewpoints.
+The main technique we use to determine which notes are helpful or unhelpful is matrix factorization on the note-rater matrix, a sparse matrix that encodes, for each note and rater, whether that rater found the note to be helpful or unhelpful. This approach, originally made famous by Funk in the 2006 Netflix prize recommender system competition, seeks a latent representation (embedding) of users and items which can explain the affinity of certain users for certain items [[1](https://sifter.org/~simon/journal/20061211.html)] [[2](https://datajobs.com/data-science-repo/Recommender-Systems-[Netflix].pdf)]. In our application, this representation space identifies whether notes may appeal to raters with specific viewpoints, and as a result, we are able to identify notes with broad appeal across viewpoints.
 
 One challenge is that not all raters evaluate all notes - in fact, most raters do not rate most notes - and this sparsity leads to outliers and noise in the data. Regularization techniques are a common solution to these issues; a key distinction in our approach is that we use much higher regularization on the intercept terms, which capture the helpfulness of a note or rater that is not explained by viewpoint agreement, relative to the embedding factors. This encourages a representation that uses user and note embeddings to explain as much variation in the ratings as possible before fitting additional note- and user-specific intercepts. As a result, for a note to achieve a high intercept term (which is the note’s helpfulness score), it must be rated helpful by raters with a diversity of viewpoints (factor embeddings). Notes are given a single global score-- their intercept term-- rather than using this algorithm in the traditional way to personalize content as in a recommender system.
 
@@ -74,7 +74,7 @@ This approach has a few nice properties:
 - Extra regularization on the intercept terms in practice requires that notes are rated by raters with diverse factors before a note gets a label (the note intercept term becomes very large or very small)
 - We can represent multidimensional viewpoint spaces by increasing the dimensionality of the factors, without changing the algorithm itself
 - Rater-specific intercept terms capture how lenient or generous each rater is with their helpful ratings
-- We can include somewhat helpful ratings naturally as 0.5
+- We are able to include somewhat helpful ratings naturally by using a value of 0.5
 
 Note: for now, to avoid overfitting on our very small dataset, we only use 1-dimensional factors. We expect to increase this dimensionality as our dataset size grows significantly.
 
@@ -82,7 +82,7 @@ Additionally, because the matrix factorization is re-trained from scratch every 
 
 ## Modeling Uncertainty
 
-While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are added. We add both helpful and not-helpful ratings, from pseudo-raters with the min and max possible rater intercepts, and with the min and max possible factors (as well as 0, since 0-factor raters can often have an outsized impact on note intercepts). This approach is similar in spirit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
+While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the minimum and maximum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are added. We add both helpful and not-helpful ratings, from pseudo-raters with the min and max possible rater intercepts, and with the min and max possible factors (as well as 0, since 0-factor raters can often have an outsized impact on note intercepts). This approach is similar in spirit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
 
 We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.05, in addition to the rules on the raw intercept values defined in the previous section. We also currently assign notes a "Helpful" status if the min (lower confidence bound) of their intercept is at least 0.31.
 
@@ -95,7 +95,7 @@ This approach helps us to maintain data quality by recognizing when there is a t
 
 We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
 
-$$ a_{un} = \frac{\mathbb{1}_{a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5 } $$
+$$ a_{un} = \frac{\mathbb{1}_{a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5  }  $$
 
 Where:
 
@@ -109,7 +109,7 @@ $$ n_{a} = \sum_{r_{un}} a_{un} $$
 Notice the following:
 
 - No single rating can achieve a tag weight $a_{un} > 1$.
-- Ratings, where the rater factor and note factor are equal, will achieve the maximum weight of 1.0, ratings at a 40th percentile distance will achieve a weight of 0.5, and reviews at 2x the 40th percentile distance will have a weight of ~0.03. All ratings will have positive weight.
+- Ratings where the rater factor and note factor are equal will achieve the maximum weight of 1.0, ratings at a 40th percentile distance will achieve a weight of 0.5, and reviews at 2x the 40th percentile distance will have a weight of ~0.03. All ratings will have positive weight.
 - Assigning higher weights to tags in ratings where the rater and note are closer in the embedding space effectively lends greater weight to critical ratings from raters who tend to share the same perspective as the note.
 
 Given the quantities defined above, we modify scoring as follows:
@@ -131,7 +131,7 @@ Similarly, if a note was impacted by tag outlier filter and required note interc
 
 Multi-Model ranking allows Community Notes to run multiple ranking algorithms before reconciling the results to assign final note status.
 We use this ability to test new models, refine current approaches, and support expanding the Community Notes contributor base.
-We currently run three note-ranking models:
+We currently run three note ranking models:
 
 - The _Core_ model runs the matrix factorization approach described above to determine the status of notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years). We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
 - The _Expansion_ model runs the same ranking algorithm with the same parameters as the Core model, with the difference that the Expansion model includes all notes with all ratings across Core and Expansion areas.
