@@ -21,6 +21,24 @@ Anyone can read and rate Community Notes, but only contributors who've [unlocked
 
 5. You can delete your notes at any time by clicking or tapping the ••• icon on a note.
 
+
+### Note writing limit
+
+To keep note quality high and prevent spam, there’s a limit to the number of note proposals contributors can write in a 24 hour period.
+
+The limit is equal to the contributor’s Writing Impact plus 5, unless Writing Impact is negative, in which case the limit is 1.
+
+This dynamic limit helps ensure that contributors can write more notes as they build a track record of writing notes people find helpful.
+
+For example:
+
+- A contributor with -1 Writing Impact can write 1 note every 24 hours.
+- A contributor with 0 Writing Impact can write 5 notes every 24 hours.
+- A contributor with 3 Writing Impact can write 8 notes every 24 hours.
+- A contributor with 12 Writing Impact can write 17 notes every 24 hours.
+- …etc
+
+
 ### What makes a good Community Note?
 
 {% button buttonTitle="See examples" buttonHref="https://communitynotes.twitter.com/guide/en/contributing/examples" /%}
