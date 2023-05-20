@@ -55,6 +55,7 @@ class MFExpansionScorer(MFBaseScorer):
       ]
       + c.notHelpfulTagsAdjustedColumns
       + c.notHelpfulTagsAdjustedRatioColumns
+      + c.incorrectFilterColumns
       + c.noteParameterUncertaintyTSVAuxColumns
     )
 

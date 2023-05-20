@@ -24,9 +24,11 @@ class RuleID(Enum):
   UCB_CRNH = RuleAndVersion("UcbCRNH", "1.0", False)
   LCB_CRH = RuleAndVersion("LcbCRH", "1.0", False)
   TAG_OUTLIER = RuleAndVersion("TagFilter", "1.0", False)
+  ELEVATED_CRH = RuleAndVersion("CRHSuperThreshold", "1.0", False)
   NM_CRNH = RuleAndVersion("NmCRNH", "1.0", False)
   GENERAL_CRH_INERTIA = RuleAndVersion("GeneralCRHInertia", "1.0", False)
   ELEVATED_CRH_INERTIA = RuleAndVersion("ElevatedCRHInertia", "1.0", False)
+  INCORRECT_OUTLIER = RuleAndVersion("FilterIncorrect", "1.0", False)
 
   # Rules used in _meta_score.
   META_INITIAL_NMR = RuleAndVersion("MetaInitialNMR", "1.0", False)
@@ -292,8 +294,6 @@ class FilterTagOutliers(ScoringRule):
         (crhStats[adjustedColumn] > self._minAdjustedTotal)
         # Adjusted ratio must exceed percentile based total for this specific tag.
         & (crhStats[adjustedRatioColumn] > thresholds[adjustedRatioColumn])
-        # Note intercept must be lower than crhSuperThreshold which overrides tag filter.
-        & (crhStats[c.internalNoteInterceptKey] < self._crhSuperThreshold)
       ][c.noteIdKey]
       impactedNotes = pd.concat(
         [impactedNotes, pd.DataFrame({c.noteIdKey: tagFilteredNotes, c.activeFilterTagsKey: tag})]
@@ -308,6 +308,53 @@ class FilterTagOutliers(ScoringRule):
     noteStatusUpdates = impactedNotes[[c.noteIdKey]].drop_duplicates()
     noteStatusUpdates[statusColumn] = self._status
     return (noteStatusUpdates, impactedNotes)
+
+
+class FilterIncorrect(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    status: str,
+    weightedTotalVotes: float = 1.0,
+  ):
+    """Filter CRH notes for outliers with high levels of incorrect tag from similar factor raters.
+
+    Args:
+      rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
+      dependencies: Rules which must run before this rule can run.
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
+      weightedTotalVotes: For the filter to trigger, the sum of weighted incorrect votes must
+        exceed the minAdjustedTotal.
+    """
+    super().__init__(ruleID, dependencies)
+    self._status = status
+    self.weightedTotalVotes = weightedTotalVotes
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> (Tuple[pd.DataFrame, pd.DataFrame]):
+    """Returns notes on track for CRH with high levels of any tag to receive NMR status."""
+    # Prune noteStats to only include CRH notes.
+    crhNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][[c.noteIdKey]]
+    crhStats = noteStats.merge(crhNotes, on=c.noteIdKey, how="inner")
+
+    # Identify impacted notes.
+    crhStats["score"] = crhStats["tf_idf_incorrect_interval"] + crhStats["tf_idf_incorrect_same"]
+
+    noteStatusUpdates = crhStats.loc[
+      ((crhStats["notHelpfulIncorrect_interval"] > 1) | (crhStats["notHelpfulIncorrect_same"] > 1))
+      & (crhStats["num_voters_interval"] > 2)
+      & (crhStats["num_voters_same"] > 2)
+      & (crhStats["score"] >= self.weightedTotalVotes)
+    ][[c.noteIdKey]]
+
+    pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
+
+    print(f"Total notes impacted by incorrect filtering: {len(noteStatusUpdates)}")
+    noteStatusUpdates[statusColumn] = self._status
+
+    return (noteStatusUpdates, None)
 
 
 class InsufficientExplanation(ScoringRule):

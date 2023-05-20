@@ -33,6 +33,7 @@ class MFBaseScorer(Scorer):
     crhThresholdLCBIntercept: float = 0.31,
     crhSuperThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
+    weightedTotalVotes: float = 1.0,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -83,6 +84,7 @@ class MFBaseScorer(Scorer):
     self._crhThresholdLCBIntercept = crhThresholdLCBIntercept
     self._crhSuperThreshold = crhSuperThreshold
     self._inertiaDelta = inertiaDelta
+    self._weightedTotalVotes = weightedTotalVotes
     self._mfRanker = matrix_factorization.MatrixFactorization()
 
   def get_scored_notes_cols(self) -> List[str]:
@@ -112,10 +114,11 @@ class MFBaseScorer(Scorer):
 
   def get_auxiliary_note_info_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the auxiliaryNoteInfo output."""
-    return [
-      c.noteIdKey,
-      c.ratingWeightKey,
-    ] + (c.notHelpfulTagsAdjustedColumns + c.notHelpfulTagsAdjustedRatioColumns)
+    return [c.noteIdKey, c.ratingWeightKey,] + (
+      c.notHelpfulTagsAdjustedColumns
+      + c.notHelpfulTagsAdjustedRatioColumns
+      + c.incorrectFilterColumns
+    )
 
   def _get_dropped_note_cols(self) -> List[str]:
     """Returns a list of columns which should be excluded from scoredNotes and auxiliaryNoteInfo."""
@@ -185,6 +188,7 @@ class MFBaseScorer(Scorer):
       crhThresholdLCBIntercept=self._crhThresholdLCBIntercept,
       crhSuperThreshold=self._crhSuperThreshold,
       inertiaDelta=self._inertiaDelta,
+      weightedTotalVotes=self._weightedTotalVotes,
     )
 
     # Determine "valid" ratings
@@ -276,6 +280,7 @@ class MFBaseScorer(Scorer):
       crhThresholdLCBIntercept=self._crhThresholdLCBIntercept,
       crhSuperThreshold=self._crhSuperThreshold,
       inertiaDelta=self._inertiaDelta,
+      weightedTotalVotes=self._weightedTotalVotes,
       finalRound=True,
     )
     # Takes raterParams from most recent MF run, but use the pre-computed

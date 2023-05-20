@@ -82,7 +82,7 @@ def get_top_nonhelpful_tags_per_author(
     ),
     axis=1,
   )[[c.noteIdKey, c.firstTagKey, c.secondTagKey]]
-  # Aggregates top two tags per author.
+  # Aggreagtes top two tags per author.
   notesToUse = noteStatusHistory[[c.noteAuthorParticipantIdKey, c.noteIdKey]]
   authorTagsAgg = (
     notesToUse.merge(noteTopTags, on=[c.noteIdKey])
