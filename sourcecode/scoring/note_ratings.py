@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Optional
 
-from . import constants as c, scoring_rules, tag_filter
+from . import constants as c, incorrect_filter, scoring_rules, tag_filter
 from .scoring_rules import RuleID
 
 import numpy as np
@@ -371,6 +371,7 @@ def compute_scored_notes(
   crhThresholdLCBIntercept: float,
   crhSuperThreshold: float,
   inertiaDelta: float,
+  weightedTotalVotes: float,
   finalRound: bool = False,
   # TODO: We might want to consider inputing only the series here, instead of the whole callable
   is_crh_function: Callable[..., pd.Series] = is_crh,
@@ -403,6 +404,7 @@ def compute_scored_notes(
         repeated reason tags in not-helpful ratings to achieve CRH status.
       inertiaDelta: Minimum amount which a note that has achieve CRH status must drop below the
         applicable threshold to lose CRH status.
+      weightedTotalVotes: Minimum number of weighted incorrect votes required to lose CRH status.
       finalRound: If true, enable additional status assignment logic which is only applied when
         determining final status.  Given that these mechanisms add complexity we don't apply them
         in earlier rounds.
@@ -471,6 +473,10 @@ def compute_scored_notes(
     tagAggregates = tag_filter.get_note_tag_aggregates(ratings, noteParams, raterParams)
     assert len(tagAggregates) == len(noteParams), "there should be one aggregate per scored note"
     noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer")
+    incorrectAggregates = incorrect_filter.get_incorrect_aggregates(
+      ratings, noteParams, raterParams
+    )
+    noteStats = noteStats.merge(incorrectAggregates, on=c.noteIdKey, how="outer")
 
     # Add tag filtering and sticky scoring logic.
     rules.extend(
@@ -489,6 +495,13 @@ def compute_scored_notes(
           c.needsMoreRatings,
           crhSuperThreshold,
         ),
+        scoring_rules.RuleFromFunction(
+          RuleID.ELEVATED_CRH,
+          {RuleID.INITIAL_NMR},
+          c.currentlyRatedHelpful,
+          lambda noteStats: is_crh_function(noteStats, minRatingsNeeded, crhSuperThreshold),
+          onlyApplyToNotesThatSayTweetIsMisleading=True,
+        ),
         scoring_rules.AddCRHInertia(
           RuleID.ELEVATED_CRH_INERTIA,
           {RuleID.TAG_OUTLIER},
@@ -496,6 +509,9 @@ def compute_scored_notes(
           crhSuperThreshold - inertiaDelta,
           crhSuperThreshold,
           minRatingsNeeded,
+        ),
+        scoring_rules.FilterIncorrect(
+          RuleID.INCORRECT_OUTLIER, {RuleID.TAG_OUTLIER}, c.needsMoreRatings, weightedTotalVotes
         ),
       ]
     )
