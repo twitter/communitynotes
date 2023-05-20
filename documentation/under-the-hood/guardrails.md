@@ -2,6 +2,7 @@
 title: Guardrails and Circuit Breakers
 description: Community Notes tracks a number of quality measures, with a corresponding set of operational guardrails.
 ---
+#  Guardrails and Circuit Breakers
 
 Community Notes aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful context to Tweets that might be misleading or missing important context.
 

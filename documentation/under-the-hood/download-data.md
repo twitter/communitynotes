@@ -2,6 +2,7 @@
 title: Downloading data
 description: All Community Notes contributions are publicly available so that anyone has free access to analyze the data.
 ---
+# Downloading data
 
 We can't wait to learn with you!
 

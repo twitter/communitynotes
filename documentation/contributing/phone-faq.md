@@ -2,6 +2,7 @@
 title: Phone number troubleshooting
 description: All Community Notes accounts must have phone numbers that are verified, use a trusted carrier, and are unique among all contributors.
 ---
+# Phone number troubleshooting
 
 All Community Notes accounts must have phone numbers that are verified, use a trusted carrier, and are unique among all contributors. This helps protect Community Notes from spam and uphold the quality of contributions.
 

@@ -2,6 +2,7 @@
 title: Rating and Writing Impact
 description: The two most important activities in Community Notes are writing notes and rating notes.
 ---
+# Rating and Writing Impact
 
 The two most important activities in Community Notes are [writing notes](../writing-notes) and [rating notes](../rating-notes). Contributors can see the history of their past Writing Impact and Rating Impact on their profiles.
 

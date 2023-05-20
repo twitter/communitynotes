@@ -2,6 +2,7 @@
 title: Locking and unlocking the ability to write notes
 description: Unlocking writing ability for the first time · Losing writing ability
 ---
+# Locking and unlocking the ability to write notes
 
 To keep the quality of Community Notes high, contributors earn (and can lose) the ability to write notes.
 

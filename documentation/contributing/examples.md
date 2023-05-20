@@ -2,6 +2,7 @@
 title: Note-writing tips
 description: Learn what makes a helpful Community Note on Twitter.
 ---
+# Note-writing tips
 
 Great notes provide helpful context to Tweets and leave people better informed. But what makes a note helpful?
 

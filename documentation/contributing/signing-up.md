@@ -2,6 +2,7 @@
 title: Signing up
 description: Sign up now and become a Community Notes contributor on Twitter
 ---
+# Signing up
 
 Sign ups are open to everyone. We want anyone to be able to participate and know that having contributors with [different points of view](../diversity) is essential to Community Notes helpfully addressing misinformation.
 

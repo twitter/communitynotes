@@ -2,6 +2,7 @@
 title: Welcome to Community Notes!
 description: Welcome to Community notes · Select an alias · Begin rating notes
 ---
+# Welcome to Community Notes!
 
 You're now a Community Notes contributor 🎉
 
