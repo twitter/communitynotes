@@ -2,6 +2,7 @@
 title: Notes shown on Twitter
 description: How do Community Notes start showing on Twitter?
 ---
+# Notes shown on Twitter
 
 Community Notes' goal is to show helpful context to people when they come across potentially misleading information on Twitter. When a note is rated Helpful by contributors, it starts being shown directly on the Tweet. Here's how they show up:
 

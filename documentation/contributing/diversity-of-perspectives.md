@@ -2,6 +2,7 @@
 title: Diversity of perspectives
 description: Learn more about how Community Notes identifies notes that many people on Twitter will find helpful, including people with different points of view.
 ---
+# Diversity of perspectives
 
 Community Notes aims to identify notes that many people on Twitter will find helpful, including people with different points of view.
 

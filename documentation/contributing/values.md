@@ -2,6 +2,7 @@
 title: Values
 description: Contribute to build understanding · Act in good faith · Be helpful, even to those who disagree
 ---
+# Values
 
 Community Notes aims to provide context on Tweets in a way that a broad set of people with diverse perspectives find helpful. We ask that all Community Notes contributors agree to uphold three core values:
 

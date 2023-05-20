@@ -2,6 +2,7 @@
 title: Open-source code
 description: Download the open-source files that power Community Notes on Twitter.
 ---
+# Open-source code
 
 Here you can find links to code that reproduces the note scoring/ranking code that Twitter runs in production: [code on Github](https://github.com/twitter/communitynotes/tree/main/sourcecode).
 

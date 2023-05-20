@@ -2,6 +2,7 @@
 title: Writing notes
 description: A step-by-step guide on how to write Community Notes on Twitter.
 ---
+# Writing notes
 
 Anyone can read and rate Community Notes, but only contributors who've [unlocked the ability to write](../writing-ability) can add new notes to Tweets. Here's how to add a note:
 

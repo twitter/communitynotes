@@ -2,6 +2,7 @@
 title: Notifications
 description: Community Notes notification settings
 ---
+# Notifications
 
 ## Readers added a note to a Tweet to which you replied, Liked or Retweeted
 

@@ -2,6 +2,7 @@
 title: Rating notes
 description: A step-by-step guide to rating Community Notes
 ---
+# Rating notes
 
 Ratings help identify which notes are helpful enough to show on Twitter and notes that are not helpful and should not be shown.
 

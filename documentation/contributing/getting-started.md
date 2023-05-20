@@ -2,6 +2,7 @@
 title: Getting started
 description: Step-by-step guide for getting started with Community Notes on Twitter.
 ---
+#  Getting started
 
 ## 1. Sign up
 
