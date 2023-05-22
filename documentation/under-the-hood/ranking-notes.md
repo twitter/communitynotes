@@ -120,7 +120,7 @@ Given the quantities defined above, we modify scoring as follows:
 
 ## Additional Filtering for Incorrect Tags
 
-Because surfacing high-quality information is the primary goal of Community Notes, we employ extra checks around Currently Rated Helpful notes that we have reason to believe may contain incorrect information. For any given note-rater pair, properties including the note and rater factors (See [Matrix Factorization](#matrix-factorization)), a rater's propensity to assign the "Incorrect" tag, and the overall polarization of assigned "Not Helpful" tags predict, at baseline, how likely a rater is to rate a note as "Incorrect". When we observe "Incorrect" ratings to be "surprisingly popular" among raters who would be expected to have a low probability of rating the note "Incorrect", we remove Currently Rated Helpful status from these notes. 
+Because surfacing high-quality information is the primary goal of Community Notes, the ranking algorithm employs extra checks around Currently Rated Helpful notes that ratings indicate might contain incorrect information. For any given note-rater pair, properties including the note and rater factors (See [Matrix Factorization](#matrix-factorization)), a rater's propensity to assign the "Incorrect" tag, and the overall polarization of assigned "Not Helpful" tags predict, at baseline, how likely a rater is to rate a note as "Incorrect". When "Incorrect" ratings on a given note are "surprisingly popular" among raters who would be expected to have a low probability of rating the note "Incorrect", the note will not earn a Currently Rated Helpful status.
 
 ## CRH Inertia
 
