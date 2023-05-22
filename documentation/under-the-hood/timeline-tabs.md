@@ -16,7 +16,7 @@ It contains a set of 10 Tweets that have notes that need more ratings (although 
 
 In order to appear in any of the tabs in the Community Notes site, a Tweet must have received at least 100 total likes plus Retweets.
 
-Additionally, Community Notes offers a way for Tweet authors to [request additional review](../additional-review) on notes on their Tweets. If an author requests additional review, the relevant Tweet will appear in all contributors’ Needs Your Help tabs. If there are more than 10 active requests for additional review, Tweets will be sorted by by the ranking score described below, which incorporates the viewpoints of raters.
+Additionally, Community Notes offers a way for Tweet authors to [request additional review](../contributing/additional-review.md) on notes on their Tweets. If an author requests additional review, the relevant Tweet will appear in all contributors’ Needs Your Help tabs. If there are more than 10 active requests for additional review, Tweets will be sorted by by the ranking score described below, which incorporates the viewpoints of raters.
 
 ### Needs your help alerts
 

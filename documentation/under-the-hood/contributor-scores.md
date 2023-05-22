@@ -7,7 +7,7 @@ description: Helpfulness scores are a way to give more influence to people with 
 
 Helpfulness scores are a way to give more influence to people with a track record of making high-quality contributions to Community Notes. There are currently two types of author helpfulness scores and one rater helpfulness score.
 
-In order to get enough data from new raters to be able to assess how similarly they rate notes to others, we require a minimum of 10 ratings made before helpfulness scores are computed and ratings may be counted. Additionally, to help mitigate misuse of Community Notes, contributors with helpfulness scores that are too low are filtered out, since those contributors are consistently not found helpful by a [diverse set of raters](../diversity).
+In order to get enough data from new raters to be able to assess how similarly they rate notes to others, we require a minimum of 10 ratings made before helpfulness scores are computed and ratings may be counted. Additionally, to help mitigate misuse of Community Notes, contributors with helpfulness scores that are too low are filtered out, since those contributors are consistently not found helpful by a [diverse set of raters](../contributing/diversity-of-perspectives.md).
 
 ## Author Helpfulness Scores
 
@@ -15,7 +15,7 @@ In order to get enough data from new raters to be able to assess how similarly t
 
 This score is the proportion of notes you’ve written (that have gotten at least 5 ratings) that have reached the status of Helpful ("Currently Rated Helpful", or CRH), minus 5 times the proportion of notes you wrote that reached the status of Not Helpful ("Currently Rated Not Helpful", or CRNH).
 
-Contributors must have a ratio of at least 0.0 to be included in the [second round of note scoring](../ranking-notes/#complete-algorithm-steps) (contributors need to write at least 5 CRH notes for every 1 CRNH note they write in order for their ratings to count); this filters out a small percentage of raters. Labels on notes that have been deleted after May 19, 2022 continue to affect this score, so that the score can’t be trivially changed by deleting CRNH notes.
+Contributors must have a ratio of at least 0.0 to be included in the [second round of note scoring](./ranking-notes.md) (contributors need to write at least 5 CRH notes for every 1 CRNH note they write in order for their ratings to count); this filters out a small percentage of raters. Labels on notes that have been deleted after May 19, 2022 continue to affect this score, so that the score can’t be trivially changed by deleting CRNH notes.
 
 ### Author Mean Note Score
 
@@ -25,7 +25,7 @@ This score is the average score of notes you’ve written (that have gotten at l
 
 The Rater Helpfulness Score reflects how similar a contributor’s ratings are to the ratings on notes that eventually reached the status of “Helpful” or "Not Helpful” (indicating clear widespread consensus among raters, and not labeled “Needs More Ratings”).
 
-Only [Valid Ratings](./#valid-ratings) are used in computing rater helpfulness scores. This is done to both reward quick rating, and to prevent one form of artificially gaming this score (retroactively rating old notes with clear labels).
+Only [Valid Ratings](#valid-ratings) are used in computing rater helpfulness scores. This is done to both reward quick rating, and to prevent one form of artificially gaming this score (retroactively rating old notes with clear labels).
 
 Rater Helpfulness is not defined until the contributor has made at least one valid rating (defined below). Then the Rater Helpfulness Score is the fraction of their valid ratings that match the final note status label of whether the note was rated helpful or not rated helpful.
 
@@ -48,7 +48,7 @@ Community Notes gives more weight to contributors who are good at identifying wh
 
 Community Notes does this by incorporating a subset of ratings in a second round of note scoring. Contributors’ ratings are only included in the second round of note scoring if:
 
-- They have made at least 10 total ratings (on notes that have at least 5 ratings) and have made at least 1 [valid rating](./#valid-ratings).
+- They have made at least 10 total ratings (on notes that have at least 5 ratings) and have made at least 1 [valid rating](#valid-ratings).
 - Their rater helpfulness score must be at least 0.66
 - If they have written any notes that have received at least 5 ratings (contributors who haven’t written any such notes are included):
   - The CRH-vs.-CRNH ratio of notes they’ve authored must be at least 0.0

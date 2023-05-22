@@ -26,4 +26,4 @@ Community Notes contributors and people on Twitter may also see notes and prompt
 
 ## Rating Impact
 
-When your ratings help a note reach a status of Helpful or Not Helpful, you'll earn Rating Impact. [Learn more here](../impact)
+When your ratings help a note reach a status of Helpful or Not Helpful, you'll earn Rating Impact. [Learn more here](./writing-and-rating-impact.md)

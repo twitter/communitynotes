@@ -4,7 +4,7 @@ description: The two most important activities in Community Notes are writing no
 ---
 # Rating and Writing Impact
 
-The two most important activities in Community Notes are [writing notes](../writing-notes) and [rating notes](../rating-notes). Contributors can see the history of their past Writing Impact and Rating Impact on their profiles.
+The two most important activities in Community Notes are [writing notes](./writing-notes.md) and [rating notes](./rating-notes.md). Contributors can see the history of their past Writing Impact and Rating Impact on their profiles.
 
 ![Screen showing an anonymous contributor, their avatar, and alias name.](../images/writing-and-rating-impact.png)
 
@@ -20,15 +20,15 @@ Notes in ‘Needs More Ratings’ status don't count towards Writing Impact.
 
 To increase your Impact, you need to write notes that earn the status of Helpful when rated by other contributors.
 
-Note statuses [aren’t reached by majority rule](../diversity). A note will reach a status of Helpful or Not Helpful only when there's agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings.
+Note statuses [aren’t reached by majority rule](./diversity-of-perspectives.md). A note will reach a status of Helpful or Not Helpful only when there's agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings.
 
-Here are some tips on how to [write helpful notes](../examples).
+Here are some tips on how to [write helpful notes](./examples.md).
 
 ## Rating Impact
 
 Rating Impact reflects how often a contributor's ratings helped the community identify notes that earned a status of Helpful or Not Helpful. It increases when a contributor rates a note before it has reached a status, and when their rating matches the status reached by the note. Impact decreases when a contributor rates a note opposite the status it later reaches.
 
-Note statuses can change any time as more ratings come in, and can be overturned if a [broad enough group of contributors agrees](../diversity) that it should change.
+Note statuses can change any time as more ratings come in, and can be overturned if a [broad enough group of contributors agrees](./diversity-of-perspectives.md) that it should change.
 
 ![Screen with details about a Community Notes contributor's Rating Impact.](../images/rating-impact.png)
 
@@ -44,7 +44,7 @@ To increase this impact, you should look for notes that need more ratings, and r
 
    When you help a note reach a status of Not Helpful, you're also improving Community Notes. Note authors get feedback based on your rating, and other raters can more easily focus on the most promising notes.
 
-Here are [tips on how to identify Helpful and Not Helpful notes](../examples).
+Here are [tips on how to identify Helpful and Not Helpful notes](./examples.md).
 
 ---
 
@@ -52,7 +52,7 @@ Here are [tips on how to identify Helpful and Not Helpful notes](../examples).
 
 ### How does Community Notes prevent bias and one-sided ratings?
 
-Note statuses [aren’t reached by majority rule](../diversity). A note will reach a status of Helpful or Not Helpful only when there's some agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings.
+Note statuses [aren’t reached by majority rule](./diversity-of-perspectives.md). A note will reach a status of Helpful or Not Helpful only when there's some agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings.
 
 ### Why does Rating Impact decrease when a contributor's rating is the opposite of the note's status?
 

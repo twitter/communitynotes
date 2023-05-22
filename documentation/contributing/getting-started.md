@@ -6,7 +6,7 @@ description: Step-by-step guide for getting started with Community Notes on Twit
 
 ## 1. Sign up
 
-Anyone who meets the [eligibility criteria](https://communitynotes.twitter.com/guide/en/contributing/sign-up) can sign up to become a Community Notes contributor. As there are important nuances in each market, we’ll expand the contributor base country-by-country.
+Anyone who meets the [eligibility criteria](../contributing/signing-up.md) can sign up to become a Community Notes contributor. As there are important nuances in each market, we’ll expand the contributor base country-by-country.
 
 {% button buttonTitle="Sign up" buttonHref="https://communitynotes.twitter.com/guide/en/contributing/sign-up" /%}
 
