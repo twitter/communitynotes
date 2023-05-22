@@ -118,6 +118,10 @@ Given the quantities defined above, we modify scoring as follows:
 - When the total weight $a_n$ of an tag exceeds 2.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
 - We disregard the "Typos or unclear language" and "Note not needed on this Tweet" tags, which do not relate to note accuracy.
 
+## Additional Filtering for Incorrect Tags
+
+Because surfacing high-quality information is the primary goal of Community Notes, we employ extra checks around Currently Rated Helpful notes that we have reason to believe may contain incorrect information. For any given note-rater pair, properties including the note and rater factors (See [Matrix Factorization](#matrix-factorization)), a rater's propensity to assign the "Incorrect" tag, and the overall polarization of assigned "Not Helpful" tags predict, at baseline, how likely a rater is to rate a note as "Incorrect". When we observe "Incorrect" ratings to be "surprisingly popular" among raters who would be expected to have a low probability of rating the note "Incorrect", we remove Currently Rated Helpful status from these notes. 
+
 ## CRH Inertia
 
 The scoring algorithm updates the Helpful status of each note during every invocation.
