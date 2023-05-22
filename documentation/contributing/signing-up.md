@@ -2,11 +2,12 @@
 title: Signing up
 description: Sign up now and become a Community Notes contributor on Twitter
 ---
+
 # Signing up
 
-Sign ups are open to everyone. We want anyone to be able to participate and know that having contributors with [different points of view](./diversity-of-perspectives.md) is essential to Community Notes helpfully addressing misinformation.
+Sign-ups are open to everyone. We want anyone to be able to participate and know that having contributors with [different points of view](./diversity-of-perspectives.md) is essential to Community Notes helpfully addressing misinformation.
 
-As there are important nuances in each market, we’ll expand the contributor base country-by-country.
+As there are important nuances in each market, we’ll expand the contributor base country by country.
 
 {% button buttonTitle="Sign up here" buttonHref="https://twitter.com/i/flow/join-birdwatch" /%}
 
@@ -35,7 +36,7 @@ These make it more likely that contributors are real people instead of bots or a
 
 If you're having issues with signup due to your phone number, see [Phone number troubleshooting](./phone-faq.md)
 
-We want anyone to be able to contribute to Community Notes, and may remove or modify these criteria as the program evolves and as we observe contributor's ability to promote high quality context that people find helpful.
+We want anyone to be able to contribute to Community Notes, and we may remove or modify these criteria as the program evolves and as we observe contributors' ability to promote high quality context that people find helpful.
 
 ## Admissions
 
