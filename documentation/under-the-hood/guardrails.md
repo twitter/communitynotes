@@ -6,15 +6,15 @@ description: Community Notes tracks a number of quality measures, with a corresp
 
 Community Notes aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful context to Tweets that might be misleading or missing important context.
 
-It’s important that the context that is [elevated to viewers from Community Notes](../notes-on-twitter) be helpful, informative, and accurate.
+It’s important that the context that is [elevated to viewers from Community Notes](../contributing/notes-on-twitter) be helpful, informative, and accurate.
 
-The [note ranking algorithm](../note-ranking) is designed to help meet these quality standards, along with a number of [additional safeguards](../challenges) built over the course of the program’s development. As Community Notes and its approach are novel, we expect there will be challenges and bumps in the road that could impact note quality.
+The [note ranking algorithm](./note-ranking-code) is designed to help meet these quality standards, along with a number of [additional safeguards](../about/challenges) built over the course of the program’s development. As Community Notes and its approach are novel, we expect there will be challenges and bumps in the road that could impact note quality.
 
 To identify potential problems, Community Notes tracks a number of quality measures, with a corresponding set of operational “guardrails” and “circuit breaker” thresholds and procedures to respond to issues. We anticipate that we may need to occasionally trigger these mechanisms as we learn and grow. Here’s how they work:
 
 ## Quality Measures
 
-Community Notes measures and monitors three top-line metrics to understand the quality of notes and identify potential issues to mitigate along the way. These measures are used for monitoring purposes, and do not impact the note status outcomes or visibility for individual notes. At present, these measures focus on notes that earn the status of Helpful (i.e., those that are [shown to viewers on Twitter](../notes-on-twitter), beyond enrolled contributors).
+Community Notes measures and monitors three top-line metrics to understand the quality of notes and identify potential issues to mitigate along the way. These measures are used for monitoring purposes, and do not impact the note status outcomes or visibility for individual notes. At present, these measures focus on notes that earn the status of Helpful (i.e., those that are [shown to viewers on Twitter](../contributing/notes-on-twitter), beyond enrolled contributors).
 
 Evidence of consistent or systematic problems in top rated notes that earn the status of Helpful on any of the following measures can trigger a guardrail or circuit breaker procedure:
 
@@ -54,7 +54,7 @@ Instead, the goal is to build a _system_ that consistently elevates helpful, inf
 
 Examples of system-wide actions Community Notes may take in the case of a guardrail or circuit breaker situation may include:
 
-- Temporarily raising the [threshold](../note-ranking) required for notes to be publicly visible on a Tweet
+- Temporarily raising the [threshold](./note-ranking-code) required for notes to be publicly visible on a Tweet
 - Temporarily pausing the scoring of newly created notes
 - Temporarily pausing the display of all notes on Tweets for viewers outside enrolled Community Notes contributors
 

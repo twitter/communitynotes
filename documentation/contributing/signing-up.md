@@ -4,7 +4,7 @@ description: Sign up now and become a Community Notes contributor on Twitter
 ---
 # Signing up
 
-Sign ups are open to everyone. We want anyone to be able to participate and know that having contributors with [different points of view](../diversity) is essential to Community Notes helpfully addressing misinformation.
+Sign ups are open to everyone. We want anyone to be able to participate and know that having contributors with [different points of view](./diversity-of-perspectives) is essential to Community Notes helpfully addressing misinformation.
 
 As there are important nuances in each market, we’ll expand the contributor base country-by-country.
 
@@ -33,7 +33,7 @@ To become a Community Notes contributor, accounts must have:
 
 These make it more likely that contributors are real people instead of bots or adversarial actors.
 
-If you're having issues with signup due to your phone number, see [Phone number troubleshooting](../phone-faq)
+If you're having issues with signup due to your phone number, see [Phone number troubleshooting](./phone-faq)
 
 We want anyone to be able to contribute to Community Notes, and may remove or modify these criteria as the program evolves and as we observe contributor's ability to promote high quality context that people find helpful.
 
@@ -43,7 +43,7 @@ Our goal is to admit applicants on a periodic basis. We will admit all contribut
 
 ## Contributions are public
 
-To promote transparency, all contributions to Community Notes are [anonymized](../aliases/) and publicly visible on the Community Notes site, **even if an account’s Tweets are protected**.
+To promote transparency, all contributions to Community Notes are [anonymized](./aliases) and publicly visible on the Community Notes site, **even if an account’s Tweets are protected**.
 
 ## Rules
 

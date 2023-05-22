@@ -33,7 +33,7 @@ The [data download page in Community Notes](https://twitter.com/i/communitynotes
 
 ### File structure
 
-Each data snapshot table is stored in tsv (tab-separated values) file format with a header row. This means that each row is separated by a newline, each column is separated by a tab, and the first row contains the column names instead of data. The note and note rating data is directly taken from the user-submitted note creation and note rating forms, with minimal added metadata (like ids and timestamp). The note status history file contains metadata derived from the raw notes and ratings, and contains the outputs of the [note scoring algorithm](../ranking-notes). Below, we will describe each column’s data, including the question or source that generated the data, data type, and other relevant information.
+Each data snapshot table is stored in tsv (tab-separated values) file format with a header row. This means that each row is separated by a newline, each column is separated by a tab, and the first row contains the column names instead of data. The note and note rating data is directly taken from the user-submitted note creation and note rating forms, with minimal added metadata (like ids and timestamp). The note status history file contains metadata derived from the raw notes and ratings, and contains the outputs of the [note scoring algorithm](./ranking-notes). Below, we will describe each column’s data, including the question or source that generated the data, data type, and other relevant information.
 
 ### Updates to the Data
 

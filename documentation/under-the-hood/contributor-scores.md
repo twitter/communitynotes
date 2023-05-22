@@ -7,7 +7,7 @@ description: Helpfulness scores are a way to give more influence to people with 
 
 Helpfulness scores are a way to give more influence to people with a track record of making high-quality contributions to Community Notes. There are currently two types of author helpfulness scores and one rater helpfulness score.
 
-In order to get enough data from new raters to be able to assess how similarly they rate notes to others, we require a minimum of 10 ratings made before helpfulness scores are computed and ratings may be counted. Additionally, to help mitigate misuse of Community Notes, contributors with helpfulness scores that are too low are filtered out, since those contributors are consistently not found helpful by a [diverse set of raters](../diversity).
+In order to get enough data from new raters to be able to assess how similarly they rate notes to others, we require a minimum of 10 ratings made before helpfulness scores are computed and ratings may be counted. Additionally, to help mitigate misuse of Community Notes, contributors with helpfulness scores that are too low are filtered out, since those contributors are consistently not found helpful by a [diverse set of raters](../contributing/diversity-of-perspectives).
 
 ## Author Helpfulness Scores
 
@@ -15,7 +15,7 @@ In order to get enough data from new raters to be able to assess how similarly t
 
 This score is the proportion of notes you’ve written (that have gotten at least 5 ratings) that have reached the status of Helpful ("Currently Rated Helpful", or CRH), minus 5 times the proportion of notes you wrote that reached the status of Not Helpful ("Currently Rated Not Helpful", or CRNH).
 
-Contributors must have a ratio of at least 0.0 to be included in the [second round of note scoring](../ranking-notes/#complete-algorithm-steps) (contributors need to write at least 5 CRH notes for every 1 CRNH note they write in order for their ratings to count); this filters out a small percentage of raters. Labels on notes that have been deleted after May 19, 2022 continue to affect this score, so that the score can’t be trivially changed by deleting CRNH notes.
+Contributors must have a ratio of at least 0.0 to be included in the [second round of note scoring](./ranking-notes) (contributors need to write at least 5 CRH notes for every 1 CRNH note they write in order for their ratings to count); this filters out a small percentage of raters. Labels on notes that have been deleted after May 19, 2022 continue to affect this score, so that the score can’t be trivially changed by deleting CRNH notes.
 
 ### Author Mean Note Score
 
