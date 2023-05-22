@@ -7,13 +7,13 @@ description: Who is eligible to participate in Community Notes? · Are contribut
 
 {% accordionSection %}
 {% accordionItem title="Who is eligible to participate in Community Notes? Is there an approval process?" %}
-Anyone can sign up to become contributors. Accounts must meet a few criteria to be eligible. [Learn more here](../contributing/signing-up).
+Anyone can sign up to become contributors. Accounts must meet a few criteria to be eligible. [Learn more here](../contributing/signing-up.md).
 {% /accordionItem %}
 
 {% accordionItem title="Are contributions anonymous? Or will my name be attached to my notes?" %}
 We want everyone to feel comfortable contributing to Community Notes. Because of that, all contributors get a new, auto-generated display name (or alias) when they join Community Notes. These aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately.
 
-You can learn more about aliases [here](../contributing/aliases).
+You can learn more about aliases [here](../contributing/aliases.md).
 {% /accordionItem %}
 
 {% accordionItem title="Why does Community Notes allow anyone to write notes, rather than experts?"%}
@@ -38,7 +38,7 @@ Any Tweet can receive a Community Note.
 {% /accordionItem %}
 
 {% accordionItem title="There’s a Community Note on one of my Tweets. What does that mean?" %}
-Tweet authors with Community Notes on their Tweets can request additional review or report notes. [Learn more](../contributing/additional-review).
+Tweet authors with Community Notes on their Tweets can request additional review or report notes. [Learn more](../contributing/additional-review.md).
 {% /accordionItem %}
 
 {% accordionItem title="How do I opt-out of the program?" %}
@@ -50,7 +50,7 @@ If you join the program but later want to leave, DM @CommunityNotes to let the t
 
 {% accordionSection %}
 {% accordionItem title="Will Community Notes contributions affect content on Twitter? Will it be used to label or remove Tweets? " %}
-Notes that have been rated helpful by enough contributors from [different points of view](../contributing/diversity-of-perspectives) will appear directly on Tweets. Beyond that, notes do not affect display of Tweets or enforcement of Twitter Rules. Our current focus is gaining confidence that Community Notes produces context people from [different points of view](../contributing/diversity-of-perspectives) find helpful and informative.
+Notes that have been rated helpful by enough contributors from [different points of view](../contributing/diversity-of-perspectives.md) will appear directly on Tweets. Beyond that, notes do not affect display of Tweets or enforcement of Twitter Rules. Our current focus is gaining confidence that Community Notes produces context people from [different points of view](../contributing/diversity-of-perspectives.md) find helpful and informative.
 {% /accordionItem %}
 
 {% accordionItem title="How does Community Notes relate to Twitter’s other policies?" %}
@@ -62,11 +62,11 @@ All contributors and all Community Notes contributions are subject to the Twitte
 
 If you believe a note may have violated the Twitter Rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using [this form](https://help.twitter.com/en/forms/community-note).
 
-Contributors who consistently write unhelpful notes may also have their [ability to write new notes temporarily locked](../contributing/writing-ability).
+Contributors who consistently write unhelpful notes may also have their [ability to write new notes temporarily locked](../contributing/writing-ability.md).
 {% /accordionItem %}
 
 {% accordionItem title="How will attempts to abuse or manipulate Community Notes be prevented?" %}
-Community Notes will only be successful if the context it produces is found to be helpful and appropriate by a wide range of people with diverse views. This won’t be true if it can be taken over by a single group or ideology, or used in an abusive manner. We believe this is possible, and will be experimenting with different mechanics and incentives than Twitter to help make it happen. Learn more about how we are approaching these issues [here](./challenges).
+Community Notes will only be successful if the context it produces is found to be helpful and appropriate by a wide range of people with diverse views. This won’t be true if it can be taken over by a single group or ideology, or used in an abusive manner. We believe this is possible, and will be experimenting with different mechanics and incentives than Twitter to help make it happen. Learn more about how we are approaching these issues [here](./challenges.md).
 {% /accordionItem %}
 {% /accordionSection %}
 
@@ -74,7 +74,7 @@ Community Notes will only be successful if the context it produces is found to b
 
 {% accordionSection %}
 {% accordionItem title="Will researchers and others outside Twitter be able to download and analyze the data? " %}
-All Community Notes' data are made publicly available on the [Download Data](https://twitter.com/i/communitynotes/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better. [You can learn more about our data here.](../under-the-hood/download-data)
+All Community Notes' data are made publicly available on the [Download Data](https://twitter.com/i/communitynotes/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better. [You can learn more about our data here.](../under-the-hood/download-data.md)
 {% /accordionItem %}
 
 {% accordionItem title="Is Twitter working with any outside organizations to build this product?" %}

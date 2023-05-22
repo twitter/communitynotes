@@ -4,7 +4,7 @@ description: Request additional review of Community Notes on your Tweets.
 ---
 # Additional Community review
 
-[Community Notes](../index) allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading.
+[Community Notes](../index.md) allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading.
 
 If you believe a note rated “helpful” on your Tweet doesn’t add helpful context or shouldn’t be there, you can request additional review. Reviews aren’t done by Twitter — they are done by regular people who use Twitter and have signed up to become Community Notes Contributors.
 
