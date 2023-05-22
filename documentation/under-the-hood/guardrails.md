@@ -54,7 +54,7 @@ Instead, the goal is to build a _system_ that consistently elevates helpful, inf
 
 Examples of system-wide actions Community Notes may take in the case of a guardrail or circuit breaker situation may include:
 
-- Temporarily raising the [threshold](./note-ranking-code) required for notes to be publicly visible on a Tweet
+- Temporarily raising the [threshold](./note-ranking-code.md) required for notes to be publicly visible on a Tweet
 - Temporarily pausing the scoring of newly created notes
 - Temporarily pausing the display of all notes on Tweets for viewers outside enrolled Community Notes contributors
 

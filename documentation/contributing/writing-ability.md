@@ -12,7 +12,7 @@ Everyone who joins Community Notes can rate notes. They can unlock the ability t
 
 **New contributors start with the ability to rate notes, and must unlock the ability to write** before they can write their own notes.
 
-To unlock the ability to write, new contributors need to earn a [Rating Impact](./writing-and-rating-impact) of at least 5. One way to get started is [rating notes that need help](./rating-notes.md).
+To unlock the ability to write, new contributors need to earn a [Rating Impact](./writing-and-rating-impact.md) of at least 5. One way to get started is [rating notes that need help](./rating-notes.md).
 
 Rating notes is a great way for new contributors to better understand [what makes Helpful and Not Helpful notes](./examples.md), before they start writing their own notes.
 
