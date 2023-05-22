@@ -14,4 +14,4 @@ Community Notes is early in its development, and our goal is to build it in the 
 
 Talk directly with the team building Community Notes — follow, Tweet or DM us [@CommunityNotes](https://twitter.com/communitynotes). We can't wait to hear from you.
 
-{% button buttonTitle=Tweet @CommunityNotes" buttonHref="https://twitter.com/communitynotes" /%}
+{% button buttonTitle="Tweet @CommunityNotes" buttonHref="https://twitter.com/communitynotes" /%}
