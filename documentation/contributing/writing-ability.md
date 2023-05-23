@@ -1,6 +1,7 @@
 ---
 title: Locking and unlocking the ability to write notes
 description: Unlocking writing ability for the first time · Losing writing ability
+navWeight: 7
 ---
 # Locking and unlocking the ability to write notes
 

@@ -1,6 +1,7 @@
 ---
 title: Notifications
 description: Community Notes notification settings
+navWeight: 13
 ---
 # Notifications
 

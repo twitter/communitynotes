@@ -1,6 +1,7 @@
 ---
 title: Open-source code
 description: Download the open-source files that power Community Notes on Twitter.
+navWeight: 2
 ---
 # Open-source code
 

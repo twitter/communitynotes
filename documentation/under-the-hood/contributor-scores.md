@@ -2,6 +2,7 @@
 title: Contributor helpfulness scores
 enableMathJax: true
 description: Helpfulness scores are a way to give more influence to people with a track record of making high-quality contributions to Community Notes.
+navWeight: 5
 ---
 # Contributor helpfulness scores
 

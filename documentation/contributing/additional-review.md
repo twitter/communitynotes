@@ -1,6 +1,7 @@
 ---
-title: Additional Community review
+title: Additional review
 description: Request additional review of Community Notes on your Tweets.
+navWeight: 12
 ---
 # Additional Community review
 

@@ -2,6 +2,7 @@
 title: Note ranking algorithm
 enableMathJax: true
 description: How are Community Notes ranked? Learn more about our open-source algorithm
+navWeight: 4
 ---
 # Note ranking algorithm
 

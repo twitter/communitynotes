@@ -1,6 +1,7 @@
 ---
 title: Note-writing tips
 description: Learn what makes a helpful Community Note on Twitter.
+navWeight: 11
 ---
 # Note-writing tips
 

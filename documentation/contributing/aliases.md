@@ -1,6 +1,7 @@
 ---
 title: Community Notes Aliases
 description: Aliases are auto-generated display names that contributors get when they join Community Notes on Twitter.
+navWeight: 4
 ---
 # Aliases
 

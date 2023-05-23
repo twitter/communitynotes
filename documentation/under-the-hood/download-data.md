@@ -1,6 +1,7 @@
 ---
 title: Downloading data
 description: All Community Notes contributions are publicly available so that anyone has free access to analyze the data.
+navWeight: 1
 ---
 # Downloading data
 
