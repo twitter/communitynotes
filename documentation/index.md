@@ -9,49 +9,48 @@ description: Learn everything about Community Notes, Twitter's open-source progr
 
 Community Notes aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
 
-{% inline %}
-{% atmImage width="40" src="./images/people.svg" alt="Vector icon of 3 people together" /%}
-
+{% inline wrap="false" %}
+{% atmImage maxWidth="40" width="40" src="./images/people.svg" alt="Vector icon of 3 people together" /%}
+{% stack %}
 **Contributors write and rate notes**
-Contributors are people on Twitter, just like you, who [sign up](./contributing/signing-up.md) to write and rate notes. The more people that participate, the better the program becomes.
 
+Contributors are people on Twitter, just like you, who [sign up](./contributing/signing-up.md) to write and rate notes. The more people that participate, the better the program becomes.
+{% /stack %}
 {% /inline %}
 
-{% inline %}
-{% atmImage width="40" src="./images/rate.svg" alt="Vector icon of a star, half-filled with color" /%}
-
+{% inline wrap="false" %}
+{% atmImage src="./images/rate.svg" alt="Vector icon of a star, half-filled with color" maxWidth="40" width="40" /%}
+{% stack %}
 **Only notes rated helpful by people from diverse perspectives appear on Tweets**
+
 Community Notes doesn't work by majority rules. To identify notes that are helpful to a wide range of people, notes require agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings.
 
 Learn more about how Community Notes handles [diverse perspectives](./contributing/diversity-of-perspectives.md).
-
+{% /stack %}
 {% /inline %}
 
-{% inline %}
-{% atmImage width="40" src="./images/world.svg" alt="Vector icon of the earth" /%}
-
+{% inline wrap="false" %}
+{% atmImage maxWidth="40" width="40" src="./images/world.svg" alt="Vector icon of the earth" /%}
+{% stack %}
 **Twitter doesn’t choose what shows up, the people do**
 
 Twitter doesn’t write, rate or moderate notes (unless they break the Twitter rules.) We believe giving people a voice to make these choices together is a fair and effective way to add information that helps people stay better informed.
-
+{% /stack %}
 {% /inline %}
 
-{% inline %}
-{% atmImage width="40" src="./images/open-source.svg" alt="Vector icon of 3 a network with distributed nodes" /%}
-
+{% inline wrap="false" %}
+{% atmImage maxWidth="40" width="40" src="./images/open-source.svg" alt="Vector icon of 3 a network with distributed nodes" /%}
+{% stack %}
 **Open-source and transparent**
 
 It’s important for people to understand how Community Notes works, and to be able to help shape it. The program is built on transparency: all contributions are published daily, and our ranking algorithm can be inspected by anyone. Learn more how it works [under the hood](./under-the-hood/download-data.md).
-
+{% /stack %}
 {% /inline %}
 
 {% box backgroundColor="gray-100" cornerRadius="radius-16" topPadding="space-12" bottomPadding="space-12" leftPadding="space-24" rightPadding="space-24" %}
-
 {% inline align="space-between" alignY="center" %}
 **Become a Community Notes contributor**
-
 {% button buttonTitle="Sign up here" buttonHref="https://twitter.com/i/flow/join-birdwatch" /%}
-
 {% /inline %}
 {% /box %}
 
