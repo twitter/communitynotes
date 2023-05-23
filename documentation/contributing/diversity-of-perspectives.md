@@ -1,6 +1,7 @@
 ---
 title: Diversity of perspectives
 description: Learn more about how Community Notes identifies notes that many people on Twitter will find helpful, including people with different points of view.
+navWeight: 9
 ---
 # Diversity of perspectives
 

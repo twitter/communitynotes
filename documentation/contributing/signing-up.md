@@ -1,6 +1,7 @@
 ---
 title: Signing up
 description: Sign up now and become a Community Notes contributor on Twitter
+navWeight: 2
 ---
 # Signing up
 

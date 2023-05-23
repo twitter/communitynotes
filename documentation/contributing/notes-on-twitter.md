@@ -1,6 +1,7 @@
 ---
 title: Notes shown on Twitter
 description: How do Community Notes start showing on Twitter?
+navWeight: 10
 ---
 # Notes shown on Twitter
 

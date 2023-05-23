@@ -1,6 +1,7 @@
 ---
 title: Getting started
 description: Step-by-step guide for getting started with Community Notes on Twitter.
+navWeight: 1
 ---
 #  Getting started
 

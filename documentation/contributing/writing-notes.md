@@ -1,6 +1,7 @@
 ---
 title: Writing notes
 description: A step-by-step guide on how to write Community Notes on Twitter.
+navWeight: 6
 ---
 # Writing notes
 

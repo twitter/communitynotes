@@ -1,6 +1,7 @@
 ---
 title: Guardrails and Circuit Breakers
 description: Community Notes tracks a number of quality measures, with a corresponding set of operational guardrails.
+navWeight: 6
 ---
 #  Guardrails and Circuit Breakers
 

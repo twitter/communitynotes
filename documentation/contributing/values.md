@@ -1,6 +1,7 @@
 ---
 title: Values
 description: Contribute to build understanding · Act in good faith · Be helpful, even to those who disagree
+navWeight: 3
 ---
 # Values
 

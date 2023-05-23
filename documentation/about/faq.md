@@ -1,6 +1,7 @@
 ---
 title: FAQs
 description: Who is eligible to participate in Community Notes? · Are contributions anonymous?
+navWeight: 3
 ---
 # FAQs
 ## Contributing to Community Notes

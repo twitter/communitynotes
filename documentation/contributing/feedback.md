@@ -1,6 +1,7 @@
 ---
 title: Submit Feedback
 description: Talk directly with the team building Community Notes.
+navWeight: 14
 ---
 # Submit Feedback
 

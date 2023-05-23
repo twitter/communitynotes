@@ -1,6 +1,7 @@
 ---
 title: Needs Your Help ranking
 description: How Community Notes are ranked to become eligible for features and notifications
+navWeight: 3
 ---
 # Needs Your Help ranking
 
