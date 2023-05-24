@@ -142,6 +142,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `notMisleadingPersonalOpinion` | Int | User-entered checkbox in response to question “Why do you believe this tweet is not misleading?” (Check all that apply question type). | 1 if “It expresses a personal opinion” is selected, else 0. |
 | `trustworthySources` | Int | Binary indicator, based on user-entered multiple choice in response to note writing question “Did you link to sources you believe most people would consider trustworthy?” | 1 if “Yes” is selected, 0 if “No” is selected |
 | `summary` | String | User-entered text, in response to the note writing prompt “Please explain the evidence behind your choices, to help others who see this tweet understand why it is not misleading” | User entered text explanation, with some characters escaped (e.g. tabs converted to spaces). |
+| `isMediaNote` | Int | User-entered checkbox in response to question “Is your note about the Tweet or the image?”. _New as of 2023-05-24_. | 1 if “About the image in this Tweet, and should appear on all Tweets that include this image” is selected, and 0 otherwise (including both if "About this specific Tweet" is selected instead, or by default, e.g. if the note was written on a Tweet without media). |
 
 {{< /tab >}}
 
@@ -195,6 +196,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `notHelpfulIrrelevantSources`            | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-06-30                                                                               | 1 if “Sources do not support note” is selected, else 0.          |
 | `notHelpfulOpinionSpeculation`           | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Opinion or speculation” is selected, else 0.               |
 | `notHelpfulNoteNotNeeded`                | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Note not needed on this Tweet” is selected, else 0.        |
+| `ratedOnTweetId`                         | Long   | The unique ID of the Tweet that the note was rated on (which, in the case of media notes, may not be the same Tweet as the note was originally written on). _New as of 2023-05-24_.                                 |    
 
 {{< /tab >}}
 
