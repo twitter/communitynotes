@@ -1,4 +1,5 @@
 public
 _gen
 .DS_Store
-.vscode/settings.json
+settings.json
+.gitignore

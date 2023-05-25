@@ -1,9 +1,9 @@
 ---
 title: Locking and unlocking the ability to write notes
-geekdocBreadcrumb: false
-aliases: ["/writing-ability"]
 description: Unlocking writing ability for the first time · Losing writing ability
+navWeight: 7
 ---
+# Locking and unlocking the ability to write notes
 
 To keep the quality of Community Notes high, contributors earn (and can lose) the ability to write notes.
 
@@ -13,9 +13,9 @@ Everyone who joins Community Notes can rate notes. They can unlock the ability t
 
 **New contributors start with the ability to rate notes, and must unlock the ability to write** before they can write their own notes.
 
-To unlock the ability to write, new contributors need to earn a [Rating Impact](../impact) of at least 5. One way to get started is [rating notes that need help](../rating-notes).
+To unlock the ability to write, new contributors need to earn a [Rating Impact](./writing-and-rating-impact.md) of at least 5. One way to get started is [rating notes that need help](./rating-notes.md).
 
-Rating notes is a great way for new contributors to better understand [what makes Helpful and Not Helpful notes](../examples), before they start writing their own notes.
+Rating notes is a great way for new contributors to better understand [what makes Helpful and Not Helpful notes](./examples.md), before they start writing their own notes.
 
 ## Losing writing ability
 
@@ -31,7 +31,7 @@ Contributors can unlock their note writing ability by increasing their Rating Im
 
 For example: If a contributor's Rating Impact was 22 when their ability to write became locked, they must increase this score to 27 to unlock their ability to write.
 
-[Learn more about Rating Impact](../impact) and get tips on how to increase it.
+[Learn more about Rating Impact](./writing-and-rating-impact.md) and get tips on how to increase it.
 
 ### How can I avoid having my ability to write notes locked?
 
@@ -39,4 +39,4 @@ You'll receive notifications about how your notes have been rated by other contr
 
 ### How does Community Notes prevent raters from intentionally trying to lock someone else's ability to write?
 
-Note statuses in Community Notes aren't achieved by popularity or majority rules. For a note to reach a status of Helpful or Not Helpful, the system requires agreement between contributors who have sometimes disagreed in their past ratings. Ratings are also weighted based on how helpful a contributor has been in the past. This helps reduce one-sided ratings and helps to prevent manipulation. [Learn more here](../diversity).
+Note statuses in Community Notes aren't achieved by popularity or majority rules. For a note to reach a status of Helpful or Not Helpful, the system requires agreement between contributors who have sometimes disagreed in their past ratings. Ratings are also weighted based on how helpful a contributor has been in the past. This helps reduce one-sided ratings and helps to prevent manipulation. [Learn more here](./diversity-of-perspectives.md).

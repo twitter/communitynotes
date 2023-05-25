@@ -1,41 +1,41 @@
 ---
 title: Guardrails and Circuit Breakers
-geekdocBreadcrumb: false
-aliases: ["/guardrails"]
 description: Community Notes tracks a number of quality measures, with a corresponding set of operational guardrails.
+navWeight: 6
 ---
+#  Guardrails and Circuit Breakers
 
 Community Notes aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful context to Tweets that might be misleading or missing important context.
 
-It’s important that the context that is [elevated to viewers from Community Notes](../notes-on-twitter) be helpful, informative, and accurate.
+It’s important that the context that is [elevated to viewers from Community Notes](../contributing/notes-on-twitter.md) be helpful, informative, and accurate.
 
-The [note ranking algorithm](../note-ranking) is designed to help meet these quality standards, along with a number of [additional safeguards](../challenges) built over the course of the program’s development. As Community Notes and its approach are novel, we expect there will be challenges and bumps in the road that could impact note quality.
+The [note ranking algorithm](./note-ranking-code.md) is designed to help meet these quality standards, along with a number of [additional safeguards](../about/challenges.md) built over the course of the program’s development. As Community Notes and its approach are novel, we expect there will be challenges and bumps in the road that could impact note quality.
 
 To identify potential problems, Community Notes tracks a number of quality measures, with a corresponding set of operational “guardrails” and “circuit breaker” thresholds and procedures to respond to issues. We anticipate that we may need to occasionally trigger these mechanisms as we learn and grow. Here’s how they work:
 
 ## Quality Measures
 
-Community Notes measures and monitors three top-line metrics to understand the quality of notes and identify potential issues to mitigate along the way. These measures are used for monitoring purposes, and do not impact the note status outcomes or visibility for individual notes. At present, these measures focus on notes that earn the status of Helpful (i.e., those that are [shown to viewers on Twitter](../notes-on-twitter), beyond enrolled contributors).
+Community Notes measures and monitors three top-line metrics to understand the quality of notes and identify potential issues to mitigate along the way. These measures are used for monitoring purposes, and do not impact the note status outcomes or visibility for individual notes. At present, these measures focus on notes that earn the status of Helpful (i.e., those that are [shown to viewers on Twitter](../contributing/notes-on-twitter.md), beyond enrolled contributors).
 
 Evidence of consistent or systematic problems in top rated notes that earn the status of Helpful on any of the following measures can trigger a guardrail or circuit breaker procedure:
 
 1. **Accuracy: Whether notes that earn the status of Helpful contain accurate, high-quality information**
 
-    This is measured via partnerships with [professional reviewers](https://blog.twitter.com/en_us/topics/company/2021/bringing-more-reliable-context-to-conversations-on-twitter) who provide evaluations of note accuracy. These evaluations provide a tracking measure of how often Helpful notes that are rated as accurate vs. inaccurate by reviewers over time; they don't impact notes’ ratings/status.
+   This is measured via partnerships with [professional reviewers](https://blog.twitter.com/en_us/topics/company/2021/bringing-more-reliable-context-to-conversations-on-twitter) who provide evaluations of note accuracy. These evaluations provide a tracking measure of how often Helpful notes that are rated as accurate vs. inaccurate by reviewers over time; they don't impact notes’ ratings/status.
 
-    We don't expect perfect consensus among expert reviewers that all notes are accurate, nor do professionals always [agree with one another on accuracy ratings](https://www.science.org/doi/10.1126/sciadv.abf4393). However, this gives us an indicator of whether there might be broad or consistent issues emerging with note accuracy.
+   We don't expect perfect consensus among expert reviewers that all notes are accurate, nor do professionals always [agree with one another on accuracy ratings](https://www.science.org/doi/10.1126/sciadv.abf4393). However, this gives us an indicator of whether there might be broad or consistent issues emerging with note accuracy.
 
 2. **Informativeness: Whether notes that earn the status of Helpful help inform people’s understanding of the subject matter in Tweets**
 
-    This is measured via survey experiments of random samples of Twitter users in the US, comparing whether people who see potentially misleading Tweets with notes tend to have a different view of the Tweet’s main claim vs those who see Tweets without notes.
+   This is measured via survey experiments of random samples of Twitter users in the US, comparing whether people who see potentially misleading Tweets with notes tend to have a different view of the Tweet’s main claim vs those who see Tweets without notes.
 
-    While notes may vary in their ability to inform, we want to ensure that on average notes that earn the status of Helpful are effective at helping people understand the topics in Tweets (vs having no impact or an adverse effect).
+   While notes may vary in their ability to inform, we want to ensure that on average notes that earn the status of Helpful are effective at helping people understand the topics in Tweets (vs having no impact or an adverse effect).
 
 3. **Helpfulness: Whether Twitter users beyond the contributor pool tend to find notes that earn the status of Helpful to be helpful**
 
-    This is measured via surveys of random samples of Twitter users in the US. The surveys allow these Twitter users to give feedback on the helpfulness of Community Notes.
+   This is measured via surveys of random samples of Twitter users in the US. The surveys allow these Twitter users to give feedback on the helpfulness of Community Notes.
 
-    We don’t expect all notes to be perceived as helpful by all people all the time. Instead, the goal is to ensure that on average notes that earn the status of Helpful are likely to be seen as helpful by a wide range of people from different points of view, and not only be seen as helpful by people from one viewpoint.
+   We don’t expect all notes to be perceived as helpful by all people all the time. Instead, the goal is to ensure that on average notes that earn the status of Helpful are likely to be seen as helpful by a wide range of people from different points of view, and not only be seen as helpful by people from one viewpoint.
 
 In addition to the three top-line metrics listed above, Community Notes monitors additional operational quality metrics, like whether any notes violate Twitter Rules.
 
@@ -55,7 +55,7 @@ Instead, the goal is to build a _system_ that consistently elevates helpful, inf
 
 Examples of system-wide actions Community Notes may take in the case of a guardrail or circuit breaker situation may include:
 
-- Temporarily raising the [threshold](../note-ranking) required for notes to be publicly visible on a Tweet
+- Temporarily raising the [threshold](./note-ranking-code.md) required for notes to be publicly visible on a Tweet
 - Temporarily pausing the scoring of newly created notes
 - Temporarily pausing the display of all notes on Tweets for viewers outside enrolled Community Notes contributors
 

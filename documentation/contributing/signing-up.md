@@ -1,49 +1,40 @@
 ---
 title: Signing up
-aliases:
-  [
-    "/join",
-    "/signup",
-    "/sign-up",
-    "/signing-up",
-    "/contributing/signing-up",
-    "/contributing/sign-up",
-    "/contributing/signup",
-  ]
-geekdocBreadcrumb: false
-weight: 1
 description: Sign up now and become a Community Notes contributor on Twitter
+navWeight: 2
 ---
+# Signing up
 
-Sign ups are open to everyone. We want anyone to be able to participate and know that having contributors with [different points of view](../diversity) is essential to Community Notes helpfully addressing misinformation.
+Sign ups are open to everyone. We want anyone to be able to participate and know that having contributors with [different points of view](./diversity-of-perspectives.md) is essential to Community Notes helpfully addressing misinformation.
 
 As there are important nuances in each market, we’ll expand the contributor base country-by-country.
 
-## {{< button href="https://twitter.com/i/flow/join-birdwatch" >}}Sign up here{{< /button >}}
+{% button buttonTitle="Sign up here" buttonHref="https://twitter.com/i/flow/join-birdwatch" /%}
 
 ---
+
 ## Eligibility
 
 To become a Community Notes contributor, accounts must have:
 
 1. **No recent notice of Twitter Rules violations**
 
-    Intended to reduce the likelihood of abusive contributions.
+   Intended to reduce the likelihood of abusive contributions.
 
 2. **Joined Twitter at least 6 months ago**
 
-    Intended to reduce spam.
+   Intended to reduce spam.
 
 3. **A verified phone number**
 
-    That phone number must be:
+   That phone number must be:
 
-    - From a trusted phone carrier
-    - Not associated with other Community Notes accounts
+   - From a trusted phone carrier
+   - Not associated with other Community Notes accounts
 
 These make it more likely that contributors are real people instead of bots or adversarial actors.
 
-If you're having issues with signup due to your phone number, see [Phone number troubleshooting](../phone-faq)
+If you're having issues with signup due to your phone number, see [Phone number troubleshooting](./phone-faq.md)
 
 We want anyone to be able to contribute to Community Notes, and may remove or modify these criteria as the program evolves and as we observe contributor's ability to promote high quality context that people find helpful.
 
@@ -53,7 +44,7 @@ Our goal is to admit applicants on a periodic basis. We will admit all contribut
 
 ## Contributions are public
 
-To promote transparency, all contributions to Community Notes are [anonymized](../aliases/) and publicly visible on the Community Notes site, **even if an account’s Tweets are protected**.
+To promote transparency, all contributions to Community Notes are [anonymized](./aliases.md) and publicly visible on the Community Notes site, **even if an account’s Tweets are protected**.
 
 ## Rules
 

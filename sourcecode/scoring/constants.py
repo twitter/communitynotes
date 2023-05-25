@@ -19,6 +19,7 @@ maxTrainError = 0.09
 minRatingsToGetTag = 2
 minTagsNeededForStatus = 2
 tagPercentileForNormalization = 40
+intervalHalfWidth = 0.3
 
 # Data Filenames
 scoredNotesOutputPath = "scoredNotes.tsv"
@@ -213,6 +214,19 @@ notHelpfulTagsAdjustedRatioColumns = [
 ]
 ratingWeightKey = "ratingWeight"
 
+incorrectFilterColumns = [
+  "notHelpfulIncorrect_interval",
+  "notHelpfulIncorrect_total_interval",
+  "cnt_interval",
+  "num_voters_interval",
+  "tf_idf_incorrect_interval",
+  "notHelpfulIncorrect_same",
+  "notHelpfulIncorrect_total_same",
+  "cnt_same",
+  "num_voters_same",
+  "tf_idf_incorrect_same",
+]
+
 misleadingTags = [
   "misleadingOther",
   "misleadingFactualError",
@@ -406,6 +420,7 @@ auxiliaryScoredNotesTSVColumns = (
   + notHelpfulTagsTSVOrder
   + notHelpfulTagsAdjustedColumns
   + notHelpfulTagsAdjustedRatioColumns
+  + incorrectFilterColumns
 )
 
 noteModelOutputTSVColumnsAndTypes = [

@@ -1,9 +1,9 @@
 ---
 title: Rating notes
-geekdocBreadcrumb: false
-aliases: ["/rating-notes", "/contributing/rating-notes", "/contributing/rating"]
 description: A step-by-step guide to rating Community Notes
+navWeight: 5
 ---
+# Rating notes
 
 Ratings help identify which notes are helpful enough to show on Twitter and notes that are not helpful and should not be shown.
 
@@ -27,4 +27,4 @@ Community Notes contributors and people on Twitter may also see notes and prompt
 
 ## Rating Impact
 
-When your ratings help a note reach a status of Helpful or Not Helpful, you'll earn Rating Impact. [Learn more here](../impact)
+When your ratings help a note reach a status of Helpful or Not Helpful, you'll earn Rating Impact. [Learn more here](./writing-and-rating-impact.md)

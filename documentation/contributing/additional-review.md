@@ -1,11 +1,11 @@
 ---
-title: Additional Community review
-geekdocBreadcrumb: false
-aliases: ["/additional-review"]
+title: Additional review
 description: Request additional review of Community Notes on your Tweets.
+navWeight: 12
 ---
+# Additional Community review
 
-[Community Notes](./_index.md) allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading.
+[Community Notes](../index.md) allows volunteer contributors on Twitter to collaboratively add context (called “notes”) to Tweets they believe could be misleading.
 
 If you believe a note rated “helpful” on your Tweet doesn’t add helpful context or shouldn’t be there, you can request additional review. Reviews aren’t done by Twitter — they are done by regular people who use Twitter and have signed up to become Community Notes Contributors.
 
@@ -24,7 +24,7 @@ If you believe a note rated “helpful” on your Tweet doesn’t add helpful co
 
 1. Copy your Tweet's link
 
-    It should look like this: <code>https://twitter.com/{{yourdisplayname}}/status/123456789</code>
+   It should look like this: <code>https://twitter.com/{{yourdisplayname}}/status/123456789</code>
 
 2. Paste the link into the form below.
 

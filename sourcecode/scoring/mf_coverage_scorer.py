@@ -59,6 +59,7 @@ class MFCoverageScorer(MFCoreScorer):
       ]
       + c.notHelpfulTagsAdjustedColumns
       + c.notHelpfulTagsAdjustedRatioColumns
+      + c.incorrectFilterColumns
       + c.noteParameterUncertaintyTSVAuxColumns
     )
 

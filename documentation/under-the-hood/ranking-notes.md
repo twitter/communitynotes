@@ -1,17 +1,10 @@
 ---
 title: Note ranking algorithm
-aliases:
-  [
-    "/ranking-notes",
-    "/note-ranking",
-    "/about/note-ranking",
-    "/about/ranking-notes",
-  ]
-geekdocBreadcrumb: false
-geekdocToc: 1
 enableMathJax: true
 description: How are Community Notes ranked? Learn more about our open-source algorithm
+navWeight: 4
 ---
+# Note ranking algorithm
 
 The algorithm used to rank Community Notes and compute their statuses is open-source, so anyone can help us identify bugs, biases, and opportunities for improvement. This page describes in detail how that algorithm works and how we've improved it over time. The algorithm source code can be [found here](https://github.com/twitter/communitynotes/tree/main/sourcecode).
 
@@ -21,7 +14,7 @@ The algorithm used to rank Community Notes and compute their statuses is open-so
 
 ![Three Community notes in different statuses](../images/note-statuses.png)
 
-Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses determine which notes are displayed on each of the [Community Notes Site’s timelines](../birdwatch-timelines/), and which notes are displayed [on Tweets](../notes-on-twitter/).
+Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses determine which notes are displayed on each of the [Community Notes Site’s timelines](./timeline-tabs.md), and which notes are displayed [on Tweets](../contributing/notes-on-twitter.md).
 
 All Community Notes start with the Needs More Ratings status until they receive at least 5 total ratings.
 Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful according to the algorithm described below.
@@ -98,7 +91,7 @@ We currently assign notes a "Not Helpful" status if the max (upper confidence bo
 ## Tag Outlier Filtering
 
 In some cases, a note may appear helpful but miss key points about the tweet or lack sources.
-Reviewers who rate a note as "Not Helpful" can associate [tag](examples#helpful-attributes) with their review to identify specific shortcomings of the note.
+Reviewers who rate a note as "Not Helpful" can associate [tag](../contributing/examples.md) with their review to identify specific shortcomings of the note.
 When a note has receives high levels of a "Not Helpful" tag, we require a higher intercept before rating the note as "Helpful".
 This approach helps us to maintain data quality by recognizing when there is a troubling pattern on an otherwise strong note.
 
@@ -125,6 +118,10 @@ Given the quantities defined above, we modify scoring as follows:
 
 - When the total weight $a_n$ of an tag exceeds 2.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
 - We disregard the "Typos or unclear language" and "Note not needed on this Tweet" tags, which do not relate to note accuracy.
+
+## Additional Filtering for Incorrect Tags
+
+Because surfacing high-quality information is the primary goal of Community Notes, the ranking algorithm employs extra checks around Currently Rated Helpful notes that ratings indicate might contain incorrect information. For any given note-rater pair, properties including the note and rater factors (See [Matrix Factorization](#matrix-factorization)), a rater's propensity to assign the "Incorrect" tag, and the overall polarization of assigned "Not Helpful" tags predict, at baseline, how likely a rater is to rate a note as "Incorrect". When "Incorrect" ratings on a given note are "surprisingly popular" among raters who would be expected to have a low probability of rating the note "Incorrect", the note will not earn a Currently Rated Helpful status.
 
 ## CRH Inertia
 
@@ -197,8 +194,6 @@ For helpful notes:
 9. Other
 ```
 
-<br/>
-
 For not-helpful notes:
 
 ```
@@ -222,14 +217,12 @@ For not-helpful notes:
 
 1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence).
 2. Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.
-3. Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](../contributor-scores/#filtering-ratings-based-on-helpfulness-scores).
+3. Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
 4. Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3.
 5. Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
 6. Reconcile scoring results from the Core, Expansion and Coverage models to generate final status for each note.
 7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags.  Stabilize helpfulness status for any notes older than two weeks.
-8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](./#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
-
-<br/>
+8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
 
