@@ -264,6 +264,7 @@ noteTSVColumnsAndTypes = (
   + [
     ("trustworthySources", np.int64),
     (summaryKey, np.object),
+    ("isMediaNote", np.int64)
   ]
 )
 noteTSVColumns = [col for (col, dtype) in noteTSVColumnsAndTypes]
@@ -284,6 +285,7 @@ ratingTSVColumnsAndTypes = (
   ]
   + helpfulTagsAndTypesTSVOrder
   + notHelpfulTagsAndTypesTSVOrder
+  + [("ratedOnTweetId", np.int64)]
 )
 
 ratingTSVColumns = [col for (col, dtype) in ratingTSVColumnsAndTypes]
