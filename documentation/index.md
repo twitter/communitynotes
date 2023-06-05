@@ -1,5 +1,5 @@
 ---
-title: Home
+title: Introduction
 description: Learn everything about Community Notes, Twitter's open-source program to create a better-informed world.
 ---
 
