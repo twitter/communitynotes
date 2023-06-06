@@ -14,7 +14,7 @@ Community Notes aims to create a better-informed world, by empowering people on 
 {% stack %}
 **Contributors write and rate notes**
 
-Contributors are people on Twitter, just like you, who [sign up](./contributing/signing-up.md) to write and rate notes. The more people that participate, the better the program becomes.
+Contributors are people on Twitter, just like you, who [sign up](../contributing/signing-up.md) to write and rate notes. The more people that participate, the better the program becomes.
 {% /stack %}
 {% /inline %}
 
@@ -25,7 +25,7 @@ Contributors are people on Twitter, just like you, who [sign up](./contributing/
 
 Community Notes doesn't work by majority rules. To identify notes that are helpful to a wide range of people, notes require agreement between contributors who have sometimes disagreed in their past ratings. This helps prevent one-sided ratings.
 
-Learn more about how Community Notes handles [diverse perspectives](./contributing/diversity-of-perspectives.md).
+Learn more about how Community Notes handles [diverse perspectives](../contributing/diversity-of-perspectives.md).
 {% /stack %}
 {% /inline %}
 
@@ -59,13 +59,13 @@ It’s important for people to understand how Community Notes works, and to be a
 {% accordionSection %}
 {% accordionItem title="How does a Tweet get a note?"  %}
 
-Contributors can suggest a note on any Tweet. Notes are then rated for helpfulness by other contributors. Notes are only shown on Tweets if they are rated helpful by enough people from different perspectives. See how Community Notes defines and uses [differences of perspectives here](./contributing/diversity-of-perspectives.md).
+Contributors can suggest a note on any Tweet. Notes are then rated for helpfulness by other contributors. Notes are only shown on Tweets if they are rated helpful by enough people from different perspectives. See how Community Notes defines and uses [differences of perspectives here](../contributing/diversity-of-perspectives.md).
 
 {% /accordionItem %}
 
 {% accordionItem title="How does Community Notes prevent abuse?"  %}
 
-Community Notes works differently than the rest of Twitter. It is not a popularity contest. It aims to find notes that many people from different points of view will find helpful. It takes into account not only how many ratings a note has received, but also whether people who rated it helpful seem to come from different perspectives. Because notes need to genuinely be found helpful by people who tend to disagree, the program is more likely to identify notes that many people find helpful. Read the full details of [how this works](./contributing/diversity-of-perspectives.md).
+Community Notes works differently than the rest of Twitter. It is not a popularity contest. It aims to find notes that many people from different points of view will find helpful. It takes into account not only how many ratings a note has received, but also whether people who rated it helpful seem to come from different perspectives. Because notes need to genuinely be found helpful by people who tend to disagree, the program is more likely to identify notes that many people find helpful. Read the full details of [how this works](../contributing/diversity-of-perspectives.md).
 
 Notes are also subject to Twitter rules and can be reported.
 
@@ -92,10 +92,10 @@ The people on Twitter span a wide gamut of backgrounds and experiences, and we b
 
 {% accordionItem title="I have a note on my Tweet. What can I do?"  %}
 
-As a Tweet author, if you disagree that a note provides important context about your Tweet, you can request [additional review](./contributing/additional-review.md).
+As a Tweet author, if you disagree that a note provides important context about your Tweet, you can request [additional review](../contributing/additional-review.md).
 
 {% /accordionItem %}
 
 {% /accordionSection %}
 
-Explore other [Frequently Asked Questions](./about/faq.md)
+Explore other [Frequently Asked Questions](./faq.md)
