@@ -3,7 +3,7 @@ title: Introduction
 description: Learn everything about Community Notes, Twitter's open-source program to create a better-informed world.
 ---
 
-![Screenshot of a mobile device showing a Tweet with a Community Note.](./images/help-rate-this-note-expanded.png)
+![Screenshot of a mobile device showing a Tweet with a Community Note.](../images/help-rate-this-note-expanded.png)
 
 ## Community Notes: a collaborative way to add helpful context to Tweets and keep people better informed
 
