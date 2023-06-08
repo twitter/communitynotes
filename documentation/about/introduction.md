@@ -10,7 +10,7 @@ description: Learn everything about Community Notes, Twitter's open-source progr
 Community Notes aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful notes to Tweets that might be misleading.
 
 {% inline wrap="false" %}
-{% atmImage maxWidth="40" width="40" src="./images/people.svg" alt="Vector icon of 3 people together" /%}
+{% atmImage widthControl="width" width="30" src="./images/people.svg" alt="Vector icon of 3 people together" /%}
 {% stack %}
 **Contributors write and rate notes**
 
@@ -19,7 +19,7 @@ Contributors are people on Twitter, just like you, who [sign up](../contributing
 {% /inline %}
 
 {% inline wrap="false" %}
-{% atmImage src="./images/rate.svg" alt="Vector icon of a star, half-filled with color" width="40" /%}
+{% atmImage widthControl="width" width="30" src="./images/rate.svg" alt="Vector icon of a star, half-filled with color" /%}
 {% stack %}
 **Only notes rated helpful by people from diverse perspectives appear on Tweets**
 
@@ -30,7 +30,7 @@ Learn more about how Community Notes handles [diverse perspectives](../contribut
 {% /inline %}
 
 {% inline wrap="false" %}
-{% atmImage width="40" src="./images/world.svg" alt="Vector icon of the earth" /%}
+{% atmImage widthControl="width" width="30" src="./images/world.svg" alt="Vector icon of the earth" /%}
 {% stack %}
 **Twitter doesn’t choose what shows up, the people do**
 
@@ -39,7 +39,7 @@ Twitter doesn’t write, rate or moderate notes (unless they break the Twitter r
 {% /inline %}
 
 {% inline wrap="false" %}
-{% atmImage width="40" src="./images/open-source.svg" alt="Vector icon of 3 a network with distributed nodes" /%}
+{% atmImage widthControl="width" width="30" src="./images/open-source.svg" alt="Vector icon of 3 a network with distributed nodes" /%}
 {% stack %}
 **Open-source and transparent**
 
