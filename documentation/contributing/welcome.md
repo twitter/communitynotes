@@ -20,7 +20,9 @@ Your ratings help determine which notes are made visible on Twitter. To start ra
 
 {% button buttonTitle="Rate notes" buttonHref="https://twitter.com/i/communitynotes/needs_your_help" /%}
 
-## 3. Soon, you'll unlock the ability to write your own notes!</strong><label>To unlock the ability to write notes, you need to earn a Rating Impact of 5. You earn Impact when your rating helps a note earn a helpful (or unhelpful) status! You can track your progress on the Rating Impact section of your Community Notes profile.
+## 3. Soon, you'll unlock the ability to write your own notes!
+
+To unlock the ability to write notes, you need to earn a Rating Impact of 5. You earn Impact when your rating helps a note earn a helpful (or unhelpful) status! You can track your progress on the Rating Impact section of your Community Notes profile.
 
 ![Screen showing an anonymous contributor profile. Highlighted section reads: 0 Rating Impact. You need an Impact of 5 to unlock note writing](../images/rating-impact-welcome.png)
 

@@ -9,7 +9,7 @@ Anyone can read and rate Community Notes, but only contributors who've [unlocked
 
 1. Click or tap the ••• menu on the Tweet's top right and then **Write a Community Note**.
 
-   ![A Tweet with the options menu open. “Write a Community Note” listed as the last item](../images/writing-notes.png)
+![A Tweet with the options menu open. “Write a Community Note” listed as the last item](../images/writing-notes.png)
 
 2. Answer the required multiple choice questions and write the context you feel would help others understand why that Tweet is or is not misleading.
 

@@ -182,7 +182,6 @@ We break ties between multiple explanation tags by picking the less commonly use
 
 For helpful notes:
 
-```
 1. UnbiasedLanguage
 2. UniqueContext
 3. Empathetic
@@ -192,11 +191,10 @@ For helpful notes:
 7. Clear
 8. Informative
 9. Other
-```
+
 
 For not-helpful notes:
 
-```
 1. Outdated
 2. SpamHarassmentOrAbuse
 3. HardToUnderstand
@@ -209,9 +207,6 @@ For not-helpful notes:
 10. SourcesMissingOrUnreliable
 11. OpinionSpeculationOrBias
 12. Other
-```
-
-</br>
 
 ## Complete Algorithm Steps:
 
