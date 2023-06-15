@@ -15,4 +15,6 @@ This approach has a number of benefits. First, it reflects the reality that peop
 
 We are constantly evaluating ways to improve this approach (and [welcome suggestions](./feedback.md)) This current method has shown promising results in helping find quality notes: in surveys of people on Twitter in the US, the majority of respondents found notes that earned a status of "Helpful" by Community Notes contributors to be “somewhat” or “extremely” helpful — this includes people from across the political spectrum.
 
+In addition to the approach described here, we also work to understand specifically how helpful notes are to people from different political perspectives. For example, by analyzing Twitter’s follow, like, and retweet graphs. It's important to note that these analyses don't directly impact the ratings of specific notes. Instead, they serve as a quality measure that links to specific notes and aids in refining our open-source algorithms. [Learn more here](../under-the-hood/guardrails.md).
+
 If you're interested in the math and code powering Community Notes, take a look at our [Note Ranking: Under the Hood](../under-the-hood/note-ranking-code.md) section.
