@@ -1,9 +1,9 @@
 ---
-title: Guardrails and Circuit Breakers
+title: Evaluation
 description: Community Notes tracks a number of quality measures, with a corresponding set of operational guardrails.
 navWeight: 6
 ---
-#  Guardrails and Circuit Breakers
+#  Evaluation
 
 Community Notes aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful context to Tweets that might be misleading or missing important context.
 
@@ -11,9 +11,11 @@ It’s important that the context that is [elevated to viewers from Community No
 
 The [note ranking algorithm](./note-ranking-code.md) is designed to help meet these quality standards, along with a number of [additional safeguards](../about/challenges.md) built over the course of the program’s development. As Community Notes and its approach are novel, we expect there will be challenges and bumps in the road that could impact note quality.
 
+## Guardrails and Circuit Breakers
+
 To identify potential problems, Community Notes tracks a number of quality measures, with a corresponding set of operational “guardrails” and “circuit breaker” thresholds and procedures to respond to issues. We anticipate that we may need to occasionally trigger these mechanisms as we learn and grow. Here’s how they work:
 
-## Quality Measures
+### Quality Measures
 
 Community Notes measures and monitors three top-line metrics to understand the quality of notes and identify potential issues to mitigate along the way. These measures are used for monitoring purposes, and do not impact the note status outcomes or visibility for individual notes. At present, these measures focus on notes that earn the status of Helpful (i.e., those that are [shown to viewers on Twitter](../contributing/notes-on-twitter.md), beyond enrolled contributors).
 
@@ -39,7 +41,7 @@ Evidence of consistent or systematic problems in top rated notes that earn the s
 
 In addition to the three top-line metrics listed above, Community Notes monitors additional operational quality metrics, like whether any notes violate Twitter Rules.
 
-## Thresholds
+### Thresholds
 
 For each of these measures and metrics, there are thresholds to trigger ‘guardrails’ and ‘circuit breakers’.
 
@@ -47,7 +49,7 @@ For each of these measures and metrics, there are thresholds to trigger ‘guard
 
 **Circuit breakers** are an alert threshold that indicates to the Community Notes team that there may be significant emerging issues with notes that earn the status of Helpful. For example: a number of notes with the status of Helpful are evaluated as low Accuracy or identified as having low helpfulness ratings from diverse audiences in a short period. If a circuit breaker is tripped, our policy is to temporarily turn off display of notes for viewers beyond enrolled contributors, then to investigate and to pursue a remediation. A temporary Remediation (see more on this below) may be enacted while a more permanent solution is built.
 
-## Remediations
+### Remediations
 
 Community Notes context is intended to be community driven. Notes are written and selected by people on Twitter, for people on Twitter. Except in the case of a Twitter Rule violation, Twitter employees do not make decisions about which individual notes do or do not display on Twitter, even in cases when a guardrail or circuit breaker condition is triggered.
 
@@ -62,6 +64,16 @@ Examples of system-wide actions Community Notes may take in the case of a guardr
 These actions allow Community Notes to mitigate potential risk of inaccurate or low quality notes, while the internal team conducts an investigation and builds an appropriate fix, if needed. When selecting which remediation to use, we aim to take the smallest corrective action possible to balance mitigating the risk of showing low quality notes with the risk of failing to show helpful, informative notes on potentially misleading Tweets.
 
 _Note: Community Notes contributors and notes are subject to the Twitter Rules. Failure to abide by rules can result in removal from the Community Notes program._
+
+## Understanding helpfulness across political viewpoints
+
+The goal of community notes is to provide context that people from different points of view find helpful. In order to identify notes that are broadly found helpful, our algorithm can identify people who frequently agree or disagree with each other, based on their history of past ratings of Community Notes. Notably, however, the algorithm does not make assumptions about the political connotations of these agreements or disagreements, as it lacks data on political viewpoints or the subject matter of each note.
+
+To better understand if notes are found widely helpful or only helpful to people from a given political perspective, we conduct additional analyses. These are solely for comparative purposes and do not influence the algorithm's decisions about each note, but they do provide valuable information about note quality that aids in system development.
+
+Prior to the roll-out of Community Notes in the United States, we employed representative surveys involving Twitter users to understand the helpfulness of notes to diverse political viewpoints. In these surveys, participants optionally declared their political leanings before viewing and providing evaluations of tweets with and without Community Notes. Details of our methodology and past findings can be found in [our paper](https://github.com/twitter/communitynotes/blob/main/birdwatch_paper_2022_10_27.pdf).
+
+Additionally, we utilize a widely-used technique for viewpoint estimation. This approach makes use of Twitter’s follow, like, and retweet graphs to estimate political leanings based on an account’s  proximity to and interaction with political accounts and content within the network. Our calculations can be approximated by the methods described in [this paper](http://pablobarbera.com/static/barbera_twitter_ideal_points.pdf). Note that calculation of viewpoint estimations are anonymized and used on an aggregate basis only to help evaluate perceived note quality.
 
 ## Feedback? Ideas?
 
