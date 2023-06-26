@@ -48,6 +48,6 @@ To promote transparency, all contributions to Community Notes are [anonymized](.
 
 ## Rules
 
-Contributions are subject to Twitter [Rules](https://help.twitter.com/rules-and-policies/twitter-rules), [Terms of Service](https://twitter.com/tos) and [Privacy Policy](https://twitter.com/privacy). Failure to abide by the rules can result in removal from the Community Notes program, and/or other remediations.
+Contributions are subject to Twitter [Rules](https://help.twitter.com/en/rules-and-policies), [Terms of Service](https://twitter.com/tos) and [Privacy Policy](https://twitter.com/privacy). Failure to abide by the rules can result in removal from the Community Notes program, and/or other remediations.
 
 Anyone can report notes they believe aren’t in accordance with those rules by clicking or tapping the ••• menu on a note, and then selecting "Report", or by using this form.
