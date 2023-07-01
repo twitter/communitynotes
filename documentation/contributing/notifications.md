@@ -11,7 +11,7 @@ Sometimes, people read a Tweet before a Community Note appears on it. To give pe
 
 These appear in the notifications tab. They look like this:
 
-![Twitter app with a notification showing someone a note that's been added to a Tweet to which they replied, Liked or Rewteeted](../images/tweet-liked-alert.png)
+![Twitter app with a notification showing someone a note that's been added to a Tweet to which they replied, Liked or Retweeted](../images/tweet-liked-alert.png)
 
 These notifications are sent when a note has been showing on a Tweet for 24 hours, has been found particularly helpful (indicated by a [note intercept score](../under-the-hood/note-ranking-code.md) of 0.45 or higher), and was written within the past week.
 
