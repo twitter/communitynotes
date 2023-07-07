@@ -251,6 +251,72 @@ class MatrixFactorization:
 
     return mf_model, optimizer, criterion
 
+  def _get_train_validate_sets(
+    self,
+    row: torch.LongTensor,
+    col: torch.LongTensor,
+    rating: torch.FloatTensor,
+    validate_percent: Optional[float] = None,
+  ) -> Tuple[
+    torch.LongTensor,
+    torch.LongTensor,
+    torch.FloatTensor,
+    torch.LongTensor,
+    torch.LongTensor,
+    torch.FloatTensor,
+  ]:
+    if validate_percent is not None:
+      random_indices = np.random.permutation(np.arange(len(row)))
+      validate_indices = random_indices[: int(validate_percent * len(row))]
+      train_indices = random_indices[int(validate_percent * len(row)) :]
+      row_validate = row[validate_indices]
+      col_validate = col[validate_indices]
+      rating_validate = rating[validate_indices]
+      row_train = row[train_indices]
+      col_train = col[train_indices]
+      rating_train = rating[train_indices]
+    else:
+      row_train = row
+      col_train = col
+      rating_train = rating
+      row_validate = None
+      col_validate = None
+      rating_validate = None
+    return row_train, col_train, rating_train, row_validate, col_validate, rating_validate
+
+  def _compute_and_print_loss(
+    self,
+    mf_model: BiasedMatrixFactorization,
+    loss_value: float,
+    criterion: torch.nn.modules.loss._Loss,
+    row_train: torch.LongTensor,
+    col_train: torch.LongTensor,
+    rating_train: torch.FloatTensor,
+    row_validate: Optional[torch.LongTensor],
+    col_validate: Optional[torch.LongTensor],
+    rating_validate: Optional[torch.FloatTensor],
+    epoch: int,
+    final: bool = False,
+  ) -> Tuple[float, float, Optional[float]]:
+    y_pred = mf_model(row_train, col_train)
+    train_loss_value = criterion(y_pred, rating_train).item()
+    if row_validate is not None:
+      y_pred_validate = mf_model(row_validate, col_validate)
+      validate_loss_value = criterion(y_pred_validate, rating_validate).item()
+    else:
+      validate_loss_value = None
+
+    if self._logging:
+      print("epoch", epoch, loss_value)
+      print("TRAIN FIT LOSS: ", train_loss_value)
+      if validate_loss_value is not None:
+        print("VALIDATE FIT LOSS: ", validate_loss_value)
+
+      if final == True:
+        self.test_errors.append(loss_value)
+        self.train_errors.append(train_loss_value)
+    return train_loss_value, loss_value, validate_loss_value
+
   def _fit_model(
     self,
     mf_model: BiasedMatrixFactorization,
@@ -259,7 +325,8 @@ class MatrixFactorization:
     row: torch.LongTensor,
     col: torch.LongTensor,
     rating: torch.FloatTensor,
-  ) -> None:
+    validate_percent: Optional[float] = None,
+  ) -> Tuple[float, float, Optional[float]]:
     """Run gradient descent to train the model.
 
     Args:
@@ -270,23 +337,20 @@ class MatrixFactorization:
         col (torch.LongTensor)
         rating (torch.FloatTensor)
     """
+    (
+      row_train,
+      col_train,
+      rating_train,
+      row_validate,
+      col_validate,
+      rating_validate,
+    ) = self._get_train_validate_sets(row, col, rating, validate_percent)
+
     l2_lambda_intercept = self._l2_lambda * self._l2_intercept_multiplier
-
-    def print_loss(final=False):
-      y_pred = mf_model(row, col)
-      train_loss = criterion(y_pred, rating)
-
-      if self._logging:
-        print("epoch", epoch, loss.item())
-        print("TRAIN FIT LOSS: ", train_loss.item())
-        if final == True:
-          self.test_errors.append(loss.item())
-          self.train_errors.append(train_loss.item())
-
     prev_loss = 1e10
 
-    y_pred = mf_model(row, col)
-    loss = criterion(y_pred, rating)
+    y_pred = mf_model(row_train, col_train)
+    loss = criterion(y_pred, rating_train)
     l2_reg_loss = torch.tensor(0.0).to(mf_model.device)
 
     for name, param in mf_model.named_parameters():
@@ -299,7 +363,9 @@ class MatrixFactorization:
 
     epoch = 0
 
-    while abs(prev_loss - loss.item()) > self._convergence:
+    while (abs(loss.item() - prev_loss) > self._convergence) and (
+      not (epoch > 100 and loss.item() > prev_loss)
+    ):
 
       prev_loss = loss.item()
 
@@ -313,8 +379,8 @@ class MatrixFactorization:
       optimizer.zero_grad()
 
       # Predict and calculate loss
-      y_pred = mf_model(row, col)
-      loss = criterion(y_pred, rating)
+      y_pred = mf_model(row_train, col_train)
+      loss = criterion(y_pred, rating_train)
       l2_reg_loss = torch.tensor(0.0).to(mf_model.device)
 
       for name, param in mf_model.named_parameters():
@@ -326,13 +392,37 @@ class MatrixFactorization:
       loss += l2_reg_loss
 
       if epoch % 50 == 0:
-        print_loss()
+        self._compute_and_print_loss(
+          mf_model,
+          loss.item(),
+          criterion,
+          row_train,
+          col_train,
+          rating_train,
+          row_validate,
+          col_validate,
+          rating_validate,
+          epoch,
+          final=False,
+        )
 
       epoch += 1
 
     if self._logging:
       print("Num epochs:", epoch)
-      print_loss(final=True)
+    return self._compute_and_print_loss(
+      mf_model,
+      loss.item(),
+      criterion,
+      row_train,
+      col_train,
+      rating_train,
+      row_validate,
+      col_validate,
+      rating_validate,
+      epoch,
+      final=True,
+    )
 
   def run_mf(
     self,
@@ -341,7 +431,8 @@ class MatrixFactorization:
     userInit: pd.DataFrame = None,
     globalInterceptInit: Optional[float] = None,
     specificNoteId: Optional[int] = None,
-  ) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[float]]:
+    validatePercent: Optional[float] = None,
+  ):
     """Train matrix factorization model.
 
     See https://twitter.github.io/communitynotes/ranking-notes/#matrix-factorization
@@ -387,13 +478,8 @@ class MatrixFactorization:
       row = torch.LongTensor(noteRatingIds[_raterIndexKey].values).to(mf_model.device)
       col = torch.LongTensor(noteRatingIds[_noteIndexKey].values).to(mf_model.device)
 
-    self._fit_model(
-      mf_model,
-      optimizer,
-      criterion,
-      row,
-      col,
-      rating,
+    train_loss, loss, validate_loss = self._fit_model(
+      mf_model, optimizer, criterion, row, col, rating, validatePercent
     )
 
     assert mf_model.item_factors.weight.data.cpu().numpy().shape[0] == noteIdMap.shape[0]
@@ -409,7 +495,10 @@ class MatrixFactorization:
     )
 
     fitRaterParams.drop(_raterIndexKey, axis=1, inplace=True)
-    return fitNoteParams, fitRaterParams, globalIntercept
+    if validatePercent is None:
+      return fitNoteParams, fitRaterParams, globalIntercept
+    else:
+      return fitNoteParams, fitRaterParams, globalIntercept, train_loss, loss, validate_loss
 
   def _flip_factors_for_identification(
     self, noteIdMap: pd.DataFrame, raterIdMap: pd.DataFrame

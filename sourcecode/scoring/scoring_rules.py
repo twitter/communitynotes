@@ -28,6 +28,7 @@ class RuleID(Enum):
   NM_CRNH = RuleAndVersion("NmCRNH", "1.0", False)
   GENERAL_CRH_INERTIA = RuleAndVersion("GeneralCRHInertia", "1.0", False)
   ELEVATED_CRH_INERTIA = RuleAndVersion("ElevatedCRHInertia", "1.0", False)
+  LCB_INERTIA = RuleAndVersion("LcbCRHInertia", "1.0", False)
   INCORRECT_OUTLIER = RuleAndVersion("FilterIncorrect", "1.0", False)
 
   # Rules used in _meta_score.
