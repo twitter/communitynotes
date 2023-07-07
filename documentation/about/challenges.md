@@ -32,7 +32,7 @@ The program currently takes multiple steps to reduce the potential for this type
 
 Community Notes will be most effective if the context it produces can be found to be helpful by people of multiple points of view–not just people from one group or another. To work towards this goal, Community Notes currently takes the following steps:
 
-- First, as described above, Community Notes uses a [bridging based algorithm](../under-the-hood/note-ranking-code.md) to identify notes that are likely to be helpful to people from many points of view. This helps to prevent one-sided ratings and to prevent a single group from being able to engage in mass voting to determine what notes are shown.
+- First, as described above, Community Notes uses a [bridging based algorithm](../under-the-hood/ranking-notes.md) to identify notes that are likely to be helpful to people from many points of view. This helps to prevent one-sided ratings and to prevent a single group from being able to engage in mass voting to determine what notes are shown.
 
 - Second, Community Notes can proactively seek ratings from contributors who are likely to provide a different perspective based on their rating history. This is currently done in the [Needs Your Help tab](../contributing/rating-notes.md), and we are exploring new ways to quickly collect ratings on notes from a wide range of contributors.
 

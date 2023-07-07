@@ -9,7 +9,7 @@ Community Notes aims to create a better-informed world, by empowering people on 
 
 It’s important that the context that is [elevated to viewers from Community Notes](../contributing/notes-on-twitter.md) be helpful, informative, and accurate.
 
-The [note ranking algorithm](./note-ranking-code.md) is designed to help meet these quality standards, along with a number of [additional safeguards](../about/challenges.md) built over the course of the program’s development. As Community Notes and its approach are novel, we expect there will be challenges and bumps in the road that could impact note quality.
+The [note ranking algorithm](./ranking-notes.md) is designed to help meet these quality standards, along with a number of [additional safeguards](../about/challenges.md) built over the course of the program’s development. As Community Notes and its approach are novel, we expect there will be challenges and bumps in the road that could impact note quality.
 
 ## Guardrails and Circuit Breakers
 
@@ -57,7 +57,7 @@ Instead, the goal is to build a _system_ that consistently elevates helpful, inf
 
 Examples of system-wide actions Community Notes may take in the case of a guardrail or circuit breaker situation may include:
 
-- Temporarily raising the [threshold](./note-ranking-code.md) required for notes to be publicly visible on a Tweet
+- Temporarily raising the [threshold](./ranking-notes.md) required for notes to be publicly visible on a Tweet
 - Temporarily pausing the scoring of newly created notes
 - Temporarily pausing the display of all notes on Tweets for viewers outside enrolled Community Notes contributors
 

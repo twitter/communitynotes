@@ -17,4 +17,4 @@ We are constantly evaluating ways to improve this approach (and [welcome suggest
 
 In addition to the approach described here, we also work to understand specifically how helpful notes are to people from different political perspectives. For example, by analyzing Twitter’s follow, like, and retweet graphs. It's important to note that these analyses don't directly impact the ratings of specific notes. Instead, they serve as a quality measure that links to specific notes and aids in refining our open-source algorithms. [Learn more here](../under-the-hood/guardrails.md).
 
-If you're interested in the math and code powering Community Notes, take a look at our [Note Ranking: Under the Hood](../under-the-hood/note-ranking-code.md) section.
+If you're interested in the math and code powering Community Notes, take a look at our [Note Ranking: Under the Hood](../under-the-hood/ranking-notes.md) section.
