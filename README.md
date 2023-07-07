@@ -46,7 +46,7 @@ The markdown files in this repo are the source of truth for the content in our d
 
 ### Community Notes open-source code
 
-The algorithm that powers Community Notes can be found on the [sourcecode folder](https://github.com/twitter/communitynotes/tree/main/sourcecode), and instructions on how to use it can be found in the [Guide](https://twitter.github.io/communitynotes/note-ranking-code/).
+The algorithm that powers Community Notes can be found on the [sourcecode folder](https://github.com/twitter/communitynotes/tree/main/sourcecode), and instructions on how to use it can be found in the [Guide](https://twitter.github.io/communitynotes/under-the-hood/open-source/).
 
 ### Community Notes data
 
