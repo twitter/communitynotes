@@ -1,6 +1,7 @@
 import time
 
 import numpy as np
+import pandas as pd
 
 
 # Store the timestamp at which the constants module is initialized.  Note
@@ -14,6 +15,9 @@ import numpy as np
 epochMillis = 1000 * time.time()
 
 maxTrainError = 0.09
+
+expansionFlipPct = 0.19
+maxReruns = 5
 
 # Explanation Tags
 minRatingsToGetTag = 2
@@ -216,12 +220,10 @@ ratingWeightKey = "ratingWeight"
 
 incorrectFilterColumns = [
   "notHelpfulIncorrect_interval",
-  "notHelpfulIncorrect_total_interval",
   "cnt_interval",
   "num_voters_interval",
   "tf_idf_incorrect_interval",
   "notHelpfulIncorrect_same",
-  "notHelpfulIncorrect_total_same",
   "cnt_same",
   "num_voters_same",
   "tf_idf_incorrect_same",
@@ -261,11 +263,7 @@ noteTSVColumnsAndTypes = (
   ]
   + misleadingTagsAndTypes
   + notMisleadingTagsAndTypes
-  + [
-    ("trustworthySources", np.int64),
-    (summaryKey, np.object),
-    ("isMediaNote", np.int64)
-  ]
+  + [("trustworthySources", np.int64), (summaryKey, np.object), ("isMediaNote", np.int64)]
 )
 noteTSVColumns = [col for (col, dtype) in noteTSVColumnsAndTypes]
 noteTSVTypes = [dtype for (col, dtype) in noteTSVColumnsAndTypes]
@@ -464,24 +462,24 @@ raterModelOutputTSVColumnsAndTypes = [
   (crhCrnhRatioDifferenceKey, np.double),
   (meanNoteScoreKey, np.double),
   (raterAgreeRatioKey, np.double),
-  (successfulRatingHelpfulCount, np.int64),
-  (successfulRatingNotHelpfulCount, np.int64),
-  (successfulRatingTotal, np.int64),
-  (unsuccessfulRatingHelpfulCount, np.int64),
-  (unsuccessfulRatingNotHelpfulCount, np.int64),
-  (unsuccessfulRatingTotal, np.int64),
-  (ratingsAwaitingMoreRatings, np.int64),
-  (ratedAfterDecision, np.int64),
-  (notesCurrentlyRatedHelpful, np.int64),
-  (notesCurrentlyRatedNotHelpful, np.int64),
-  (notesAwaitingMoreRatings, np.int64),
+  (successfulRatingHelpfulCount, pd.Int64Dtype()),
+  (successfulRatingNotHelpfulCount, pd.Int64Dtype()),
+  (successfulRatingTotal, pd.Int64Dtype()),
+  (unsuccessfulRatingHelpfulCount, pd.Int64Dtype()),
+  (unsuccessfulRatingNotHelpfulCount, pd.Int64Dtype()),
+  (unsuccessfulRatingTotal, pd.Int64Dtype()),
+  (ratingsAwaitingMoreRatings, pd.Int64Dtype()),
+  (ratedAfterDecision, pd.Int64Dtype()),
+  (notesCurrentlyRatedHelpful, pd.Int64Dtype()),
+  (notesCurrentlyRatedNotHelpful, pd.Int64Dtype()),
+  (notesAwaitingMoreRatings, pd.Int64Dtype()),
   (enrollmentState, np.int32),
-  (successfulRatingNeededToEarnIn, np.int64),
+  (successfulRatingNeededToEarnIn, pd.Int64Dtype()),
   (authorTopNotHelpfulTagValues, np.str),
-  (timestampOfLastStateChange, np.int64),
-  (aboveHelpfulnessThresholdKey, np.bool_),
+  (timestampOfLastStateChange, np.double),
+  (aboveHelpfulnessThresholdKey, np.float64),  # nullable bool
   (isEmergingWriterKey, np.bool_),
-  (aggregateRatingReceivedTotal, np.int64),
+  (aggregateRatingReceivedTotal, pd.Int64Dtype()),
   (timestampOfLastEarnOut, np.double),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]

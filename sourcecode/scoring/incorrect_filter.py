@@ -53,6 +53,8 @@ def _get_incorrect_tfidf_ratio(
     suffix: suffix for incorrect and count column names for this filter
 
   Returns:
+    pd.DataFrame with one row for each note, with computed sum(tf_idf_incorrect) score for raters
+    included in filter
   """
 
   ratings_w_user_totals = augmented_ratings[user_filter]
@@ -67,7 +69,7 @@ def _get_incorrect_tfidf_ratio(
   ) / np.log(
     1 + (rating_aggs_w_cnt["notHelpfulIncorrect_total"] / rating_aggs_w_cnt["cnt"])
   )  # p(incorrect over all rater ratings)
-  rating_aggs_w_cnt.drop("notHelpfulIncorrect_total", axis=1)
+  rating_aggs_w_cnt.drop("notHelpfulIncorrect_total", inplace=True, axis=1)
   rating_aggs_w_cnt.columns = [c.noteIdKey] + [
     f"{col}{suffix}" for col in rating_aggs_w_cnt.columns[1:]
   ]

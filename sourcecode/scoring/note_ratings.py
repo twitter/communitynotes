@@ -21,10 +21,18 @@ def is_crh(scoredNotes, minRatingsNeeded, crhThreshold) -> pd.Series:
   )
 
 
-def is_crh_lcb(scoredNotes, minRatingsNeeded, crhThresholdLCBIntercept) -> pd.Series:
+def is_crh_lcb(scoredNotes, minRatingsNeeded, crhThresholdLCBIntercept, inertia=False) -> pd.Series:
   enoughRatings = scoredNotes[c.numRatingsKey] >= minRatingsNeeded
+
   if c.noteInterceptMinKey in scoredNotes.columns:
-    return enoughRatings & (scoredNotes[c.noteInterceptMinKey] >= crhThresholdLCBIntercept)
+    if inertia == False:
+      return enoughRatings & (scoredNotes[c.noteInterceptMinKey] >= crhThresholdLCBIntercept)
+    else:
+      return (
+        enoughRatings
+        & (scoredNotes[c.noteInterceptMinKey] >= crhThresholdLCBIntercept)
+        & (scoredNotes[c.currentLabelKey] == c.currentlyRatedHelpful)
+      )
   else:
     # all False
     return enoughRatings & (~enoughRatings)
@@ -488,6 +496,15 @@ def compute_scored_notes(
           crhThreshold - inertiaDelta,
           crhThreshold,
           minRatingsNeeded,
+        ),
+        scoring_rules.RuleFromFunction(
+          RuleID.LCB_INERTIA,
+          {RuleID.GENERAL_CRH},
+          c.currentlyRatedHelpful,
+          lambda noteStats: is_crh_lcb_function(
+            noteStats, minRatingsNeeded, crhThresholdLCBIntercept - inertiaDelta, True
+          ),
+          onlyApplyToNotesThatSayTweetIsMisleading=True,
         ),
         scoring_rules.FilterTagOutliers(
           RuleID.TAG_OUTLIER,

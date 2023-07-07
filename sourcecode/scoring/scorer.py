@@ -103,6 +103,7 @@ class Scorer(ABC):
     noteScores, userScores = self._score_notes_and_users(ratings, noteStatusHistory)
     noteScores = noteScores.rename(columns=self._get_note_col_mapping())
     userScores = userScores.rename(columns=self._get_user_col_mapping())
+    # TODO: Tolerate unexpcted columns if --nostrict-columns is set.
     # Process noteScores
     noteScores = noteScores.drop(columns=self._get_dropped_note_cols())
     assert set(noteScores.columns) == set(
@@ -112,7 +113,12 @@ class Scorer(ABC):
     Missing expected columns that should've been in noteScores: {set(self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols()) - set(noteScores.columns)}"""
     # Process userScores
     userScores = userScores.drop(columns=self._get_dropped_user_cols())
-    assert set(userScores.columns) == set(self.get_helpfulness_scores_cols())
+    assert set(userScores.columns) == set(
+      self.get_helpfulness_scores_cols()
+    ), f"""all columns must be either dropped or explicitly defined in an output. 
+    Extra columns that were in userScores: {set(userScores.columns) - set(self.get_helpfulness_scores_cols())}
+    Missing expected columns that should've been in userScores: {set(self.get_helpfulness_scores_cols()) - set(userScores.columns)}"""
+
     # Return dataframes with specified columns in specified order
     return (
       noteScores[self.get_scored_notes_cols()],

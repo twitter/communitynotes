@@ -30,7 +30,7 @@ class MFBaseScorer(Scorer):
     crnhThresholdNoteFactorMultiplier: float = -0.8,
     crnhThresholdNMIntercept: float = -0.15,
     crnhThresholdUCBIntercept: float = -0.04,
-    crhThresholdLCBIntercept: float = 0.31,
+    crhThresholdLCBIntercept: float = 0.32,
     crhSuperThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
     weightedTotalVotes: float = 1.0,

@@ -87,7 +87,7 @@ def tsv_parser(
     firstLine = rawTSV.split("\n")[0]
     if len(firstLine.split("\t")) != len(columns):
       raise ValueError
-    return pd.read_csv(
+    data = pd.read_csv(
       StringIO(rawTSV),
       sep="\t",
       names=columns,
@@ -95,6 +95,7 @@ def tsv_parser(
       header=0 if header else None,
       index_col=[],
     )
+    return data
   except (ValueError, IndexError):
     raise ValueError("invalid input")
 
