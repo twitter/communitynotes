@@ -165,7 +165,7 @@ As older data comprise an increasingly small fraction of the dataset, ranking re
 To maintain Helpful note quality as Community Notes continues to grow, we are adding logic which stabilizes the status of a note once the note is two weeks old.
 This approach allows us to continue optimizing the ranking algorithm with a focus on the impact on current data while persisting helpful community contributions on older topics.
 Before a note is two weeks old, the helpfulness status will continue to be updated each time time the ranking algorithm is run.
-After a note turns two weeks old we store the helpfulness status for that note and use the stored status in the future, including for displaying notes on Twitter and calcualting user contribution statistics.
+After a note turns two weeks old we store the helpfulness status for that note and use the stored status in the future, including for displaying notes on Twitter and calculating user contribution statistics.
 
 While a note may be scored by the Core, Expansion and Coverage models, we only finalize note status based on the Core model.
 Notes that are only ranked by the Expansion model are not eligible for stabilization since the Expansion model is under development and may be revised to improve quality at any time.
