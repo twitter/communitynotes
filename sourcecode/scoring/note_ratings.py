@@ -402,7 +402,7 @@ def compute_scored_notes(
       crnhThresholdNoteFactorMultiplier: Scaling factor making controlling the relationship between
         CRNH threshold and note intercept.  Note that this constant is set negative so that notes with
         larger (magnitude) factors must have proportionally lower intercepts to become CRNH.
-      crnhThresholdNMIntercept: Minimum intercept for notes which do not claim a tweet is misleading
+      crnhThresholdNMIntercept: Minimum intercept for notes which do not claim a post is misleading
         to achieve CRNH status.
       crnhThresholdUCBIntercept: Maximum UCB of the intercept (determined with pseudoraters) for
         notes to achieve CRNH status.

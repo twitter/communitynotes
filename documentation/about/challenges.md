@@ -7,7 +7,7 @@ navWeight: 2
 
 We know there are many challenges involved in building an open, participatory system like Community Notes — from making it resistant to manipulation attempts, to ensuring it isn’t dominated by a simple majority or biased because of the distribution of contributors.
 
-We've been building Community Notes (formerly called Birdwatch) in [public since January 2021](https://blog.twitter.com/en_us/topics/product/2021/introducing-birdwatch-a-community-based-approach-to-misinformation), and have intentionally designed it to mitigate potential risks. We've seen [encouraging results](https://blog.twitter.com/en_us/topics/product/2022/birdwatch-getting-new-onboarding-process-more-visible-notes), but we're constantly designing for challenges that could arise.
+We've been building Community Notes (formerly called Birdwatch) in [public since January 2021](https://blog.x.com/en_us/topics/product/2021/introducing-birdwatch-a-community-based-approach-to-misinformation), and have intentionally designed it to mitigate potential risks. We've seen [encouraging results](https://blog.x.com/en_us/topics/product/2022/birdwatch-getting-new-onboarding-process-more-visible-notes), but we're constantly designing for challenges that could arise.
 
 Here are a handful of particular challenges we are aware of as well as steps we are taking to address them:
 
@@ -17,8 +17,8 @@ Attempts at coordinated manipulation represent a crucial risk for open rating sy
 
 The program currently takes multiple steps to reduce the potential for this type of manipulation:
 
-- First, all Twitter accounts must meet the [eligibility criteria](../contributing/signing-up.md) to become a Community Notes contributor. For example, having a unique, verified phone number. These criteria are designed to help prevent the creation of large numbers of fake or sock puppet contributor accounts that could be used for inauthentic rating.
-- Second, Community Notes doesn't work like many engagement-based ranking systems, where popular content gains the most visibility and people can coordinate to mass upvote or downvote content they don't like or agree with. Instead, Community Notes uses a bridging algorithm — for a note to be shown on a Tweet, it needs to be found helpful by people who have tended to [disagree in their past ratings](../contributing/diversity-of-perspectives.md).
+- First, all X accounts must meet the [eligibility criteria](../contributing/signing-up.md) to become a Community Notes contributor. For example, having a unique, verified phone number. These criteria are designed to help prevent the creation of large numbers of fake or sock puppet contributor accounts that could be used for inauthentic rating.
+- Second, Community Notes doesn't work like many engagement-based ranking systems, where popular content gains the most visibility and people can coordinate to mass upvote or downvote content they don't like or agree with. Instead, Community Notes uses a bridging algorithm — for a note to be shown on a post, it needs to be found helpful by people who have tended to [disagree in their past ratings](../contributing/diversity-of-perspectives.md).
 
   [Academic](https://www.belfercenter.org/publication/bridging-based-ranking) [research](https://www.google.com/books/edition/Breaking_the_Social_Media_Prism/ORMCEAAAQBAJ?hl=en&gbpv=0) indicates that bridging-based ranking can help to identify content that is healthier and higher quality, and reduce the risk of elevating polarizing content.
 
@@ -36,21 +36,21 @@ Community Notes will be most effective if the context it produces can be found t
 
 - Second, Community Notes can proactively seek ratings from contributors who are likely to provide a different perspective based on their rating history. This is currently done in the [Needs Your Help tab](../contributing/rating-notes.md), and we are exploring new ways to quickly collect ratings on notes from a wide range of contributors.
 
-- Third, to help ensure that people of diverse backgrounds and viewpoints feel safe and empowered to participate, Community Notes has implemented program [aliases](../contributing/aliases.md) that aren’t publicly associated with contributors’ Twitter accounts. This can help prevent one-sided-ness by providing more diverse contributors with a voice in the system.
+- Third, to help ensure that people of diverse backgrounds and viewpoints feel safe and empowered to participate, Community Notes has implemented program [aliases](../contributing/aliases.md) that aren’t publicly associated with contributors’ X accounts. This can help prevent one-sided-ness by providing more diverse contributors with a voice in the system.
 
-- Finally, we regularly survey representative samples of Twitter customers who are not Community Notes contributors to assess whether a broad range of people on Twitter are likely to find the context in Community Notes to be helpful, and whether the notes can be informative to people of different points of view.
+- Finally, we regularly survey representative samples of customers who are not Community Notes contributors to assess whether a broad range of people on X are likely to find the context in Community Notes to be helpful, and whether the notes can be informative to people of different points of view.
 
-  This is one indicator of Community Notes' ability to be of value to people from a [wide range of perspectives](../contributing/diversity-of-perspectives.md) vs. to be biased towards one group or viewpoint. Twitter customers who aren’t enrolled Community Notes contributors can also provide rating feedback on notes they see on Twitter. This provides an additional indicator of note helpfulness observed over time.
+  This is one indicator of Community Notes' ability to be of value to people from a [wide range of perspectives](../contributing/diversity-of-perspectives.md) vs. to be biased towards one group or viewpoint. Customers who aren’t enrolled Community Notes contributors can also provide rating feedback on notes they see on X. This provides an additional indicator of note helpfulness observed over time.
 
 ### Avoiding Harassment
 
 It’s crucial that people feel safe contributing to Community Notes and aren’t harassed for their contributions. It’s also important that Community Notes itself does not become a vector for harassment. Here are measures Community Notes takes to keep everyone safe:
 
-- First, as described above, all contributors get a new, auto-generated [display name (or alias)](../contributing/aliases.md) when they join Community Notes. These aliases are not publicly associated with contributors’ Twitter accounts, so everyone can write and rate notes privately. This inhibits public identification and harassment of contributors.
+- First, as described above, all contributors get a new, auto-generated [display name (or alias)](../contributing/aliases.md) when they join Community Notes. These aliases are not publicly associated with contributors’ X accounts, so everyone can write and rate notes privately. This inhibits public identification and harassment of contributors.
 
-- Second, contributors have an open communication line with the Community Notes team to report any issues they experience (they can reach us by DM [@CommunityNotes](https://twitter.com/communitynotes)). Community Notes has a dedicated community manager who gathers and responds to contributors’ feedback or concerns via this handle. This provides a way for contributors to flag potential issues to the Community Notes team.
+- Second, contributors have an open communication line with the Community Notes team to report any issues they experience (they can reach us by DM [@CommunityNotes](https://x.com/communitynotes)). Community Notes has a dedicated community manager who gathers and responds to contributors’ feedback or concerns via this handle. This provides a way for contributors to flag potential issues to the Community Notes team.
 
-- Finally, all Community Notes contributions are subject to Twitter [Rules](https://help.twitter.com/rules-and-policies/twitter-rules), [Terms of Service](https://twitter.com/tos) and [Privacy Policy](https://twitter.com/privacy). If you think note might not abide by the rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using the [Report a Community Note](https://help.twitter.com/en/forms/community-note) form. This provides a mechanism to address violating content in notes.
+- Finally, all Community Notes contributions are subject to our [Rules](https://help.x.com/rules-and-policies/twitter-rules), [Terms of Service](https://x.com/tos) and [Privacy Policy](https://x.com/privacy). If you think note might not abide by the rules, you can report it by clicking or tapping the ••• menu on a note, and then selecting "Report”, or by using the [Report a Community Note](https://help.x.com/en/forms/community-note) form. This provides a mechanism to address violating content in notes.
 
 ### Reducing the impacts of low quality contributions on the system
 
@@ -69,4 +69,4 @@ As Community Notes grows and evolves, we will continue to iterate to ensure it r
 
 ## Feedback? Ideas?
 
-We welcome feedback on these or additional risks and challenges, as well as ideas for addressing them. Please DM us at [@CommunityNotes](http://twitter.com/communitynotes).
+We welcome feedback on these or additional risks and challenges, as well as ideas for addressing them. Please DM us at [@CommunityNotes](http://x.com/communitynotes).

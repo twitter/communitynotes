@@ -7,9 +7,9 @@ navWeight: 1
 
 We can't wait to learn with you!
 
-All Community Notes contributions are publicly available on the [Download Data](https://twitter.com/i/communitynotes/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
+All Community Notes contributions are publicly available on the [Download Data](https://x.com/i/communitynotes/download-data) page of the Community Notes site so that anyone has free access to analyze the data, identify problems, and spot opportunities to make Community Notes better.
 
-If you have questions or feedback about the Community Notes public data or would like to share your analyses of this data with us, please DM us at [@CommunityNotes](http://twitter.com/communitynotes).
+If you have questions or feedback about the Community Notes public data or would like to share your analyses of this data with us, please DM us at [@CommunityNotes](http://x.com/communitynotes).
 
 ---
 
@@ -17,7 +17,7 @@ If you have questions or feedback about the Community Notes public data or would
 
 ### Data snapshots
 
-The [Community Notes data](https://twitter.com/i/communitynotes/download-data) is released as four separate files:
+The [Community Notes data](https://x.com/i/communitynotes/download-data) is released as four separate files:
 
 - **Notes:** Contains a table representing all notes
 - **Ratings:** Contains a table representing all ratings
@@ -30,7 +30,7 @@ Currently, we release one cumulative file each for notes, notes status history, 
 
 A new snapshot of the Community Notes public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshots are cumulative files, but only contain notes and ratings that were created as of 48 hours before the dataset release time. When notes and ratings are deleted, they will no longer be released in any future versions of the data downloads, although the note status history dataset will continue to contain metadata about all scored notes even after they’ve been deleted, which includes noteId, creation time, the hashed participant ID of the note’s author, and a history of which statuses each notes received and when; however, all the content of the note itself e.g. the note’s text will no longer be available.
 
-The [data download page in Community Notes](https://twitter.com/i/communitynotes/download-data) displays a date stamp indicating the most recent date of data included in the downloadable files.
+The [data download page in Community Notes](https://x.com/i/communitynotes/download-data) displays a date stamp indicating the most recent date of data included in the downloadable files.
 
 ### File structure
 
@@ -129,7 +129,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `notMisleadingPersonalOpinion` | Int | User-entered checkbox in response to question “Why do you believe this tweet is not misleading?” (Check all that apply question type). | 1 if “It expresses a personal opinion” is selected, else 0. |
 | `trustworthySources` | Int | Binary indicator, based on user-entered multiple choice in response to note writing question “Did you link to sources you believe most people would consider trustworthy?” | 1 if “Yes” is selected, 0 if “No” is selected |
 | `summary` | String | User-entered text, in response to the note writing prompt “Please explain the evidence behind your choices, to help others who see this tweet understand why it is not misleading” | User entered text explanation, with some characters escaped (e.g. tabs converted to spaces). |
-| `isMediaNote` | Int | User-entered checkbox in response to question “Is your note about the Tweet or the image?”. _New as of 2023-05-24_. | 1 if “About the image in this Tweet, and should appear on all Tweets that include this image” is selected, and 0 otherwise (including both if "About this specific Tweet" is selected instead, or by default, e.g. if the note was written on a Tweet without media). |
+| `isMediaNote` | Int | User-entered checkbox in response to question “Is your note about the Tweet or the image?”. _New as of 2023-05-24_. | 1 if “About the image in this Tweet, and should appear on all posts that include this image” is selected, and 0 otherwise (including both if "About this specific Tweet" is selected instead, or by default, e.g. if the note was written on a post without media). |
 
 ### Note Status History
 
@@ -179,7 +179,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `notHelpfulIrrelevantSources`            | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-06-30                                                                               | 1 if “Sources do not support note” is selected, else 0.          |
 | `notHelpfulOpinionSpeculation`           | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Opinion or speculation” is selected, else 0.               |
 | `notHelpfulNoteNotNeeded`                | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Note not needed on this Tweet” is selected, else 0.        |
-| `ratedOnTweetId`                         | Long   | The unique ID of the Tweet that the note was rated on (which, in the case of media notes, may not be the same Tweet as the note was originally written on). _New as of 2023-05-24_.                                 |    
+| `ratedOnTweetId`                         | Long   | The unique ID of the Tweet that the note was rated on (which, in the case of media notes, may not be the same Tweet as the note was originally written on). _New as of 2023-05-24_.                                 |
 
 ### User Enrollment
 

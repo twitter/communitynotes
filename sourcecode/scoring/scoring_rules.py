@@ -457,7 +457,7 @@ class NMtoCRNH(ScoringRule):
       rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
       dependencies: Rules which must run before this rule can run.
       status: the status which each note should be set to (e.g. CRH, CRNH, NMR).
-      crnhThresholdNMIntercept: Intercept for setting notes on non-misleading tweets to CRNH.
+      crnhThresholdNMIntercept: Intercept for setting notes on non-misleading posts to CRNH.
     """
     super().__init__(ruleID, dependencies)
     self._status = status
@@ -466,7 +466,7 @@ class NMtoCRNH(ScoringRule):
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
-    """Returns noteIds for low scoring notes on non-misleading tweets."""
+    """Returns noteIds for low scoring notes on non-misleading posts."""
     noteStatusUpdates = noteStats.loc[
       (noteStats[c.internalNoteInterceptKey] < self._crnhThresholdNMIntercept)
       # Require that that the classification is "not misleading" to explicitly exclude deleted
@@ -538,7 +538,7 @@ class AddCRHInertia(ScoringRule):
 
     assert (
       sum(noteIntercepts > self._expectedMax) == 0
-    ), f"""{sum(noteIntercepts > self._expectedMax)} notes (out of {len(noteIntercepts)}) had intercepts above expected maximum of {self._expectedMax}. 
+    ), f"""{sum(noteIntercepts > self._expectedMax)} notes (out of {len(noteIntercepts)}) had intercepts above expected maximum of {self._expectedMax}.
       The highest was {max(noteIntercepts)}."""
     noteStatusUpdates = noteIds[[c.noteIdKey]]
     noteStatusUpdates[statusColumn] = self._status
