@@ -1,6 +1,7 @@
 import time
 
 import numpy as np
+import pandas as pd
 
 
 # Store the timestamp at which the constants module is initialized.  Note
@@ -14,6 +15,10 @@ import numpy as np
 epochMillis = 1000 * time.time()
 
 maxTrainError = 0.09
+
+coreFlipPct = 0.15
+expansionFlipPct = 0.19
+maxReruns = 5
 
 # Explanation Tags
 minRatingsToGetTag = 2
@@ -37,6 +42,7 @@ createdAtMillisKey = "createdAtMillis"
 summaryKey = "summary"
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 modelingPopulationKey = "modelingPopulation"
+modelingGroupKey = "modelingGroup"
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
@@ -123,6 +129,14 @@ coverageNoteFactor1Key = "coverageNoteFactor1"
 coverageRatingStatusKey = "coverageRatingStatus"
 coverageNoteInterceptMaxKey = "coverageNoteInterceptMax"
 coverageNoteInterceptMinKey = "coverageNoteInterceptMin"
+# Group Model
+groupNoteInterceptKey = "groupNoteIntercept"
+groupNoteFactor1Key = "groupNoteFactor1"
+groupRatingStatusKey = "groupRatingStatus"
+groupNoteInterceptMaxKey = "groupNoteInterceptMax"
+groupNoteInterceptMinKey = "groupNoteInterceptMin"
+groupRaterInterceptKey = "groupRaterIntercept"
+groupRaterFactor1Key = "groupRaterFactor1"
 
 # Ids and Indexes
 noteIdKey = "noteId"
@@ -216,12 +230,10 @@ ratingWeightKey = "ratingWeight"
 
 incorrectFilterColumns = [
   "notHelpfulIncorrect_interval",
-  "notHelpfulIncorrect_total_interval",
   "cnt_interval",
   "num_voters_interval",
   "tf_idf_incorrect_interval",
   "notHelpfulIncorrect_same",
-  "notHelpfulIncorrect_total_same",
   "cnt_same",
   "num_voters_same",
   "tf_idf_incorrect_same",
@@ -261,11 +273,7 @@ noteTSVColumnsAndTypes = (
   ]
   + misleadingTagsAndTypes
   + notMisleadingTagsAndTypes
-  + [
-    ("trustworthySources", np.int64),
-    (summaryKey, np.object),
-    ("isMediaNote", np.int64)
-  ]
+  + [("trustworthySources", np.int64), (summaryKey, np.object), ("isMediaNote", np.int64)]
 )
 noteTSVColumns = [col for (col, dtype) in noteTSVColumnsAndTypes]
 noteTSVTypes = [dtype for (col, dtype) in noteTSVColumnsAndTypes]
@@ -366,6 +374,16 @@ userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
 
+# TODO: delete expanded user enrollment definition once modeling group is fully rolled out
+userEnrollmentExpandedTSVColumnsAndTypes = userEnrollmentTSVColumnsAndTypes + [
+  (modelingGroupKey, np.float64)
+]
+userEnrollmentExpandedTSVColumns = [col for (col, _) in userEnrollmentExpandedTSVColumnsAndTypes]
+userEnrollmentExpandedTSVTypes = [dtype for (_, dtype) in userEnrollmentExpandedTSVColumnsAndTypes]
+userEnrollmentExpandedTSVTypeMapping = {
+  col: dtype for (col, dtype) in userEnrollmentExpandedTSVColumnsAndTypes
+}
+
 noteInterceptMaxKey = "internalNoteIntercept_max"
 noteInterceptMinKey = "internalNoteIntercept_min"
 noteParameterUncertaintyTSVMainColumnsAndTypes = [
@@ -423,6 +441,16 @@ auxiliaryScoredNotesTSVColumns = (
   + incorrectFilterColumns
 )
 
+deprecatedNoteModelOutputColumns = frozenset(
+  {
+    coverageNoteInterceptKey,
+    coverageNoteFactor1Key,
+    coverageRatingStatusKey,
+    coverageNoteInterceptMinKey,
+    coverageNoteInterceptMaxKey,
+  }
+)
+
 noteModelOutputTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
   (coreNoteInterceptKey, np.double),
@@ -453,9 +481,20 @@ noteModelOutputTSVColumnsAndTypes = [
   (expansionNoteInterceptMaxKey, np.double),
   (coverageNoteInterceptMinKey, np.double),
   (coverageNoteInterceptMaxKey, np.double),
+  (groupNoteInterceptKey, np.double),
+  (groupNoteFactor1Key, np.double),
+  (groupRatingStatusKey, np.str),
+  (groupNoteInterceptMaxKey, np.double),
+  (groupNoteInterceptMinKey, np.double),
+  (modelingGroupKey, np.float64),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
+deprecatedNoteModelOutputTSVColumnsAndTypes = [
+  (col, dtype)
+  for (col, dtype) in noteModelOutputTSVColumnsAndTypes
+  if col in deprecatedNoteModelOutputColumns
+]
 
 raterModelOutputTSVColumnsAndTypes = [
   (raterParticipantIdKey, np.int64),
@@ -464,25 +503,28 @@ raterModelOutputTSVColumnsAndTypes = [
   (crhCrnhRatioDifferenceKey, np.double),
   (meanNoteScoreKey, np.double),
   (raterAgreeRatioKey, np.double),
-  (successfulRatingHelpfulCount, np.int64),
-  (successfulRatingNotHelpfulCount, np.int64),
-  (successfulRatingTotal, np.int64),
-  (unsuccessfulRatingHelpfulCount, np.int64),
-  (unsuccessfulRatingNotHelpfulCount, np.int64),
-  (unsuccessfulRatingTotal, np.int64),
-  (ratingsAwaitingMoreRatings, np.int64),
-  (ratedAfterDecision, np.int64),
-  (notesCurrentlyRatedHelpful, np.int64),
-  (notesCurrentlyRatedNotHelpful, np.int64),
-  (notesAwaitingMoreRatings, np.int64),
+  (successfulRatingHelpfulCount, pd.Int64Dtype()),
+  (successfulRatingNotHelpfulCount, pd.Int64Dtype()),
+  (successfulRatingTotal, pd.Int64Dtype()),
+  (unsuccessfulRatingHelpfulCount, pd.Int64Dtype()),
+  (unsuccessfulRatingNotHelpfulCount, pd.Int64Dtype()),
+  (unsuccessfulRatingTotal, pd.Int64Dtype()),
+  (ratingsAwaitingMoreRatings, pd.Int64Dtype()),
+  (ratedAfterDecision, pd.Int64Dtype()),
+  (notesCurrentlyRatedHelpful, pd.Int64Dtype()),
+  (notesCurrentlyRatedNotHelpful, pd.Int64Dtype()),
+  (notesAwaitingMoreRatings, pd.Int64Dtype()),
   (enrollmentState, np.int32),
-  (successfulRatingNeededToEarnIn, np.int64),
+  (successfulRatingNeededToEarnIn, pd.Int64Dtype()),
   (authorTopNotHelpfulTagValues, np.str),
-  (timestampOfLastStateChange, np.int64),
-  (aboveHelpfulnessThresholdKey, np.bool_),
+  (timestampOfLastStateChange, np.double),
+  (aboveHelpfulnessThresholdKey, np.float64),  # nullable bool
   (isEmergingWriterKey, np.bool_),
-  (aggregateRatingReceivedTotal, np.int64),
+  (aggregateRatingReceivedTotal, pd.Int64Dtype()),
   (timestampOfLastEarnOut, np.double),
+  (groupRaterInterceptKey, np.double),
+  (groupRaterFactor1Key, np.double),
+  (modelingGroupKey, np.float64),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}

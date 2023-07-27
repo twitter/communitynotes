@@ -87,7 +87,7 @@ def tsv_parser(
     firstLine = rawTSV.split("\n")[0]
     if len(firstLine.split("\t")) != len(columns):
       raise ValueError
-    return pd.read_csv(
+    data = pd.read_csv(
       StringIO(rawTSV),
       sep="\t",
       names=columns,
@@ -95,13 +95,39 @@ def tsv_parser(
       header=0 if header else None,
       index_col=[],
     )
+    return data
   except (ValueError, IndexError):
     raise ValueError("invalid input")
 
 
-def tsv_reader(path: str, mapping, columns, header=False):
+# TODO: remove this function once modelingGroup column is fully launched
+def user_enrollment_parser(rawTSV: str, header: bool) -> pd.DataFrame:
+  """Parse user enrollment TSV and optinoally tolerate the modelingGroup column.
+
+  Args:
+    rawTSV: str contianing entire TSV input
+    header: bool indicating whether the input will have a header
+
+  Returns:
+    pd.DataFrame containing parsed data
+  """
+  try:
+    df = tsv_parser(rawTSV, c.userEnrollmentTSVTypeMapping, c.userEnrollmentTSVColumns, header)
+    df[c.modelingGroupKey] = 0
+  except ValueError:
+    df = tsv_parser(
+      rawTSV, c.userEnrollmentExpandedTSVTypeMapping, c.userEnrollmentExpandedTSVColumns, header
+    )
+  return df
+
+
+# TODO: remove support for specifying a custom parser once modelingGroup is fully rolled out
+def tsv_reader(path: str, mapping, columns, header=False, parser=tsv_parser):
   with open(path, "r") as handle:
-    return tsv_parser(handle.read(), mapping, columns, header)
+    if parser == tsv_parser:
+      return parser(handle.read(), mapping, columns, header)
+    else:
+      return parser(handle.read(), header)
 
 
 def read_from_tsv(
@@ -162,13 +188,13 @@ def read_from_tsv(
     userEnrollment = None
   else:
     userEnrollment = tsv_reader(
-      userEnrollmentPath, c.userEnrollmentTSVTypeMapping, c.userEnrollmentTSVColumns, header=headers
+      userEnrollmentPath, None, None, header=headers, parser=user_enrollment_parser
     )
-    assert len(userEnrollment.columns.values) == len(c.userEnrollmentTSVColumns) and all(
-      userEnrollment.columns == c.userEnrollmentTSVColumns
+    assert len(userEnrollment.columns.values) <= len(c.userEnrollmentExpandedTSVColumns) and (
+      len(set(userEnrollment.columns) - set(c.userEnrollmentExpandedTSVColumns)) == 0
     ), (
-      f"userEnrollment columns don't match: \n{[col for col in userEnrollment.columns if not col in c.userEnrollmentTSVColumns]} are extra columns, "
-      + f"\n{[col for col in c.userEnrollmentTSVColumns if not col in userEnrollment.columns]} are missing."
+      f"userEnrollment columns don't match: \n{[col for col in userEnrollment.columns if not col in c.userEnrollmentExpandedTSVColumns]} are extra columns, "
+      + f"\n{[col for col in c.userEnrollmentExpandedTSVColumns if not col in userEnrollment.columns]} are missing."
     )
 
   return notes, ratings, noteStatusHistory, userEnrollment
