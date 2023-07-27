@@ -14,18 +14,18 @@ The algorithm used to rank Community Notes and compute their statuses is open-so
 
 ![Three Community notes in different statuses](../images/note-statuses.png)
 
-Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses determine which notes are displayed on each of the [Community Notes Site’s timelines](./timeline-tabs.md), and which notes are displayed [on Tweets](../contributing/notes-on-twitter.md).
+Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses determine which notes are displayed on each of the [Community Notes Site’s timelines](./timeline-tabs.md), and which notes are displayed [on posts](../contributing/notes-on-twitter.md).
 
 All Community Notes start with the Needs More Ratings status until they receive at least 5 total ratings.
 Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful according to the algorithm described below.
-If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on Twitter even if its status is Helpful.
+If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on X even if its status is Helpful.
 
-Notes marking Tweets as "potentially misleading" with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. At this time, only notes that indicate a Tweet is “potentially misleading” and earn the status of Helpful are eligible to be displayed on Tweets.
+Notes marking posts as "potentially misleading" with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. At this time, only notes that indicate a post is “potentially misleading” and earn the status of Helpful are eligible to be displayed on posts.
 Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Additionally, notes with an upper confidence bound estimate of their Note Helpfulness Score (as computed via pseudo-raters) less than -0.04 are assigned Not Helpful, as described in [Modeling Uncertainty](#modeling-uncertainty).
 Notes with scores in between remain with a status of Needs more Ratings.
 
 Identifying notes as Not Helpful improves contributor helpfulness scoring and reduces time contributors spend reviewing low quality notes.
-We plan to enable Helpful statuses for notes marking Tweets as "not misleading" as we continue to evaluate ranking quality and utility to users.
+We plan to enable Helpful statuses for notes marking posts as "not misleading" as we continue to evaluate ranking quality and utility to users.
 
 When a note reaches a status of Helpful / Not Helpful, they're shown alongside the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
 Notes with the status Needs More Ratings remain sorted by recency (newest first), and notes with a Helpful or Not Helpful status are sorted by their Helpfulness Score.
@@ -149,7 +149,7 @@ In cases where the Core and Coverage models disagree, a Helpful rating from the 
 If a note is only rated as Helpful by the Coverage model, then the note must surpass a safeguard threshold for the Core model intercept to receive a final Helpful rating.
 We have initialized the Core model safeguard threshold to 0.38, 0.02 below the Core model default Helpfulness threshold of 0.40, and will lower the safeguard threshold as the Coverage model continues to launch.
 
-When using Twitter, you can see which model computed the status a given note by looking at the Note Details screen.
+When using X, you can see which model computed the status a given note by looking at the Note Details screen.
 It might list one of the following models:
 - CoreModel (vX.X). The _Core_ model described above.
 - ExpansionModel (vX.X). The _Expansion_ model described above.
@@ -165,7 +165,7 @@ As older data comprise an increasingly small fraction of the dataset, ranking re
 To maintain Helpful note quality as Community Notes continues to grow, we are adding logic which stabilizes the status of a note once the note is two weeks old.
 This approach allows us to continue optimizing the ranking algorithm with a focus on the impact on current data while persisting helpful community contributions on older topics.
 Before a note is two weeks old, the helpfulness status will continue to be updated each time time the ranking algorithm is run.
-After a note turns two weeks old we store the helpfulness status for that note and use the stored status in the future, including for displaying notes on Twitter and calculating user contribution statistics.
+After a note turns two weeks old we store the helpfulness status for that note and use the stored status in the future, including for displaying notes on X and calculating user contribution statistics.
 
 While a note may be scored by the Core, Expansion and Coverage models, we only finalize note status based on the Core model.
 Notes that are only ranked by the Expansion model are not eligible for stabilization since the Expansion model is under development and may be revised to improve quality at any time.
@@ -270,24 +270,24 @@ For not-helpful notes:
 
 **November 25, 2022**
 
-- Resumed assigning statuses to notes that indicate the Tweet is “not misleading.” Only such notes written after October 3, 2022 will be eligible to receive statuses, as on that date we [updated the rating form](https://twitter.com/CommunityNotes/status/1576981914296102912) to better capture the helpfulness of notes indicating the Tweet is not misleading.
+- Resumed assigning statuses to notes that indicate the Tweet is “not misleading.” Only such notes written after October 3, 2022 will be eligible to receive statuses, as on that date we [updated the rating form](https://x.com/CommunityNotes/status/1576981914296102912) to better capture the helpfulness of notes indicating the Tweet is not misleading.
 
 **November 10, 2022**
 
 - Launched scoring logic adjusting standards for "Helpful" notes based on tags assigned in reviews labeling the note as "Not Helpful."
 
 **October 3, 2022**
-- Updated the rating form to better capture the strengths of notes which add context without indicating the Tweet is misleading. We have resumed assigning status to notes marking Tweets as "not misleading" in select circumstances as we evaluate ranking quality and utility to users.
+- Updated the rating form to better capture the strengths of notes which add context without indicating the Tweet is misleading. We have resumed assigning status to notes marking posts as "not misleading" in select circumstances as we evaluate ranking quality and utility to users.
 
 **July 13, 2022**
 
 - To prevent manipulation of helpfulness scores through deletion of notes, notes that are deleted will continue to be assigned note statuses based on the ratings they received. These statuses are factored into author helpfulness scores.
 - Valid Ratings Definition Update: instead of just the first 5 ratings on a note, all ratings will be valid if they are within the first 48 hours after note creation and were created before the note first received its status of Helpful or Not Helpful (or if its status flipped between Helpful and Not Helpful, then all ratings will be valid up until that flip occurred).
-- To make the above two changes possible, we are releasing a new dataset, note status history, which contains timestamps for when each note received statuses, and the timestamp and hashed participant ID of the author of a note. This data file is being populated now and will be available on the Community Notes [Data Download](https://twitter.com/i/communitynotes/download-data) page beginning Monday July 18, 2022.
+- To make the above two changes possible, we are releasing a new dataset, note status history, which contains timestamps for when each note received statuses, and the timestamp and hashed participant ID of the author of a note. This data file is being populated now and will be available on the Community Notes [Data Download](https://x.com/i/communitynotes/download-data) page beginning Monday July 18, 2022.
 
 **Mar 09, 2022**
 
-- Temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading”. We observed that notes marking a Tweet as "not misleading" were often rated as “Unhelpful - Tweet doesn’t need a note”, so we paused assigning status to notes marking Tweets as "not misleading" pending improvements to the rating form.
+- Temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading”. We observed that notes marking a post as "not misleading" were often rated as “Unhelpful - Tweet doesn’t need a note”, so we paused assigning status to notes marking posts as "not misleading" pending improvements to the rating form.
 - Adjusted thresholds for notes statuses
 
 **Feb 28, 2022**

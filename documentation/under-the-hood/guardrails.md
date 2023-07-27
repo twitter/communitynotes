@@ -5,7 +5,7 @@ navWeight: 6
 ---
 #  Evaluation
 
-Community Notes aims to create a better-informed world, by empowering people on Twitter to collaboratively add helpful context to Tweets that might be misleading or missing important context.
+Community Notes aims to create a better-informed world, by empowering people on X to collaboratively add helpful context to posts that might be misleading or missing important context.
 
 It’s important that the context that is [elevated to viewers from Community Notes](../contributing/notes-on-twitter.md) be helpful, informative, and accurate.
 
@@ -17,29 +17,29 @@ To identify potential problems, Community Notes tracks a number of quality measu
 
 ### Quality Measures
 
-Community Notes measures and monitors three top-line metrics to understand the quality of notes and identify potential issues to mitigate along the way. These measures are used for monitoring purposes, and do not impact the note status outcomes or visibility for individual notes. At present, these measures focus on notes that earn the status of Helpful (i.e., those that are [shown to viewers on Twitter](../contributing/notes-on-twitter.md), beyond enrolled contributors).
+Community Notes measures and monitors three top-line metrics to understand the quality of notes and identify potential issues to mitigate along the way. These measures are used for monitoring purposes, and do not impact the note status outcomes or visibility for individual notes. At present, these measures focus on notes that earn the status of Helpful (i.e., those that are [shown to viewers on X](../contributing/notes-on-twitter.md), beyond enrolled contributors).
 
 Evidence of consistent or systematic problems in top rated notes that earn the status of Helpful on any of the following measures can trigger a guardrail or circuit breaker procedure:
 
 1. **Accuracy: Whether notes that earn the status of Helpful contain accurate, high-quality information**
 
-   This is measured via partnerships with [professional reviewers](https://blog.twitter.com/en_us/topics/company/2021/bringing-more-reliable-context-to-conversations-on-twitter) who provide evaluations of note accuracy. These evaluations provide a tracking measure of how often Helpful notes that are rated as accurate vs. inaccurate by reviewers over time; they don't impact notes’ ratings/status.
+   This is measured via partnerships with [professional reviewers](https://blog.x.com/en_us/topics/company/2021/bringing-more-reliable-context-to-conversations-on-twitter) who provide evaluations of note accuracy. These evaluations provide a tracking measure of how often Helpful notes that are rated as accurate vs. inaccurate by reviewers over time; they don't impact notes’ ratings/status.
 
    We don't expect perfect consensus among expert reviewers that all notes are accurate, nor do professionals always [agree with one another on accuracy ratings](https://www.science.org/doi/10.1126/sciadv.abf4393). However, this gives us an indicator of whether there might be broad or consistent issues emerging with note accuracy.
 
-2. **Informativeness: Whether notes that earn the status of Helpful help inform people’s understanding of the subject matter in Tweets**
+2. **Informativeness: Whether notes that earn the status of Helpful help inform people’s understanding of the subject matter in posts**
 
-   This is measured via survey experiments of random samples of Twitter users in the US, comparing whether people who see potentially misleading Tweets with notes tend to have a different view of the Tweet’s main claim vs those who see Tweets without notes.
+   This is measured via survey experiments of random samples of users in the US, comparing whether people who see potentially misleading posts with notes tend to have a different view of the post’s main claim vs those who see posts without notes.
 
-   While notes may vary in their ability to inform, we want to ensure that on average notes that earn the status of Helpful are effective at helping people understand the topics in Tweets (vs having no impact or an adverse effect).
+   While notes may vary in their ability to inform, we want to ensure that on average notes that earn the status of Helpful are effective at helping people understand the topics in posts (vs having no impact or an adverse effect).
 
-3. **Helpfulness: Whether Twitter users beyond the contributor pool tend to find notes that earn the status of Helpful to be helpful**
+3. **Helpfulness: Whether users beyond the contributor pool tend to find notes that earn the status of Helpful to be helpful**
 
-   This is measured via surveys of random samples of Twitter users in the US. The surveys allow these Twitter users to give feedback on the helpfulness of Community Notes.
+   This is measured via surveys of random samples of users in the US. The surveys allow these users to give feedback on the helpfulness of Community Notes.
 
    We don’t expect all notes to be perceived as helpful by all people all the time. Instead, the goal is to ensure that on average notes that earn the status of Helpful are likely to be seen as helpful by a wide range of people from different points of view, and not only be seen as helpful by people from one viewpoint.
 
-In addition to the three top-line metrics listed above, Community Notes monitors additional operational quality metrics, like whether any notes violate Twitter Rules.
+In addition to the three top-line metrics listed above, Community Notes monitors additional operational quality metrics, like whether any notes violate X's [Rules](https://help.x.com/rules-and-policies/twitter-rules).
 
 ### Thresholds
 
@@ -51,19 +51,19 @@ For each of these measures and metrics, there are thresholds to trigger ‘guard
 
 ### Remediations
 
-Community Notes context is intended to be community driven. Notes are written and selected by people on Twitter, for people on Twitter. Except in the case of a Twitter Rule violation, Twitter employees do not make decisions about which individual notes do or do not display on Twitter, even in cases when a guardrail or circuit breaker condition is triggered.
+Community Notes context is intended to be community driven. Notes are written and selected by people on X, for people on X. Except in the case of a Rule violation, X employees do not make decisions about which individual notes do or do not display on X, even in cases when a guardrail or circuit breaker condition is triggered.
 
 Instead, the goal is to build a _system_ that consistently elevates helpful, informative, and accurate information. In case of a serious note quality problem, the policy and operating procedure is to take system-wide actions, fix the problem, then resume normal service.
 
 Examples of system-wide actions Community Notes may take in the case of a guardrail or circuit breaker situation may include:
 
-- Temporarily raising the [threshold](./note-ranking-code.md) required for notes to be publicly visible on a Tweet
+- Temporarily raising the [threshold](./note-ranking-code.md) required for notes to be publicly visible on a post
 - Temporarily pausing the scoring of newly created notes
-- Temporarily pausing the display of all notes on Tweets for viewers outside enrolled Community Notes contributors
+- Temporarily pausing the display of all notes on posts for viewers outside enrolled Community Notes contributors
 
-These actions allow Community Notes to mitigate potential risk of inaccurate or low quality notes, while the internal team conducts an investigation and builds an appropriate fix, if needed. When selecting which remediation to use, we aim to take the smallest corrective action possible to balance mitigating the risk of showing low quality notes with the risk of failing to show helpful, informative notes on potentially misleading Tweets.
+These actions allow Community Notes to mitigate potential risk of inaccurate or low quality notes, while the internal team conducts an investigation and builds an appropriate fix, if needed. When selecting which remediation to use, we aim to take the smallest corrective action possible to balance mitigating the risk of showing low quality notes with the risk of failing to show helpful, informative notes on potentially misleading posts.
 
-_Note: Community Notes contributors and notes are subject to the Twitter Rules. Failure to abide by rules can result in removal from the Community Notes program._
+_Note: Community Notes contributors and notes are subject to X's [Rules](https://help.x.com/rules-and-policies/twitter-rules). Failure to abide by rules can result in removal from the Community Notes program._
 
 ## Understanding helpfulness across political viewpoints
 
@@ -71,13 +71,13 @@ The goal of community notes is to provide context that people from different poi
 
 To better understand if notes are found widely helpful or only helpful to people from a given political perspective, we conduct additional analyses. These are solely for comparative purposes and do not influence the algorithm's decisions about each note, but they do provide valuable information about note quality that aids in system development.
 
-Prior to the roll-out of Community Notes in the United States, we employed representative surveys involving Twitter users to understand the helpfulness of notes to diverse political viewpoints. In these surveys, participants optionally declared their political leanings before viewing and providing evaluations of tweets with and without Community Notes. Details of our methodology and past findings can be found in [our paper](https://github.com/twitter/communitynotes/blob/main/birdwatch_paper_2022_10_27.pdf).
+Prior to the roll-out of Community Notes in the United States, we employed representative surveys involving users to understand the helpfulness of notes to diverse political viewpoints. In these surveys, participants optionally declared their political leanings before viewing and providing evaluations of posts with and without Community Notes. Details of our methodology and past findings can be found in [our paper](https://github.com/twitter/communitynotes/blob/main/birdwatch_paper_2022_10_27.pdf).
 
-Additionally, we utilize a widely-used technique for viewpoint estimation. This approach makes use of Twitter’s follow, like, and retweet graphs to estimate political leanings based on an account’s  proximity to and interaction with political accounts and content within the network. Our calculations can be approximated by the methods described in [this paper](http://pablobarbera.com/static/barbera_twitter_ideal_points.pdf). Note that calculation of viewpoint estimations are anonymized and used on an aggregate basis only to help evaluate perceived note quality.
+Additionally, we utilize a widely-used technique for viewpoint estimation. This approach makes use of our follow, like, and repost graphs to estimate political leanings based on an account’s  proximity to and interaction with political accounts and content within the network. Our calculations can be approximated by the methods described in [this paper](http://pablobarbera.com/static/barbera_twitter_ideal_points.pdf). Note that calculation of viewpoint estimations are anonymized and used on an aggregate basis only to help evaluate perceived note quality.
 
 ## Feedback? Ideas?
 
-We will continue to evolve our approach as we grow the program, conduct additional analyses, and learn. We welcome feedback and ideas to improve. Please DM us at [@CommunityNotes](https://twitter.com/communitynotes).
+We will continue to evolve our approach as we grow the program, conduct additional analyses, and learn. We welcome feedback and ideas to improve. Please DM us at [@CommunityNotes](https://x.com/communitynotes).
 
 ## Current Status
 

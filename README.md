@@ -1,4 +1,4 @@
-# Twitter Community Notes
+# Community Notes
 
 ![](/documentation/images/help-rate-this-note-expanded.png)
 
@@ -8,13 +8,13 @@ This repository is a place for us to transparently host our content, algorithms,
 
 The folder `/sourcecode` holds the [open-source code](https://github.com/twitter/communitynotes/tree/main/sourcecode) powering Community Notes under the hood.
 
-The folder `/documentation` holds the [Markdown content](https://github.com/twitter/communitynotes/tree/main/documentation) that is used to generate our [documentation website](https://communitynotes.twitter.com/guide).
+The folder `/documentation` holds the [Markdown content](https://github.com/twitter/communitynotes/tree/main/documentation) that is used to generate our [documentation website](https://communitynotes.x.com/guide).
 
 Here you can also find our [research paper](https://github.com/twitter/communitynotes/blob/main/birdwatch_paper_2022_10_27.pdf).
 
 ## About Community Notes
 
-Community Notes aims to create a better informed world, by empowering people on Twitter to add helpful notes to Tweets that might be misleading.
+Community Notes aims to create a better informed world, by empowering people on X to add helpful notes to posts that might be misleading.
 
 We're building it in the open, with the public’s input, and we’re taking significant steps to make Community Notes transparent.
 
@@ -24,7 +24,7 @@ Our goal is to expand Community Notes globally. We want anyone to be able to par
 
 As there are important nuances in each market, we’ll expand the contributor base country-by-country. We’ll add contributors from a first new country soon.
 
-[Sign up here](https://twitter.com/i/flow/join-birdwatch)
+[Sign up here](https://x.com/i/flow/join-birdwatch)
 
 ## How to contribute to this repo
 
@@ -34,15 +34,15 @@ Thank you for your interest in contributing to Community Notes! Currently, we wi
 * Documentation
 * Open issues
 
-Note that we aren’t currently accepting changes that alter existing APIs, as there is other utility and production infrastructure code at Twitter that depends on these APIs remaining stable.
+Note that we aren’t currently accepting changes that alter existing APIs, as there is other utility and production infrastructure code at X that depends on these APIs remaining stable.
 
-We are also exploring ways to make it easier for people to contribute directly to the core algorithm. For example, by making available testing and evaluation frameworks that would allow open source contributors to evaluate the impact of their PRs on note quality. 
+We are also exploring ways to make it easier for people to contribute directly to the core algorithm. For example, by making available testing and evaluation frameworks that would allow open source contributors to evaluate the impact of their PRs on note quality.
 
 ---
 
 ### Documentation website
 
-The markdown files in this repo are the source of truth for the content in our documentation website (aka "Community Notes Guide"). They are always updated here first, then ingested by Twitter's internal tools, translated, and published in [communitynotes.twitter.com/guide](https://communitynotes.twitter.com/guide).
+The markdown files in this repo are the source of truth for the content in our documentation website (aka "Community Notes Guide"). They are always updated here first, then ingested by X's internal tools, translated, and published in [communitynotes.x.com/guide](https://communitynotes.x.com/guide).
 
 ### Community Notes open-source code
 
@@ -50,7 +50,7 @@ The algorithm that powers Community Notes can be found on the [sourcecode folder
 
 ### Community Notes data
 
-All notes, ratings, and contributor data are [publicly available and published daily here](https://twitter.com/i/communitynotes/download-data). Instructions on how to use them can be found in the [Community Notes Guide](https://communitynotes.twitter.com/guide/under-the-hood/download-data/).
+All notes, ratings, and contributor data are [publicly available and published daily here](https://x.com/i/communitynotes/download-data). Instructions on how to use them can be found in the [Community Notes Guide](https://communitynotes.x.com/guide/under-the-hood/download-data/).
 
 ### Community Notes paper
 
