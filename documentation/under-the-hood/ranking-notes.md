@@ -86,7 +86,7 @@ Additionally, because the matrix factorization is re-trained from scratch every 
 
 While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are adding. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirtit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
 
-We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.05, in addition to the rules on the raw intercept values defined in the previous section. We also currently assign notes a "Helpful" status if the min (lower confidence bound) of their intercept is at least 0.31.
+We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.05, in addition to the rules on the raw intercept values defined in the previous section. We also currently assign notes a "Helpful" status if the min (lower confidence bound) of their intercept is at least 0.32.
 
 ## Tag Outlier Filtering
 
@@ -137,23 +137,23 @@ Similarly, if a note was impacted by tag outlier filter and required note interc
 
 Multi-Model ranking allows Community Notes to run multiple ranking algorithms before reconciling the results to assign final note status.
 We use this ability to test new models, refine current approaches and support expanding the Community Notes contributor base.
-We currently run three note ranking models:
+We currently run several variations of the matrix facgtorizaiton approach.
+Each variation uses the same modling logic and parameters, but applies the model to different slices of the ratings data.
 
-- The _Core_ model runs the matrix factorization approach described above to determine status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
+- The _Core_ model determines status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
 - The _Expansion_ model runs the same ranking algorithm with the same parameters as the Core model, with the difference that the Expansion model includes all notes with all ratings across Core and Expansion areas.
-- The _Coverage_ model runs the same ranking algorithm and processes the same notes and ratings as the Core model, except the intercept regularization $\lambda_i$ and Helpful note threshold have been [tuned differently](https://github.com/twitter/communitynotes/blob/main/sourcecode/scoring/mf_coverage_scorer.py) to increase the number of Helpful notes.
+- The _Group_ models operate on smaller segments of the data to specifically improve note ranking in non-English speaking communities.  Users are assigned to modeling groups (e.g. based on region, country or language) and then we run a separate matrix factorization for each group.  The matrix factorization includes all ratings from users in the modeling group, but the scoring results only impact notes which were written by a member of the modeling group and have at least 80% of ratings from within the modeling group.  We initially launched with 12 Group models and plan to monitor and adjust as Community Notes continues to grow.
 
 In cases where a note is ranked by both the Core and Expansion models the Core model is always authoritative.
 This approach allows us to grow Community Notes as quickly as possible in experimental Expansion areas without the risk of compromising quality in Core areas where Community Notes is well established.
-In cases where the Core and Coverage models disagree, a Helpful rating from the Core model always takes precedence.
-If a note is only rated as Helpful by the Coverage model, then the note must surpass a safeguard threshold for the Core model intercept to receive a final Helpful rating.
-We have initialized the Core model safeguard threshold to 0.38, 0.02 below the Core model default Helpfulness threshold of 0.40, and will lower the safeguard threshold as the Coverage model continues to launch.
+Like the Expansion model, the Group models increase Helpful note coverage beyond the Core model.
+Group models only function to promote notes from Needs More Ratings to Helpful status, and only take effect when the Expansion or Core model intercept (as applicable) is between 0.3 and 0.4.
 
 When using X, you can see which model computed the status a given note by looking at the Note Details screen.
 It might list one of the following models:
 - CoreModel (vX.X). The _Core_ model described above.
 - ExpansionModel (vX.X). The _Expansion_ model described above.
-- CoverageModel (vX.X). The _Coverage_ model described above.
+- GroupModelN (vX.X). The Nth instantiation of the _Group_ model described above.
 - ScoringDriftGuard. This is a scoring rule that locks note statuses after two weeks. See the [next section](#status-stabilization) for more details.
 
 ## Status Stabilization
@@ -167,10 +167,10 @@ This approach allows us to continue optimizing the ranking algorithm with a focu
 Before a note is two weeks old, the helpfulness status will continue to be updated each time time the ranking algorithm is run.
 After a note turns two weeks old we store the helpfulness status for that note and use the stored status in the future, including for displaying notes on X and calculating user contribution statistics.
 
-While a note may be scored by the Core, Expansion and Coverage models, we only finalize note status based on the Core model.
+While a note may be scored by the Core, Expansion and Group models, we only finalize note status based on the Core model.
 Notes that are only ranked by the Expansion model are not eligible for stabilization since the Expansion model is under development and may be revised to improve quality at any time.
-Similarly, if a note is rated Helpful by the Coverage model and Needs More Ratings by the Core model, we will allow the note status to remain at Helpful even after the note is two weeks old.
-If at any point both models agree and the Core model scores the note as Helpful or the Coverage model scores the note as Needs More Ratings, then the status will be finalized in agreement with both models.
+Similarly, if a note is rated Helpful by a Group model and Needs More Ratings by the Core model, we will allow the note status to remain at Helpful even after the note is two weeks old.
+If at any point both models agree and the Core model scores the note as Helpful or a Group model scores the note as Needs More Ratings, then the status will be finalized in agreement with both models.
 
 ## Determining Note Status Explanation Tags
 
@@ -215,11 +215,20 @@ For not-helpful notes:
 3. Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
 4. Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3.
 5. Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
-6. Reconcile scoring results from the Core, Expansion and Coverage models to generate final status for each note.
+6. Reconcile scoring results from the Core, Expansion and Group models to generate final status for each note.
 7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags.  Stabilize helpfulness status for any notes older than two weeks.
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**July 27, 2023**
+
+- Introduced modeling groups and associated Group models to improve Helpful note coverage.
+- Improved model convergence logic to reduce scoring instability.
+- Increasing the scoring threshold for identifying Helpful notes based on confidence intervals.
+- Added support for running a subset of scoring logic for development purposes.
+- Added support for computing separate training and validation loss during development.
+- Sunset the Coverage model, which trialed an expansion of Helpful notes through modified regularization.
 
 **April 20, 2023**
 
