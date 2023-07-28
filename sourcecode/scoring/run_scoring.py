@@ -7,16 +7,17 @@ intergrated into main files for execution in internal and external environments.
 
 from collections import namedtuple
 import concurrent.futures
+from itertools import chain
 import multiprocessing
 import time
-from typing import List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from . import constants as c, contributor_state, note_ratings, note_status_history, scoring_rules
 from .enums import Scorers
 from .mf_base_scorer import MFBaseScorer
 from .mf_core_scorer import MFCoreScorer
-from .mf_coverage_scorer import MFCoverageScorer, MFDummyCoverageScorer
 from .mf_expansion_scorer import MFExpansionScorer
+from .mf_group_scorer import coalesce_group_models, groupScorerCount, MFGroupScorer
 from .scorer import Scorer
 from .scoring_rules import RuleID
 
@@ -76,7 +77,6 @@ def _check_flips(
   prevCrh = max(
     1, len(unlockedPopNsh.loc[unlockedPopNsh[c.currentLabelKey] == c.currentlyRatedHelpful])
   )
-
   print(f"Percentage of previous CRH flipping status: {(statusFlips / prevCrh)}")
 
   return (statusFlips / prevCrh) > pctFlips
@@ -84,7 +84,7 @@ def _check_flips(
 
 def _get_scorers(
   seed: Optional[int], pseudoraters: Optional[bool], enabledScorers: Optional[Set[Scorers]]
-) -> List[Scorer]:
+) -> Dict[Scorers, List[Scorer]]:
   """Instantiate all Scorer objects which should be used for note ranking.
 
   Args:
@@ -93,18 +93,20 @@ def _get_scorers(
     enabledScorers: if not None, set of which scorers should be instantiated and enabled
 
   Returns:
-    List[Scorer] containing instantiated Scorer objects for note ranking.
+    Dict[Scorers, List[Scorer]] containing instantiated Scorer objects for note ranking.
   """
-  scorers: List[Scorer] = []
+  scorers: Dict[Scorers, List[Scorer]] = dict()
 
   if enabledScorers is None or Scorers.MFCoreScorer in enabledScorers:
-    scorers.append(MFCoreScorer(seed, pseudoraters))
+    scorers[Scorers.MFCoreScorer] = [MFCoreScorer(seed, pseudoraters)]
   if enabledScorers is None or Scorers.MFExpansionScorer in enabledScorers:
-    scorers.append(MFExpansionScorer(seed))
-  if enabledScorers is not None and Scorers.MFCoverageScorer in enabledScorers:
-    scorers.append(MFCoverageScorer(seed))
-  else:
-    scorers.append(MFDummyCoverageScorer())
+    scorers[Scorers.MFExpansionScorer] = [MFExpansionScorer(seed)]
+  if enabledScorers is None or Scorers.MFGroupScorer in enabledScorers:
+    # Note that index 0 is reserved, corresponding to no group assigned, so scoring group
+    # numbers begin with index 1.
+    scorers[Scorers.MFGroupScorer] = [
+      MFGroupScorer(groupNumber=i) for i in range(1, groupScorerCount + 1)
+    ]
 
   return scorers
 
@@ -166,9 +168,9 @@ def _run_scorer_parallelizable(scorer, ratings, noteStatusHistory, userEnrollmen
   result = None
   flips = False
 
-  if isinstance(
-    scorer, (MFBaseScorer, MFCoreScorer, MFCoverageScorer, MFExpansionScorer)
-  ) and not isinstance(scorer, MFDummyCoverageScorer):
+  # TODO: encapsulate this at a lower level so we're not accessing private state and can deal
+  # with the case where there are no ratings for a scorer to run on after filtering.
+  if isinstance(scorer, (MFBaseScorer, MFCoreScorer, MFExpansionScorer)):
     while (
       (len(scorer._mfRanker.train_errors) == 0)
       or (scorer._mfRanker.train_errors[-1] > c.maxTrainError)
@@ -176,6 +178,8 @@ def _run_scorer_parallelizable(scorer, ratings, noteStatusHistory, userEnrollmen
     ):
       runCounter += 1
       result = ModelResult(*scorer.score(ratings, noteStatusHistory, userEnrollment))
+      if runCounter > c.maxReruns:
+        break
       # check for notes createdat > lock time, not more than x% have changed status from nsh
       if isinstance(scorer, MFExpansionScorer):
         flips = _check_flips(
@@ -186,6 +190,18 @@ def _run_scorer_parallelizable(scorer, ratings, noteStatusHistory, userEnrollmen
           c.expansionFlipPct,
           c.expansionRatingStatusKey,
         )
+      elif isinstance(scorer, MFCoreScorer):
+        flips = _check_flips(
+          result.scoredNotes,
+          noteStatusHistory,
+          userEnrollment,
+          [c.core],
+          c.coreFlipPct,
+          c.coreRatingStatusKey,
+        )
+      if flips:
+        if scorer._seed is not None:
+          scorer._seed = scorer._seed + 1
   else:
     result = ModelResult(*scorer.score(ratings, noteStatusHistory, userEnrollment))
     runCounter += 1
@@ -263,11 +279,13 @@ def _run_scorers(
       modelResult.helpfulnessScores,
       modelResult.auxiliaryNoteInfo,
     )
+  scoredNotes, helpfulnessScores = coalesce_group_models(scoredNotes, helpfulnessScores)
 
   return scoredNotes, helpfulnessScores, auxiliaryNoteInfo
 
 
 def meta_score(
+  scorers: Dict[Scorers, List[Scorer]],
   scoredNotes: pd.DataFrame,
   auxiliaryNoteInfo: pd.DataFrame,
   lockedStatus: pd.DataFrame,
@@ -314,12 +332,26 @@ def meta_score(
         RuleID.CORE_MODEL, {RuleID.META_INITIAL_NMR}, c.coreRatingStatusKey
       )
     )
-  if enabledScorers is not None and Scorers.MFCoverageScorer in enabledScorers:
-    rules.append(
-      scoring_rules.ApplyAdditiveModelResult(
-        RuleID.COVERAGE_MODEL, {RuleID.META_INITIAL_NMR}, c.coverageRatingStatusKey, 0.38
+  if enabledScorers is None or Scorers.MFGroupScorer in enabledScorers:
+    # TODO: modify this code to work when MFExpansionScorer is disabled by the system test
+    assert len(scorers[Scorers.MFCoreScorer]) == 1
+    assert len(scorers[Scorers.MFExpansionScorer]) == 1
+    coreScorer = scorers[Scorers.MFCoreScorer][0]
+    assert isinstance(coreScorer, MFCoreScorer)
+    expnasionScorer = scorers[Scorers.MFExpansionScorer][0]
+    assert isinstance(expnasionScorer, MFExpansionScorer)
+    coreCrhThreshold = coreScorer.get_crh_threshold()
+    expansionCrhThreshold = expnasionScorer.get_crh_threshold()
+    for i in range(1, groupScorerCount + 1):
+      rules.append(
+        scoring_rules.ApplyGroupModelResult(
+          RuleID[f"GROUP_MODEL_{i}"],
+          {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+          i,
+          coreCrhThreshold,
+          expansionCrhThreshold,
+        )
       )
-    )
   rules.extend(
     [
       scoring_rules.ScoringDriftGuard(
@@ -510,6 +542,26 @@ def _compute_helpfulness_scores(
   return helpfulnessScores
 
 
+def _add_deprecated_columns(scoredNotes: pd.DataFrame) -> pd.DataFrame:
+  """Impute columns which are no longer used but must be maintained in output.
+
+  Args:
+    scoredNotes: DataFrame containing note scoring output
+
+  Returns:
+    scoredNotes augmented to include deprecated columns filled with dummy values
+  """
+  for column, columnType in c.deprecatedNoteModelOutputTSVColumnsAndTypes:
+    assert column not in scoredNotes.columns
+    if columnType == np.double:
+      scoredNotes[column] = np.nan
+    elif columnType == np.str:
+      scoredNotes[column] = ""
+    else:
+      assert False, f"column type {columnType} unsupported"
+  return scoredNotes
+
+
 def _validate(
   scoredNotes: pd.DataFrame,
   helpfulnessScores: pd.DataFrame,
@@ -576,7 +628,7 @@ def run_scoring(
   # Apply individual scoring models and obtained merged result.
   scorers = _get_scorers(seed, pseudoraters, enabledScorers)
   scoredNotes, helpfulnessScores, auxiliaryNoteInfo = _run_scorers(
-    scorers, ratings, noteStatusHistory, userEnrollment
+    list(chain(*scorers.values())), ratings, noteStatusHistory, userEnrollment
   )
 
   # Augment scoredNotes and auxiliaryNoteInfo with additional attributes for each note
@@ -588,6 +640,7 @@ def run_scoring(
 
   # Assign final status to notes based on individual model scores and note attributes.
   scoredNotesCols, auxiliaryNoteInfoCols = meta_score(
+    scorers,
     scoredNotes,
     auxiliaryNoteInfo,
     noteStatusHistory[[c.noteIdKey, c.lockedStatusKey]],
@@ -618,6 +671,7 @@ def run_scoring(
   ), "noteStatusHistory should contain all notes after preprocessing"
 
   # Skip validation and selection out output columns if the set of scorers is overridden.
+  scoredNotes = _add_deprecated_columns(scoredNotes)
   if strictColumns:
     scoredNotes, helpfulnessScores, newNoteStatusHistory, auxiliaryNoteInfo = _validate(
       scoredNotes, helpfulnessScores, newNoteStatusHistory, auxiliaryNoteInfo

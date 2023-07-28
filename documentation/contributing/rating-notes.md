@@ -5,25 +5,25 @@ navWeight: 5
 ---
 # Rating notes
 
-Ratings help identify which notes are helpful enough to show on Twitter and notes that are not helpful and should not be shown.
+Ratings help identify which notes are helpful enough to show on X and notes that are not helpful and should not be shown.
 
 ## Rating notes on the Community Notes site
 
-Go to the [**Community Notes Home page**](https://communitynotes.twitter.com) and choose any Tweet to see notes that contributors have added to it. There are three main timelines on this page:
+Go to the [**Community Notes Home page**](https://communitynotes.x.com) and choose any post to see notes that contributors have added to it. There are three main timelines on this page:
 
-- **Needs your help:** Contains Tweets with notes where you can have the most impact when rating. This tab is only visible to Community Notes contributors.
+- **Needs your help:** Contains posts with notes where you can have the most impact when rating. This tab is only visible to Community Notes contributors.
 
-- **New:** Contains Tweets with the most recent notes.
+- **New:** Contains posts with the most recent notes.
 
-- **Rated Helpful:** Contains Tweets with at least one note rated helpful by the community.
+- **Rated Helpful:** Contains posts with at least one note rated helpful by the community.
 
-![Community Notes home page, showing Tweets with notes to be rated](../images/home.png)
+![Community Notes home page, showing posts with notes to be rated](../images/home.png)
 
-## Rating notes on Twitter
+## Rating notes on X
 
-Community Notes contributors and people on Twitter may also see notes and prompts in their timeline when browsing Twitter.
+Community Notes contributors and people on X may also see notes and prompts in their timeline when browsing X.
 
-![Tweet with a community notes prompt](../images/notes-on-twitter.png)
+![post with a community notes prompt](../images/notes-on-twitter.png)
 
 ## Rating Impact
 

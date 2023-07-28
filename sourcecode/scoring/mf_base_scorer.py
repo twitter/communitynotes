@@ -87,6 +87,10 @@ class MFBaseScorer(Scorer):
     self._weightedTotalVotes = weightedTotalVotes
     self._mfRanker = matrix_factorization.MatrixFactorization()
 
+  def get_crh_threshold(self) -> float:
+    """Return CRH threshold for general scoring logic."""
+    return self._crhThreshold
+
   def get_scored_notes_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the scoredNotes output."""
     return [
@@ -160,6 +164,7 @@ class MFBaseScorer(Scorer):
         userScores pd.DataFrame: one row per user containing a column for each helpfulness score.
     """
     if self._seed is not None:
+      print(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
 
     # Removes ratings where either (1) the note did not receive enough ratings, or

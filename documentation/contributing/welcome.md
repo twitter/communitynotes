@@ -10,15 +10,15 @@ You're now a Community Notes contributor 🎉
 
 As a Community Notes contributor, you can now rate the helpfulness of all notes. But first, choose an alias to contribute under (it’s like a pen name!)
 
-{% button buttonTitle="Select your alias" buttonHref="https://twitter.com/i/communitynotes/u/me" /%}
+{% button buttonTitle="Select your alias" buttonHref="https://x.com/i/communitynotes/u/me" /%}
 
 ## 2. Begin rating notes
 
-Your ratings help determine which notes are made visible on Twitter. To start rating notes, navigate to Community Notes from your Twitter app navigation bar. There, you'll find the notes where your ratings can have the most impact.
+Your ratings help determine which notes are made visible on X. To start rating notes, navigate to Community Notes from your app's navigation bar. There, you'll find the notes where your ratings can have the most impact.
 
-![Twitter app with the main navigation menu open. Community Notes option is highlighted.](../images/navigate-to-home.png)
+![X app with the main navigation menu open. Community Notes option is highlighted.](../images/navigate-to-home.png)
 
-{% button buttonTitle="Rate notes" buttonHref="https://twitter.com/i/communitynotes/needs_your_help" /%}
+{% button buttonTitle="Rate notes" buttonHref="https://x.com/i/communitynotes/needs_your_help" /%}
 
 ## 3. Soon, you'll unlock the ability to write your own notes!
 
@@ -26,9 +26,9 @@ To unlock the ability to write notes, you need to earn a Rating Impact of 5. You
 
 ![Screen showing an anonymous contributor profile. Highlighted section reads: 0 Rating Impact. You need an Impact of 5 to unlock note writing](../images/rating-impact-welcome.png)
 
-{% button buttonTitle="Track your impact" buttonHref="https://twitter.com/i/communitynotes/u/me" /%}
+{% button buttonTitle="Track your impact" buttonHref="https://x.com/i/communitynotes/u/me" /%}
 
 ### Confused? Need a hand? Have feedback?
 
-Don’t hesitate to get in touch with the Community Notes team! You can reach us by Tweeting to or DMing
-[@CommunityNotes](https://twitter.com/communitynotes). We’re glad you’re here!
+Don’t hesitate to get in touch with the Community Notes team! You can reach us by posting to or DMing
+[@CommunityNotes](https://x.com/communitynotes). We’re glad you’re here!
