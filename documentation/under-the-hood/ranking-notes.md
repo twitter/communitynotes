@@ -225,7 +225,7 @@ For not-helpful notes:
 
 - Introduced modeling groups and associated Group models to improve Helpful note coverage.
 - Improved model convergence logic to reduce scoring instability.
-- Increasing the scoring threshold for identifying Helpful notes based on confidence intervals.
+- Increased the scoring threshold for identifying Helpful notes based on confidence intervals.
 - Added support for running a subset of scoring logic for development purposes.
 - Added support for computing separate training and validation loss during development.
 - Sunset the Coverage model, which trialed an expansion of Helpful notes through modified regularization.
