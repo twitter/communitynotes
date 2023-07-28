@@ -16,6 +16,7 @@ epochMillis = 1000 * time.time()
 
 maxTrainError = 0.09
 
+coreFlipPct = 0.15
 expansionFlipPct = 0.19
 maxReruns = 5
 
@@ -41,6 +42,7 @@ createdAtMillisKey = "createdAtMillis"
 summaryKey = "summary"
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 modelingPopulationKey = "modelingPopulation"
+modelingGroupKey = "modelingGroup"
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
@@ -127,6 +129,14 @@ coverageNoteFactor1Key = "coverageNoteFactor1"
 coverageRatingStatusKey = "coverageRatingStatus"
 coverageNoteInterceptMaxKey = "coverageNoteInterceptMax"
 coverageNoteInterceptMinKey = "coverageNoteInterceptMin"
+# Group Model
+groupNoteInterceptKey = "groupNoteIntercept"
+groupNoteFactor1Key = "groupNoteFactor1"
+groupRatingStatusKey = "groupRatingStatus"
+groupNoteInterceptMaxKey = "groupNoteInterceptMax"
+groupNoteInterceptMinKey = "groupNoteInterceptMin"
+groupRaterInterceptKey = "groupRaterIntercept"
+groupRaterFactor1Key = "groupRaterFactor1"
 
 # Ids and Indexes
 noteIdKey = "noteId"
@@ -364,6 +374,16 @@ userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
 
+# TODO: delete expanded user enrollment definition once modeling group is fully rolled out
+userEnrollmentExpandedTSVColumnsAndTypes = userEnrollmentTSVColumnsAndTypes + [
+  (modelingGroupKey, np.float64)
+]
+userEnrollmentExpandedTSVColumns = [col for (col, _) in userEnrollmentExpandedTSVColumnsAndTypes]
+userEnrollmentExpandedTSVTypes = [dtype for (_, dtype) in userEnrollmentExpandedTSVColumnsAndTypes]
+userEnrollmentExpandedTSVTypeMapping = {
+  col: dtype for (col, dtype) in userEnrollmentExpandedTSVColumnsAndTypes
+}
+
 noteInterceptMaxKey = "internalNoteIntercept_max"
 noteInterceptMinKey = "internalNoteIntercept_min"
 noteParameterUncertaintyTSVMainColumnsAndTypes = [
@@ -421,6 +441,16 @@ auxiliaryScoredNotesTSVColumns = (
   + incorrectFilterColumns
 )
 
+deprecatedNoteModelOutputColumns = frozenset(
+  {
+    coverageNoteInterceptKey,
+    coverageNoteFactor1Key,
+    coverageRatingStatusKey,
+    coverageNoteInterceptMinKey,
+    coverageNoteInterceptMaxKey,
+  }
+)
+
 noteModelOutputTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
   (coreNoteInterceptKey, np.double),
@@ -451,9 +481,20 @@ noteModelOutputTSVColumnsAndTypes = [
   (expansionNoteInterceptMaxKey, np.double),
   (coverageNoteInterceptMinKey, np.double),
   (coverageNoteInterceptMaxKey, np.double),
+  (groupNoteInterceptKey, np.double),
+  (groupNoteFactor1Key, np.double),
+  (groupRatingStatusKey, np.str),
+  (groupNoteInterceptMaxKey, np.double),
+  (groupNoteInterceptMinKey, np.double),
+  (modelingGroupKey, np.float64),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
+deprecatedNoteModelOutputTSVColumnsAndTypes = [
+  (col, dtype)
+  for (col, dtype) in noteModelOutputTSVColumnsAndTypes
+  if col in deprecatedNoteModelOutputColumns
+]
 
 raterModelOutputTSVColumnsAndTypes = [
   (raterParticipantIdKey, np.int64),
@@ -481,6 +522,9 @@ raterModelOutputTSVColumnsAndTypes = [
   (isEmergingWriterKey, np.bool_),
   (aggregateRatingReceivedTotal, pd.Int64Dtype()),
   (timestampOfLastEarnOut, np.double),
+  (groupRaterInterceptKey, np.double),
+  (groupRaterFactor1Key, np.double),
+  (modelingGroupKey, np.float64),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}

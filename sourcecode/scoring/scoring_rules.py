@@ -36,6 +36,18 @@ class RuleID(Enum):
   EXPANSION_MODEL = RuleAndVersion("ExpansionModel", "1.1", False)
   CORE_MODEL = RuleAndVersion("CoreModel", "1.1", True)
   COVERAGE_MODEL = RuleAndVersion("CoverageModel", "1.1", False)
+  GROUP_MODEL_1 = RuleAndVersion("GroupModel01", "1.1", False)
+  GROUP_MODEL_2 = RuleAndVersion("GroupModel02", "1.1", False)
+  GROUP_MODEL_3 = RuleAndVersion("GroupModel03", "1.1", False)
+  GROUP_MODEL_4 = RuleAndVersion("GroupModel04", "1.1", False)
+  GROUP_MODEL_5 = RuleAndVersion("GroupModel05", "1.1", False)
+  GROUP_MODEL_6 = RuleAndVersion("GroupModel06", "1.1", False)
+  GROUP_MODEL_7 = RuleAndVersion("GroupModel07", "1.1", False)
+  GROUP_MODEL_8 = RuleAndVersion("GroupModel08", "1.1", False)
+  GROUP_MODEL_9 = RuleAndVersion("GroupModel09", "1.1", False)
+  GROUP_MODEL_10 = RuleAndVersion("GroupModel10", "1.1", False)
+  GROUP_MODEL_11 = RuleAndVersion("GroupModel11", "1.1", False)
+  GROUP_MODEL_12 = RuleAndVersion("GroupModel12", "1.1", False)
   INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
   SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
 
@@ -186,56 +198,6 @@ class ApplyModelResult(ScoringRule):
     return (noteStatusUpdates, None)
 
 
-class ApplyAdditiveModelResult(ScoringRule):
-  def __init__(
-    self,
-    ruleID: RuleID,
-    dependencies: Set[RuleID],
-    sourceColumn: str,
-    coreThreshold: float,
-  ):
-    """Set CRH status based on probationary model subject to safeguard threshold on core model.
-
-    This rule sets CRH note status based on probationary models subject to several criteria:
-      * The note must be have CRH status from the probationary model.
-      * The note must currently be scored as NMR.  This criteria guarantees that (1) probationary
-        models strictly expand coverage and (2) notes which were rated CRH by the core
-        model never have the decidedBy field overwritten by a less confident model.
-      * The note must score above a defined threshold on the core model.  This criteria acts as
-        safeguard against dangerous detections from probationary models.
-
-    Args:
-      rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
-      dependencies: Rules which must run before this rule can run.
-      sourceColumn: column containing note status (CRH, CRNH, NMR) to propagate to output.
-      coreThreshold: minimum score which notes must receive from the core model.
-    """
-    super().__init__(ruleID, dependencies)
-    self._sourceColumn = sourceColumn
-    self._coreThreshold = coreThreshold
-
-  def score_notes(
-    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
-    """Flip notes from NMR to CRH based on probationary model and subject to core model safeguard."""
-    # Identify notes which meet each of the 3 criteria.
-    probationaryCRHNotes = noteStats[noteStats[self._sourceColumn] == c.currentlyRatedHelpful][
-      [c.noteIdKey]
-    ]
-    currentNMRNotes = currentLabels[currentLabels[statusColumn] == c.needsMoreRatings][
-      [c.noteIdKey]
-    ]
-    aboveSafeGuard = noteStats[noteStats[c.coreNoteInterceptKey] > self._coreThreshold][
-      [c.noteIdKey]
-    ]
-    # Identify overlap and return status update.
-    noteStatusUpdates = probationaryCRHNotes.merge(
-      currentNMRNotes, on=c.noteIdKey, how="inner"
-    ).merge(aboveSafeGuard, on=c.noteIdKey, how="inner")
-    noteStatusUpdates[statusColumn] = c.currentlyRatedHelpful
-    return (noteStatusUpdates, None)
-
-
 class FilterTagOutliers(ScoringRule):
   def __init__(
     self,
@@ -355,6 +317,92 @@ class FilterIncorrect(ScoringRule):
     print(f"Total notes impacted by incorrect filtering: {len(noteStatusUpdates)}")
     noteStatusUpdates[statusColumn] = self._status
 
+    return (noteStatusUpdates, None)
+
+
+class ApplyGroupModelResult(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    groupNumber: int,
+    coreCrhThreshold: float,
+    expansionCrhThreshold: float,
+    minSafeguardThreshold: float = 0.3,
+  ):
+    """Set CRH status based on a modeling group result.
+
+    This rule sets CRH note status based on group models subject to several criteria:
+      * The note must be have CRH status from the group model.
+      * The note must currently be scored as NMR.  This criteria guarantees that (1) group
+        models strictly expand coverage and (2) notes which were rated CRH by the core
+        model never have the decidedBy field overwritten by a less confident model.
+      * The note must have an intercept from either the core or expansion models, and the intercept
+        of the most confident model must fall within a defined range.  We construct the range
+        to guarantee we can avoid CRHing notes which substantially lacked broad appeal, and
+        to guarantee that we will not CRH a note which was blocked by tag or inaccuracy filtering
+        from either the core or expansion models, as applicable.
+
+    Args:
+      ruleID: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
+      dependencies: Rules which must run before this rule can run.
+      groupNumber: modeling group index which this instance of ApplyGroupModelResult should act on.
+      coreCrhThreshold: maximum intercept allowed on core model for group model CRH notes.
+      expansionCrhThreshold: maximum intercept allowed on expansion model for group model CRH notes.
+      minSafeguardThreshold: minimum intercept for core or expansion model.
+    """
+    super().__init__(ruleID, dependencies)
+    self._groupNumber = groupNumber
+    self._minSafeguardThreshold = minSafeguardThreshold
+    self._coreCrhThreshold = coreCrhThreshold
+    self._expansionCrhThreshold = expansionCrhThreshold
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
+    """Flip notes from NMR to CRH based on group models and subject to core/expansion model safeguards."""
+    # Identify notes which were CRH from the applicable group model.
+    probationaryCRHNotes = noteStats[
+      (noteStats[c.groupRatingStatusKey] == c.currentlyRatedHelpful)
+      & (noteStats[c.modelingGroupKey] == self._groupNumber)
+    ][[c.noteIdKey]]
+    # Identify notes which are currently NMR.
+    currentNMRNotes = currentLabels[currentLabels[statusColumn] == c.needsMoreRatings][
+      [c.noteIdKey]
+    ]
+    # Identify notes which pass score bound checks for expansion and core models.
+    noteStats = noteStats[[c.noteIdKey, c.coreNoteInterceptKey, c.expansionNoteInterceptKey]].copy()
+    noteStats["core"] = (noteStats[c.coreNoteInterceptKey] < self._coreCrhThreshold) & (
+      noteStats[c.coreNoteInterceptKey] > self._minSafeguardThreshold
+    )
+    noteStats.loc[noteStats[c.coreNoteInterceptKey].isna(), "core"] = np.nan
+    noteStats["expansion"] = (
+      noteStats[c.expansionNoteInterceptKey] < self._expansionCrhThreshold
+    ) & (noteStats[c.expansionNoteInterceptKey] > self._minSafeguardThreshold)
+    noteStats.loc[noteStats[c.expansionNoteInterceptKey].isna(), "expansion"] = np.nan
+
+    def _get_value(row):
+      idx = row.first_valid_index()
+      # If either core or expansion had an intercept then return whether it was in the valid
+      # range.  If neither had an intercept, return False.  Preference is given to core due
+      # to the ordering when selecting columns from noteStats below.
+      if idx is None:
+        return False
+      elif row[idx] == 1.0:
+        return True
+      elif row[idx] == 0.0:
+        return False
+      else:
+        assert False, f"unexpected value: {row[idx]}"
+
+    noteStats["actionable"] = noteStats[["core", "expansion"]].apply(_get_value, axis=1)
+    actionableNotes = noteStats[noteStats["actionable"]][[c.noteIdKey]]
+
+    # Identify overlap and return status update.
+    noteStatusUpdates = probationaryCRHNotes.merge(
+      currentNMRNotes, on=c.noteIdKey, how="inner"
+    ).merge(actionableNotes, on=c.noteIdKey, how="inner")
+    noteStatusUpdates[statusColumn] = c.currentlyRatedHelpful
     return (noteStatusUpdates, None)
 
 
