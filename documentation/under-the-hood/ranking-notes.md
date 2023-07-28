@@ -138,7 +138,7 @@ Similarly, if a note was impacted by tag outlier filter and required note interc
 Multi-Model ranking allows Community Notes to run multiple ranking algorithms before reconciling the results to assign final note status.
 We use this ability to test new models, refine current approaches and support expanding the Community Notes contributor base.
 We currently run several variations of the matrix facgtorizaiton approach.
-Each variation uses the same modling logic and parameters, but applies the model to different slices of the ratings data.
+Each variation uses the same modeling logic and parameters, but applies the model to different slices of the ratings data.
 
 - The _Core_ model determines status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
 - The _Expansion_ model runs the same ranking algorithm with the same parameters as the Core model, with the difference that the Expansion model includes all notes with all ratings across Core and Expansion areas.
