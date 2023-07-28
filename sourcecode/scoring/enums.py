@@ -6,15 +6,10 @@ class Scorers(Enum):
   """Exhaustive list of all scorers to simplify setting enabled/disabled scorers."""
 
   MFCoreScorer = auto()
-<<<<<<< HEAD
   MFExpansionScorer = auto()
   # Note that the MFGroupScorer value controls whether *all* group scorers are instantiated,
   # not just a single MFGroupScorer instance.
   MFGroupScorer = auto()
-=======
-  MFCoverageScorer = auto()
-  MFExpansionScorer = auto()
->>>>>>> main
 
 
 def scorers_from_csv(csv: str) -> Set[Scorers]:
