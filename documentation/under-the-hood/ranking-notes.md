@@ -69,7 +69,7 @@ Where $\lambda_i=0.15$, the regularization on the intercept terms, is currently 
 
 The resulting scores that we use for each note are the note intercept terms $i_n$. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.
 
-In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$. We also apply "Not Helpful" status to notes based based the upper bound of the uncertainty interval of their intercept (at $-0.04$) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section, in addition to applying "Helpful" status to notes with a lower bound of their uncertainty interval of their intercept of at least $0.31. The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
+In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$. We also apply "Not Helpful" status to notes based based the upper bound of the uncertainty interval of their intercept (at $-0.04$) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section, in addition to applying "Helpful" status to notes with a lower bound of their uncertainty interval of their intercept of at least $0.31$. The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
 
 This approach has a few nice properties:
 
@@ -97,12 +97,12 @@ This approach helps us to maintain data quality by recognizing when there is a t
 
 We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
 
-$$ a_{un} = \frac{\mathbb{1}_{a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5  }  $$
+$`$` a_{un} = \frac{\mathbb{1}_{a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5  }  `$`$
 
 Where:
 
 - $\tilde{f} = \eta_{40}^{r_{un}}(||f_n - f_||)$ indicates the 40th percentile of the distances between the rater (user) and note latent factors over all observable ratings $r_{un}$
-- $\mathbb{1}_{a_{un}}$ is 1 if rater $u$ assigned tag $a$ to note $n$ and 0 otherwise.
+- $`\mathbb{1}_{a_{un}}`$ is 1 if rater $u$ assigned tag $a$ to note $n$ and 0 otherwise.
 
 We define the total weight of an tag $a$ on note $n$ as:
 
