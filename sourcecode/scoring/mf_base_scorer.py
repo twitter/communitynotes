@@ -1,6 +1,8 @@
 from typing import List, Optional, Tuple
 
-from . import constants as c, helpfulness_scores, matrix_factorization, note_ratings, process_data
+from . import constants as c, helpfulness_scores, note_ratings, process_data
+from .matrix_factorization.matrix_factorization import MatrixFactorization
+from .matrix_factorization.pseudo_raters import PseudoRatersRunner
 from .scorer import Scorer
 
 import numpy as np
@@ -85,7 +87,7 @@ class MFBaseScorer(Scorer):
     self._crhSuperThreshold = crhSuperThreshold
     self._inertiaDelta = inertiaDelta
     self._weightedTotalVotes = weightedTotalVotes
-    self._mfRanker = matrix_factorization.MatrixFactorization()
+    self._mfRanker = MatrixFactorization()
 
   def get_crh_threshold(self) -> float:
     """Return CRH threshold for general scoring logic."""
@@ -145,6 +147,14 @@ class MFBaseScorer(Scorer):
     """Returns a list of columns which should be excluded from helpfulnessScores output."""
     return []
 
+  def _prepare_data_for_scoring(self, ratings: pd.DataFrame) -> pd.DataFrame:
+    """Prepare data for scoring. This includes filtering out notes and raters which do not meet
+    minimum rating counts, and may be overridden by subclasses to add additional filtering.
+    """
+    return process_data.filter_ratings(
+      ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote
+    )
+
   def _score_notes_and_users(
     self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -169,9 +179,7 @@ class MFBaseScorer(Scorer):
 
     # Removes ratings where either (1) the note did not receive enough ratings, or
     # (2) the rater did not rate enough notes.
-    ratingsForTraining = process_data.filter_ratings(
-      ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote
-    )
+    ratingsForTraining = self._prepare_data_for_scoring(ratings)
 
     # TODO: Save parameters from this first run in note_model_output next time we add extra fields to model output TSV.
     noteParamsUnfiltered, raterParamsUnfiltered, globalBias = self._mfRanker.run_mf(
@@ -243,28 +251,9 @@ class MFBaseScorer(Scorer):
     # Add pseudo-raters with the most extreme parameters and re-score notes, to estimate
     #  upper and lower confidence bounds on note parameters.
     if self._pseudoraters:
-      noteIdMap, raterIdMap, noteRatingIds = self._mfRanker.get_note_and_rater_id_maps(
-        ratingsHelpfulnessScoreFiltered
-      )
-
-      extremeRaters = self._mfRanker.make_extreme_raters(raterParams, raterIdMap)
-
-      (
-        rawRescoredNotesWithEachExtraRater,
-        notesWithConfidenceBounds,
-      ) = self._mfRanker.fit_note_params_for_each_dataset_with_extreme_ratings(
-        extremeRaters,
-        noteRatingIds,
-        ratingsHelpfulnessScoreFiltered,
-        noteParams,
-        raterParams,
-        globalBias,
-      )
-
-      noteParams = noteParams.merge(
-        notesWithConfidenceBounds.reset_index(), on="noteId", how="left"
-      )
-
+      noteParams = PseudoRatersRunner(
+        ratingsHelpfulnessScoreFiltered, noteParams, raterParams, globalBias, self._mfRanker
+      ).compute_note_parameter_confidence_bounds_with_pseudo_raters()
     else:
       for col in c.noteParameterUncertaintyTSVColumns:
         noteParams[col] = np.nan

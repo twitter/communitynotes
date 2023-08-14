@@ -16,7 +16,7 @@ epochMillis = 1000 * time.time()
 
 maxTrainError = 0.09
 
-coreFlipPct = 0.15
+coreFlipPct = 0.175
 expansionFlipPct = 0.19
 maxReruns = 5
 
@@ -170,8 +170,10 @@ currentlyRatedHelpfulBoolKey = "crhBool"
 currentlyRatedNotHelpfulBoolKey = "crnhBool"
 awaitingMoreRatingsBoolKey = "awaitingBool"
 
+helpfulOtherTagKey = "helpfulOther"
+
 helpfulTagsAndTieBreakOrder = [
-  (0, "helpfulOther"),
+  (0, helpfulOtherTagKey),
   (8, "helpfulInformative"),
   (7, "helpfulClear"),
   (3, "helpfulEmpathetic"),
@@ -189,14 +191,16 @@ helpfulTagsTiebreakOrder = [tag for (tiebreakOrder, tag) in sorted(helpfulTagsAn
 # elements which are already in the list to maintain compatibility with
 # BirdwatchNoteNotHelpfulTags.get in Scala.
 
+notHelpfulIncorrectTagKey = "notHelpfulIncorrect"
+notHelpfulOtherTagKey = "notHelpfulOther"
 notHelpfulSpamHarassmentOrAbuseTagKey = "notHelpfulSpamHarassmentOrAbuse"
 notHelpfulArgumentativeOrBiasedTagKey = "notHelpfulArgumentativeOrBiased"
 notHelpfulHardToUnderstandKey = "notHelpfulHardToUnderstand"
 notHelpfulNoteNotNeededKey = "notHelpfulNoteNotNeeded"
 
 notHelpfulTagsAndTieBreakOrder = [
-  (0, "notHelpfulOther"),
-  (8, "notHelpfulIncorrect"),
+  (0, notHelpfulOtherTagKey),
+  (8, notHelpfulIncorrectTagKey),
   (2, "notHelpfulSourcesMissingOrUnreliable"),
   (4, "notHelpfulOpinionSpeculationOrBias"),
   (5, "notHelpfulMissingKeyPoints"),
@@ -424,7 +428,6 @@ auxiliaryScoredNotesTSVColumns = (
   [
     noteIdKey,
     ratingWeightKey,
-    numRatingsKey,
     createdAtMillisKey,
     noteAuthorParticipantIdKey,
     awaitingMoreRatingsBoolKey,
@@ -487,6 +490,7 @@ noteModelOutputTSVColumnsAndTypes = [
   (groupNoteInterceptMaxKey, np.double),
   (groupNoteInterceptMinKey, np.double),
   (modelingGroupKey, np.float64),
+  (numRatingsKey, np.int64),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}

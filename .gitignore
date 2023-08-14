@@ -3,3 +3,5 @@ _gen
 .DS_Store
 settings.json
 .gitignore
+*.tsv
+__pycache__
