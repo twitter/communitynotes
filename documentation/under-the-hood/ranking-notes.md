@@ -221,6 +221,11 @@ For not-helpful notes:
 
 ## What’s New?
 
+**August 14, 2023**
+
+-Add additional numRatings field to scored_notes.tsv output, which computes the total number of ratings on a note.
+-Tweak the anti-note-flipping logic: increase the threshold of percent of notes that can flip before triggering a re-run to 0.175 from 0.15.
+
 **July 27, 2023**
 
 - Introduced modeling groups and associated Group models to improve Helpful note coverage.
