@@ -97,7 +97,7 @@ This approach helps us to maintain data quality by recognizing when there is a t
 
 We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
 
-$`$` a_{un} = \frac{\mathbb{1}_{a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5  }  `$`$
+$`$ a_{un} = \frac{\mathbb{1}_{a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5  }  $`$
 
 Where:
 
