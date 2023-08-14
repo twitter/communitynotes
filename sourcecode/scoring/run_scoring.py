@@ -64,6 +64,7 @@ def _check_flips(
   unlockedPopNsh = unlockedPopNsh.merge(
     scoredNotes[[c.noteIdKey, resultCol]], on=c.noteIdKey, how="inner"
   )
+
   statusFlips = len(
     unlockedPopNsh.loc[
       (unlockedPopNsh[c.currentLabelKey] != unlockedPopNsh[resultCol])
@@ -424,12 +425,13 @@ def _compute_note_stats(
       auxiliaryNoteInfoCols pd.DataFrame: one row per note containing adjusted and ratio tag values
   """
   noteStats = note_ratings.compute_note_stats(ratings, noteStatusHistory)
-  scoredNotesCols = noteStats[[c.noteIdKey, c.classificationKey, c.createdAtMillisKey]]
+  scoredNotesCols = noteStats[
+    [c.noteIdKey, c.classificationKey, c.createdAtMillisKey, c.numRatingsKey]
+  ]
   auxiliaryNoteInfoCols = noteStats[
     [
       c.noteIdKey,
       c.noteAuthorParticipantIdKey,
-      c.numRatingsKey,
       c.createdAtMillisKey,
       c.numRatingsLast28DaysKey,
       c.currentLabelKey,

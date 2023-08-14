@@ -20,7 +20,8 @@ def author_helpfulness(
   Returns:
     pd.DataFrame: one row per author, containing columns for author helpfulness scores
   """
-  scoredNotes[c.noteCountKey] = 1
+
+  scoredNotes.loc[:, c.noteCountKey] = 1
   authorCounts = scoredNotes.groupby(c.noteAuthorParticipantIdKey).sum(numeric_only=True)[
     [
       c.currentlyRatedHelpfulBoolKey,
@@ -139,11 +140,9 @@ def filter_ratings_by_helpfulness_scores(
   Returns:
       filtered_ratings pandas.DataFrame: same schema as input ratings, but filtered.
   """
-
-  includedUsers = helpfulnessScores[helpfulnessScores[c.aboveHelpfulnessThresholdKey]][
-    [c.raterParticipantIdKey]
+  includedUsers = helpfulnessScores.loc[
+    helpfulnessScores[c.aboveHelpfulnessThresholdKey], [c.raterParticipantIdKey]
   ]
-
   ratingsHelpfulnessScoreFiltered = includedUsers.merge(
     ratingsForTraining, on=c.raterParticipantIdKey
   )
