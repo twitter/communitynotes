@@ -91,7 +91,7 @@ def get_ratings_before_note_status_and_public_tsv(
   # c.timestampMillisOfNoteMostRecentNonNMRLabelKey are determined at runtime and cannot be statically
   # determined from the code above.  If noteStatusHistory is missing any noteIdKey which is found in
   # ratings, then the missing rows will have NaN values for c.createdAtMillisKey and
-  # c.timestampMillisOfNoteMostRecentNonNMRLabelKey, forcing the entire colum to have type np.float.
+  # c.timestampMillisOfNoteMostRecentNonNMRLabelKey, forcing the entire colum to have type float.
   # However, if there are no missing values in column noteIdKey then c.createdAtMillisKey and
   # c.timestampMillisOfNoteMostRecentNonNMRLabelKey will retain their int64 types.  The code below
   # coerces both columns to always have float types so the typecheck below will pass.
@@ -103,11 +103,11 @@ def get_ratings_before_note_status_and_public_tsv(
     ratingsWithNoteLabelInfoTypes = c.ratingTSVTypeMapping
     ratingsWithNoteLabelInfoTypes[
       c.createdAtMillisKey + "_note"
-    ] = np.float  # float because nullable after merge.
+    ] = float  # float because nullable after merge.
     ratingsWithNoteLabelInfoTypes[
       c.timestampMillisOfNoteMostRecentNonNMRLabelKey
-    ] = np.float  # float because nullable.
-    ratingsWithNoteLabelInfoTypes[c.helpfulNumKey] = np.float
+    ] = float  # float because nullable.
+    ratingsWithNoteLabelInfoTypes[c.helpfulNumKey] = float
 
     assert len(ratingsWithNoteLabelInfo) == len(ratings)
     mismatches = [

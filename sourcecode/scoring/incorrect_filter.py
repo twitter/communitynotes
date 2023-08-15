@@ -58,9 +58,15 @@ def _get_incorrect_tfidf_ratio(
   """
 
   ratings_w_user_totals = augmented_ratings[user_filter]
-  ratings_w_user_totals.drop(
-    [c.internalRaterFactor1Key, c.internalNoteFactor1Key], inplace=True, axis=1
-  )
+
+  columns_to_attempt_to_drop = [
+    c.internalRaterFactor1Key,
+    c.internalNoteFactor1Key,
+    c.raterParticipantIdKey,
+  ]
+  columns_to_drop = ratings_w_user_totals.columns.intersection(columns_to_attempt_to_drop)
+  ratings_w_user_totals.drop(columns_to_drop, inplace=True, axis=1)
+
   rating_aggs = ratings_w_user_totals.groupby(c.noteIdKey).agg("sum").reset_index()
   rating_aggs_w_cnt = rating_aggs.merge(note_nh_count, on=c.noteIdKey)
 

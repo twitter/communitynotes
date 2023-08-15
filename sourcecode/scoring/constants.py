@@ -267,17 +267,17 @@ notMisleadingTagsAndTypes = [(tag, np.int64) for tag in notMisleadingTags]
 noteTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
-    (noteAuthorParticipantIdKey, np.object),
+    (noteAuthorParticipantIdKey, object),
     (createdAtMillisKey, np.int64),
     (tweetIdKey, np.int64),
-    (classificationKey, np.object),
-    ("believable", np.object),
-    ("harmful", np.object),
-    ("validationDifficulty", np.object),
+    (classificationKey, object),
+    ("believable", object),
+    ("harmful", object),
+    ("validationDifficulty", object),
   ]
   + misleadingTagsAndTypes
   + notMisleadingTagsAndTypes
-  + [("trustworthySources", np.int64), (summaryKey, np.object), ("isMediaNote", np.int64)]
+  + [("trustworthySources", np.int64), (summaryKey, object), ("isMediaNote", np.int64)]
 )
 noteTSVColumns = [col for (col, dtype) in noteTSVColumnsAndTypes]
 noteTSVTypes = [dtype for (col, dtype) in noteTSVColumnsAndTypes]
@@ -286,14 +286,14 @@ noteTSVTypeMapping = {col: dtype for (col, dtype) in noteTSVColumnsAndTypes}
 ratingTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
-    (raterParticipantIdKey, np.object),
+    (raterParticipantIdKey, object),
     (createdAtMillisKey, np.int64),
     ("version", np.int64),
     ("agree", np.int64),
     ("disagree", np.int64),
     (helpfulKey, np.int64),
     (notHelpfulKey, np.int64),
-    (helpfulnessLevelKey, np.object),
+    (helpfulnessLevelKey, object),
   ]
   + helpfulTagsAndTypesTSVOrder
   + notHelpfulTagsAndTypesTSVOrder
@@ -317,16 +317,16 @@ timestampMillisOfRetroLockKey = "timestampMillisOfRetroLock"
 
 noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
-  (noteAuthorParticipantIdKey, np.object),
+  (noteAuthorParticipantIdKey, object),
   (createdAtMillisKey, np.int64),
   (timestampMillisOfNoteFirstNonNMRLabelKey, np.double),  # double because nullable.
-  (firstNonNMRLabelKey, np.object),
+  (firstNonNMRLabelKey, object),
   (timestampMillisOfNoteCurrentLabelKey, np.double),  # double because nullable.
-  (currentLabelKey, np.object),
+  (currentLabelKey, object),
   (timestampMillisOfNoteMostRecentNonNMRLabelKey, np.double),  # double because nullable.
-  (mostRecentNonNMRLabelKey, np.object),
+  (mostRecentNonNMRLabelKey, object),
   (timestampMillisOfStatusLockKey, np.double),  # double because nullable.
-  (lockedStatusKey, np.object),
+  (lockedStatusKey, object),
   (timestampMillisOfRetroLockKey, np.double),  # double because nullable.
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
@@ -367,12 +367,12 @@ core = "CORE"
 expansion = "EXPANSION"
 
 userEnrollmentTSVColumnsAndTypes = [
-  (participantIdKey, np.str),
-  (enrollmentState, np.str),
+  (participantIdKey, str),
+  (enrollmentState, str),
   (successfulRatingNeededToEarnIn, np.int64),
   (timestampOfLastStateChange, np.int64),
   (timestampOfLastEarnOut, np.double),  # double because nullable.
-  (modelingPopulationKey, np.str),
+  (modelingPopulationKey, str),
 ]
 userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
@@ -458,26 +458,26 @@ noteModelOutputTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
   (coreNoteInterceptKey, np.double),
   (coreNoteFactor1Key, np.double),
-  (finalRatingStatusKey, np.str),
-  (firstTagKey, np.str),
-  (secondTagKey, np.str),
+  (finalRatingStatusKey, str),
+  (firstTagKey, str),
+  (secondTagKey, str),
   # Note that this column was formerly named "activeRules" and the name is now
   # updated to "coreActiveRules".  The data values remain the compatible,
   # but the new column only contains rules that ran when deciding status based on
   # the core model.
-  (coreActiveRulesKey, np.str),
-  (activeFilterTagsKey, np.str),
-  (classificationKey, np.str),
+  (coreActiveRulesKey, str),
+  (activeFilterTagsKey, str),
+  (classificationKey, str),
   (createdAtMillisKey, np.int64),
-  (coreRatingStatusKey, np.str),
-  (metaScorerActiveRulesKey, np.str),
-  (decidedByKey, np.str),
+  (coreRatingStatusKey, str),
+  (metaScorerActiveRulesKey, str),
+  (decidedByKey, str),
   (expansionNoteInterceptKey, np.double),
   (expansionNoteFactor1Key, np.double),
-  (expansionRatingStatusKey, np.str),
+  (expansionRatingStatusKey, str),
   (coverageNoteInterceptKey, np.double),
   (coverageNoteFactor1Key, np.double),
-  (coverageRatingStatusKey, np.str),
+  (coverageRatingStatusKey, str),
   (coreNoteInterceptMinKey, np.double),
   (coreNoteInterceptMaxKey, np.double),
   (expansionNoteInterceptMinKey, np.double),
@@ -486,7 +486,7 @@ noteModelOutputTSVColumnsAndTypes = [
   (coverageNoteInterceptMaxKey, np.double),
   (groupNoteInterceptKey, np.double),
   (groupNoteFactor1Key, np.double),
-  (groupRatingStatusKey, np.str),
+  (groupRatingStatusKey, str),
   (groupNoteInterceptMaxKey, np.double),
   (groupNoteInterceptMinKey, np.double),
   (modelingGroupKey, np.float64),
@@ -520,7 +520,7 @@ raterModelOutputTSVColumnsAndTypes = [
   (notesAwaitingMoreRatings, pd.Int64Dtype()),
   (enrollmentState, np.int32),
   (successfulRatingNeededToEarnIn, pd.Int64Dtype()),
-  (authorTopNotHelpfulTagValues, np.str),
+  (authorTopNotHelpfulTagValues, str),
   (timestampOfLastStateChange, np.double),
   (aboveHelpfulnessThresholdKey, np.float64),  # nullable bool
   (isEmergingWriterKey, np.bool_),
