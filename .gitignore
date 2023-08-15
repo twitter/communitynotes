@@ -5,3 +5,4 @@ settings.json
 .gitignore
 *.tsv
 __pycache__
+.vscode*
