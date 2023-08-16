@@ -6,3 +6,4 @@ settings.json
 *.tsv
 __pycache__
 .vscode*
+communitynotes_env
