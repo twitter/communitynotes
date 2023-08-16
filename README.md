@@ -46,7 +46,24 @@ The markdown files in this repo are the source of truth for the content in our d
 
 ### Community Notes open-source code
 
-The algorithm that powers Community Notes can be found on the [sourcecode folder](https://github.com/twitter/communitynotes/tree/main/sourcecode), and instructions on how to use it can be found in the [Guide](https://twitter.github.io/communitynotes/note-ranking-code/).
+The algorithm that powers Community Notes can be found in the [sourcecode folder](https://github.com/twitter/communitynotes/tree/main/sourcecode), and instructions on how to use it can be found in the [Guide](https://twitter.github.io/communitynotes/note-ranking-code/).
+
+While your normal Python install may "just work" if you're lucky, if you run into any issues and want to install the exact versions of Python packages that we've tested the code with, please create a new virtual environment and install the packages from requirements.txt:
+
+```
+$ python -m venv communitynotes_env
+$ source communitynotes_env/bin/activate
+$ pip install -r requirements.txt
+```
+
+Then after downloading the data files (see next section) into /sourcecode/, you will be able to run:
+
+```
+$ cd sourcecode
+$ python main.py
+```
+
+Most versions of Python3 should work, but we have tested the code with Python 3.7.9.
 
 ### Community Notes data
 
