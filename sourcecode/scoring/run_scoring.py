@@ -557,7 +557,7 @@ def _add_deprecated_columns(scoredNotes: pd.DataFrame) -> pd.DataFrame:
     assert column not in scoredNotes.columns
     if columnType == np.double:
       scoredNotes[column] = np.nan
-    elif columnType == np.str:
+    elif columnType == str:
       scoredNotes[column] = ""
     else:
       assert False, f"column type {columnType} unsupported"
