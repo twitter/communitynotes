@@ -7,7 +7,7 @@ Example Usage:
     --notes data/notes-00000.tsv \
     --ratings data/ratings-00000.tsv \
     --status data/noteStatusHistory-00000.tsv \
-    --outdir data/scored_notes.tsv
+    --outdir data
 """
 
 import argparse
@@ -15,7 +15,7 @@ import os
 
 import scoring.constants as c
 from scoring.enums import scorers_from_csv
-from scoring.process_data import get_data, write_tsv_local
+from scoring.process_data import LocalDataLoader, write_tsv_local
 from scoring.run_scoring import run_scoring
 
 
@@ -82,6 +82,13 @@ def parse_args():
     dest="strict_columns",
   )
   parser.set_defaults(strict_columns=True)
+  parser.add_argument(
+    "--parallel",
+    help="Disable parallel run of algorithm.",
+    action="store_true",
+    dest="parallel",
+  )
+  parser.set_defaults(parallel=False)
 
   return parser.parse_args()
 
@@ -93,9 +100,8 @@ def main():
     c.epochMillis = args.epoch_millis
 
   # Load input dataframes.
-  _, ratings, statusHistory, userEnrollment = get_data(
-    args.notes, args.ratings, args.status, args.enrollment, args.headers
-  )
+  dataLoader = LocalDataLoader(args.notes, args.ratings, args.status, args.enrollment, args.headers)
+  _, ratings, statusHistory, userEnrollment = dataLoader.get_data()
 
   # Invoke scoring and user contribution algorithms.
   scoredNotes, helpfulnessScores, newStatus, auxNoteInfo = run_scoring(
@@ -106,6 +112,8 @@ def main():
     pseudoraters=args.pseudoraters,
     enabledScorers=args.scorers,
     strictColumns=args.strict_columns,
+    runParallel=args.parallel,
+    dataLoader=dataLoader if args.parallel == True else None,
   )
 
   # Write outputs to local disk.

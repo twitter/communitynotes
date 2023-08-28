@@ -16,7 +16,7 @@ epochMillis = 1000 * time.time()
 
 maxTrainError = 0.09
 
-coreFlipPct = 0.175
+coreFlipPct = 0.09
 expansionFlipPct = 0.19
 maxReruns = 5
 

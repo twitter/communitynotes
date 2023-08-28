@@ -132,7 +132,8 @@ class MatrixFactorization:
     """
     assert self.mf_model is not None
     if noteInit is not None:
-      print("initializing notes")
+      if self._logging:
+        print("initializing notes")
       noteInit = self.noteIdMap.merge(noteInit, on=c.noteIdKey, how="left")
       self.mf_model.note_intercepts.weight.data = torch.tensor(
         np.expand_dims(noteInit[c.internalNoteInterceptKey].astype(np.float32).values, axis=1)
@@ -144,7 +145,8 @@ class MatrixFactorization:
       )
 
     if userInit is not None:
-      print("initializing users")
+      if self._logging:
+        print("initializing users")
       userInit = self.raterIdMap.merge(userInit, on=c.raterParticipantIdKey, how="left")
       self.mf_model.user_intercepts.weight.data = torch.tensor(
         np.expand_dims(userInit[c.internalRaterInterceptKey].astype(np.float32).values, axis=1)
@@ -156,7 +158,8 @@ class MatrixFactorization:
       )
 
     if globalInterceptInit is not None:
-      print("initialized global intercept")
+      if self._logging:
+        print("initialized global intercept")
       self.mf_model.global_intercept = torch.nn.parameter.Parameter(
         torch.ones(1, 1) * globalInterceptInit
       )
@@ -214,7 +217,8 @@ class MatrixFactorization:
       )  # smaller learning rate
     else:
       self.optimizer = torch.optim.Adam(self.mf_model.parameters(), lr=self._noInitLearningRate)
-    print(self.mf_model.device)
+    if self._logging:
+      print(self.mf_model.device)
     self.mf_model.to(self.mf_model.device)
 
   def _instantiate_biased_mf_model(self):
@@ -225,6 +229,7 @@ class MatrixFactorization:
       n_notes,
       use_global_intercept=self._useGlobalIntercept,
       n_factors=self._numFactors,
+      logging=self._logging,
     )
     if self._logging:
       print("------------------")

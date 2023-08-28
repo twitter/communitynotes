@@ -20,6 +20,7 @@ class BiasedMatrixFactorization(torch.nn.Module):
     n_notes: int,
     n_factors: int = 1,
     use_global_intercept: bool = True,
+    logging: bool = True,
   ) -> None:
     """Initialize matrix factorization model using xavier_uniform for factors
     and zeros for intercepts.
@@ -31,6 +32,8 @@ class BiasedMatrixFactorization(torch.nn.Module):
         use_global_intercept (bool, optional): Defaults to True.
     """
     super().__init__()
+
+    self._logging = logging
 
     self.user_factors = torch.nn.Embedding(n_users, n_factors, sparse=False)
     self.note_factors = torch.nn.Embedding(n_notes, n_factors, sparse=False)
@@ -78,5 +81,6 @@ class BiasedMatrixFactorization(torch.nn.Module):
     for name, param in self.named_parameters():
       for word in words_to_freeze:
         if word in name:
-          print("Freezing parameter: ", name)
+          if self._logging:
+            print("Freezing parameter: ", name)
           param.requires_grad_(False)

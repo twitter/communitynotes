@@ -28,9 +28,11 @@ class PseudoRatersRunner:
     globalBias: float,
     mfRanker: MatrixFactorization,
     logging=True,
+    checkParamsSame=True,
   ):
     self._logging = logging
     self._mfRanker = mfRanker
+    self._checkParamsSame = checkParamsSame
     self.ratings = ratings
     (
       self.noteIdMap,
@@ -43,9 +45,12 @@ class PseudoRatersRunner:
 
   def compute_note_parameter_confidence_bounds_with_pseudo_raters(self):
     self._make_extreme_raters(self.raterParams, self.raterIdMap)
+    self._add_extreme_raters_to_id_maps_and_params()
+    self._create_extreme_ratings()
 
-    notesWithConfidenceBounds = self._fit_note_params_for_each_dataset_with_extreme_ratings()
+    noteParamsList = self._fit_note_params_for_each_dataset_with_extreme_ratings()
 
+    notesWithConfidenceBounds = self._aggregate_note_params(noteParamsList)
     return self.noteParams.merge(
       notesWithConfidenceBounds.reset_index(), on=c.noteIdKey, how="left"
     )
@@ -170,8 +175,9 @@ class PseudoRatersRunner:
       lr=newExtremeMF._initLearningRate,
     )
 
-    self._check_note_parameters_same(newExtremeMF)
-    self._check_rater_parameters_same(newExtremeMF)
+    if self._checkParamsSame:
+      self._check_note_parameters_same(newExtremeMF)
+      self._check_rater_parameters_same(newExtremeMF)
 
     return newExtremeMF
 
@@ -183,15 +189,15 @@ class PseudoRatersRunner:
     newExtremeMF._fit_model()
 
     # Double check that we kept rater parameters fixed during re-training of note parameters.
-    self._check_rater_parameters_same(newExtremeMF)
+    if self._checkParamsSame:
+      self._check_rater_parameters_same(newExtremeMF)
 
     fitNoteParams, fitRaterParams = newExtremeMF._get_parameters_from_trained_model()
     return fitNoteParams
 
-  def _fit_note_params_for_each_dataset_with_extreme_ratings(self, joinOrig=False):
-    self._add_extreme_raters_to_id_maps_and_params()
-    extremeRatingsToAddWithoutNotes = []
-    extremeRatingsToAddWithoutNotes.append(
+  def _create_extreme_ratings(self):
+    self.extremeRatingsToAddWithoutNotes = []
+    self.extremeRatingsToAddWithoutNotes.append(
       {
         c.internalRaterInterceptKey: None,
         c.internalRaterFactor1Key: None,
@@ -203,37 +209,44 @@ class PseudoRatersRunner:
 
       for helpfulNum in (0.0, 1.0):
         extremeRater[c.helpfulNumKey] = helpfulNum
-        extremeRatingsToAddWithoutNotes.append(extremeRater.copy())
+        self.extremeRatingsToAddWithoutNotes.append(extremeRater.copy())
 
+  def _create_dataset_with_extreme_rating_on_each_note(self, ratingToAddWithoutNoteId):
+    ## for each rating (ided by raterParticipantId and raterIndex)
+    if ratingToAddWithoutNoteId[c.helpfulNumKey] is not None:
+      ratingsWithNoteIds = []
+      for i, noteRow in (
+        self.ratingFeaturesAndLabels[[c.noteIdKey, mf_c.noteIndexKey]].drop_duplicates().iterrows()
+      ):
+        ratingToAdd = ratingToAddWithoutNoteId.copy()
+        ratingToAdd[c.noteIdKey] = noteRow[c.noteIdKey]
+        ratingToAdd[mf_c.noteIndexKey] = noteRow[mf_c.noteIndexKey]
+        ratingsWithNoteIds.append(ratingToAdd)
+      extremeRatingsToAdd = pd.DataFrame(ratingsWithNoteIds).drop(
+        [c.internalRaterInterceptKey, c.internalRaterFactor1Key], axis=1
+      )
+      ratingFeaturesAndLabelsWithExtremeRatings = pd.concat(
+        [self.ratingFeaturesAndLabels, extremeRatingsToAdd]
+      )
+    else:
+      ratingFeaturesAndLabelsWithExtremeRatings = self.ratingFeaturesAndLabels
+    return ratingFeaturesAndLabelsWithExtremeRatings
+
+  def _fit_note_params_for_each_dataset_with_extreme_ratings(self):
     noteParamsList = []
-    for ratingToAddWithoutNoteId in extremeRatingsToAddWithoutNotes:
-      ## for each rating (ided by raterParticipantId and raterIndex)
-      if ratingToAddWithoutNoteId[c.helpfulNumKey] is not None:
-        ratingsWithNoteIds = []
-        for i, noteRow in (
-          self.ratingFeaturesAndLabels[[c.noteIdKey, mf_c.noteIndexKey]]
-          .drop_duplicates()
-          .iterrows()
-        ):
-          ratingToAdd = ratingToAddWithoutNoteId.copy()
-          ratingToAdd[c.noteIdKey] = noteRow[c.noteIdKey]
-          ratingToAdd[mf_c.noteIndexKey] = noteRow[mf_c.noteIndexKey]
-          ratingsWithNoteIds.append(ratingToAdd)
-        extremeRatingsToAdd = pd.DataFrame(ratingsWithNoteIds).drop(
-          [c.internalRaterInterceptKey, c.internalRaterFactor1Key], axis=1
-        )
-        ratingFeaturesAndLabelsWithExtremeRatings = pd.concat(
-          [self.ratingFeaturesAndLabels, extremeRatingsToAdd]
-        )
-      else:
-        ratingFeaturesAndLabelsWithExtremeRatings = self.ratingFeaturesAndLabels
+    for ratingToAddWithoutNoteId in self.extremeRatingsToAddWithoutNotes:
+      ratingFeaturesAndLabelsWithExtremeRatings = (
+        self._create_dataset_with_extreme_rating_on_each_note(ratingToAddWithoutNoteId)
+      )
 
       if self._logging:
         print("------------------")
         print(f"Re-scoring all notes with extra rating added: {ratingToAddWithoutNoteId}")
+
       fitNoteParams = self._fit_all_notes_with_raters_constant(
         ratingFeaturesAndLabelsWithExtremeRatings
       )
+
       fitNoteParams[Constants.extraRaterInterceptKey] = ratingToAddWithoutNoteId[
         c.internalRaterInterceptKey
       ]
@@ -242,7 +255,9 @@ class PseudoRatersRunner:
       ]
       fitNoteParams[Constants.extraRatingHelpfulNumKey] = ratingToAddWithoutNoteId[c.helpfulNumKey]
       noteParamsList.append(fitNoteParams)
+    return noteParamsList
 
+  def _aggregate_note_params(self, noteParamsList, joinOrig=False):
     rawRescoredNotesWithEachExtraRater = pd.concat(noteParamsList)
     rawRescoredNotesWithEachExtraRater.drop(mf_c.noteIndexKey, axis=1, inplace=True)
     rawRescoredNotesWithEachExtraRater = rawRescoredNotesWithEachExtraRater.sort_values(
@@ -278,9 +293,9 @@ class PseudoRatersRunner:
     raterFacs[Constants.allKey] = 1
     raterFacs[Constants.negFacKey] = raterFacs[c.internalRaterFactor1Key] < 0
     raterFacs[Constants.posFacKey] = raterFacs[c.internalRaterFactor1Key] > 0
-    r = raterFacs.groupby(c.noteIdKey).sum()[
+    r = raterFacs.groupby(c.noteIdKey)[
       [Constants.allKey, Constants.negFacKey, Constants.posFacKey]
-    ]
+    ].sum()
     r.columns = pd.MultiIndex.from_product([[c.ratingCountKey], r.columns])
     notesWithConfidenceBounds = notesWithConfidenceBounds.join(r)
 

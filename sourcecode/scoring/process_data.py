@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from io import StringIO
 from typing import Dict, List, Optional, Tuple
 
@@ -6,38 +7,6 @@ from . import constants as c, note_status_history
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-
-
-def get_data(
-  notesPath: str,
-  ratingsPath: str,
-  noteStatusHistoryPath: str,
-  userEnrollmentPath: str,
-  headers: bool,
-  shouldFilterNotMisleadingNotes: bool = True,
-  logging: bool = True,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-  """All-in-one function for reading Birdwatch notes and ratings from TSV files.
-  It does both reading and pre-processing.
-
-  Args:
-      notesPath (str): file path
-      ratingsPath (str): file path
-      noteStatusHistoryPath (str): file path
-      headers: If true, expect first row of input files to be headers.
-      shouldFilterNotMisleadingNotes (bool, optional): Throw out not-misleading notes if True. Defaults to True.
-      logging (bool, optional): Print out debug output. Defaults to True.
-
-  Returns:
-      Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
-  """
-  notes, ratings, noteStatusHistory, userEnrollment = read_from_tsv(
-    notesPath, ratingsPath, noteStatusHistoryPath, userEnrollmentPath, headers
-  )
-  notes, ratings, noteStatusHistory = preprocess_data(
-    notes, ratings, noteStatusHistory, shouldFilterNotMisleadingNotes, logging
-  )
-  return notes, ratings, noteStatusHistory, userEnrollment
 
 
 def read_from_strings(
@@ -514,3 +483,71 @@ def write_tsv_local(df: pd.DataFrame, path: str) -> None:
 
   assert path is not None
   assert df.to_csv(path, index=False, header=True, sep="\t") is None
+
+
+class CommunityNotesDataLoader(ABC):
+  """Base class which local and prod data loaders extend.
+
+  The DataLoader base class stores necessary files and defines "get_data" function which can be passed to
+  parallel scoring
+  """
+
+  def __init__(self) -> None:
+    """Configure a new CommunityNotesDataLoader object.
+
+    Args:
+      local (bool, optional): if not None, seed value to ensure deterministic execution
+    """
+
+  @abstractmethod
+  def get_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Returns notes, ratings, noteStatusHistory, and userEnrollment DataFrames"""
+
+
+class LocalDataLoader(CommunityNotesDataLoader):
+  def __init__(
+    self,
+    notesPath: str,
+    ratingsPath: str,
+    noteStatusHistoryPath: str,
+    userEnrollmentPath: str,
+    headers: bool,
+    shouldFilterNotMisleadingNotes: bool = True,
+    logging: bool = True,
+  ) -> None:
+    """
+    Args:
+        notesPath (str): file path
+        ratingsPath (str): file path
+        noteStatusHistoryPath (str): file path
+        userEnrollmentPath (str): file path
+        headers: If true, expect first row of input files to be headers.
+        shouldFilterNotMisleadingNotes (bool, optional): Throw out not-misleading notes if True. Defaults to True.
+        logging (bool, optional): Print out debug output. Defaults to True.
+    """
+    self.notesPath = notesPath
+    self.ratingsPath = ratingsPath
+    self.noteStatusHistoryPath = noteStatusHistoryPath
+    self.userEnrollmentPath = userEnrollmentPath
+    self.headers = headers
+    self.shouldFilterNotMisleadingNotes = shouldFilterNotMisleadingNotes
+    self.logging = logging
+
+  def get_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """All-in-one function for reading Birdwatch notes and ratings from TSV files.
+    It does both reading and pre-processing.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
+    """
+    notes, ratings, noteStatusHistory, userEnrollment = read_from_tsv(
+      self.notesPath,
+      self.ratingsPath,
+      self.noteStatusHistoryPath,
+      self.userEnrollmentPath,
+      self.headers,
+    )
+    notes, ratings, noteStatusHistory = preprocess_data(
+      notes, ratings, noteStatusHistory, self.shouldFilterNotMisleadingNotes, self.logging
+    )
+    return notes, ratings, noteStatusHistory, userEnrollment
