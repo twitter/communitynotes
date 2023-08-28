@@ -18,6 +18,7 @@ from .mf_base_scorer import MFBaseScorer
 from .mf_core_scorer import MFCoreScorer
 from .mf_expansion_scorer import MFExpansionScorer
 from .mf_group_scorer import coalesce_group_models, groupScorerCount, MFGroupScorer
+from .process_data import CommunityNotesDataLoader
 from .scorer import Scorer
 from .scoring_rules import RuleID
 
@@ -163,7 +164,20 @@ def _merge_results(
   return scoredNotes, helpfulnessScores, auxiliaryNoteInfo
 
 
-def _run_scorer_parallelizable(scorer, ratings, noteStatusHistory, userEnrollment):
+def _run_scorer_parallelizable(
+  scorer: Scorer,
+  runParallel: bool,
+  ratings: Optional[pd.DataFrame] = None,
+  noteStatusHistory: Optional[pd.DataFrame] = None,
+  userEnrollment: Optional[pd.DataFrame] = None,
+  dataLoader: Optional[CommunityNotesDataLoader] = None,
+):
+
+  if runParallel:
+    assert dataLoader is not None, "must provide a dataLoader to run parallel"
+    if dataLoader is not None:
+      _, ratings, noteStatusHistory, userEnrollment = dataLoader.get_data()
+
   runCounter = 0
   scorerStartTime = time.perf_counter()
   result = None
@@ -216,7 +230,9 @@ def _run_scorers(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
-  runParallel: bool = False,
+  runParallel: bool = True,
+  maxWorkers: Optional[int] = None,
+  dataLoader: Optional[CommunityNotesDataLoader] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Applies all Community Notes models to user ratings and returns merged result.
 
@@ -241,17 +257,17 @@ def _run_scorers(
   overallStartTime = time.perf_counter()
   if runParallel:
     with concurrent.futures.ProcessPoolExecutor(
-      mp_context=multiprocessing.get_context("spawn")
+      mp_context=multiprocessing.get_context("spawn"), max_workers=maxWorkers
     ) as executor:
       print(f"Starting parallel scorer execution with {len(scorers)} scorers.")
       futures = [
-        executor.submit(_run_scorer_parallelizable, s, ratings, noteStatusHistory, userEnrollment)
-        for s in scorers
+        executor.submit(_run_scorer_parallelizable, s, True, dataLoader=dataLoader) for s in scorers
       ]
       modelResultsAndTimes = [f.result() for f in futures]
   else:
     modelResultsAndTimes = [
-      _run_scorer_parallelizable(s, ratings, noteStatusHistory, userEnrollment) for s in scorers
+      _run_scorer_parallelizable(s, False, ratings, noteStatusHistory, userEnrollment)
+      for s in scorers
     ]
 
   modelResults, scorerTimes, runCounts = zip(*modelResultsAndTimes)
@@ -608,6 +624,8 @@ def run_scoring(
   pseudoraters: Optional[bool] = True,
   enabledScorers: Optional[Set[Scorers]] = None,
   strictColumns: bool = True,
+  runParallel: bool = True,
+  dataLoader: Optional[CommunityNotesDataLoader] = None,
 ):
   """Invokes note scoring algorithms, merges results and computes user stats.
 
@@ -619,6 +637,8 @@ def run_scoring(
     pseudoraters (bool, optional): if True, compute optional pseudorater confidence intervals
     enabledScorers (Set[Scorers], optional): Scorers which should be instantiated
     strictColumns (bool, optional): if True, validate which columns are present
+    runParallel (bool, optional): if True, run algorithms in parallel
+    dataLoader (CommunityNotesDataLoader, optional): dataLoader provided to parallel execution
 
   Returns:
     Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -630,7 +650,12 @@ def run_scoring(
   # Apply individual scoring models and obtained merged result.
   scorers = _get_scorers(seed, pseudoraters, enabledScorers)
   scoredNotes, helpfulnessScores, auxiliaryNoteInfo = _run_scorers(
-    list(chain(*scorers.values())), ratings, noteStatusHistory, userEnrollment
+    list(chain(*scorers.values())),
+    ratings,
+    noteStatusHistory,
+    userEnrollment,
+    runParallel,
+    dataLoader=dataLoader,
   )
 
   # Augment scoredNotes and auxiliaryNoteInfo with additional attributes for each note
