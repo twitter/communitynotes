@@ -279,7 +279,7 @@ class FilterIncorrect(ScoringRule):
     ruleID: RuleID,
     dependencies: Set[RuleID],
     status: str,
-    weightedTotalVotes: float = 1.0,
+    weightedTotalVotes: float = 2.5,
   ):
     """Filter CRH notes for outliers with high levels of incorrect tag from similar factor raters.
 
@@ -303,13 +303,10 @@ class FilterIncorrect(ScoringRule):
     crhStats = noteStats.merge(crhNotes, on=c.noteIdKey, how="inner")
 
     # Identify impacted notes.
-    crhStats["score"] = crhStats["tf_idf_incorrect_interval"] + crhStats["tf_idf_incorrect_same"]
-
     noteStatusUpdates = crhStats.loc[
-      ((crhStats["notHelpfulIncorrect_interval"] > 1) | (crhStats["notHelpfulIncorrect_same"] > 1))
-      & (crhStats["num_voters_interval"] > 2)
-      & (crhStats["num_voters_same"] > 2)
-      & (crhStats["score"] >= self.weightedTotalVotes)
+      (crhStats["notHelpfulIncorrect_interval"] >= 2)
+      & (crhStats["num_voters_interval"] >= 3)
+      & (crhStats["tf_idf_incorrect_interval"] >= self.weightedTotalVotes)
     ][[c.noteIdKey]]
 
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
