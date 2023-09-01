@@ -234,13 +234,9 @@ ratingWeightKey = "ratingWeight"
 
 incorrectFilterColumns = [
   "notHelpfulIncorrect_interval",
-  "cnt_interval",
+  "p_incorrect_user_interval",
   "num_voters_interval",
   "tf_idf_incorrect_interval",
-  "notHelpfulIncorrect_same",
-  "cnt_same",
-  "num_voters_same",
-  "tf_idf_incorrect_same",
 ]
 
 misleadingTags = [

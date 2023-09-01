@@ -35,7 +35,7 @@ class MFBaseScorer(Scorer):
     crhThresholdLCBIntercept: float = 0.35,
     crhSuperThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
-    weightedTotalVotes: float = 1.0,
+    weightedTotalVotes: float = 2.5,
   ):
     """Configure MatrixFactorizationScorer object.
 
