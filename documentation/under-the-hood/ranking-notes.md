@@ -223,16 +223,15 @@ For not-helpful notes:
 
 **September 1, 2023**
 
--Additional tag filtering now better detects unexpected levels of "incorrect" tags.
+- Additional tag filtering now better detects unexpected levels of "incorrect" tags.
 
 **August 28, 2023**
 
--Update the minimum LCB threshold for notes to become CRH to 0.35 from 0.32. 
+- Update the minimum LCB threshold for notes to become CRH to 0.35 from 0.32. 
 
 **August 14, 2023**
 
--Add additional numRatings field to scored_notes.tsv output, which computes the total number of ratings on a note.
--Tweak the anti-note-flipping logic: increase the threshold of percent of notes that can flip before triggering a re-run to 0.175 from 0.15.
+- Add additional numRatings field to scored_notes.tsv output, which computes the total number of ratings on a note.
 
 **July 27, 2023**
 
