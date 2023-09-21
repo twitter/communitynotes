@@ -87,13 +87,18 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   # Update the current status in accordance with this scoring run.
   assert not pd.isna(mergedNote[c.finalRatingStatusKey])
   mergedNote[c.currentLabelKey] = mergedNote[c.finalRatingStatusKey]
+  mergedNote[c.currentCoreStatusKey] = mergedNote[c.coreRatingStatusKey]
+  mergedNote[c.currentExpansionStatusKey] = mergedNote[c.expansionRatingStatusKey]
+  mergedNote[c.currentGroupStatusKey] = mergedNote[c.groupRatingStatusKey]
+  mergedNote[c.currentDecidedByKey] = mergedNote[c.decidedByKey]
+  mergedNote[c.currentModelingGroupKey] = mergedNote[c.modelingGroupKey]
   mergedNote[c.timestampMillisOfNoteCurrentLabelKey] = currentTimeMillis
 
   # Lock notes which are (1) not already locked, (2) old enough to lock and (3)
   # were decided by logic which has global display impact.  Criteria (3) guarantees
   # that any CRH note which is shown to all users will have the status locked, but
   # also means that if a note is scored as NMR by all trusted models and CRH by an
-  # expimental model we will avoid locking the note to NMR even though the note was
+  # experimental model we will avoid locking the note to NMR even though the note was
   # in scope for a trusted model and scored as NMR at the time of status locking.
   # The note will continue to be CRH only as long as an experimental model continues
   # scoring the note as CRH (or a core model scores the note as CRH).  If at any point
@@ -102,9 +107,9 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
 
   # Check whether the note has already been locked.
   notAlreadyLocked = pd.isna(mergedNote[c.lockedStatusKey])
-  # Check whether the note is old enough to be eligble for locking.
+  # Check whether the note is old enough to be eligible for locking.
   lockEligible = _noteLockMillis < (currentTimeMillis - mergedNote[c.createdAtMillisKey])
-  # Check whether the note was decided by a rule which dispalys globally
+  # Check whether the note was decided by a rule which displays globally
   trustedRule = mergedNote[c.decidedByKey] in {
     rule.get_name() for rule in RuleID if rule.value.lockingEnabled
   }
@@ -164,7 +169,18 @@ def update_note_status_history(
   currentTimeMillis = c.epochMillis
   newScoredNotesSuffix = "_sn"
   mergedStatuses = oldNoteStatusHistory.merge(
-    scoredNotes[[c.noteIdKey, c.createdAtMillisKey, c.finalRatingStatusKey, c.decidedByKey]].rename(
+    scoredNotes[
+      [
+        c.noteIdKey,
+        c.createdAtMillisKey,
+        c.finalRatingStatusKey,
+        c.decidedByKey,
+        c.coreRatingStatusKey,
+        c.expansionRatingStatusKey,
+        c.groupRatingStatusKey,
+        c.modelingGroupKey,
+      ]
+    ].rename(
       {
         c.createdAtMillisKey: c.createdAtMillisKey + newScoredNotesSuffix,
       },

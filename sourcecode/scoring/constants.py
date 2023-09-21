@@ -234,13 +234,9 @@ ratingWeightKey = "ratingWeight"
 
 incorrectFilterColumns = [
   "notHelpfulIncorrect_interval",
-  "cnt_interval",
+  "p_incorrect_user_interval",
   "num_voters_interval",
   "tf_idf_incorrect_interval",
-  "notHelpfulIncorrect_same",
-  "cnt_same",
-  "num_voters_same",
-  "tf_idf_incorrect_same",
 ]
 
 misleadingTags = [
@@ -314,6 +310,11 @@ mostRecentNonNMRLabelKey = "mostRecentNonNMRStatus"
 timestampMillisOfStatusLockKey = "timestampMillisOfStatusLock"
 lockedStatusKey = "lockedStatus"
 timestampMillisOfRetroLockKey = "timestampMillisOfRetroLock"
+currentCoreStatusKey = "currentCoreStatus"
+currentExpansionStatusKey = "currentExpansionStatus"
+currentGroupStatusKey = "currentGroupStatus"
+currentDecidedByKey = "currentDecidedBy"
+currentModelingGroupKey = "currentModelingGroup"
 
 noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
@@ -328,12 +329,18 @@ noteStatusHistoryTSVColumnsAndTypes = [
   (timestampMillisOfStatusLockKey, np.double),  # double because nullable.
   (lockedStatusKey, object),
   (timestampMillisOfRetroLockKey, np.double),  # double because nullable.
+  (currentCoreStatusKey, object),
+  (currentExpansionStatusKey, object),
+  (currentGroupStatusKey, object),
+  (currentDecidedByKey, object),
+  (currentModelingGroupKey, object),
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypes = [dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypeMapping = {
   col: dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes
 }
+
 
 # Earn In + Earn Out
 enrollmentState = "enrollmentState"
@@ -491,6 +498,7 @@ noteModelOutputTSVColumnsAndTypes = [
   (groupNoteInterceptMinKey, np.double),
   (modelingGroupKey, np.float64),
   (numRatingsKey, np.int64),
+  (timestampMillisOfNoteCurrentLabelKey, np.double),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}

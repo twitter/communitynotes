@@ -35,7 +35,8 @@ def _check_flips(
   userEnrollment: pd.DataFrame,
   modelingPopulations: List[str],
   pctFlips: float,
-  resultCol: str,
+  scoredNotesStatusCol: str,
+  noteStatusHistoryStatusCol: str,
 ) -> bool:
   """
   Args:
@@ -44,7 +45,8 @@ def _check_flips(
     userEnrollment (pd.DataFrame): The enrollment state for each contributor
     modelingPopulation (str): name of modelingPopulation(s) of authors for which to evaluate CRH flips
     pctFlips (float): percent of flips of unlocked notes that triggers a rerun
-    resultCol (str): name of column with noteStatus for model
+    scoredNotesStatusCol (str): name of column with noteStatus, computed in this run
+    noteStatusHistoryStatusCol (str): name of column with noteStatus, from note status history, to use as baseline
 
   Returns:
     bool whether unlocked note flips exceed acceptable level, triggering a rerun
@@ -63,29 +65,35 @@ def _check_flips(
 
   # check how many unlocked notes that appeared in previous run have now flipped status
   unlockedPopNsh = unlockedPopNsh.merge(
-    scoredNotes[[c.noteIdKey, resultCol]], on=c.noteIdKey, how="inner"
+    scoredNotes[[c.noteIdKey, scoredNotesStatusCol]], on=c.noteIdKey, how="inner"
   )
 
   statusFlips = len(
     unlockedPopNsh.loc[
-      (unlockedPopNsh[c.currentLabelKey] != unlockedPopNsh[resultCol])
+      (unlockedPopNsh[noteStatusHistoryStatusCol] != unlockedPopNsh[scoredNotesStatusCol])
       & (
-        (unlockedPopNsh[c.currentLabelKey] == c.currentlyRatedHelpful)
-        | (unlockedPopNsh[resultCol] == c.currentlyRatedHelpful)
+        (unlockedPopNsh[noteStatusHistoryStatusCol] == c.currentlyRatedHelpful)
+        | (unlockedPopNsh[scoredNotesStatusCol] == c.currentlyRatedHelpful)
       )
     ]
   )
   # take max w/1 to avoid divide by zero error when no prevCRH
   prevCrh = max(
-    1, len(unlockedPopNsh.loc[unlockedPopNsh[c.currentLabelKey] == c.currentlyRatedHelpful])
+    1,
+    len(unlockedPopNsh.loc[unlockedPopNsh[noteStatusHistoryStatusCol] == c.currentlyRatedHelpful]),
   )
-  print(f"Percentage of previous CRH flipping status: {(statusFlips / prevCrh)}")
+  print(
+    f"Proportion of previous {noteStatusHistoryStatusCol} CRH flipping status: {(statusFlips / prevCrh)}, {statusFlips} / {prevCrh}."
+  )
 
   return (statusFlips / prevCrh) > pctFlips
 
 
 def _get_scorers(
-  seed: Optional[int], pseudoraters: Optional[bool], enabledScorers: Optional[Set[Scorers]]
+  seed: Optional[int],
+  pseudoraters: Optional[bool],
+  enabledScorers: Optional[Set[Scorers]],
+  useStableInitialization: bool = True,
 ) -> Dict[Scorers, List[Scorer]]:
   """Instantiate all Scorer objects which should be used for note ranking.
 
@@ -100,9 +108,13 @@ def _get_scorers(
   scorers: Dict[Scorers, List[Scorer]] = dict()
 
   if enabledScorers is None or Scorers.MFCoreScorer in enabledScorers:
-    scorers[Scorers.MFCoreScorer] = [MFCoreScorer(seed, pseudoraters)]
+    scorers[Scorers.MFCoreScorer] = [
+      MFCoreScorer(seed, pseudoraters, useStableInitialization=useStableInitialization)
+    ]
   if enabledScorers is None or Scorers.MFExpansionScorer in enabledScorers:
-    scorers[Scorers.MFExpansionScorer] = [MFExpansionScorer(seed)]
+    scorers[Scorers.MFExpansionScorer] = [
+      MFExpansionScorer(seed, useStableInitialization=useStableInitialization)
+    ]
   if enabledScorers is None or Scorers.MFGroupScorer in enabledScorers:
     # Note that index 0 is reserved, corresponding to no group assigned, so scoring group
     # numbers begin with index 1.
@@ -171,6 +183,7 @@ def _run_scorer_parallelizable(
   noteStatusHistory: Optional[pd.DataFrame] = None,
   userEnrollment: Optional[pd.DataFrame] = None,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
+  maxReruns: int = c.maxReruns,
 ):
 
   if runParallel:
@@ -189,12 +202,11 @@ def _run_scorer_parallelizable(
     while (
       (len(scorer._mfRanker.train_errors) == 0)
       or (scorer._mfRanker.train_errors[-1] > c.maxTrainError)
-      or (flips and runCounter < c.maxReruns)
+      or (flips and runCounter < maxReruns)
     ):
       runCounter += 1
       result = ModelResult(*scorer.score(ratings, noteStatusHistory, userEnrollment))
-      if runCounter > c.maxReruns:
-        break
+
       # check for notes createdat > lock time, not more than x% have changed status from nsh
       if isinstance(scorer, MFExpansionScorer):
         flips = _check_flips(
@@ -204,6 +216,7 @@ def _run_scorer_parallelizable(
           [c.expansion],
           c.expansionFlipPct,
           c.expansionRatingStatusKey,
+          c.currentExpansionStatusKey,
         )
       elif isinstance(scorer, MFCoreScorer):
         flips = _check_flips(
@@ -213,10 +226,15 @@ def _run_scorer_parallelizable(
           [c.core],
           c.coreFlipPct,
           c.coreRatingStatusKey,
+          c.currentCoreStatusKey,
         )
       if flips:
         if scorer._seed is not None:
           scorer._seed = scorer._seed + 1
+
+      # Compute flip percentages above, even if we were already at the max number of reruns.
+      if runCounter > maxReruns:
+        break
   else:
     result = ModelResult(*scorer.score(ratings, noteStatusHistory, userEnrollment))
     runCounter += 1
@@ -233,6 +251,7 @@ def _run_scorers(
   runParallel: bool = True,
   maxWorkers: Optional[int] = None,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
+  maxReruns: int = c.maxReruns,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Applies all Community Notes models to user ratings and returns merged result.
 
@@ -261,12 +280,17 @@ def _run_scorers(
     ) as executor:
       print(f"Starting parallel scorer execution with {len(scorers)} scorers.")
       futures = [
-        executor.submit(_run_scorer_parallelizable, s, True, dataLoader=dataLoader) for s in scorers
+        executor.submit(
+          _run_scorer_parallelizable, s, True, dataLoader=dataLoader, maxReruns=maxReruns
+        )
+        for s in scorers
       ]
       modelResultsAndTimes = [f.result() for f in futures]
   else:
     modelResultsAndTimes = [
-      _run_scorer_parallelizable(s, False, ratings, noteStatusHistory, userEnrollment)
+      _run_scorer_parallelizable(
+        s, False, ratings, noteStatusHistory, userEnrollment, maxReruns=maxReruns
+      )
       for s in scorers
     ]
 
@@ -355,10 +379,10 @@ def meta_score(
     assert len(scorers[Scorers.MFExpansionScorer]) == 1
     coreScorer = scorers[Scorers.MFCoreScorer][0]
     assert isinstance(coreScorer, MFCoreScorer)
-    expnasionScorer = scorers[Scorers.MFExpansionScorer][0]
-    assert isinstance(expnasionScorer, MFExpansionScorer)
+    expansionScorer = scorers[Scorers.MFExpansionScorer][0]
+    assert isinstance(expansionScorer, MFExpansionScorer)
     coreCrhThreshold = coreScorer.get_crh_threshold()
-    expansionCrhThreshold = expnasionScorer.get_crh_threshold()
+    expansionCrhThreshold = expansionScorer.get_crh_threshold()
     for i in range(1, groupScorerCount + 1):
       rules.append(
         scoring_rules.ApplyGroupModelResult(
@@ -425,7 +449,7 @@ def _compute_note_stats(
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
   """Generates DFs containing aggregate / global properties for each note.
 
-  This funciton computes note aggregates over ratings and merges in selected fields
+  This function computes note aggregates over ratings and merges in selected fields
   from noteStatusHistory.  This function runs independent of individual scorers and
   augments the results of individual scorers because individual scorer may elect to
   consider only a subset of notes or ratings.  Computing on all available data after
@@ -626,6 +650,8 @@ def run_scoring(
   strictColumns: bool = True,
   runParallel: bool = True,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
+  maxReruns: int = c.maxReruns,
+  useStableInitialization: bool = True,
 ):
   """Invokes note scoring algorithms, merges results and computes user stats.
 
@@ -648,7 +674,10 @@ def run_scoring(
       auxiliaryNoteInfo: one row per note containing adjusted and ratio tag values
   """
   # Apply individual scoring models and obtained merged result.
-  scorers = _get_scorers(seed, pseudoraters, enabledScorers)
+  currentTimeMillis = c.epochMillis
+  scorers = _get_scorers(
+    seed, pseudoraters, enabledScorers, useStableInitialization=useStableInitialization
+  )
   scoredNotes, helpfulnessScores, auxiliaryNoteInfo = _run_scorers(
     list(chain(*scorers.values())),
     ratings,
@@ -656,6 +685,7 @@ def run_scoring(
     userEnrollment,
     runParallel,
     dataLoader=dataLoader,
+    maxReruns=maxReruns,
   )
 
   # Augment scoredNotes and auxiliaryNoteInfo with additional attributes for each note
@@ -674,6 +704,7 @@ def run_scoring(
     enabledScorers,
   )
   scoredNotes = scoredNotes.merge(scoredNotesCols, on=c.noteIdKey)
+  scoredNotes[c.timestampMillisOfNoteCurrentLabelKey] = currentTimeMillis
   auxiliaryNoteInfo = auxiliaryNoteInfo.merge(auxiliaryNoteInfoCols, on=c.noteIdKey)
 
   # Validate that no notes were dropped or duplicated.

@@ -54,8 +54,10 @@ def tsv_parser(
   """
   try:
     firstLine = rawTSV.split("\n")[0]
-    if len(firstLine.split("\t")) != len(columns):
-      raise ValueError
+    num_fields = len(firstLine.split("\t"))
+    if num_fields != len(columns):
+      raise ValueError(f"Expected {len(columns)} columns, but got {num_fields}")
+
     data = pd.read_csv(
       StringIO(rawTSV),
       sep="\t",
@@ -65,8 +67,8 @@ def tsv_parser(
       index_col=[],
     )
     return data
-  except (ValueError, IndexError):
-    raise ValueError("invalid input")
+  except (ValueError, IndexError) as e:
+    raise ValueError(f"Invalid input: {e}")
 
 
 # TODO: remove this function once modelingGroup column is fully launched

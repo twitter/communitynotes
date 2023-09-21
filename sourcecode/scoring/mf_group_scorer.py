@@ -8,7 +8,7 @@ import pandas as pd
 
 
 # Number of MFGroupScorer objects we expect to instantiate
-groupScorerCount = 12
+groupScorerCount = 13
 
 
 def _coalesce_columns(df: pd.DataFrame, columnPrefix: str) -> pd.DataFrame:
@@ -108,7 +108,7 @@ class MFGroupScorer(MFBaseScorer):
       groupThreshold: float indicating what fraction of ratings must be from within a group
         for the model to be active
     """
-    super().__init__(seed, pseudoraters)
+    super().__init__(seed, pseudoraters, useStableInitialization=False)
     assert groupNumber > 0, "groupNumber must be positive.  0 is reserved for unassigned."
     assert groupNumber <= groupScorerCount, "groupNumber exceeds maximum expected groups."
     self._groupNumber = groupNumber
