@@ -86,7 +86,7 @@ Additionally, because the matrix factorization is re-trained from scratch every 
 
 While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are adding. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirtit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
 
-We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.05, in addition to the rules on the raw intercept values defined in the previous section. We also currently assign notes a "Helpful" status if the min (lower confidence bound) of their intercept is at least 0.32.
+We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.04, in addition to the rules on the raw intercept values defined in the previous section. We also currently assign notes a "Helpful" status if the min (lower confidence bound) of their intercept is at least 0.35.
 
 ## Tag Outlier Filtering
 
@@ -221,10 +221,17 @@ For not-helpful notes:
 
 ## What’s New?
 
+**September 1, 2023**
+
+- Additional tag filtering now better detects unexpected levels of "incorrect" tags.
+
+**August 28, 2023**
+
+- Update the minimum LCB threshold for notes to become CRH to 0.35 from 0.32. 
+
 **August 14, 2023**
 
--Add additional numRatings field to scored_notes.tsv output, which computes the total number of ratings on a note.
--Tweak the anti-note-flipping logic: increase the threshold of percent of notes that can flip before triggering a re-run to 0.175 from 0.15.
+- Add additional numRatings field to scored_notes.tsv output, which computes the total number of ratings on a note.
 
 **July 27, 2023**
 

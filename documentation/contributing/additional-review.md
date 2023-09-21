@@ -24,7 +24,7 @@ If you believe a note rated “helpful” on your post doesn’t add helpful con
 
 1. Copy your post's link
 
-   It should look like this: <code>https://x.com/{{yourdisplayname}}/status/123456789</code>
+   It should look like this: **https://x.com/{{yourdisplayname}}/status/123456789**
 
 2. Paste the link into the form below.
 
