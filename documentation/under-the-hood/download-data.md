@@ -147,6 +147,13 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `timestampMillisOfStatusLock` | Long | The timestamp, in milliseconds since epoch, of when the note's status was locked. Value is -1 if the note's status is unlocked. | 
 | `lockedStatus` | String | The status that the note is locked at. | "", "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |  
 | `timestampMillisOfRetroLock` | Long | The timestamp, in milliseconds since epoch, of when the note's status was retroactively locked. Value is -1 if the note's status was not retroactively locked. Retroactive locking was a one-time event on January 20, 2023, which applied status locking rules to notes that were created before status locking was first launched. | 
+| `currentCoreStatus` | String | The current status, if any, assigned by the core submodel. | "", "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |  
+| `currentCoreStatus` | String | The current status, if any, assigned by the core submodel. | "", "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |
+| `currentExpansionStatus` | String | The current status, if any, assigned by the expansion submodel. | "", "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |
+| `currentGroupStatus` | String | The current status, if any, assigned by the group submodel. | "", "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |
+| `currentDecidedByKey` | String | The submodel whose status was used to determine the note's overall current status. | "CoreModel (v1.1)", "ExpansionModel (v1.1)", "GroupModel01 (v1.1)", "GroupModel02 (v1.1)", ..., "InsufficientExplanation (v1.0)", "ScoringDriftGuard (v1.0)" |
+| `currentModelingGroup` | Int | The ID of the modeling group that this note would be scored by, if eligible to be scored by a group model (determined by the modeling groups of its raters, from the user enrollment file). 0 is a placeholder for no modeling group. | 0-13 |
+
 
 ### Ratings
 
