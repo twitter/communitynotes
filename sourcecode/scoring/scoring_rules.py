@@ -48,6 +48,7 @@ class RuleID(Enum):
   GROUP_MODEL_10 = RuleAndVersion("GroupModel10", "1.1", False)
   GROUP_MODEL_11 = RuleAndVersion("GroupModel11", "1.1", False)
   GROUP_MODEL_12 = RuleAndVersion("GroupModel12", "1.1", False)
+  GROUP_MODEL_13 = RuleAndVersion("GroupModel13", "1.1", False)
   INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
   SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
 
@@ -330,7 +331,7 @@ class ApplyGroupModelResult(ScoringRule):
     """Set CRH status based on a modeling group result.
 
     This rule sets CRH note status based on group models subject to several criteria:
-      * The note must be have CRH status from the group model.
+      * The note must have CRH status from the group model.
       * The note must currently be scored as NMR.  This criteria guarantees that (1) group
         models strictly expand coverage and (2) notes which were rated CRH by the core
         model never have the decidedBy field overwritten by a less confident model.

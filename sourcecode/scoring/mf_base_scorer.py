@@ -36,6 +36,7 @@ class MFBaseScorer(Scorer):
     crhSuperThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
     weightedTotalVotes: float = 2.5,
+    useStableInitialization: bool = True,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -69,6 +70,8 @@ class MFBaseScorer(Scorer):
         repeated reason tags in not-helpful ratings to achieve CRH status.
       inertiaDelta: Minimum amount which a note that has achieve CRH status must drop below the
         applicable threshold to lose CRH status.
+      weightedTotalVotes: Minimum number of weighted incorrect votes required to lose CRH status.
+      useStableInitialization: whether to use a specific modeling group of users to stably initialize
     """
     super().__init__(seed)
     self._pseudoraters = pseudoraters
@@ -87,6 +90,7 @@ class MFBaseScorer(Scorer):
     self._crhSuperThreshold = crhSuperThreshold
     self._inertiaDelta = inertiaDelta
     self._weightedTotalVotes = weightedTotalVotes
+    self._modelingGroupToInitializeForStability = 13 if useStableInitialization else None
     self._mfRanker = MatrixFactorization()
 
   def get_crh_threshold(self) -> float:
@@ -155,8 +159,70 @@ class MFBaseScorer(Scorer):
       ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote
     )
 
+  def _run_regular_matrix_factorization(self, ratingsForTraining: pd.DataFrame):
+    """Train a matrix factorization model on the ratingsForTraining data.
+
+    Args:
+        ratingsForTraining (pd.DataFrame)
+
+    Returns:
+        noteParams (pd.DataFrame)
+        raterParams (pd.DataFrame)
+        globalIntercept (float)
+    """
+    return self._mfRanker.run_mf(ratingsForTraining)
+
+  def _run_stable_matrix_factorization(
+    self,
+    ratingsForTraining: pd.DataFrame,
+    userEnrollmentRaw: pd.DataFrame,
+  ):
+    """Train a matrix factorization model on the ratingsForTraining data.
+    Due to stability issues when trained on the entire dataset with no initialization, this is done in
+    two steps:
+    1. Train a model on the subset of the data with modeling group 13 (stable initialization).
+    2. Train a model on the entire dataset, initializing with the results from step 1.
+    Without this initialization, the factors for some subsets of the data with low crossover between raters can
+    flip relative to each other from run to run.
+
+    Args:
+        ratingsForTraining (pd.DataFrame)
+        userEnrollmentRaw (pd.DataFrame)
+
+    Returns:
+        noteParams (pd.DataFrame)
+        raterParams (pd.DataFrame)
+        globalIntercept (float)
+    """
+    if self._modelingGroupToInitializeForStability is None:
+      return self._run_regular_matrix_factorization(ratingsForTraining)
+
+    ratingsForTrainingWithModelingGroup = ratingsForTraining.merge(
+      userEnrollmentRaw[[c.participantIdKey, c.modelingGroupKey]],
+      left_on=c.raterParticipantIdKey,
+      right_on=c.participantIdKey,
+    )
+    ratingsForStableInitialization = ratingsForTrainingWithModelingGroup[
+      ratingsForTrainingWithModelingGroup[c.modelingGroupKey]
+      == self._modelingGroupToInitializeForStability
+    ]
+    assert (
+      len(ratingsForStableInitialization) > 0
+    ), "No ratings from stable initialization modeling group."
+    initializationMF = self._mfRanker.get_new_mf_with_same_args()
+    noteParamsInit, raterParamsInit, globalInterceptInit = initializationMF.run_mf(
+      ratingsForStableInitialization
+    )
+
+    return self._mfRanker.run_mf(
+      ratingsForTraining,
+      noteInit=noteParamsInit,
+      userInit=raterParamsInit,
+      globalInterceptInit=globalInterceptInit,
+    )
+
   def _score_notes_and_users(
-    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame
+    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Run the matrix factorization scoring algorithm.
 
@@ -167,6 +233,7 @@ class MFBaseScorer(Scorer):
     Args:
       ratings (pd.DataFrame): preprocessed ratings
       noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
+      userEnrollmentRaw (pd.DataFrame): one row per user; enrollment status for each user
 
     Returns:
       Tuple[pd.DataFrame, pd.DataFrame]:
@@ -182,8 +249,8 @@ class MFBaseScorer(Scorer):
     ratingsForTraining = self._prepare_data_for_scoring(ratings)
 
     # TODO: Save parameters from this first run in note_model_output next time we add extra fields to model output TSV.
-    noteParamsUnfiltered, raterParamsUnfiltered, globalBias = self._mfRanker.run_mf(
-      ratingsForTraining,
+    noteParamsUnfiltered, raterParamsUnfiltered, globalBias = self._run_stable_matrix_factorization(
+      ratingsForTraining, userEnrollmentRaw
     )
 
     # Get a dataframe of scored notes based on the algorithm results above

@@ -121,6 +121,7 @@ class MatrixFactorization:
     globalInterceptInit: Optional[float] = None,
   ) -> None:
     """Overwrite the parameters of the model with the given initializations.
+    Set parameters to 0.0 if they were not set in the passed initializations.
 
     Args:
         mf_model (BiasedMatrixFactorization)
@@ -135,9 +136,14 @@ class MatrixFactorization:
       if self._logging:
         print("initializing notes")
       noteInit = self.noteIdMap.merge(noteInit, on=c.noteIdKey, how="left")
+
+      noteInit[c.internalNoteInterceptKey].fillna(0.0, inplace=True)
       self.mf_model.note_intercepts.weight.data = torch.tensor(
         np.expand_dims(noteInit[c.internalNoteInterceptKey].astype(np.float32).values, axis=1)
       )
+
+      for i in range(1, self._numFactors + 1):
+        noteInit[c.note_factor_key(i)].fillna(0.0, inplace=True)
       self.mf_model.note_factors.weight.data = torch.tensor(
         noteInit[[c.note_factor_key(i) for i in range(1, self._numFactors + 1)]]
         .astype(np.float32)
@@ -148,9 +154,14 @@ class MatrixFactorization:
       if self._logging:
         print("initializing users")
       userInit = self.raterIdMap.merge(userInit, on=c.raterParticipantIdKey, how="left")
+
+      userInit[c.internalRaterInterceptKey].fillna(0.0, inplace=True)
       self.mf_model.user_intercepts.weight.data = torch.tensor(
         np.expand_dims(userInit[c.internalRaterInterceptKey].astype(np.float32).values, axis=1)
       )
+
+      for i in range(1, self._numFactors + 1):
+        userInit[c.rater_factor_key(i)].fillna(0.0, inplace=True)
       self.mf_model.user_factors.weight.data = torch.tensor(
         userInit[[c.rater_factor_key(i) for i in range(1, self._numFactors + 1)]]
         .astype(np.float32)
@@ -412,6 +423,7 @@ class MatrixFactorization:
           globalIntercept: learned global intercept parameter
     """
     self._initialize_note_and_rater_id_maps(ratings)
+
     self._create_mf_model(noteInit, userInit, globalInterceptInit)
     assert self.mf_model is not None
 

@@ -97,13 +97,14 @@ class Scorer(ABC):
 
   @abstractmethod
   def _score_notes_and_users(
-    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame
+    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Process ratings to assign status to notes and optionally compute rater properties.
 
     Args:
       ratings (pd.DataFrame): preprocessed ratings
       noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
+      userEnrollmentRaw (pd.DataFrame): one row per user specifying enrollment properties
 
     Returns:
       Tuple[pd.DataFrame, pd.DataFrame]:
@@ -145,7 +146,9 @@ class Scorer(ABC):
         if self.get_auxiliary_note_info_cols()
         else None,
       )
-    noteScores, userScores = self._score_notes_and_users(ratings, noteStatusHistory)
+    noteScores, userScores = self._score_notes_and_users(
+      ratings, noteStatusHistory, userEnrollmentRaw
+    )
     noteScores, userScores = self._postprocess_output(
       noteScores, userScores, ratingsRaw, noteStatusHistoryRaw, userEnrollmentRaw
     )

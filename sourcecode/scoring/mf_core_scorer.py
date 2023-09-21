@@ -18,6 +18,7 @@ class MFCoreScorer(MFBaseScorer):
     seed: Optional[int] = None,
     pseudoraters: Optional[bool] = False,
     core_threshold: float = 0.5,
+    useStableInitialization: bool = True,
   ) -> None:
     """Configure MFCoreScorer object.
 
@@ -27,7 +28,7 @@ class MFCoreScorer(MFBaseScorer):
       core_threshold: float specifying the fraction of reviews which must be from CORE users
         for a note to be in scope for the CORE model.
     """
-    super().__init__(seed, pseudoraters)
+    super().__init__(seed, pseudoraters, useStableInitialization=useStableInitialization)
     self._core_threshold = core_threshold
 
   def _get_note_col_mapping(self) -> Dict[str, str]:
