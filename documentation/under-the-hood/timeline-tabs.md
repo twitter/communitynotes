@@ -13,13 +13,13 @@ Community Notes participants are able to see a tab of notes that could use their
 
 This tab is only visible to contributors. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Community Notes can elevate notes that people from a wide range of perspectives will find helpful. It gives contributors an easy way to have immediate impact.
 
-It contains a set of 10 posts that have notes that need more ratings (although there may be fewer than 10 posts if there are fewer that meet the criteria to appear). The tab is updated as new notes that meet the criteria come in.
+It contains a set of 10 posts that have notes that need more ratings (although there may be fewer than 10 posts if there are fewer that meet the [criteria](#criteria-for-needs-your-help-tab-alerts-and-note-proposal-previews) to appear). The tab is updated as new notes that meet the criteria come in.
 
 ### Proposed note previews
 
-If there are proposed notes on a post, contributors will see a prompt to help rate them. Sometimes the prompt will show a preview of a proposed note. Previews are shown to help gather ratings from a wide range of people quickly, and are only shown some of the time, and only if a note meets certain criteria.
+If a post has proposed notes, contributors will see a prompt to help rate them. Sometimes the prompt will show a preview of a proposed note. Previews are shown to help gather ratings from a wide range of people quickly, and are only shown some of the time, and only if a note meets certain [criteria](#criteria-for-needs-your-help-tab-alerts-and-note-proposal-previews).
 
-![Graphic showing two screenshots of the X app. The one on the left shows the note proposal prompt without a note preview, and the one on the right shows the note proposal prompt with a preview of one proposed note](../images/alerts-settings.png)
+![Graphic showing two screenshots of the X app. The one on the left shows the note proposal prompt without a note preview, and the one on the right shows the note proposal prompt with a preview of one proposed note](../images/proposed-note-previews.png)
 
 ### Needs your help alerts
 
@@ -46,10 +46,6 @@ A variety of criteria are considered when determining whether to include a note,
 - Current helpfulness score (e.g. not a low helpfulness score, highly rated by initial raters, possibly nearing the threshold to earn status of "Helpful")
 - Do not have a large number of ratings (such that more ratings could change the note's status)
 
-Notes are sent to a random selection of contributors, excluding the note author and those who have already rated the note. Notifications are also limited by the recipient's notification frequency setting.
+In this case of alerts, notifications are sent to a random selection of contributors, excluding the note author and those who have already rated the note. Notifications are also limited by the recipient's notification frequency setting.
 
-We will continue to experiment with this logic to help ensure Needs Your Help notifications feel high impact and satisfying for contributors.
-
-### Rater similarity score for Needs Your Help
-
-posts on the Needs Your Help tab are sorted by a ranking score, where posts are ranked higher based on the proportion of notes on the post that are labeled Needs More Rating. Posts are also ranked higher if they have notes with moderately high intercept scores (>=0.25) but which don’t have at least 3 raters with a similar viewpoint as yours (measured by whether your viewpoint factor is positive or negative). This is a mechanism to increase the likelihood that people from diverse perspectives rate each note.
+We will continue to experiment with this logic to help ensure the Needs Your Help tab, alerts and proposed note previews feel high impact and satisfying for contributors.
