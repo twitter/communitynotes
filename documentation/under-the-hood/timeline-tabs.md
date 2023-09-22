@@ -13,7 +13,7 @@ Community Notes participants are able to see a tab of notes that could use their
 
 This tab is only visible to contributors. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Community Notes can elevate notes that people from a wide range of perspectives will find helpful. It gives contributors an easy way to have immediate impact.
 
-It contains a set of 10 posts that have notes that need more ratings (although there may be fewer than 10 posts if there are fewer that meet the [criteria](#criteria-for-needs-your-help-tab-alerts-and-note-proposal-previews) to appear). The tab is updated as new notes that meet the criteria come in.
+It contains a set of 10 posts that have notes that need more ratings (although there may be fewer than 10 posts if there are fewer that meet the [criteria](#criteria-for-needs-your-help-tab-alerts-and-note-proposal-previews) to appear). The tab is updated as new notes that meet the criteria are written.
 
 ### Proposed note previews
 
@@ -29,9 +29,9 @@ To ensure contributors don't miss the opportunity to rate notes on posts getting
 
 ![One screenshot showing a Community Notes Contributor profile page, highlighting the settings button on the top right. Another screenshot showing the settings screen where contributors can edit their alert frequency](../images/alerts-settings.png)
 
-### Criteria for Needs Your Help tab, alerts, and note proposal previews
+### Criteria for Needs Your Help tab, alerts, and proposed note previews
 
-The Needs Your Help tab, alerts, and note proposal previews are designed to increase the chance that potentially helpful notes on posts with high predicted visibility get rated by enough people that they have the chance to earn a status of Helpful quickly. At the same time, they aim to gather enough ratings from a people of different points of view to identify when a proposed note is not broadly helpful enough to show.
+The Needs Your Help tab, alerts, and proposed note previews are designed to increase the chance that potentially helpful notes on posts with high predicted visibility get rated by enough people that they have the chance to earn a status of Helpful quickly. At the same time, they aim to gather enough ratings from a people of different points of view to identify when a proposed note is not broadly helpful enough to show.
 
 A variety of criteria are considered when determining whether to include a note, notably:
 
@@ -41,12 +41,12 @@ A variety of criteria are considered when determining whether to include a note,
 - Projected future Likes and Reposts the post will receive.
 - The rater can see the post (for example, excludes posts from authors you've blocked)
 
-**Criteria related to the notes:**
+**Criteria related to the note:**
 
 - Written by an author with positive Writing Impact and a high ratio of Helpful notes (Writing Impact / Total Notes Written) or high average helpfulness score of notes they authored.
-- Currently have a status of "Needs More Ratings"
+- Current status (e.g. "Needs More Ratings")
 - Current helpfulness score (e.g. not a low helpfulness score, highly rated by initial raters, possibly nearing the threshold to earn status of "Helpful")
-- Do not have a large number of ratings (such that more ratings could change the note's status)
+- Does not have a large number of ratings (such that more ratings could change the note's status)
 
 In this case of alerts, notifications are sent to a random selection of contributors, excluding the note author and those who have already rated the note. Notifications are also limited by the recipient's notification frequency setting.
 
