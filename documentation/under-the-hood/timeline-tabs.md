@@ -21,6 +21,8 @@ If a post has proposed notes, contributors will see a prompt to help rate them. 
 
 ![Graphic showing two screenshots of the X app. The one on the left shows the note proposal prompt without a note preview, and the one on the right shows the note proposal prompt with a preview of one proposed note](../images/proposed-note-previews.png)
 
+Previews can appear anywhere you see proposed notes, for example in the Needs Your Help tab, in the Home timeline, etc.
+
 ### Needs your help alerts
 
 To ensure contributors don't miss the opportunity to rate notes on posts getting a lot of attention, Community Notes sends alerts requesting help from time to time.
