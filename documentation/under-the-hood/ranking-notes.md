@@ -221,6 +221,13 @@ For not-helpful notes:
 
 ## What’s New?
 
+**October 3, 2023**
+- Rearchitect the backend (batch=>streaming) to dramatically speed up how long it takes between when notes are scored and when they are shown to users (we eliminate an approximately 1hr wait between when the Python scorer had finished and when updated statuses are shown to all users). Because timestamps are written by the Python scorer, they were typically around 1hr (with wide variance) before the new status was actually shown. Going forward, there will be more typically a delay of only minutes between the status timestamps in note status history and when statuses are propagated to be visible to all users.
+
+**September 21, 2023**
+- Dramatically improve matrix factorization optimization stability, by initializing with a 1st pass of users with well-estimated parameters
+- Add a 13th group model
+
 **September 1, 2023**
 
 - Additional tag filtering now better detects unexpected levels of "incorrect" tags.
