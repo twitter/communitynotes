@@ -176,6 +176,8 @@ class MFBaseScorer(Scorer):
     self,
     ratingsForTraining: pd.DataFrame,
     userEnrollmentRaw: pd.DataFrame,
+    minPercentRatingsFromModelingGroup: float = 0.75,
+    minNumRatingsToIncludeInStableInitialization: int = 5,
   ):
     """Train a matrix factorization model on the ratingsForTraining data.
     Due to stability issues when trained on the entire dataset with no initialization, this is done in
@@ -202,10 +204,45 @@ class MFBaseScorer(Scorer):
       left_on=c.raterParticipantIdKey,
       right_on=c.participantIdKey,
     )
-    ratingsForStableInitialization = ratingsForTrainingWithModelingGroup[
+
+    ratingsForTrainingWithModelingGroup[c.ratingFromInitialModelingGroupKey] = (
       ratingsForTrainingWithModelingGroup[c.modelingGroupKey]
       == self._modelingGroupToInitializeForStability
+    )
+
+    # Only include ratings from the modeling group
+    ratingsForStableInitialization = ratingsForTrainingWithModelingGroup[
+      ratingsForTrainingWithModelingGroup[c.ratingFromInitialModelingGroupKey]
     ]
+
+    # Only include notes that have received at least 75% of their ratings from the modeling group (and 5 total)
+    ratingsForTrainingWithModelingGroup[c.ratingCountKey] = 1
+    noteStatsByRatedModelingGroup = (
+      ratingsForTrainingWithModelingGroup.groupby(c.noteIdKey)
+      .sum()[[c.ratingFromInitialModelingGroupKey, c.ratingCountKey]]
+      .reset_index()
+    )
+    noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey] = (
+      noteStatsByRatedModelingGroup[c.ratingFromInitialModelingGroupKey]
+      / noteStatsByRatedModelingGroup[c.ratingCountKey]
+    )
+    noteStatsByRatedModelingGroup[
+      c.percentFromInitialModelingGroupKey
+    ] = noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey].fillna(0)
+    notesRatedMostlyByInitialModelingGroup = noteStatsByRatedModelingGroup[
+      (
+        noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey]
+        >= minPercentRatingsFromModelingGroup
+      )
+      & (
+        noteStatsByRatedModelingGroup[c.ratingCountKey]
+        >= minNumRatingsToIncludeInStableInitialization
+      )
+    ]
+    ratingsForStableInitialization = ratingsForStableInitialization.merge(
+      notesRatedMostlyByInitialModelingGroup[[c.noteIdKey]], on=c.noteIdKey
+    )
+
     assert (
       len(ratingsForStableInitialization) > 0
     ), "No ratings from stable initialization modeling group."

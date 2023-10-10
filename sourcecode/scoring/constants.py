@@ -13,6 +13,7 @@ import pandas as pd
 #
 # https://docs.python.org/3/tutorial/modules.html#more-on-modules
 epochMillis = 1000 * time.time()
+useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory = True
 
 maxTrainError = 0.09
 
@@ -150,6 +151,8 @@ noteCountKey = "noteCount"
 ratingCountKey = "ratingCount"
 numRatingsKey = "numRatings"
 numRatingsLast28DaysKey = "numRatingsLast28"
+ratingFromInitialModelingGroupKey = "ratingFromInitialModelingGroup"
+percentFromInitialModelingGroupKey = "percentFromInitialModelingGroup"
 
 # Helpfulness Score Keys
 crhRatioKey = "CRHRatio"
@@ -526,12 +529,12 @@ raterModelOutputTSVColumnsAndTypes = [
   (notesCurrentlyRatedHelpful, pd.Int64Dtype()),
   (notesCurrentlyRatedNotHelpful, pd.Int64Dtype()),
   (notesAwaitingMoreRatings, pd.Int64Dtype()),
-  (enrollmentState, np.int32),
+  (enrollmentState, pd.Int64Dtype()),
   (successfulRatingNeededToEarnIn, pd.Int64Dtype()),
   (authorTopNotHelpfulTagValues, str),
   (timestampOfLastStateChange, np.double),
   (aboveHelpfulnessThresholdKey, np.float64),  # nullable bool
-  (isEmergingWriterKey, np.bool_),
+  (isEmergingWriterKey, pd.BooleanDtype()),
   (aggregateRatingReceivedTotal, pd.Int64Dtype()),
   (timestampOfLastEarnOut, np.double),
   (groupRaterInterceptKey, np.double),
