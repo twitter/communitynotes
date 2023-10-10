@@ -1,3 +1,5 @@
+import time
+
 from . import constants as c
 from .scoring_rules import RuleID
 
@@ -166,7 +168,13 @@ def update_note_status_history(
   Returns:
       pd.DataFrame: noteStatusHistory
   """
-  currentTimeMillis = c.epochMillis
+  if c.useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory:
+    # When running in prod, we use the latest time possible, so as to include as many valid ratings
+    # as possible, and be closest to the time the new note statuses are user-visible.
+    currentTimeMillis = 1000 * time.time()
+  else:
+    # When running in test, we use the overridable epochMillis constant.
+    currentTimeMillis = c.epochMillis
   newScoredNotesSuffix = "_sn"
   mergedStatuses = oldNoteStatusHistory.merge(
     scoredNotes[

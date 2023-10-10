@@ -86,6 +86,7 @@ def main():
   args = parse_args()
   if args.epoch_millis:
     c.epochMillis = args.epoch_millis
+    c.useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory = False
 
   # Load input dataframes.
   dataLoader = LocalDataLoader(args.notes, args.ratings, args.status, args.enrollment, args.headers)

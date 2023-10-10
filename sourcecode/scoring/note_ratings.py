@@ -190,7 +190,7 @@ def get_ratings_with_scores(
   )
 
   ratingsWithScores = ratingsBeforeNoteStatus[
-    [c.raterParticipantIdKey, c.helpfulNumKey, c.noteIdKey]
+    [c.raterParticipantIdKey, c.helpfulNumKey, c.noteIdKey, c.createdAtMillisKey]
   ].merge(
     scoredNotes[
       [
