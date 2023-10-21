@@ -200,11 +200,13 @@ notHelpfulSpamHarassmentOrAbuseTagKey = "notHelpfulSpamHarassmentOrAbuse"
 notHelpfulArgumentativeOrBiasedTagKey = "notHelpfulArgumentativeOrBiased"
 notHelpfulHardToUnderstandKey = "notHelpfulHardToUnderstand"
 notHelpfulNoteNotNeededKey = "notHelpfulNoteNotNeeded"
+notHelpfulSourcesMissingOrUnreliableTagKey = "notHelpfulSourcesMissingOrUnreliable"
+notHelpfulIrrelevantSourcesTagKey = "notHelpfulIrrelevantSources"
 
 notHelpfulTagsAndTieBreakOrder = [
   (0, notHelpfulOtherTagKey),
   (8, notHelpfulIncorrectTagKey),
-  (2, "notHelpfulSourcesMissingOrUnreliable"),
+  (2, notHelpfulSourcesMissingOrUnreliableTagKey),
   (4, "notHelpfulOpinionSpeculationOrBias"),
   (5, "notHelpfulMissingKeyPoints"),
   (12, "notHelpfulOutdated"),
@@ -212,7 +214,7 @@ notHelpfulTagsAndTieBreakOrder = [
   (7, notHelpfulArgumentativeOrBiasedTagKey),
   (9, "notHelpfulOffTopic"),
   (11, notHelpfulSpamHarassmentOrAbuseTagKey),
-  (1, "notHelpfulIrrelevantSources"),
+  (1, notHelpfulIrrelevantSourcesTagKey),
   (3, "notHelpfulOpinionSpeculation"),
   (6, notHelpfulNoteNotNeededKey),
 ]
@@ -235,11 +237,15 @@ notHelpfulTagsAdjustedRatioColumns = [
 ]
 ratingWeightKey = "ratingWeight"
 
-incorrectFilterColumns = [
+wideIncorrectFilterSuffix = "_wide"
+_incorrectFilterColumns = [
   "notHelpfulIncorrect_interval",
   "p_incorrect_user_interval",
   "num_voters_interval",
   "tf_idf_incorrect_interval",
+]
+incorrectFilterColumns = _incorrectFilterColumns + [
+  f"{col}{wideIncorrectFilterSuffix}" for col in _incorrectFilterColumns
 ]
 
 misleadingTags = [

@@ -379,7 +379,6 @@ def compute_scored_notes(
   crhThresholdLCBIntercept: float,
   crhSuperThreshold: float,
   inertiaDelta: float,
-  weightedTotalVotes: float,
   finalRound: bool = False,
   # TODO: We might want to consider inputing only the series here, instead of the whole callable
   is_crh_function: Callable[..., pd.Series] = is_crh,
@@ -412,7 +411,6 @@ def compute_scored_notes(
         repeated reason tags in not-helpful ratings to achieve CRH status.
       inertiaDelta: Minimum amount which a note that has achieve CRH status must drop below the
         applicable threshold to lose CRH status.
-      weightedTotalVotes: Minimum number of weighted incorrect votes required to lose CRH status.
       finalRound: If true, enable additional status assignment logic which is only applied when
         determining final status.  Given that these mechanisms add complexity we don't apply them
         in earlier rounds.
@@ -485,6 +483,15 @@ def compute_scored_notes(
       ratings, noteParams, raterParams
     )
     noteStats = noteStats.merge(incorrectAggregates, on=c.noteIdKey, how="outer")
+    incorrectAggregatesWide = incorrect_filter.get_incorrect_aggregates(
+      ratings,
+      noteParams,
+      raterParams,
+      applyFilter=False,
+      extraCols=[c.notHelpfulSourcesMissingOrUnreliableTagKey, c.notHelpfulIrrelevantSourcesTagKey],
+      colSuffix=c.wideIncorrectFilterSuffix,
+    )
+    noteStats = noteStats.merge(incorrectAggregatesWide, on=c.noteIdKey, how="outer")
 
     # Add tag filtering and sticky scoring logic.
     rules.extend(
@@ -528,7 +535,24 @@ def compute_scored_notes(
           minRatingsNeeded,
         ),
         scoring_rules.FilterIncorrect(
-          RuleID.INCORRECT_OUTLIER, {RuleID.TAG_OUTLIER}, c.needsMoreRatings, weightedTotalVotes
+          RuleID.INCORRECT_OUTLIER,
+          {RuleID.TAG_OUTLIER},
+          c.needsMoreRatings,
+          tagThreshold=2,
+          voteThreshold=3,
+          weightedTotalVotes=2.5,
+          superThreshold=None,
+          colSuffix="",
+        ),
+        scoring_rules.FilterIncorrect(
+          RuleID.INCORRECT_OUTLIER_WIDE,
+          {RuleID.TAG_OUTLIER},
+          c.needsMoreRatings,
+          tagThreshold=4,
+          voteThreshold=5,
+          weightedTotalVotes=4.0,
+          superThreshold=0.5,
+          colSuffix=c.wideIncorrectFilterSuffix,
         ),
       ]
     )

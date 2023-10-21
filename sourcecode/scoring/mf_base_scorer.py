@@ -35,7 +35,6 @@ class MFBaseScorer(Scorer):
     crhThresholdLCBIntercept: float = 0.35,
     crhSuperThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
-    weightedTotalVotes: float = 2.5,
     useStableInitialization: bool = True,
   ):
     """Configure MatrixFactorizationScorer object.
@@ -70,7 +69,6 @@ class MFBaseScorer(Scorer):
         repeated reason tags in not-helpful ratings to achieve CRH status.
       inertiaDelta: Minimum amount which a note that has achieve CRH status must drop below the
         applicable threshold to lose CRH status.
-      weightedTotalVotes: Minimum number of weighted incorrect votes required to lose CRH status.
       useStableInitialization: whether to use a specific modeling group of users to stably initialize
     """
     super().__init__(seed)
@@ -89,7 +87,6 @@ class MFBaseScorer(Scorer):
     self._crhThresholdLCBIntercept = crhThresholdLCBIntercept
     self._crhSuperThreshold = crhSuperThreshold
     self._inertiaDelta = inertiaDelta
-    self._weightedTotalVotes = weightedTotalVotes
     self._modelingGroupToInitializeForStability = 13 if useStableInitialization else None
     self._mfRanker = MatrixFactorization()
 
@@ -305,7 +302,6 @@ class MFBaseScorer(Scorer):
       crhThresholdLCBIntercept=self._crhThresholdLCBIntercept,
       crhSuperThreshold=self._crhSuperThreshold,
       inertiaDelta=self._inertiaDelta,
-      weightedTotalVotes=self._weightedTotalVotes,
     )
 
     # Determine "valid" ratings
@@ -378,7 +374,6 @@ class MFBaseScorer(Scorer):
       crhThresholdLCBIntercept=self._crhThresholdLCBIntercept,
       crhSuperThreshold=self._crhSuperThreshold,
       inertiaDelta=self._inertiaDelta,
-      weightedTotalVotes=self._weightedTotalVotes,
       finalRound=True,
     )
     # Takes raterParams from most recent MF run, but use the pre-computed
