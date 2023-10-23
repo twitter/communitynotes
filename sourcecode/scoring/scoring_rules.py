@@ -30,6 +30,7 @@ class RuleID(Enum):
   ELEVATED_CRH_INERTIA = RuleAndVersion("ElevatedCRHInertia", "1.0", False)
   LCB_INERTIA = RuleAndVersion("LcbCRHInertia", "1.0", False)
   INCORRECT_OUTLIER = RuleAndVersion("FilterIncorrect", "1.0", False)
+  INCORRECT_OUTLIER_WIDE = RuleAndVersion("FilterIncorrectWide", "1.0", False)
 
   # Rules used in _meta_score.
   META_INITIAL_NMR = RuleAndVersion("MetaInitialNMR", "1.0", False)
@@ -280,7 +281,11 @@ class FilterIncorrect(ScoringRule):
     ruleID: RuleID,
     dependencies: Set[RuleID],
     status: str,
-    weightedTotalVotes: float = 2.5,
+    tagThreshold: int,
+    voteThreshold: int,
+    weightedTotalVotes: float,
+    superThreshold: Optional[float],
+    colSuffix: str,
   ):
     """Filter CRH notes for outliers with high levels of incorrect tag from similar factor raters.
 
@@ -288,12 +293,20 @@ class FilterIncorrect(ScoringRule):
       rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
       dependencies: Rules which must run before this rule can run.
       status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
+      tagThreshold: threshold for number of included raters to issue a tag
+      voteThreshold: threshold for number of included raters (raters must have issued a NH tag to be inclueed)
       weightedTotalVotes: For the filter to trigger, the sum of weighted incorrect votes must
         exceed the minAdjustedTotal.
+      superThreshold: if set, allow notes with an intercept above threshold to bypass the filter.
+      colSuffix: string suffix to apply to lookup columns
     """
     super().__init__(ruleID, dependencies)
     self._status = status
-    self.weightedTotalVotes = weightedTotalVotes
+    self._tagThreshold = tagThreshold
+    self._voteThreshold = voteThreshold
+    self._weightedTotalVotes = weightedTotalVotes
+    self._superThreshold = superThreshold
+    self._colSuffix = colSuffix
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
@@ -305,9 +318,14 @@ class FilterIncorrect(ScoringRule):
 
     # Identify impacted notes.
     noteStatusUpdates = crhStats.loc[
-      (crhStats["notHelpfulIncorrect_interval"] >= 2)
-      & (crhStats["num_voters_interval"] >= 3)
-      & (crhStats["tf_idf_incorrect_interval"] >= self.weightedTotalVotes)
+      (crhStats[f"notHelpfulIncorrect_interval{self._colSuffix}"] >= self._tagThreshold)
+      & (crhStats[f"num_voters_interval{self._colSuffix}"] >= self._voteThreshold)
+      & (crhStats[f"tf_idf_incorrect_interval{self._colSuffix}"] >= self._weightedTotalVotes)
+      & (
+        True
+        if self._superThreshold is None
+        else crhStats[c.internalNoteInterceptKey] < self._superThreshold
+      )
     ][[c.noteIdKey]]
 
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
