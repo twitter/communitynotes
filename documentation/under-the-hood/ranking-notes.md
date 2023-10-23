@@ -121,7 +121,10 @@ Given the quantities defined above, we modify scoring as follows:
 
 ## Additional Filtering for Incorrect Tags
 
-Because surfacing high-quality information is the primary goal of Community Notes, the ranking algorithm employs extra checks around Currently Rated Helpful notes that ratings indicate might contain incorrect information. For any given note-rater pair, properties including the note and rater factors (See [Matrix Factorization](#matrix-factorization)), a rater's propensity to assign the "Incorrect" tag, and the overall polarization of assigned "Not Helpful" tags predict, at baseline, how likely a rater is to rate a note as "Incorrect". When "Incorrect" ratings on a given note are "surprisingly popular" among raters who would be expected to have a low probability of rating the note "Incorrect", the note will not earn a Currently Rated Helpful status.
+Because surfacing high-quality information is the primary goal of Community Notes, the ranking algorithm employs extra checks around Currently Rated Helpful notes that ratings indicate might contain incorrect information.
+For any given note-rater pair, properties including the note and rater factors (See [Matrix Factorization](#matrix-factorization)), a rater's propensity to assign the "Incorrect" tag, and the overall polarization of assigned "Not Helpful" tags predict, at baseline, how likely a rater is to rate a note as "Incorrect".
+When "Incorrect" ratings on a given note are "surprisingly popular" among raters who would be expected to have a low probability of rating the note "Incorrect", the note is held to a higher threshold to achieve Currently Rated Helpful status.
+Depending on the strength of the signal, a note may be blocked from Currently Rated Helpful status entirely.
 
 ## CRH Inertia
 
@@ -220,6 +223,9 @@ For not-helpful notes:
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**October 20, 2023**
+- Expand filtering applied to "Incorrect" tags to raise the standard for Helpfulness and reduce risk of potentially incorrect Helpful notes.
 
 **October 3, 2023**
 - Rearchitect the backend (batch=>streaming) to dramatically speed up how long it takes between when notes are scored and when they are shown to users (we eliminate an approximately 1hr wait between when the Python scorer had finished and when updated statuses are shown to all users). Because timestamps are written by the Python scorer, they were typically around 1hr (with wide variance) before the new status was actually shown. Going forward, there will be more typically a delay of only minutes between the status timestamps in note status history and when statuses are propagated to be visible to all users.
