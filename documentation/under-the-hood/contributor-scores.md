@@ -33,7 +33,7 @@ Rater Helpfulness is not defined until the contributor has made at least one val
 $$\frac{s - (10 * h)}{t}$$
 With the terms defined as:
 * (s): the number of successful valid ratings they've made (valid ratings that matched the final note status label)
-* (-10 * h): minus a penalty of 10 for note they rated helpful (valid or not) with an extremely [Tag-Consensus Harassment-Abuse Note Score](./ranking-notes.md)
+* (-10 * h): minus a penalty of 10 for note they rated helpful (valid or not) with an extremely [Tag-Consensus Harassment-Abuse Note Score](./ranking-notes.md#tag-consensus-harassment-abuse-note-score)
 * (t): divided by the total number of valid ratings they've made
 
 ## Valid Ratings
