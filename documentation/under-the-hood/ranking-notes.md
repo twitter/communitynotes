@@ -132,7 +132,7 @@ After the first round matrix factorization described above, we run another matri
 - Instead of using helpful/not-helpful ratings as the labels, we use the harassment and abuse tag as the positive, and helpful ratings as negatives.
 - Because the positive rate is quite low, we use a sigmoid activation and binary cross entropy loss, as well as upweighting the rare positive class examples, instead of unweighted MSE loss.
 
-Thus, having a high note intercept score in this model indicates that a diverse set of raters found the note to be harassment or abuse. If the score is above a very high threshold (2.5), we penalize each rater who has rated the note helpful, even if they did so after it received its final status, by subtracting 10 from the numerator of their rater helpfulness score as described in [Rater Helpfulness Score](./contributor-scores.md).
+Thus, having a high note intercept score in this model indicates that a diverse set of raters found the note to be harassment or abuse. If the score is above a very high threshold (2.5), we penalize each rater who has rated the note helpful, even if they did so after it received its final status, by subtracting 10 from the numerator of their rater helpfulness score as described in [Rater Helpfulness Score](./contributor-scores.md#rater-helpfulness-score).
 
 ## CRH Inertia
 
