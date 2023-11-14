@@ -60,6 +60,7 @@ ratingCreatedBeforePublicTSVReleasedKey = "ratingCreatedBeforePublicTSVReleased"
 # Timestamps
 deletedNoteTombstonesLaunchTime = 1652918400000  # May 19, 2022 UTC
 notMisleadingUILaunchTime = 1664755200000  # October 3, 2022 UTC
+lastRatingTagsChangeTimeMillis = 1639699200000  # 2021/12/15 UTC
 publicTSVTimeDelay = 172800000  # 48 hours
 
 # Explanation Tags
@@ -138,6 +139,12 @@ groupNoteInterceptMaxKey = "groupNoteInterceptMax"
 groupNoteInterceptMinKey = "groupNoteInterceptMin"
 groupRaterInterceptKey = "groupRaterIntercept"
 groupRaterFactor1Key = "groupRaterFactor1"
+# Harassment/Abuse Tag
+harassmentNoteInterceptKey = "harassmentNoteIntercept"
+harassmentNoteFactor1Key = "harassmentNoteFactor1"
+harassmentRaterInterceptKey = "harassmentRaterIntercept"
+harassmentRaterFactor1Key = "harassmentRaterFactor1"
+
 
 # Ids and Indexes
 noteIdKey = "noteId"
@@ -162,6 +169,8 @@ meanNoteScoreKey = "meanNoteScore"
 raterAgreeRatioKey = "raterAgreeRatio"
 ratingAgreesWithNoteStatusKey = "ratingAgreesWithNoteStatus"
 aboveHelpfulnessThresholdKey = "aboveHelpfulnessThreshold"
+totalHelpfulHarassmentRatingsPenaltyKey = "totalHelpfulHarassmentPenalty"
+raterAgreeRatioWithHarassmentAbusePenaltyKey = "raterAgreeRatioKeyWithHarassmentAbusePenalty"
 
 # Note Status Labels
 currentlyRatedHelpful = "CURRENTLY_RATED_HELPFUL"

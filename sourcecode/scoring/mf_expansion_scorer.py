@@ -5,13 +5,23 @@ from .mf_base_scorer import MFBaseScorer
 
 
 class MFExpansionScorer(MFBaseScorer):
-  def __init__(self, seed: Optional[int] = None, useStableInitialization: bool = True) -> None:
+  def __init__(
+    self,
+    seed: Optional[int] = None,
+    useStableInitialization: bool = True,
+    saveIntermediateState: bool = False,
+  ) -> None:
     """Configure MFExpansionScorer object.
 
     Args:
       seed: if not None, seed value to ensure deterministic execution
     """
-    super().__init__(seed, pseudoraters=False, useStableInitialization=useStableInitialization)
+    super().__init__(
+      seed,
+      pseudoraters=False,
+      useStableInitialization=useStableInitialization,
+      saveIntermediateState=saveIntermediateState,
+    )
 
   def _get_note_col_mapping(self) -> Dict[str, str]:
     """Returns a dict mapping default note column names to custom names for a specific model."""

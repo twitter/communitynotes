@@ -39,6 +39,7 @@ def _coalesce_columns(df: pd.DataFrame, columnPrefix: str) -> pd.DataFrame:
   # Validate that at most one column is set, and store which rows have a column set
   rowResults = np.invert(df[columns].isna()).sum(axis=1)
   assert all(rowResults <= 1), "each row should only be in one modeling group"
+
   # Coalesce results
   def _get_value(row):
     idx = row.first_valid_index()
@@ -91,6 +92,7 @@ class MFGroupScorer(MFBaseScorer):
     seed: Optional[int] = None,
     pseudoraters: Optional[bool] = False,
     groupThreshold: float = 0.8,
+    saveIntermediateState: bool = False,
   ) -> None:
     """Configure MFGroupScorer object.
 
@@ -108,7 +110,9 @@ class MFGroupScorer(MFBaseScorer):
       groupThreshold: float indicating what fraction of ratings must be from within a group
         for the model to be active
     """
-    super().__init__(seed, pseudoraters, useStableInitialization=False)
+    super().__init__(
+      seed, pseudoraters, useStableInitialization=False, saveIntermediateState=saveIntermediateState
+    )
     assert groupNumber > 0, "groupNumber must be positive.  0 is reserved for unassigned."
     assert groupNumber <= groupScorerCount, "groupNumber exceeds maximum expected groups."
     self._groupNumber = groupNumber

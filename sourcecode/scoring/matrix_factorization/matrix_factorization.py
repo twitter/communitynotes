@@ -30,6 +30,8 @@ class MatrixFactorization:
     model: Optional[BiasedMatrixFactorization] = None,
     featureCols: List[str] = [c.noteIdKey, c.raterParticipantIdKey],
     labelCol: str = c.helpfulNumKey,
+    useSigmoidCrossEntropy=False,
+    posWeight=None,
   ) -> None:
     """Configure matrix factorization note ranking."""
     self._l2_lambda = l2_lambda
@@ -43,8 +45,25 @@ class MatrixFactorization:
     self._flipFactorsForIdentification = flipFactorsForIdentification
     self._featureCols = featureCols
     self._labelCol = labelCol
+    self._useSigmoidCrossEntropy = useSigmoidCrossEntropy
+    self._posWeight = posWeight
 
-    self.criterion = torch.nn.MSELoss()
+    if self._useSigmoidCrossEntropy:
+      if self._posWeight:
+        if logging:
+          print(f"Using pos weight: {self._posWeight} with BCEWithLogitsLoss")
+        self.criterion = torch.nn.BCEWithLogitsLoss(
+          pos_weight=torch.Tensor(np.array(self._posWeight))
+        )
+      else:
+        if logging:
+          print("Using BCEWithLogitsLoss")
+        self.criterion = torch.nn.BCEWithLogitsLoss()
+    else:
+      if self._posWeight:
+        raise ValueError("posWeight is not supported for MSELoss")
+      self.criterion = torch.nn.MSELoss()
+
     self.train_errors: List[float] = []
     self.test_errors: List[float] = []
     self.mf_model = model
@@ -340,7 +359,6 @@ class MatrixFactorization:
     while (abs(loss.item() - prev_loss) > self._convergence) and (
       not (epoch > 100 and loss.item() > prev_loss)
     ):
-
       prev_loss = loss.item()
 
       # Backpropagate
