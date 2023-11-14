@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 
-from . import constants as c, helpfulness_scores, note_ratings, process_data
+from . import constants as c, helpfulness_scores, note_ratings, process_data, tag_consensus
 from .matrix_factorization.matrix_factorization import MatrixFactorization
 from .matrix_factorization.pseudo_raters import PseudoRatersRunner
 from .scorer import Scorer
@@ -36,6 +36,7 @@ class MFBaseScorer(Scorer):
     crhSuperThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
     useStableInitialization: bool = True,
+    saveIntermediateState: bool = False,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -88,6 +89,7 @@ class MFBaseScorer(Scorer):
     self._crhSuperThreshold = crhSuperThreshold
     self._inertiaDelta = inertiaDelta
     self._modelingGroupToInitializeForStability = 13 if useStableInitialization else None
+    self._saveIntermediateState = saveIntermediateState
     self._mfRanker = MatrixFactorization()
 
   def get_crh_threshold(self) -> float:
@@ -121,7 +123,10 @@ class MFBaseScorer(Scorer):
 
   def get_auxiliary_note_info_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the auxiliaryNoteInfo output."""
-    return [c.noteIdKey, c.ratingWeightKey,] + (
+    return [
+      c.noteIdKey,
+      c.ratingWeightKey,
+    ] + (
       c.notHelpfulTagsAdjustedColumns
       + c.notHelpfulTagsAdjustedRatioColumns
       + c.incorrectFilterColumns
@@ -281,11 +286,17 @@ class MFBaseScorer(Scorer):
     # Removes ratings where either (1) the note did not receive enough ratings, or
     # (2) the rater did not rate enough notes.
     ratingsForTraining = self._prepare_data_for_scoring(ratings)
+    if self._saveIntermediateState:
+      self.ratingsForTraining = ratingsForTraining
 
     # TODO: Save parameters from this first run in note_model_output next time we add extra fields to model output TSV.
     noteParamsUnfiltered, raterParamsUnfiltered, globalBias = self._run_stable_matrix_factorization(
       ratingsForTraining, userEnrollmentRaw
     )
+    if self._saveIntermediateState:
+      self.noteParamsUnfiltered = noteParamsUnfiltered
+      self.raterParamsUnfiltered = raterParamsUnfiltered
+      self.globalBias = globalBias
 
     # Get a dataframe of scored notes based on the algorithm results above
     scoredNotes = note_ratings.compute_scored_notes(
@@ -303,6 +314,8 @@ class MFBaseScorer(Scorer):
       crhSuperThreshold=self._crhSuperThreshold,
       inertiaDelta=self._inertiaDelta,
     )
+    if self._saveIntermediateState:
+      self.firstRoundScoredNotes = scoredNotes
 
     # Determine "valid" ratings
     validRatings = note_ratings.get_valid_ratings(
@@ -317,9 +330,48 @@ class MFBaseScorer(Scorer):
         ]
       ],
     )
+    if self._saveIntermediateState:
+      self.validRatings = validRatings
 
     # Assigns contributor (author & rater) helpfulness bit based on (1) performance
     # authoring and reviewing previous and current notes.
+    helpfulnessScoresPreHarassmentFilter = helpfulness_scores.compute_general_helpfulness_scores(
+      scoredNotes[
+        [
+          c.noteAuthorParticipantIdKey,
+          c.currentlyRatedHelpfulBoolKey,
+          c.currentlyRatedNotHelpfulBoolKey,
+          c.internalNoteInterceptKey,
+        ]
+      ],
+      validRatings,
+      self._minMeanNoteScore,
+      self._minCRHVsCRNHRatio,
+      self._minRaterAgreeRatio,
+      ratingsForTraining,
+    )
+    if self._saveIntermediateState:
+      self.firstRoundHelpfulnessScores = helpfulnessScoresPreHarassmentFilter
+
+    # Filters ratings matrix to include only rows (ratings) where the rater was
+    # considered helpful.
+    ratingsHelpfulnessScoreFilteredPreHarassmentFilter = (
+      helpfulness_scores.filter_ratings_by_helpfulness_scores(
+        ratingsForTraining, helpfulnessScoresPreHarassmentFilter
+      )
+    )
+    if self._saveIntermediateState:
+      self.ratingsHelpfulnessScoreFilteredPreHarassmentFilter = (
+        ratingsHelpfulnessScoreFilteredPreHarassmentFilter
+      )
+
+    harassmentAbuseNoteParams, _, _ = tag_consensus.train_tag_model(
+      ratingsHelpfulnessScoreFilteredPreHarassmentFilter, c.notHelpfulSpamHarassmentOrAbuseTagKey
+    )
+
+    # Assigns contributor (author & rater) helpfulness bit based on (1) performance
+    # authoring and reviewing previous and current notes, and (2) including an extra
+    # penalty for rating a harassment/abuse note as helpful.
     helpfulnessScores = helpfulness_scores.compute_general_helpfulness_scores(
       scoredNotes[
         [
@@ -333,13 +385,19 @@ class MFBaseScorer(Scorer):
       self._minMeanNoteScore,
       self._minCRHVsCRNHRatio,
       self._minRaterAgreeRatio,
+      ratings=ratingsForTraining,
+      tagConsensusHarassmentAbuseNotes=harassmentAbuseNoteParams,
     )
+    if self._saveIntermediateState:
+      self.firstRoundHelpfulnessScores = helpfulnessScores
 
     # Filters ratings matrix to include only rows (ratings) where the rater was
     # considered helpful.
     ratingsHelpfulnessScoreFiltered = helpfulness_scores.filter_ratings_by_helpfulness_scores(
       ratingsForTraining, helpfulnessScores
     )
+    if self._saveIntermediateState:
+      self.ratingsHelpfulnessScoreFiltered = ratingsHelpfulnessScoreFiltered
 
     # Re-runs matrix factorization using only ratings given by helpful raters.
     noteParams, raterParams, globalBias = self._mfRanker.run_mf(
@@ -357,6 +415,10 @@ class MFBaseScorer(Scorer):
     else:
       for col in c.noteParameterUncertaintyTSVColumns:
         noteParams[col] = np.nan
+    if self._saveIntermediateState:
+      self.noteParams = noteParams
+      self.raterParams = raterParams
+      self.globalBias = globalBias
 
     # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
     # and ML output.
@@ -376,6 +438,7 @@ class MFBaseScorer(Scorer):
       inertiaDelta=self._inertiaDelta,
       finalRound=True,
     )
+
     # Takes raterParams from most recent MF run, but use the pre-computed
     # helpfulness scores.
     helpfulnessScores = raterParams.merge(
@@ -391,5 +454,9 @@ class MFBaseScorer(Scorer):
       on=c.raterParticipantIdKey,
       how="outer",
     )
+
+    if self._saveIntermediateState:
+      self.scoredNotes = scoredNotes
+      self.helpfulnessScores = helpfulnessScores
 
     return scoredNotes, helpfulnessScores
