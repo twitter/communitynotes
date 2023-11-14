@@ -126,6 +126,14 @@ For any given note-rater pair, properties including the note and rater factors (
 When "Incorrect" ratings on a given note are "surprisingly popular" among raters who would be expected to have a low probability of rating the note "Incorrect", the note is held to a higher threshold to achieve Currently Rated Helpful status.
 Depending on the strength of the signal, a note may be blocked from Currently Rated Helpful status entirely.
 
+## Tag-Consensus Harassment-Abuse Note Score
+
+After the first round matrix factorization described above, we run another matrix factorization that's similar to the first, but with some changes:
+- Instead of using helpful/not-helpful ratings as the labels, we use the harassment and abuse tag as the positive, and helpful ratings as negatives.
+- Because the positive rate is quite low, we use a sigmoid activation and binary cross entropy loss, as well as upweighting the rare positive class examples, instead of unweighted MSE loss.
+
+Thus, having a high note intercept score in this model indicates that a diverse set of raters found the note to be harassment or abuse. If the score is above a very high threshold (2.5), we penalize each rater who has rated the note helpful, even if they did so after it received its final status, by subtracting 10 from the numerator of their rater helpfulness score as described in [Rater Helpfulness Score](./contributor-scores.md).
+
 ## CRH Inertia
 
 The scoring algorithm updates the Helpful status of each note during every invocation.
