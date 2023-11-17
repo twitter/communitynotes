@@ -126,6 +126,9 @@ class MFGroupScorer(MFBaseScorer):
     self._groupRaterFactor1Key = f"{c.groupRaterFactor1Key}_{self._groupNumber}"
     self._modelingGroupKey = f"{c.modelingGroupKey}_{self._groupNumber}"
 
+  def get_name(self):
+    return f"MFGroupScorer_{self._groupNumber}"
+
   def _get_note_col_mapping(self) -> Dict[str, str]:
     """Returns a dict mapping default note column names to custom names for a specific model."""
     return {

@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
+import time
 from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
@@ -20,6 +22,20 @@ class Scorer(ABC):
       seed (int, optional): if not None, seed value to ensure deterministic execution
     """
     self._seed = seed
+
+  @contextmanager
+  def time_block(self, label):
+    start = time.time()
+    try:
+      yield
+    finally:
+      end = time.time()
+      print(
+        f"{self.get_name()} {label} elapsed time: {end - start:.2f} secs ({((end-start)/60.0):.2f} mins)"
+      )
+
+  def get_name(self):
+    return str(type(self))
 
   @abstractmethod
   def get_scored_notes_cols(self) -> List[str]:
@@ -132,43 +148,45 @@ class Scorer(ABC):
         auxiliaryNoteInfo: one row per note containing adjusted and ratio tag values
     """
     # Transform input, run core scoring algorithm, transform output.
-    ratings, noteStatusHistory = self._filter_input(
-      ratingsRaw, noteStatusHistoryRaw, userEnrollmentRaw
-    )
-    # If there are no ratings left after filtering, then return empty dataframes.
-    if len(ratings) == 0:
-      return (
-        pd.DataFrame(columns=self.get_scored_notes_cols()),
-        pd.DataFrame(columns=self.get_helpfulness_scores_cols())
-        if self.get_helpfulness_scores_cols()
-        else None,
-        pd.DataFrame(columns=self.get_auxiliary_note_info_cols())
-        if self.get_auxiliary_note_info_cols()
-        else None,
+    with self.time_block("Filter input"):
+      ratings, noteStatusHistory = self._filter_input(
+        ratingsRaw, noteStatusHistoryRaw, userEnrollmentRaw
       )
+      # If there are no ratings left after filtering, then return empty dataframes.
+      if len(ratings) == 0:
+        return (
+          pd.DataFrame(columns=self.get_scored_notes_cols()),
+          pd.DataFrame(columns=self.get_helpfulness_scores_cols())
+          if self.get_helpfulness_scores_cols()
+          else None,
+          pd.DataFrame(columns=self.get_auxiliary_note_info_cols())
+          if self.get_auxiliary_note_info_cols()
+          else None,
+        )
+
     noteScores, userScores = self._score_notes_and_users(
       ratings, noteStatusHistory, userEnrollmentRaw
     )
-    noteScores, userScores = self._postprocess_output(
-      noteScores, userScores, ratingsRaw, noteStatusHistoryRaw, userEnrollmentRaw
-    )
-    noteScores = noteScores.rename(columns=self._get_note_col_mapping())
-    userScores = userScores.rename(columns=self._get_user_col_mapping())
-    # TODO: Tolerate unexpcted columns if --nostrict-columns is set.
-    # Process noteScores
-    noteScores = noteScores.drop(columns=self._get_dropped_note_cols())
-    assert set(noteScores.columns) == set(
-      self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols()
-    ), f"""all columns must be either dropped or explicitly defined in an output. 
-    Extra columns that were in noteScores: {set(noteScores.columns) - set(self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols())}
-    Missing expected columns that should've been in noteScores: {set(self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols()) - set(noteScores.columns)}"""
-    # Process userScores
-    userScores = userScores.drop(columns=self._get_dropped_user_cols())
-    assert set(userScores.columns) == set(
-      self.get_helpfulness_scores_cols()
-    ), f"""all columns must be either dropped or explicitly defined in an output. 
-    Extra columns that were in userScores: {set(userScores.columns) - set(self.get_helpfulness_scores_cols())}
-    Missing expected columns that should've been in userScores: {set(self.get_helpfulness_scores_cols()) - set(userScores.columns)}"""
+
+    with self.time_block("Postprocess output"):
+      noteScores, userScores = self._postprocess_output(
+        noteScores, userScores, ratingsRaw, noteStatusHistoryRaw, userEnrollmentRaw
+      )
+      noteScores = noteScores.rename(columns=self._get_note_col_mapping())
+      userScores = userScores.rename(columns=self._get_user_col_mapping())
+      # TODO: Tolerate unexpcted columns if --nostrict-columns is set.
+      # Process noteScores
+      noteScores = noteScores.drop(columns=self._get_dropped_note_cols())
+      assert set(noteScores.columns) == set(
+        self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols()
+      ), f"""all columns must be either dropped or explicitly defined in an output. 
+      Extra columns that were in noteScores: {set(noteScores.columns) - set(self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols())}
+      Missing expected columns that should've been in noteScores: {set(self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols()) - set(noteScores.columns)}"""
+      # Process userScores
+      userScores = userScores.drop(columns=self._get_dropped_user_cols())
+      assert set(userScores.columns) == set(self.get_helpfulness_scores_cols()), f"""all columns must be either dropped or explicitly defined in an output. 
+      Extra columns that were in userScores: {set(userScores.columns) - set(self.get_helpfulness_scores_cols())}
+      Missing expected columns that should've been in userScores: {set(self.get_helpfulness_scores_cols()) - set(userScores.columns)}"""
 
     # Return dataframes with specified columns in specified order
     return (

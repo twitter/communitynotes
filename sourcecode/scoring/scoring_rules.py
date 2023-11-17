@@ -92,7 +92,7 @@ class ScoringRule(ABC):
   @abstractmethod
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Identify which notes the ScoringRule should be active for, and any new columns to add for those notes.
 
     Args:
@@ -120,7 +120,7 @@ class DefaultRule(ScoringRule):
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Returns all noteIDs to initialize all note ratings to a default status (e.g. NMR)."""
     noteStatusUpdates = pd.DataFrame(noteStats[[c.noteIdKey]])
     noteStatusUpdates[statusColumn] = self._status
@@ -154,7 +154,7 @@ class RuleFromFunction(ScoringRule):
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Returns noteIDs for notes matched by the boolean function."""
     mask = self._function(noteStats)
     if self._onlyApplyToNotesThatSayTweetIsMisleading:
@@ -186,7 +186,7 @@ class ApplyModelResult(ScoringRule):
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Propagates any status set in sourceColumn when it is non-NaN."""
     notesWithStatus = ~noteStats[self._sourceColumn].isna()
     assert (
@@ -231,7 +231,7 @@ class FilterTagOutliers(ScoringRule):
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, pd.DataFrame]):
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Returns notes on track for CRH with high levels of any tag to receive NMR status."""
     # Prune noteStats to only include CRH notes.
     crhNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][[c.noteIdKey]]
@@ -310,7 +310,7 @@ class FilterIncorrect(ScoringRule):
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, pd.DataFrame]):
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Returns notes on track for CRH with high levels of any tag to receive NMR status."""
     # Prune noteStats to only include CRH notes.
     crhNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][[c.noteIdKey]]
@@ -375,7 +375,7 @@ class ApplyGroupModelResult(ScoringRule):
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Flip notes from NMR to CRH based on group models and subject to core/expansion model safeguards."""
     # Identify notes which were CRH from the applicable group model.
     probationaryCRHNotes = noteStats[
@@ -451,7 +451,7 @@ class InsufficientExplanation(ScoringRule):
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, pd.DataFrame]):
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Sets Top Tags, returns notes on track for CRH / CRNH with insufficient to receive NMR status."""
 
     if self._tagsConsidered is None:
@@ -529,7 +529,7 @@ class NMtoCRNH(ScoringRule):
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Returns noteIds for low scoring notes on non-misleading tweets."""
     noteStatusUpdates = noteStats.loc[
       (noteStats[c.internalNoteInterceptKey] < self._crnhThresholdNMIntercept)
@@ -575,7 +575,7 @@ class AddCRHInertia(ScoringRule):
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Returns noteIds for notes already have CRH status but now fall slightly below a threshold."""
     # This scoring only impacts notes which don't already have CRH status - there is no need to
     # act on notes that already have CRH status.
@@ -600,9 +600,7 @@ class AddCRHInertia(ScoringRule):
       c.internalNoteInterceptKey
     ]
 
-    assert (
-      sum(noteIntercepts > self._expectedMax) == 0
-    ), f"""{sum(noteIntercepts > self._expectedMax)} notes (out of {len(noteIntercepts)}) had intercepts above expected maximum of {self._expectedMax}. 
+    assert sum(noteIntercepts > self._expectedMax) == 0, f"""{sum(noteIntercepts > self._expectedMax)} notes (out of {len(noteIntercepts)}) had intercepts above expected maximum of {self._expectedMax}. 
       The highest was {max(noteIntercepts)}."""
     noteStatusUpdates = noteIds[[c.noteIdKey]]
     noteStatusUpdates[statusColumn] = self._status
@@ -627,7 +625,7 @@ class ScoringDriftGuard(ScoringRule):
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
-  ) -> (Tuple[pd.DataFrame, Optional[pd.DataFrame]]):
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Returns locked status when necessary to impact scoring outcomes."""
     # identify impacted notes where we need to change a label
     lockedStatusAvailable = ~pd.isna(self._lockedStatus[c.lockedStatusKey])
@@ -678,6 +676,7 @@ def apply_scoring_rules(
   noteColumns = pd.DataFrame.from_dict({c.noteIdKey: []}).astype({c.noteIdKey: np.int64})
   # Establish state to enforce rule dependencies.
   ruleIDs: Set[RuleID] = set()
+
   # Successively apply each rule
   for rule in rules:
     print(f"Applying scoring rule: {rule.get_name()}")
@@ -702,6 +701,7 @@ def apply_scoring_rules(
     if additionalColumns is not None:
       assert {c.noteIdKey} == (set(noteColumns.columns) & set(additionalColumns.columns))
       noteColumns = noteColumns.merge(additionalColumns, on=c.noteIdKey, how="outer")
+
   # Having applied all scoring rules, condense noteRules to have one row per note representing
   # all of the ScoringRuless which were active for the note.
   noteRules = noteRules.groupby(c.noteIdKey).aggregate(list).reset_index()
@@ -723,5 +723,6 @@ def apply_scoring_rules(
     scoredNotes[statusColumn] == c.currentlyRatedNotHelpful
   )
   scoredNotes[c.awaitingMoreRatingsBoolKey] = scoredNotes[statusColumn] == c.needsMoreRatings
+
   # Return completed DF including original noteStats signals merged wtih scoring results
   return scoredNotes
