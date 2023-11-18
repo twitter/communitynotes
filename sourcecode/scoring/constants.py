@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import time
 
 import numpy as np
@@ -14,12 +15,9 @@ import pandas as pd
 # https://docs.python.org/3/tutorial/modules.html#more-on-modules
 epochMillis = 1000 * time.time()
 useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory = True
-
-maxTrainError = 0.09
-
-coreFlipPct = 0.09
-expansionFlipPct = 0.19
-maxReruns = 5
+# Use this size threshld to isolate code which should be run differently in small
+# scale unit tests.
+minNumNotesForProdData = 200
 
 # Explanation Tags
 minRatingsToGetTag = 2
@@ -211,20 +209,26 @@ notHelpfulHardToUnderstandKey = "notHelpfulHardToUnderstand"
 notHelpfulNoteNotNeededKey = "notHelpfulNoteNotNeeded"
 notHelpfulSourcesMissingOrUnreliableTagKey = "notHelpfulSourcesMissingOrUnreliable"
 notHelpfulIrrelevantSourcesTagKey = "notHelpfulIrrelevantSources"
+notHelpfulOpinionSpeculationOrBiasTagKey = "notHelpfulOpinionSpeculationOrBias"
+notHelpfulMissingKeyPointsTagKey = "notHelpfulMissingKeyPoints"
+notHelpfulOutdatedTagKey = "notHelpfulOutdated"
+notHelpfulOffTopicTagKey = "notHelpfulOffTopic"
+notHelpfulOpinionSpeculationTagKey = "notHelpfulOpinionSpeculation"
 
+## This list is in TSV Order, but with indices for tiebreak order.
 notHelpfulTagsAndTieBreakOrder = [
-  (0, notHelpfulOtherTagKey),
+  (0, notHelpfulOtherTagKey),  ## should lose all tiebreaks
   (8, notHelpfulIncorrectTagKey),
   (2, notHelpfulSourcesMissingOrUnreliableTagKey),
-  (4, "notHelpfulOpinionSpeculationOrBias"),
-  (5, "notHelpfulMissingKeyPoints"),
-  (12, "notHelpfulOutdated"),
+  (4, notHelpfulOpinionSpeculationOrBiasTagKey),
+  (5, notHelpfulMissingKeyPointsTagKey),
+  (12, notHelpfulOutdatedTagKey),  ## should win all tiebreaks
   (10, notHelpfulHardToUnderstandKey),
   (7, notHelpfulArgumentativeOrBiasedTagKey),
-  (9, "notHelpfulOffTopic"),
+  (9, notHelpfulOffTopicTagKey),
   (11, notHelpfulSpamHarassmentOrAbuseTagKey),
   (1, notHelpfulIrrelevantSourcesTagKey),
-  (3, "notHelpfulOpinionSpeculation"),
+  (3, notHelpfulOpinionSpeculationTagKey),
   (6, notHelpfulNoteNotNeededKey),
 ]
 notHelpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in notHelpfulTagsAndTieBreakOrder]
@@ -246,15 +250,13 @@ notHelpfulTagsAdjustedRatioColumns = [
 ]
 ratingWeightKey = "ratingWeight"
 
-wideIncorrectFilterSuffix = "_wide"
-_incorrectFilterColumns = [
+lowDiligenceInterceptKey = "lowDiligenceIntercept"
+incorrectFilterColumns = [
   "notHelpfulIncorrect_interval",
   "p_incorrect_user_interval",
   "num_voters_interval",
   "tf_idf_incorrect_interval",
-]
-incorrectFilterColumns = _incorrectFilterColumns + [
-  f"{col}{wideIncorrectFilterSuffix}" for col in _incorrectFilterColumns
+  lowDiligenceInterceptKey,
 ]
 
 misleadingTags = [
@@ -558,3 +560,13 @@ raterModelOutputTSVColumnsAndTypes = [
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
+
+
+@contextmanager
+def time_block(label):
+  start = time.time()
+  try:
+    yield
+  finally:
+    end = time.time()
+    print(f"{label} elapsed time: {end - start:.2f} secs ({((end-start)/60.0):.2f} mins)")

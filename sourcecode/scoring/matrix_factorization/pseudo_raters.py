@@ -44,16 +44,20 @@ class PseudoRatersRunner:
     self.globalBias = globalBias
 
   def compute_note_parameter_confidence_bounds_with_pseudo_raters(self):
-    self._make_extreme_raters(self.raterParams, self.raterIdMap)
-    self._add_extreme_raters_to_id_maps_and_params()
-    self._create_extreme_ratings()
+    with c.time_block("Pseudoraters: prepare data"):
+      self._make_extreme_raters(self.raterParams, self.raterIdMap)
+      self._add_extreme_raters_to_id_maps_and_params()
+      self._create_extreme_ratings()
 
-    noteParamsList = self._fit_note_params_for_each_dataset_with_extreme_ratings()
+    with c.time_block("Pseudoraters: fit models"):
+      noteParamsList = self._fit_note_params_for_each_dataset_with_extreme_ratings()
 
-    notesWithConfidenceBounds = self._aggregate_note_params(noteParamsList)
-    return self.noteParams.merge(
-      notesWithConfidenceBounds.reset_index(), on=c.noteIdKey, how="left"
-    )
+    with c.time_block("Pseudoraters: aggregate"):
+      notesWithConfidenceBounds = self._aggregate_note_params(noteParamsList)
+      noteParams = self.noteParams.merge(
+        notesWithConfidenceBounds.reset_index(), on=c.noteIdKey, how="left"
+      )
+    return noteParams
 
   def _check_rater_parameters_same(self, newMatrixFactorization: MatrixFactorization):
     (
@@ -215,12 +219,14 @@ class PseudoRatersRunner:
     ## for each rating (ided by raterParticipantId and raterIndex)
     if ratingToAddWithoutNoteId[c.helpfulNumKey] is not None:
       ratingsWithNoteIds = []
-      for i, noteRow in (
-        self.ratingFeaturesAndLabels[[c.noteIdKey, mf_c.noteIndexKey]].drop_duplicates().iterrows()
+      for noteRow in (
+        self.ratingFeaturesAndLabels[[c.noteIdKey, mf_c.noteIndexKey]]
+        .drop_duplicates()
+        .itertuples()
       ):
         ratingToAdd = ratingToAddWithoutNoteId.copy()
-        ratingToAdd[c.noteIdKey] = noteRow[c.noteIdKey]
-        ratingToAdd[mf_c.noteIndexKey] = noteRow[mf_c.noteIndexKey]
+        ratingToAdd[c.noteIdKey] = getattr(noteRow, c.noteIdKey)
+        ratingToAdd[mf_c.noteIndexKey] = getattr(noteRow, mf_c.noteIndexKey)
         ratingsWithNoteIds.append(ratingToAdd)
       extremeRatingsToAdd = pd.DataFrame(ratingsWithNoteIds).drop(
         [c.internalRaterInterceptKey, c.internalRaterFactor1Key], axis=1
@@ -243,9 +249,10 @@ class PseudoRatersRunner:
         print("------------------")
         print(f"Re-scoring all notes with extra rating added: {ratingToAddWithoutNoteId}")
 
-      fitNoteParams = self._fit_all_notes_with_raters_constant(
-        ratingFeaturesAndLabelsWithExtremeRatings
-      )
+      with c.time_block("Pseudo: fit all notes with raters constant"):
+        fitNoteParams = self._fit_all_notes_with_raters_constant(
+          ratingFeaturesAndLabelsWithExtremeRatings
+        )
 
       fitNoteParams[Constants.extraRaterInterceptKey] = ratingToAddWithoutNoteId[
         c.internalRaterInterceptKey
@@ -274,9 +281,7 @@ class PseudoRatersRunner:
 
     refitSameRatings = rawRescoredNotesWithEachExtraRater[
       pd.isna(rawRescoredNotesWithEachExtraRater[Constants.extraRaterInterceptKey])
-    ][[c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]].set_index(
-      c.noteIdKey
-    )
+    ][[c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]].set_index(c.noteIdKey)
     refitSameRatings.columns = pd.MultiIndex.from_product(
       [refitSameRatings.columns, [Constants.refitOriginalKey]]
     )

@@ -72,6 +72,9 @@ class MatrixFactorization:
     self.trainModelData: Optional[ModelData] = None
     self.validateModelData: Optional[ModelData] = None
 
+  def get_final_train_error(self) -> Optional[float]:
+    return self.train_errors[-1] if self.train_errors else None
+
   def get_new_mf_with_same_args(self):
     return MatrixFactorization(
       l2_lambda=self._l2_lambda,

@@ -155,6 +155,36 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   return mergedNote
 
 
+def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn=0.25) -> None:
+  """Validate that number of CRH notes remains within an accepted bound.
+
+  Assert fails and scoring exits with error if maximum allowable churn is exceeded.
+
+  Args:
+    mergedStatuses: NSH DF with new and old data combined.
+    maxCrhChurn: maximum fraction of unlocked notes to gain or lose CRH status.
+
+  Returns:
+    None
+  """
+  # Prune to unlocked notes.
+  mergedStatuses = mergedStatuses[mergedStatuses[c.timestampMillisOfStatusLockKey].isna()]
+  # Identify new and old CRH notes.
+  oldCrhNotes = frozenset(
+    mergedStatuses[mergedStatuses[c.currentLabelKey] == c.currentlyRatedHelpful][c.noteIdKey]
+  )
+  newCrhNotes = frozenset(
+    mergedStatuses[mergedStatuses[c.finalRatingStatusKey] == c.currentlyRatedHelpful][c.noteIdKey]
+  )
+  # Validate that changes are within allowable bounds.
+  assert (
+    (len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
+  ), f"Too many new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
+  assert (
+    (len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
+  ), f"Too few new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
+
+
 def update_note_status_history(
   oldNoteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
@@ -200,6 +230,8 @@ def update_note_status_history(
   assert len(mergedStatuses) == len(
     oldNoteStatusHistory
   ), "scoredNotes and oldNoteStatusHistory should both contain all notes"
+  if len(mergedStatuses) > c.minNumNotesForProdData:
+    _check_flips(mergedStatuses)
 
   def apply_update(mergedNote):
     return _update_single_note_status_history(

@@ -359,7 +359,10 @@ def preprocess_data(
 
 
 def filter_ratings(
-  ratings: pd.DataFrame, minNumRatingsPerRater: int, minNumRatersPerNote: int, logging: bool = True
+  ratings: pd.DataFrame,
+  minNumRatingsPerRater: int,
+  minNumRatersPerNote: int,
+  logging: bool = True,
 ) -> pd.DataFrame:
   """Apply min number of ratings for raters & notes. Instead of iterating these filters
   until convergence, simply stop after going back and force once.
@@ -376,54 +379,30 @@ def filter_ratings(
       pd.DataFrame: filtered ratings
   """
 
-  n = ratings.groupby(c.noteIdKey).size().reset_index()
-  notesWithMinNumRatings = n[n[0] >= minNumRatersPerNote]
+  def filter_notes(ratings):
+    note_counts = ratings[c.noteIdKey].value_counts()
+    valid_notes = note_counts[note_counts >= minNumRatersPerNote].index
+    return ratings[ratings[c.noteIdKey].isin(valid_notes)]
 
-  ratingsNoteFiltered = ratings.merge(notesWithMinNumRatings[[c.noteIdKey]], on=c.noteIdKey)
+  def filter_raters(ratings):
+    rater_counts = ratings[c.raterParticipantIdKey].value_counts()
+    valid_raters = rater_counts[rater_counts >= minNumRatingsPerRater].index
+    return ratings[ratings[c.raterParticipantIdKey].isin(valid_raters)]
+
+  ratings = filter_notes(ratings)
+  ratings = filter_raters(ratings)
+  ratings = filter_notes(ratings)
 
   if logging:
-    print("Filter notes and ratings with too few ratings")
+    # Log final details
+    unique_notes = ratings[c.noteIdKey].nunique()
+    unique_raters = ratings[c.raterParticipantIdKey].nunique()
     print(
-      "  After Filtering Notes w/less than %d Ratings, Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d"
-      % (
-        minNumRatersPerNote,
-        len(ratingsNoteFiltered),
-        len(np.unique(ratingsNoteFiltered[c.noteIdKey])),
-        len(np.unique(ratingsNoteFiltered[c.raterParticipantIdKey])),
-      )
+      f"After applying min {minNumRatingsPerRater} ratings per rater and min {minNumRatersPerNote} raters per note: \n"
+      + f"Num Ratings: {len(ratings)}, Num Unique Notes Rated: {unique_notes}, Num Unique Raters: {unique_raters}"
     )
-  r = ratingsNoteFiltered.groupby(c.raterParticipantIdKey).size().reset_index()
-  ratersWithMinNumRatings = r[r[0] >= minNumRatingsPerRater]
 
-  ratingsDoubleFiltered = ratingsNoteFiltered.merge(
-    ratersWithMinNumRatings[[c.raterParticipantIdKey]], on=c.raterParticipantIdKey
-  )
-  if logging:
-    print(
-      "  After Filtering Raters w/less than %s Notes, Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d"
-      % (
-        minNumRatingsPerRater,
-        len(ratingsDoubleFiltered),
-        len(np.unique(ratingsDoubleFiltered[c.noteIdKey])),
-        len(np.unique(ratingsDoubleFiltered[c.raterParticipantIdKey])),
-      )
-    )
-  n = ratingsDoubleFiltered.groupby(c.noteIdKey).size().reset_index()
-  notesWithMinNumRatings = n[n[0] >= minNumRatersPerNote]
-  ratingsForTraining = ratingsDoubleFiltered.merge(
-    notesWithMinNumRatings[[c.noteIdKey]], on=c.noteIdKey
-  )
-  if logging:
-    print(
-      "  After Final Filtering of Notes w/less than %d Ratings, Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d"
-      % (
-        minNumRatersPerNote,
-        len(ratingsForTraining),
-        len(np.unique(ratingsForTraining[c.noteIdKey])),
-        len(np.unique(ratingsForTraining[c.raterParticipantIdKey])),
-      )
-    )
-  return ratingsForTraining
+  return ratings
 
 
 def visualize_parameters(noteParams: pd.DataFrame, raterParams: pd.DataFrame) -> None:

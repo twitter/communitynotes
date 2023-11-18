@@ -37,6 +37,9 @@ class MFCoreScorer(MFBaseScorer):
     )
     self._core_threshold = core_threshold
 
+  def get_name(self):
+    return "MFCoreScorer"
+
   def _get_note_col_mapping(self) -> Dict[str, str]:
     """Returns a dict mapping default note column names to custom names for a specific model."""
     return {

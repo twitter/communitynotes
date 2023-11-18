@@ -92,8 +92,8 @@ def _get_rated_after_decision(
     noteStatusHistory[[c.noteIdKey, c.timestampMillisOfNoteMostRecentNonNMRLabelKey]],
     how="inner",
   )
-  assert len(ratingInfos) == len(
-    ratings
+  assert (
+    len(ratingInfos) == len(ratings)
   ), f"assigning a status timestamp shouldn't decrease number of ratings: {len(ratingInfos)} vs. {len(ratings)}"
   print("Calculating ratedAfterDecision:")
   print(f"  Total ratings: {len(ratingInfos)}")
@@ -322,92 +322,98 @@ def get_contributor_state(
   Returns:
       pd.DataFrame: contributorScoresWithEnrollment The contributor scores with enrollments
   """
+  with c.time_block("Contributor State: Setup"):
+    # for users in state Earned Out Ack, update the timestamp of last earn out; this ensures they are only judged against
+    # their rating target until they resume writing notes
+    userEnrollment.loc[
+      userEnrollment[c.enrollmentState] == 3, c.timestampOfLastEarnOut
+    ] = c.epochMillis
 
-  # for users in state Earned Out Ack, update the timestamp of last earn out; this ensures they are only judged against
-  # their rating target until they resume writing notes
-  userEnrollment.loc[
-    userEnrollment[c.enrollmentState] == 3, c.timestampOfLastEarnOut
-  ] = c.epochMillis
+    # We need to consider only the last 5 notes for enrollment state. The ratings are aggregated historically.
+    # For users who have earned out, we should only consider notes written since the earn out event
+    scoredNotesWithLastEarnOut = scoredNotes.merge(
+      userEnrollment, left_on=c.noteAuthorParticipantIdKey, right_on=c.participantIdKey, how="left"
+    )
+    # For users who don't appear in the userEnrollment file, set their timeStampOfLastEarnOut to default
+    scoredNotesWithLastEarnOut[c.timestampOfLastEarnOut].fillna(1, inplace=True)
 
-  # We need to consider only the last 5 notes for enrollment state. The ratings are aggregated historically.
-  # For users who have earned out, we should only consider notes written since the earn out event
-  scoredNotesWithLastEarnOut = scoredNotes.merge(
-    userEnrollment, left_on=c.noteAuthorParticipantIdKey, right_on=c.participantIdKey, how="left"
-  )
-  # For users who don't appear in the userEnrollment file, set their timeStampOfLastEarnOut to default
-  scoredNotesWithLastEarnOut[c.timestampOfLastEarnOut].fillna(1, inplace=True)
+  with c.time_block("Contributor State: Contributor Scores"):
+    contributorScores = get_contributor_scores(
+      scoredNotesWithLastEarnOut,
+      ratings,
+      noteStatusHistory,
+      lastNNotes=c.maxHistoryEarnOut,
+      countNMRNotesLast=True,
+      sinceLastEarnOut=True,
+    )
+    contributorScores.fillna(0, inplace=True)
 
-  contributorScores = get_contributor_scores(
-    scoredNotesWithLastEarnOut,
-    ratings,
-    noteStatusHistory,
-    lastNNotes=c.maxHistoryEarnOut,
-    countNMRNotesLast=True,
-    sinceLastEarnOut=True,
-  )
-  contributorScores.fillna(0, inplace=True)
+  with c.time_block("Contributor State: Top NH Tags Per Author"):
+    # We merge in the top not helpful tags
+    authorTopNotHelpfulTags = explanation_tags.get_top_nonhelpful_tags_per_author(
+      noteStatusHistory, ratings
+    )
+    contributorScores = contributorScores.merge(
+      authorTopNotHelpfulTags,
+      left_on=c.raterParticipantIdKey,
+      right_on=c.noteAuthorParticipantIdKey,
+      how="outer",
+    ).drop(columns=[c.noteAuthorParticipantIdKey])
 
-  # We merge in the top not hellpful tags
-  authorTopNotHelpfulTags = explanation_tags.get_top_nonhelpful_tags_per_author(
-    noteStatusHistory, ratings
-  )
-  contributorScores = contributorScores.merge(
-    authorTopNotHelpfulTags,
-    left_on=c.raterParticipantIdKey,
-    right_on=c.noteAuthorParticipantIdKey,
-    how="outer",
-  ).drop(columns=[c.noteAuthorParticipantIdKey])
+  with c.time_block("Contributor State: Emerging Writers"):
+    # We merge in the emerging writer data.
+    emergingWriter = is_emerging_writer(scoredNotes)
+    contributorScores = contributorScores.merge(
+      emergingWriter,
+      left_on=c.raterParticipantIdKey,
+      right_on=c.noteAuthorParticipantIdKey,
+      how="outer",
+    ).drop(columns=[c.noteAuthorParticipantIdKey])
 
-  # We merge in the emerging writer data.
-  emergingWriter = is_emerging_writer(scoredNotes)
-  contributorScores = contributorScores.merge(
-    emergingWriter,
-    left_on=c.raterParticipantIdKey,
-    right_on=c.noteAuthorParticipantIdKey,
-    how="outer",
-  ).drop(columns=[c.noteAuthorParticipantIdKey])
+  with c.time_block("Contributor State: Combining"):
+    # We merge the current enrollment state
+    contributorScoresWithEnrollment = contributorScores.merge(
+      userEnrollment, left_on=c.raterParticipantIdKey, right_on=c.participantIdKey, how="outer"
+    )
 
-  # We merge the current enrollment state
-  contributorScoresWithEnrollment = contributorScores.merge(
-    userEnrollment, left_on=c.raterParticipantIdKey, right_on=c.participantIdKey, how="outer"
-  )
+    # We set the new contributor state.
+    contributorScoresWithEnrollment[c.timestampOfLastStateChange] = c.epochMillis
+    contributorScoresWithEnrollment.fillna(
+      inplace=True,
+      value={
+        c.successfulRatingNeededToEarnIn: c.ratingImpactForEarnIn,
+        c.enrollmentState: c.newUser,
+        c.isEmergingWriterKey: False,
+      },
+    )
+    contributorScoresWithEnrollment[c.ratingImpact] = (
+      contributorScoresWithEnrollment[c.successfulRatingTotal]
+      - contributorScoresWithEnrollment[c.unsuccessfulRatingTotal]
+      # 2x penalty for helpful ratings on CRNH notes
+      - contributorScoresWithEnrollment[c.unsuccessfulRatingNotHelpfulCount]
+    )
 
-  # We set the new contributor state.
-  contributorScoresWithEnrollment[c.timestampOfLastStateChange] = c.epochMillis
-  contributorScoresWithEnrollment.fillna(
-    inplace=True,
-    value={
-      c.successfulRatingNeededToEarnIn: c.ratingImpactForEarnIn,
-      c.enrollmentState: c.newUser,
-      c.isEmergingWriterKey: False,
-    },
-  )
-  contributorScoresWithEnrollment[c.ratingImpact] = (
-    contributorScoresWithEnrollment[c.successfulRatingTotal]
-    - contributorScoresWithEnrollment[c.unsuccessfulRatingTotal]
-  )
+    contributorScoresWithEnrollment.loc[
+      should_earn_in(contributorScoresWithEnrollment), c.enrollmentState
+    ] = c.enrollmentStateToThrift[c.earnedIn]
+    contributorScoresWithEnrollment.loc[
+      is_at_risk(contributorScoresWithEnrollment), c.enrollmentState
+    ] = c.enrollmentStateToThrift[c.atRisk]
+    contributorScoresWithEnrollment.loc[
+      is_earned_out(contributorScoresWithEnrollment), c.enrollmentState
+    ] = c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
 
-  contributorScoresWithEnrollment.loc[
-    should_earn_in(contributorScoresWithEnrollment), c.enrollmentState
-  ] = c.enrollmentStateToThrift[c.earnedIn]
-  contributorScoresWithEnrollment.loc[
-    is_at_risk(contributorScoresWithEnrollment), c.enrollmentState
-  ] = c.enrollmentStateToThrift[c.atRisk]
-  contributorScoresWithEnrollment.loc[
-    is_earned_out(contributorScoresWithEnrollment), c.enrollmentState
-  ] = c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
+    contributorScoresWithEnrollment.loc[
+      is_earned_in(contributorScoresWithEnrollment), c.enrollmentState
+    ] = c.enrollmentStateToThrift[c.earnedIn]
 
-  contributorScoresWithEnrollment.loc[
-    is_earned_in(contributorScoresWithEnrollment), c.enrollmentState
-  ] = c.enrollmentStateToThrift[c.earnedIn]
+    contributorScoresWithEnrollment[c.enrollmentState] = contributorScoresWithEnrollment[
+      c.enrollmentState
+    ].map(_transform_to_thrift_code)
 
-  contributorScoresWithEnrollment[c.enrollmentState] = contributorScoresWithEnrollment[
-    c.enrollmentState
-  ].map(_transform_to_thrift_code)
-
-  # This addresses an issue in the TSV dump in HDFS getting corrupted. It removes lines
-  # users that do not have an id.
-  contributorScoresWithEnrollment.dropna(subset=[c.raterParticipantIdKey], inplace=True)
+    # This addresses an issue in the TSV dump in HDFS getting corrupted. It removes lines
+    # users that do not have an id.
+    contributorScoresWithEnrollment.dropna(subset=[c.raterParticipantIdKey], inplace=True)
 
   if logging:
     print("Enrollment State")
