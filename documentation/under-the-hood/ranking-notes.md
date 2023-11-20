@@ -134,6 +134,17 @@ After the first round matrix factorization described above, we run another matri
 
 Thus, having a high note intercept score in this model indicates that a diverse set of raters found the note to be harassment or abuse. If the score is above a very high threshold (2.5), we penalize each rater who has rated the note helpful, even if they did so after it received its final status, by subtracting 10 from the numerator of their rater helpfulness score as described in [Rater Helpfulness Score](./contributor-scores.md#rater-helpfulness-score).
 
+## Note Diligence Score
+
+Community Notes strives for content that X users find broadly helpful, clear and accurate.
+Note Diligence scoring applies an approach similar to the Helpfulness matrix factorization with an explicit focus on note accuracy and sourcing.
+It looks at use of the rating tags “Sources not included or unreliable”, “Sources do not support note” and “Incorrect information” to identify notes that people from different viewpoints agree might have these issues.
+Notes that it scores above a certain threshold are not shown on X.
+
+It works by introducing a rater weight component which gives greater rating weight to raters who have a demonstrated pattern of identifying notes that people from different points of view agree have issues with accuracy or source support.
+Rater weights are determined through a gradient descent process which adds a dimension to the matrix factorization that explicitly captures affinity for identifying notes agreed to have potential diligence issues.
+Once the algorithm has learned rater weights, it uses the weights to augment the loss function to increase the impact of raters who have consistently demonstrated this type of diligence in ratings.
+
 ## CRH Inertia
 
 The scoring algorithm updates the Helpful status of each note during every invocation.
@@ -231,6 +242,12 @@ For not-helpful notes:
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**November 17, 2023**
+- Introduce note diligence scoring through a novel matrix factorization algorithm incorporating rater weights.
+
+**November 13, 2023**
+- Introduce tag-consensus harassment-abuse note scoring to decrease rater helpfulness for raters who have rated notes as Helpful where there is a consensus of harrassemnt or abuse.
 
 **October 20, 2023**
 - Expand filtering applied to "Incorrect" tags to raise the standard for Helpfulness and reduce risk of potentially incorrect Helpful notes.
