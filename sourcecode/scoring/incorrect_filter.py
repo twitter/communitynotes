@@ -1,6 +1,6 @@
 """Utilites for tag based scoring logic."""
 
-from typing import List, Optional
+from typing import Optional
 
 from . import constants as c
 
@@ -88,12 +88,9 @@ def _get_incorrect_tfidf_ratio(
 
 
 def get_incorrect_aggregates(
-  ratingsOrig: pd.DataFrame,
+  ratings: pd.DataFrame,
   noteParams: pd.DataFrame,
   raterParams: pd.DataFrame,
-  applyFilter: bool = True,
-  extraCols: List[str] = [],
-  colSuffix: str = "",
 ) -> pd.DataFrame:
   """Computes non-helpful tag aggregates for each note.
 
@@ -101,25 +98,12 @@ def get_incorrect_aggregates(
     ratings: initial input ratings DF containing all ratings
     noteParams: MF results for notes
     raterParams: MF results for raters
-    applyFilter: bool indicating whether to filter included ratings based on factor
-    extraCols: list of tags to include along with notHelpfulIncorrect
-    colSuffix: str which will be added to the end of each column other than noteId
 
   Returns:
     pd.DataFrame containing one row per note that was scored during MF.  Columns correspond to
     aggregates for the Not-Helpful tags, including raw totals, totals adjusted based on the
     distance between the rater and the note and ratios based on the adjusted weight totals.
   """
-  # augment notHelpfulIncorrect with any additional columns
-  ratings = ratingsOrig.copy()
-  if extraCols:
-    for column in extraCols:
-      assert column is not c.notHelpfulIncorrectTagKey
-      ratings[c.notHelpfulIncorrectTagKey] += ratings[column]
-    ratings[c.notHelpfulIncorrectTagKey] = (
-      ratings[c.notHelpfulIncorrectTagKey].clip(0, 1).astype(np.int64)
-    )
-
   # consider only ratings with some NH tag
   notHelpfulTaggedRatings = ratings.loc[ratings[c.notHelpfulTagsTSVOrder].sum(axis=1) > 0]
 
@@ -135,23 +119,16 @@ def get_incorrect_aggregates(
     )
   )
 
-  interval_filter = None
-  if applyFilter:
-    interval_filter = (
-      np.abs(
-        ratings_w_user_totals[c.internalRaterFactor1Key].clip(-0.4, 0.4)
-        - ratings_w_user_totals[c.internalNoteFactor1Key].clip(-0.4, 0.4)
-      )
-      < c.intervalHalfWidth
+  interval_filter = (
+    np.abs(
+      ratings_w_user_totals[c.internalRaterFactor1Key].clip(-0.4, 0.4)
+      - ratings_w_user_totals[c.internalNoteFactor1Key].clip(-0.4, 0.4)
     )
+    < c.intervalHalfWidth
+  )
 
   incorrectAggregates = _get_incorrect_tfidf_ratio(
     ratings_w_user_totals, interval_filter, "_interval"
   )
-
-  # apply column suffix
-  columns = incorrectAggregates.columns
-  cols = [f"{col}{colSuffix}" if col is not c.noteIdKey else col for col in columns]
-  incorrectAggregates.columns = cols
 
   return incorrectAggregates

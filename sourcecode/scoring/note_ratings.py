@@ -431,6 +431,8 @@ def compute_scored_notes(
 
   # Merge with noteParams as necessary
   noteParamsColsToKeep = [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
+  if finalRound:
+    noteParamsColsToKeep += [c.lowDiligenceInterceptKey]
   for col in c.noteParameterUncertaintyTSVColumns:
     if col in noteParams.columns:
       noteParamsColsToKeep.append(col)
@@ -483,15 +485,6 @@ def compute_scored_notes(
       ratings, noteParams, raterParams
     )
     noteStats = noteStats.merge(incorrectAggregates, on=c.noteIdKey, how="outer")
-    incorrectAggregatesWide = incorrect_filter.get_incorrect_aggregates(
-      ratings,
-      noteParams,
-      raterParams,
-      applyFilter=False,
-      extraCols=[c.notHelpfulSourcesMissingOrUnreliableTagKey, c.notHelpfulIrrelevantSourcesTagKey],
-      colSuffix=c.wideIncorrectFilterSuffix,
-    )
-    noteStats = noteStats.merge(incorrectAggregatesWide, on=c.noteIdKey, how="outer")
 
     # Add tag filtering and sticky scoring logic.
     rules.extend(
@@ -542,17 +535,12 @@ def compute_scored_notes(
           voteThreshold=3,
           weightedTotalVotes=2.5,
           superThreshold=None,
-          colSuffix="",
         ),
-        scoring_rules.FilterIncorrect(
-          RuleID.INCORRECT_OUTLIER_WIDE,
-          {RuleID.TAG_OUTLIER},
+        scoring_rules.FilterLowDiligence(
+          RuleID.LOW_DILIGENCE,
+          {RuleID.INCORRECT_OUTLIER},
           c.needsMoreRatings,
-          tagThreshold=4,
-          voteThreshold=5,
-          weightedTotalVotes=4.0,
-          superThreshold=0.5,
-          colSuffix=c.wideIncorrectFilterSuffix,
+          interceptThreshold=0.217,
         ),
       ]
     )

@@ -23,6 +23,9 @@ class MFExpansionScorer(MFBaseScorer):
       saveIntermediateState=saveIntermediateState,
     )
 
+  def get_name(self):
+    return "MFExpansionScorer"
+
   def _get_note_col_mapping(self) -> Dict[str, str]:
     """Returns a dict mapping default note column names to custom names for a specific model."""
     return {
