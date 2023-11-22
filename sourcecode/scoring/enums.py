@@ -1,4 +1,4 @@
-from enum import auto, Enum
+from enum import Enum, auto
 from typing import Set
 
 
@@ -10,6 +10,7 @@ class Scorers(Enum):
   # Note that the MFGroupScorer value controls whether *all* group scorers are instantiated,
   # not just a single MFGroupScorer instance.
   MFGroupScorer = auto()
+  MFExpansionPlusScorer = auto()
 
 
 def scorers_from_csv(csv: str) -> Set[Scorers]:

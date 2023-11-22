@@ -7,6 +7,8 @@ import pandas as pd
 def train_tag_model(
   ratings: pd.DataFrame,
   tag: str = c.notHelpfulSpamHarassmentOrAbuseTagKey,
+  helpfulModelNoteParams: pd.DataFrame = None,
+  helpfulModelRaterParams: pd.DataFrame = None,
   useSigmoidCrossEntropy: bool = True,
 ):
   print(f"-------------------Training for tag {tag}-------------------")
@@ -33,8 +35,32 @@ def train_tag_model(
     labelCol=labelColName,
     useSigmoidCrossEntropy=useSigmoidCrossEntropy,
     posWeight=posWeight,
+    initLearningRate=2.0,
   )
-  noteParams, raterParams, globalBias = mf.run_mf(ratingDataForTag)
+
+  # Initialize model with note and user factors from the helpfulness model, to improve stability.
+  # But set intercepts to 0, since it's a different outcome variable than helpfulness.
+  if helpfulModelNoteParams is not None:
+    assert c.internalNoteInterceptKey in helpfulModelNoteParams.columns
+    helpfulModelNoteParams = helpfulModelNoteParams.copy()
+    helpfulModelNoteParams[c.internalNoteInterceptKey] = 0.0
+    helpfulModelNoteParams[c.internalNoteFactor1Key] = (
+      2.0 * helpfulModelNoteParams[c.internalNoteFactor1Key]
+    )
+  if helpfulModelRaterParams is not None:
+    assert c.internalRaterInterceptKey in helpfulModelRaterParams.columns
+    helpfulModelRaterParams = helpfulModelRaterParams.copy()
+    helpfulModelRaterParams[c.internalRaterInterceptKey] = 0.0
+    helpfulModelRaterParams[c.internalRaterFactor1Key] = (
+      2.0 * helpfulModelRaterParams[c.internalRaterFactor1Key]
+    )
+
+  noteParams, raterParams, globalBias = mf.run_mf(
+    ratingDataForTag,
+    userInit=helpfulModelRaterParams,
+    noteInit=helpfulModelNoteParams,
+  )
+
   noteParams.columns = [col.replace("internal", "harassment") for col in noteParams.columns]
   raterParams.columns = [col.replace("internal", "harassment") for col in raterParams.columns]
   return noteParams, raterParams, globalBias

@@ -10,6 +10,13 @@ import pandas as pd
 # Number of MFGroupScorer objects we expect to instantiate
 groupScorerCount = 13
 
+# Mapping of how many threads to assign to each group scorer
+_groupScorerParalleism = {
+  # Group model 13 is larger and benefits from more threads.
+  # Others can default to 4.
+  13: 8
+}
+
 
 def _coalesce_columns(df: pd.DataFrame, columnPrefix: str) -> pd.DataFrame:
   """Condense all columns beginning with columnPrefix into a single column.
@@ -111,7 +118,11 @@ class MFGroupScorer(MFBaseScorer):
         for the model to be active
     """
     super().__init__(
-      seed, pseudoraters, useStableInitialization=False, saveIntermediateState=saveIntermediateState
+      seed,
+      pseudoraters,
+      useStableInitialization=False,
+      saveIntermediateState=saveIntermediateState,
+      threads=_groupScorerParalleism.get(groupNumber, 4),
     )
     assert groupNumber > 0, "groupNumber must be positive.  0 is reserved for unassigned."
     assert groupNumber <= groupScorerCount, "groupNumber exceeds maximum expected groups."

@@ -16,6 +16,7 @@ from . import constants as c, contributor_state, note_ratings, note_status_histo
 from .enums import Scorers
 from .mf_base_scorer import MFBaseScorer
 from .mf_core_scorer import MFCoreScorer
+from .mf_expansion_plus_scorer import MFExpansionPlusScorer
 from .mf_expansion_scorer import MFExpansionScorer
 from .mf_group_scorer import MFGroupScorer, coalesce_group_models, groupScorerCount
 from .process_data import CommunityNotesDataLoader
@@ -49,17 +50,24 @@ def _get_scorers(
 
   if enabledScorers is None or Scorers.MFCoreScorer in enabledScorers:
     scorers[Scorers.MFCoreScorer] = [
-      MFCoreScorer(seed, pseudoraters, useStableInitialization=useStableInitialization)
+      MFCoreScorer(seed, pseudoraters, useStableInitialization=useStableInitialization, threads=16)
     ]
   if enabledScorers is None or Scorers.MFExpansionScorer in enabledScorers:
     scorers[Scorers.MFExpansionScorer] = [
-      MFExpansionScorer(seed, useStableInitialization=useStableInitialization)
+      MFExpansionScorer(seed, useStableInitialization=useStableInitialization, threads=16)
+    ]
+  if enabledScorers is None or Scorers.MFExpansionPlusScorer in enabledScorers:
+    scorers[Scorers.MFExpansionPlusScorer] = [
+      MFExpansionPlusScorer(seed, useStableInitialization=useStableInitialization, threads=16)
     ]
   if enabledScorers is None or Scorers.MFGroupScorer in enabledScorers:
     # Note that index 0 is reserved, corresponding to no group assigned, so scoring group
     # numbers begin with index 1.
     scorers[Scorers.MFGroupScorer] = [
-      MFGroupScorer(groupNumber=i, seed=seed) for i in range(1, groupScorerCount + 1)
+      # Scoring Group 13 is currently the largest by far, so total runtime benefits from
+      # adding the group scorers in descending order so we start work on Group 13 first.
+      MFGroupScorer(groupNumber=i, seed=seed)
+      for i in range(groupScorerCount, 0, -1)
     ]
 
   return scorers
@@ -299,6 +307,17 @@ def meta_score(
       scoring_rules.DefaultRule(RuleID.META_INITIAL_NMR, set(), c.needsMoreRatings)
     ]
     # Only attach meta-scoring rules for models which actually run.
+    if enabledScorers is None or Scorers.MFExpansionPlusScorer in enabledScorers:
+      # The MFExpansionPlusScorer should score a disjoint set of notes from MFExpansionScorer
+      # and MFCoreScorer because it should score notes by EXPANSION_PLUS writers and should be
+      # the only model to score notes by EXPANSION_PLUS writers.  This ordering is safe, where if
+      # there is any bug and a note is scored by MFExpansionPlusScorer and another scorer, then
+      # MFExpansionPlusScorer will have the lowest priority.
+      rules.append(
+        scoring_rules.ApplyModelResult(
+          RuleID.EXPANSION_PLUS_MODEL, {RuleID.META_INITIAL_NMR}, c.expansionPlusRatingStatusKey
+        )
+      )
     if enabledScorers is None or Scorers.MFExpansionScorer in enabledScorers:
       rules.append(
         scoring_rules.ApplyModelResult(
@@ -632,6 +651,10 @@ def run_scoring(
     maxReruns,
     runParallel=runParallel,
     dataLoader=dataLoader,
+    # Restrict parallelism to 4 processes.  Memory usage scales linearly with the number of
+    # processes and 4 is enough that the limiting factor continues to be the longest running
+    # scorer (i.e. we would not finish faster with >4 worker processes.)
+    maxWorkers=4,
   )
 
   postScoringStartTime = time.time()

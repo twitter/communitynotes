@@ -38,6 +38,7 @@ class MFBaseScorer(Scorer):
     inertiaDelta: float = 0.01,
     useStableInitialization: bool = True,
     saveIntermediateState: bool = False,
+    threads: int = c.defaultNumThreads,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -72,8 +73,9 @@ class MFBaseScorer(Scorer):
       inertiaDelta: Minimum amount which a note that has achieve CRH status must drop below the
         applicable threshold to lose CRH status.
       useStableInitialization: whether to use a specific modeling group of users to stably initialize
+      threads: number of threads to use for intra-op parallelism in pytorch
     """
-    super().__init__(seed)
+    super().__init__(seed, threads)
     self._pseudoraters = pseudoraters
     self._minNumRatingsPerRater = minNumRatingsPerRater
     self._minNumRatersPerNote = minNumRatersPerNote
@@ -385,7 +387,10 @@ class MFBaseScorer(Scorer):
 
     with self.time_block("Harassment tag consensus"):
       harassmentAbuseNoteParams, _, _ = tag_consensus.train_tag_model(
-        ratingsHelpfulnessScoreFilteredPreHarassmentFilter, c.notHelpfulSpamHarassmentOrAbuseTagKey
+        ratingsHelpfulnessScoreFilteredPreHarassmentFilter,
+        c.notHelpfulSpamHarassmentOrAbuseTagKey,
+        noteParamsUnfiltered,
+        raterParamsUnfiltered,
       )
 
     # Assigns contributor (author & rater) helpfulness bit based on (1) performance

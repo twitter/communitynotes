@@ -1,9 +1,14 @@
 from contextlib import contextmanager
+import os
 import time
 
 import numpy as np
 import pandas as pd
 
+
+# Default number of threads to use in torch if os.cpu_count() is unavailable
+# and no value is specified.
+defaultNumThreads = os.cpu_count() or 8
 
 # Store the timestamp at which the constants module is initialized.  Note
 # that module initialization occurs only once regardless of how many times
@@ -123,6 +128,10 @@ expansionNoteFactor1Key = "expansionNoteFactor1"
 expansionRatingStatusKey = "expansionRatingStatus"
 expansionNoteInterceptMaxKey = "expansionNoteInterceptMax"
 expansionNoteInterceptMinKey = "expansionNoteInterceptMin"
+# ExpansionPlus Model
+expansionPlusNoteInterceptKey = "expansionPlusNoteIntercept"
+expansionPlusNoteFactor1Key = "expansionPlusNoteFactor1"
+expansionPlusRatingStatusKey = "expansionPlusRatingStatus"
 # Coverage Model
 coverageNoteInterceptKey = "coverageNoteIntercept"
 coverageNoteFactor1Key = "coverageNoteFactor1"
@@ -392,6 +401,7 @@ emergingRatingCount = 10
 aggregateRatingReceivedTotal = "aggregateRatingReceivedTotal"
 core = "CORE"
 expansion = "EXPANSION"
+expansionPlus = "EXPANSION_PLUS"
 
 userEnrollmentTSVColumnsAndTypes = [
   (participantIdKey, str),
@@ -519,6 +529,9 @@ noteModelOutputTSVColumnsAndTypes = [
   (modelingGroupKey, np.float64),
   (numRatingsKey, np.int64),
   (timestampMillisOfNoteCurrentLabelKey, np.double),
+  (expansionPlusNoteInterceptKey, np.double),
+  (expansionPlusNoteFactor1Key, np.double),
+  (expansionPlusRatingStatusKey, str),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
