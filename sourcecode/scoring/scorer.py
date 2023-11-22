@@ -3,7 +3,10 @@ from contextlib import contextmanager
 import time
 from typing import Dict, List, Optional, Tuple
 
+from . import constants as c
+
 import pandas as pd
+import torch
 
 
 class Scorer(ABC):
@@ -15,13 +18,14 @@ class Scorer(ABC):
   exactly which columns are output and which are dropped.
   """
 
-  def __init__(self, seed: Optional[int] = None) -> None:
+  def __init__(self, seed: Optional[int] = None, threads: int = c.defaultNumThreads) -> None:
     """Configure a new Scorer object.
 
     Args:
       seed (int, optional): if not None, seed value to ensure deterministic execution
     """
     self._seed = seed
+    self._threads = threads
 
   @contextmanager
   def time_block(self, label):
@@ -147,6 +151,8 @@ class Scorer(ABC):
         helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
         auxiliaryNoteInfo: one row per note containing adjusted and ratio tag values
     """
+    torch.set_num_threads(self._threads)
+    print(f"Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}")
     # Transform input, run core scoring algorithm, transform output.
     with self.time_block("Filter input"):
       ratings, noteStatusHistory = self._filter_input(
