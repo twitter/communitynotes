@@ -164,6 +164,7 @@ Each variation uses the same modeling logic and parameters, but applies the mode
 
 - The _Core_ model determines status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
 - The _Expansion_ model runs the same ranking algorithm with the same parameters as the Core model, with the difference that the Expansion model includes all notes with all ratings across Core and Expansion areas.
+- The _ExpansionPlus_ model functions similarity to the _Expansion_ model, extending the reach of Community Notes to additional areas.
 - The _Group_ models operate on smaller segments of the data to specifically improve note ranking in non-English speaking communities.  Users are assigned to modeling groups (e.g. based on region, country or language) and then we run a separate matrix factorization for each group.  The matrix factorization includes all ratings from users in the modeling group, but the scoring results only impact notes which were written by a member of the modeling group and have at least 80% of ratings from within the modeling group.  We initially launched with 12 Group models and plan to monitor and adjust as Community Notes continues to grow.
 
 In cases where a note is ranked by both the Core and Expansion models the Core model is always authoritative.
@@ -175,6 +176,7 @@ When using X, you can see which model computed the status a given note by lookin
 It might list one of the following models:
 - CoreModel (vX.X). The _Core_ model described above.
 - ExpansionModel (vX.X). The _Expansion_ model described above.
+- ExpansionPlusModel (vX.X).  The _ExpansionPlus_ model described above.
 - GroupModelN (vX.X). The Nth instantiation of the _Group_ model described above.
 - ScoringDriftGuard. This is a scoring rule that locks note statuses after two weeks. See the [next section](#status-stabilization) for more details.
 
@@ -242,6 +244,9 @@ For not-helpful notes:
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**November 22, 2023**
+- Launch ExpansionPlus model.
 
 **November 17, 2023**
 - Introduce note diligence scoring through a novel matrix factorization algorithm incorporating rater weights.
