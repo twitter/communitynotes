@@ -410,20 +410,11 @@ userEnrollmentTSVColumnsAndTypes = [
   (timestampOfLastStateChange, np.int64),
   (timestampOfLastEarnOut, np.double),  # double because nullable.
   (modelingPopulationKey, str),
+  (modelingGroupKey, np.float64),
 ]
 userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
-
-# TODO: delete expanded user enrollment definition once modeling group is fully rolled out
-userEnrollmentExpandedTSVColumnsAndTypes = userEnrollmentTSVColumnsAndTypes + [
-  (modelingGroupKey, np.float64)
-]
-userEnrollmentExpandedTSVColumns = [col for (col, _) in userEnrollmentExpandedTSVColumnsAndTypes]
-userEnrollmentExpandedTSVTypes = [dtype for (_, dtype) in userEnrollmentExpandedTSVColumnsAndTypes]
-userEnrollmentExpandedTSVTypeMapping = {
-  col: dtype for (col, dtype) in userEnrollmentExpandedTSVColumnsAndTypes
-}
 
 noteInterceptMaxKey = "internalNoteIntercept_max"
 noteInterceptMinKey = "internalNoteIntercept_min"
