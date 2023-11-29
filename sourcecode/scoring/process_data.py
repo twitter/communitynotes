@@ -1,3 +1,4 @@
+import os
 from abc import ABC, abstractmethod
 from io import StringIO
 from typing import Dict, List, Optional, Tuple
@@ -71,9 +72,19 @@ def tsv_parser(
     raise ValueError(f"Invalid input: {e}")
 
 
-def tsv_reader(path: str, mapping, columns, header=False):
+def tsv_reader_single(path: str, mapping, columns, header=False, parser=tsv_parser):
+  """Read a single TSV file."""
   with open(path, "r") as handle:
     return tsv_parser(handle.read(), mapping, columns, header)
+
+
+def tsv_reader(path: str, mapping, columns, header=False, parser=tsv_parser):
+  """Read a single TSV file or a directory of TSV files."""
+  if os.path.isdir(path):
+    dfs = [tsv_reader_single(os.path.join(path, filename), mapping, columns, header, parser) for filename in os.listdir(path) if filename.endswith(".tsv")]
+    return pd.concat(dfs)
+  else:
+    return tsv_reader_single(path, mapping, columns, header, parser)
 
 
 def read_from_tsv(
