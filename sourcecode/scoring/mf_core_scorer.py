@@ -173,10 +173,4 @@ class MFCoreScorer(MFBaseScorer):
     noteStatusHistory = noteStatusHistory[noteStatusHistory[c.noteIdKey].isin(coreNotes)]
     print(f"  Core ratings: {len(ratings)}")
 
-    # Guarantee ordering of ratings and noteStatusHistory remains the same relative to the
-    # original ordering.  This code exists to stabilize system test results and can be removed
-    # once we're confident the rest of the implementation is correct.
-    ratings = ratings.sort_values([c.noteIdKey, c.raterParticipantIdKey])
-    noteStatusHistory = noteStatusHistory.sort_values(c.noteIdKey)
-
     return ratings, noteStatusHistory

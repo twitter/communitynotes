@@ -153,20 +153,6 @@ class MFExpansionScorer(MFBaseScorer):
     )
     print(f"  Ratings after EXPANSION_PLUS notes filter: {len(ratings)}")
 
-    # Guarantee ordering of ratings and noteStatusHistory remains the same relative to the
-    # original ordering.  This code exists to stabilize system test results and can be removed
-    # once we're confident the rest of the implementation is correct.
-    ratingOrder = ratingsOrig[[c.noteIdKey, c.raterParticipantIdKey]].reset_index(drop=False)
-    numRatings = len(ratings)
-    ratings = ratings.merge(ratingOrder, on=[c.noteIdKey, c.raterParticipantIdKey], how="inner")
-    assert len(ratings) == numRatings, f"mismatch: {len(ratings)} != {numRatings}"
-    ratings = ratings.sort_values("index").drop(columns="index")
-    nshOrder = noteStatusHistoryOrig[[c.noteIdKey]].reset_index(drop=False)
-    numNotes = len(noteStatusHistory)
-    noteStatusHistory = noteStatusHistory.merge(nshOrder, on=c.noteIdKey, how="inner")
-    assert len(noteStatusHistory) == numNotes, f"mismatch: {len(noteStatusHistory)} != {numNotes}"
-    noteStatusHistory = noteStatusHistory.sort_values("index").drop(columns="index")
-
     return ratings.drop(columns=_EXPANSION_PLUS_BOOL), noteStatusHistory.drop(
       columns=_EXPANSION_PLUS_BOOL
     )

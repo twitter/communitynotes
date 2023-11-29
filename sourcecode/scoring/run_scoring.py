@@ -50,15 +50,15 @@ def _get_scorers(
 
   if enabledScorers is None or Scorers.MFCoreScorer in enabledScorers:
     scorers[Scorers.MFCoreScorer] = [
-      MFCoreScorer(seed, pseudoraters, useStableInitialization=useStableInitialization, threads=16)
+      MFCoreScorer(seed, pseudoraters, useStableInitialization=useStableInitialization, threads=12)
     ]
   if enabledScorers is None or Scorers.MFExpansionScorer in enabledScorers:
     scorers[Scorers.MFExpansionScorer] = [
-      MFExpansionScorer(seed, useStableInitialization=useStableInitialization, threads=16)
+      MFExpansionScorer(seed, useStableInitialization=useStableInitialization, threads=12)
     ]
   if enabledScorers is None or Scorers.MFExpansionPlusScorer in enabledScorers:
     scorers[Scorers.MFExpansionPlusScorer] = [
-      MFExpansionPlusScorer(seed, useStableInitialization=useStableInitialization, threads=16)
+      MFExpansionPlusScorer(seed, useStableInitialization=useStableInitialization, threads=12)
     ]
   if enabledScorers is None or Scorers.MFGroupScorer in enabledScorers:
     # Note that index 0 is reserved, corresponding to no group assigned, so scoring group
@@ -651,10 +651,10 @@ def run_scoring(
     maxReruns,
     runParallel=runParallel,
     dataLoader=dataLoader,
-    # Restrict parallelism to 4 processes.  Memory usage scales linearly with the number of
-    # processes and 4 is enough that the limiting factor continues to be the longest running
+    # Restrict parallelism to 6 processes.  Memory usage scales linearly with the number of
+    # processes and 6 is enough that the limiting factor continues to be the longest running
     # scorer (i.e. we would not finish faster with >4 worker processes.)
-    maxWorkers=4,
+    maxWorkers=6,
   )
 
   postScoringStartTime = time.time()
