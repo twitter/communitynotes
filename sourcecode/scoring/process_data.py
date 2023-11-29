@@ -1,3 +1,4 @@
+import os
 from abc import ABC, abstractmethod
 from io import StringIO
 from typing import Dict, List, Optional, Tuple
@@ -93,12 +94,22 @@ def user_enrollment_parser(rawTSV: str, header: bool) -> pd.DataFrame:
 
 
 # TODO: remove support for specifying a custom parser once modelingGroup is fully rolled out
-def tsv_reader(path: str, mapping, columns, header=False, parser=tsv_parser):
+# read a single tsv file
+def tsv_reader_single(path: str, mapping, columns, header=False, parser=tsv_parser):
   with open(path, "r") as handle:
     if parser == tsv_parser:
       return parser(handle.read(), mapping, columns, header)
     else:
       return parser(handle.read(), header)
+
+
+# read a single tsv file or a directory of tsv files
+def tsv_reader(path: str, mapping, columns, header=False, parser=tsv_parser):
+  if os.path.isdir(path):
+    dfs = [tsv_reader_single(os.path.join(path, filename), mapping, columns, header, parser) for filename in os.listdir(path) if filename.endswith(".tsv")]
+    return pd.concat(dfs)
+  else:
+    return tsv_reader_single(path, mapping, columns, header, parser)
 
 
 def read_from_tsv(
