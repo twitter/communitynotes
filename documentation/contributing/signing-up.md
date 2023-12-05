@@ -40,7 +40,9 @@ We want anyone to be able to contribute to Community Notes, and may remove or mo
 
 ## Admissions
 
-Our goal is to admit applicants on a periodic basis. We will admit all contributors who meet the required criteria, but if we have more applicants than slots, we will randomly admit accounts, prioritizing those more likely to participate due to having been recently active on X, and those that tend to follow and engage with different posts than existing contributors do — so as to reduce the likelihood that contributors would be predominantly from one ideology, background, or interest space.
+Our goal is to admit applicants on a periodic basis. We will admit all contributors who meet the required criteria, but if we have more applicants than slots, we will randomly admit accounts — so as to reduce the likelihood that contributors would be predominantly from one ideology, background, or interest space. 
+
+Applicants from countries with larger user bases may experience longer waiting times between signup and admission, as random admissions are drawn from country-specific waitlists. 
 
 ## Contributions are public
 
