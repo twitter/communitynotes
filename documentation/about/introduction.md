@@ -43,7 +43,7 @@ X doesn’t write, rate or moderate notes (unless they break X's [Rules](https:/
 {% stack %}
 **Open-source and transparent**
 
-It’s important for people to understand how Community Notes works, and to be able to help shape it. The program is built on transparency: all contributions are published daily, and our ranking algorithm can be inspected by anyone. Learn more how it works [under the hood](../under-the-hood/download-data.md).
+It’s important for people to understand how Community Notes works, and to be able to help shape it. The program is built on transparency: all contributions are published daily, and our ranking algorithm can be inspected by anyone. Learn more how it works [under the hood](https://github.com/twitter/communitynotes/blob/main/documentation/under-the-hood/download-data.md).
 {% /stack %}
 {% /inline %}
 
