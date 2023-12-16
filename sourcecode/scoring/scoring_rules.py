@@ -252,7 +252,7 @@ class FilterTagOutliers(ScoringRule):
       adjustedRatioColumn = f"{adjustedColumn}{c.ratioSuffix}"
       print(tag)
       print(f"  ratio threshold: {thresholds[adjustedRatioColumn]}")
-      if tag == c.notHelpfulHardToUnderstandKey or tag == c.notHelpfulNoteNotNeededKey:
+      if tag == c.notHelpfulHardToUnderstandKey:
         print(f"outlier filtering disabled for tag: {tag}")
         continue
       tagFilteredNotes = crhStats[

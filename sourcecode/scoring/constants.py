@@ -308,21 +308,25 @@ noteTSVColumns = [col for (col, dtype) in noteTSVColumnsAndTypes]
 noteTSVTypes = [dtype for (col, dtype) in noteTSVColumnsAndTypes]
 noteTSVTypeMapping = {col: dtype for (col, dtype) in noteTSVColumnsAndTypes}
 
+versionKey = "version"
+agreeKey = "agree"
+disagreeKey = "disagree"
+ratedOnTweetIdKey = "ratedOnTweetId"
 ratingTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
     (raterParticipantIdKey, object),
     (createdAtMillisKey, np.int64),
-    ("version", np.int64),
-    ("agree", np.int64),
-    ("disagree", np.int64),
+    (versionKey, np.int64),
+    (agreeKey, np.int64),
+    (disagreeKey, np.int64),
     (helpfulKey, np.int64),
     (notHelpfulKey, np.int64),
     (helpfulnessLevelKey, object),
   ]
   + helpfulTagsAndTypesTSVOrder
   + notHelpfulTagsAndTypesTSVOrder
-  + [("ratedOnTweetId", np.int64)]
+  + [(ratedOnTweetIdKey, np.int64)]
 )
 
 ratingTSVColumns = [col for (col, dtype) in ratingTSVColumnsAndTypes]

@@ -1,6 +1,6 @@
-import os
 from abc import ABC, abstractmethod
 from io import StringIO
+import os
 from typing import Dict, List, Optional, Tuple
 
 from . import constants as c, note_status_history
@@ -81,7 +81,11 @@ def tsv_reader_single(path: str, mapping, columns, header=False, parser=tsv_pars
 def tsv_reader(path: str, mapping, columns, header=False, parser=tsv_parser):
   """Read a single TSV file or a directory of TSV files."""
   if os.path.isdir(path):
-    dfs = [tsv_reader_single(os.path.join(path, filename), mapping, columns, header, parser) for filename in os.listdir(path) if filename.endswith(".tsv")]
+    dfs = [
+      tsv_reader_single(os.path.join(path, filename), mapping, columns, header, parser)
+      for filename in os.listdir(path)
+      if filename.endswith(".tsv")
+    ]
     return pd.concat(dfs)
   else:
     return tsv_reader_single(path, mapping, columns, header, parser)
