@@ -142,7 +142,7 @@ def train_model(
     raters,
     targets,
     posWeight=posWeight,
-    noteWeightPower=initialNoteWeightPower,
+    noteNormExp=initialNoteWeightPower,
     device=device,
   )
   model.raterReputation.requires_grad_(False)
@@ -190,10 +190,10 @@ def train_model(
     raters,
     targets,
     posWeight=posWeight * posWeightThirdRoundMultiplier,
-    raterReputationTensor=raterReputation,
+    raterReputation=raterReputation,
+    reputationExp=raterWeightPower,
     alpha=alpha,
-    raterWeightPower=raterWeightPower,
-    noteWeightPower=finalNoteWeightPower,
+    noteNormExp=finalNoteWeightPower,
     device=device,
   )
   loss2 = _train_one_round(
