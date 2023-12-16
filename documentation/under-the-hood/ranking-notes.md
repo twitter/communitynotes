@@ -86,7 +86,7 @@ Additionally, because the matrix factorization is re-trained from scratch every 
 
 While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are adding. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirtit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
 
-We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.04, in addition to the rules on the raw intercept values defined in the previous section. We also currently assign notes a "Helpful" status if the min (lower confidence bound) of their intercept is at least 0.35.
+We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.04, in addition to the rules on the raw intercept values defined in the previous section.
 
 ## Tag Outlier Filtering
 
@@ -117,7 +117,7 @@ Notice the following:
 Given the quantities defined above, we modify scoring as follows:
 
 - When the total weight $a_n$ of an tag exceeds 2.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
-- We disregard the "Typos or unclear language" and "Note not needed on this Tweet" tags, which do not relate to note accuracy.
+- We disregard the "Typos or unclear language" tag.
 
 ## Additional Filtering for Incorrect Tags
 
@@ -244,6 +244,9 @@ For not-helpful notes:
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**December 15, 2023**
+- Disable LCB and stop excluding "note not needed" tags from tag filtering.
 
 **November 22, 2023**
 - Launch ExpansionPlus model.
