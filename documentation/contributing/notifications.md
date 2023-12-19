@@ -11,7 +11,7 @@ Sometimes, people read a post before a Community Note appears on it. To give peo
 
 These appear in the notifications tab. They look like this:
 
-![X app with a notification showing someone a note that's been added to a post to which they replied, Liked or Rewteeted](../images/tweet-liked-alert.png)
+![X app with a notification showing someone a note that's been added to a post to which they replied, Liked or reposted](../images/tweet-liked-alert.png)
 
 These notifications are sent when a note has been showing on a post for 24 hours, has been found particularly helpful (indicated by a [note intercept score](../under-the-hood/note-ranking-code.md) of 0.45 or higher), and was written within the past week.
 
