@@ -5,7 +5,6 @@ from typing import Dict, List, Optional, Tuple
 
 from . import constants as c, note_status_history
 
-from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -393,49 +392,6 @@ def filter_ratings(
     )
 
   return ratings
-
-
-def visualize_parameters(noteParams: pd.DataFrame, raterParams: pd.DataFrame) -> None:
-  """Plot/describe note and rater params.
-
-  Args:
-      noteParams (pd.DataFrame)
-      raterParams (pd.DataFrame)
-  """
-  print(noteParams.describe())
-
-  plt.figure()
-  noteParams[c.coreNoteInterceptKey].plot(kind="hist", bins=20)
-
-  plt.figure()
-  noteParams[c.coreNoteFactor1Key].plot(kind="hist", bins=20)
-
-  plt.figure()
-  noteParams.plot(kind="scatter", x=c.coreNoteFactor1Key, y=c.coreNoteInterceptKey, alpha=0.05)
-
-  print(raterParams.describe())
-
-  plt.figure()
-  raterParams[c.coreRaterInterceptKey].plot(kind="hist", bins=20)
-
-  plt.figure()
-  raterParams[c.coreRaterFactor1Key].plot(kind="hist", bins=20)
-
-
-def visualize_helpfulness(helpfulness_scores: pd.DataFrame) -> None:
-  """Plot user helpfulness scores.
-
-  Args:
-      helpfulness_scores (pd.DataFrame)
-  """
-  plt.figure()
-  helpfulness_scores[c.crhCrnhRatioDifferenceKey].plot(kind="hist", bins=20)
-
-  plt.figure()
-  helpfulness_scores[c.meanNoteScoreKey].plot(kind="hist", bins=20)
-
-  plt.figure()
-  helpfulness_scores[c.raterAgreeRatioKey].plot(kind="hist", bins=20)
 
 
 def write_tsv_local(df: pd.DataFrame, path: str) -> None:
