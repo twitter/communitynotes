@@ -1,6 +1,9 @@
 from typing import List, Optional, Tuple
 
-from . import constants as c, helpfulness_scores, matrix_factorization, note_ratings, process_data
+from . import constants as c, helpfulness_scores, note_ratings, process_data, tag_consensus
+from .matrix_factorization.matrix_factorization import MatrixFactorization
+from .matrix_factorization.pseudo_raters import PseudoRatersRunner
+from .reputation_matrix_factorization.diligence_model import get_low_diligence_intercepts
 from .scorer import Scorer
 
 import numpy as np
@@ -30,10 +33,12 @@ class MFBaseScorer(Scorer):
     crnhThresholdNoteFactorMultiplier: float = -0.8,
     crnhThresholdNMIntercept: float = -0.15,
     crnhThresholdUCBIntercept: float = -0.04,
-    crhThresholdLCBIntercept: float = 0.31,
+    crhThresholdLCBIntercept: float = 10.00,
     crhSuperThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
-    weightedTotalVotes: float = 1.0,
+    useStableInitialization: bool = True,
+    saveIntermediateState: bool = False,
+    threads: int = c.defaultNumThreads,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -67,8 +72,10 @@ class MFBaseScorer(Scorer):
         repeated reason tags in not-helpful ratings to achieve CRH status.
       inertiaDelta: Minimum amount which a note that has achieve CRH status must drop below the
         applicable threshold to lose CRH status.
+      useStableInitialization: whether to use a specific modeling group of users to stably initialize
+      threads: number of threads to use for intra-op parallelism in pytorch
     """
-    super().__init__(seed)
+    super().__init__(seed, threads)
     self._pseudoraters = pseudoraters
     self._minNumRatingsPerRater = minNumRatingsPerRater
     self._minNumRatersPerNote = minNumRatersPerNote
@@ -84,8 +91,17 @@ class MFBaseScorer(Scorer):
     self._crhThresholdLCBIntercept = crhThresholdLCBIntercept
     self._crhSuperThreshold = crhSuperThreshold
     self._inertiaDelta = inertiaDelta
-    self._weightedTotalVotes = weightedTotalVotes
-    self._mfRanker = matrix_factorization.MatrixFactorization()
+    self._modelingGroupToInitializeForStability = 13 if useStableInitialization else None
+    self._saveIntermediateState = saveIntermediateState
+    self._mfRanker = MatrixFactorization()
+
+  def get_final_train_error(self) -> Optional[float]:
+    """Return the final training error for the MF ranker."""
+    return self._mfRanker.get_final_train_error()
+
+  def get_crh_threshold(self) -> float:
+    """Return CRH threshold for general scoring logic."""
+    return self._crhThreshold
 
   def get_scored_notes_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the scoredNotes output."""
@@ -114,7 +130,10 @@ class MFBaseScorer(Scorer):
 
   def get_auxiliary_note_info_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the auxiliaryNoteInfo output."""
-    return [c.noteIdKey, c.ratingWeightKey,] + (
+    return [
+      c.noteIdKey,
+      c.ratingWeightKey,
+    ] + (
       c.notHelpfulTagsAdjustedColumns
       + c.notHelpfulTagsAdjustedRatioColumns
       + c.incorrectFilterColumns
@@ -141,8 +160,120 @@ class MFBaseScorer(Scorer):
     """Returns a list of columns which should be excluded from helpfulnessScores output."""
     return []
 
+  def _prepare_data_for_scoring(self, ratings: pd.DataFrame) -> pd.DataFrame:
+    """Prepare data for scoring. This includes filtering out notes and raters which do not meet
+    minimum rating counts, and may be overridden by subclasses to add additional filtering.
+    """
+    return process_data.filter_ratings(
+      ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote
+    )
+
+  def _run_regular_matrix_factorization(self, ratingsForTraining: pd.DataFrame):
+    """Train a matrix factorization model on the ratingsForTraining data.
+
+    Args:
+        ratingsForTraining (pd.DataFrame)
+
+    Returns:
+        noteParams (pd.DataFrame)
+        raterParams (pd.DataFrame)
+        globalIntercept (float)
+    """
+    return self._mfRanker.run_mf(ratingsForTraining)
+
+  def _run_stable_matrix_factorization(
+    self,
+    ratingsForTraining: pd.DataFrame,
+    userEnrollmentRaw: pd.DataFrame,
+    minPercentRatingsFromModelingGroup: float = 0.75,
+    minNumRatingsToIncludeInStableInitialization: int = 5,
+  ):
+    """Train a matrix factorization model on the ratingsForTraining data.
+    Due to stability issues when trained on the entire dataset with no initialization, this is done in
+    two steps:
+    1. Train a model on the subset of the data with modeling group 13 (stable initialization).
+    2. Train a model on the entire dataset, initializing with the results from step 1.
+    Without this initialization, the factors for some subsets of the data with low crossover between raters can
+    flip relative to each other from run to run.
+
+    Args:
+        ratingsForTraining (pd.DataFrame)
+        userEnrollmentRaw (pd.DataFrame)
+
+    Returns:
+        noteParams (pd.DataFrame)
+        raterParams (pd.DataFrame)
+        globalIntercept (float)
+    """
+    if self._modelingGroupToInitializeForStability is None:
+      return self._run_regular_matrix_factorization(ratingsForTraining)
+
+    with self.time_block("Prepare data for stable initialization"):
+      ratingsForTrainingWithModelingGroup = ratingsForTraining.merge(
+        userEnrollmentRaw[[c.participantIdKey, c.modelingGroupKey]],
+        left_on=c.raterParticipantIdKey,
+        right_on=c.participantIdKey,
+      )
+
+      ratingsForTrainingWithModelingGroup[c.ratingFromInitialModelingGroupKey] = (
+        ratingsForTrainingWithModelingGroup[c.modelingGroupKey]
+        == self._modelingGroupToInitializeForStability
+      )
+
+      # Only include ratings from the modeling group
+      ratingsForStableInitialization = ratingsForTrainingWithModelingGroup[
+        ratingsForTrainingWithModelingGroup[c.ratingFromInitialModelingGroupKey]
+      ]
+
+      # Only include notes that have received at least 75% of their ratings from the modeling group (and 5 total)
+      ratingsForTrainingWithModelingGroup[c.ratingCountKey] = 1
+      noteStatsByRatedModelingGroup = (
+        ratingsForTrainingWithModelingGroup.groupby(c.noteIdKey)
+        .sum()[[c.ratingFromInitialModelingGroupKey, c.ratingCountKey]]
+        .reset_index()
+      )
+      noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey] = (
+        noteStatsByRatedModelingGroup[c.ratingFromInitialModelingGroupKey]
+        / noteStatsByRatedModelingGroup[c.ratingCountKey]
+      )
+      noteStatsByRatedModelingGroup[
+        c.percentFromInitialModelingGroupKey
+      ] = noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey].fillna(0)
+      notesRatedMostlyByInitialModelingGroup = noteStatsByRatedModelingGroup[
+        (
+          noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey]
+          >= minPercentRatingsFromModelingGroup
+        )
+        & (
+          noteStatsByRatedModelingGroup[c.ratingCountKey]
+          >= minNumRatingsToIncludeInStableInitialization
+        )
+      ]
+      ratingsForStableInitialization = ratingsForStableInitialization.merge(
+        notesRatedMostlyByInitialModelingGroup[[c.noteIdKey]], on=c.noteIdKey
+      )
+
+      assert (
+        len(ratingsForStableInitialization) > 0
+      ), "No ratings from stable initialization modeling group."
+
+    with self.time_block("MF on stable-initialization subset"):
+      initializationMF = self._mfRanker.get_new_mf_with_same_args()
+      noteParamsInit, raterParamsInit, globalInterceptInit = initializationMF.run_mf(
+        ratingsForStableInitialization
+      )
+
+    with self.time_block("First full MF (initializated with stable-initialization)"):
+      modelResult = self._mfRanker.run_mf(
+        ratingsForTraining,
+        noteInit=noteParamsInit,
+        userInit=raterParamsInit,
+        globalInterceptInit=globalInterceptInit,
+      )
+    return modelResult
+
   def _score_notes_and_users(
-    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame
+    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Run the matrix factorization scoring algorithm.
 
@@ -153,6 +284,7 @@ class MFBaseScorer(Scorer):
     Args:
       ratings (pd.DataFrame): preprocessed ratings
       noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
+      userEnrollmentRaw (pd.DataFrame): one row per user; enrollment status for each user
 
     Returns:
       Tuple[pd.DataFrame, pd.DataFrame]:
@@ -160,143 +292,215 @@ class MFBaseScorer(Scorer):
         userScores pd.DataFrame: one row per user containing a column for each helpfulness score.
     """
     if self._seed is not None:
+      print(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
 
     # Removes ratings where either (1) the note did not receive enough ratings, or
     # (2) the rater did not rate enough notes.
-    ratingsForTraining = process_data.filter_ratings(
-      ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote
-    )
+    with self.time_block("Prepare ratings"):
+      ratingsForTraining = self._prepare_data_for_scoring(ratings)
+    if self._saveIntermediateState:
+      self.ratingsForTraining = ratingsForTraining
 
     # TODO: Save parameters from this first run in note_model_output next time we add extra fields to model output TSV.
-    noteParamsUnfiltered, raterParamsUnfiltered, globalBias = self._mfRanker.run_mf(
-      ratingsForTraining,
-    )
+    with self.time_block("First MF/stable init"):
+      (
+        noteParamsUnfiltered,
+        raterParamsUnfiltered,
+        globalBias,
+      ) = self._run_stable_matrix_factorization(ratingsForTraining, userEnrollmentRaw)
+    if self._saveIntermediateState:
+      self.noteParamsUnfiltered = noteParamsUnfiltered
+      self.raterParamsUnfiltered = raterParamsUnfiltered
+      self.globalBias = globalBias
 
     # Get a dataframe of scored notes based on the algorithm results above
-    scoredNotes = note_ratings.compute_scored_notes(
-      ratings,
-      noteParamsUnfiltered,
-      raterParamsUnfiltered,
-      noteStatusHistory,
-      minRatingsNeeded=self._minRatingsNeeded,
-      crhThreshold=self._crhThreshold,
-      crnhThresholdIntercept=self._crnhThresholdIntercept,
-      crnhThresholdNoteFactorMultiplier=self._crnhThresholdNoteFactorMultiplier,
-      crnhThresholdNMIntercept=self._crnhThresholdNMIntercept,
-      crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
-      crhThresholdLCBIntercept=self._crhThresholdLCBIntercept,
-      crhSuperThreshold=self._crhSuperThreshold,
-      inertiaDelta=self._inertiaDelta,
-      weightedTotalVotes=self._weightedTotalVotes,
-    )
+    with self.time_block("Compute scored notes"):
+      scoredNotes = note_ratings.compute_scored_notes(
+        ratings,
+        noteParamsUnfiltered,
+        raterParamsUnfiltered,
+        noteStatusHistory,
+        minRatingsNeeded=self._minRatingsNeeded,
+        crhThreshold=self._crhThreshold,
+        crnhThresholdIntercept=self._crnhThresholdIntercept,
+        crnhThresholdNoteFactorMultiplier=self._crnhThresholdNoteFactorMultiplier,
+        crnhThresholdNMIntercept=self._crnhThresholdNMIntercept,
+        crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
+        crhThresholdLCBIntercept=self._crhThresholdLCBIntercept,
+        crhSuperThreshold=self._crhSuperThreshold,
+        inertiaDelta=self._inertiaDelta,
+      )
+    if self._saveIntermediateState:
+      self.firstRoundScoredNotes = scoredNotes
 
     # Determine "valid" ratings
-    validRatings = note_ratings.get_valid_ratings(
-      ratings,
-      noteStatusHistory,
-      scoredNotes[
-        [
-          c.noteIdKey,
-          c.currentlyRatedHelpfulBoolKey,
-          c.currentlyRatedNotHelpfulBoolKey,
-          c.awaitingMoreRatingsBoolKey,
-        ]
-      ],
-    )
+    with self.time_block("Compute valid ratings"):
+      validRatings = note_ratings.get_valid_ratings(
+        ratings,
+        noteStatusHistory,
+        scoredNotes[
+          [
+            c.noteIdKey,
+            c.currentlyRatedHelpfulBoolKey,
+            c.currentlyRatedNotHelpfulBoolKey,
+            c.awaitingMoreRatingsBoolKey,
+          ]
+        ],
+      )
+    if self._saveIntermediateState:
+      self.validRatings = validRatings
 
     # Assigns contributor (author & rater) helpfulness bit based on (1) performance
     # authoring and reviewing previous and current notes.
-    helpfulnessScores = helpfulness_scores.compute_general_helpfulness_scores(
-      scoredNotes[
-        [
-          c.noteAuthorParticipantIdKey,
-          c.currentlyRatedHelpfulBoolKey,
-          c.currentlyRatedNotHelpfulBoolKey,
-          c.internalNoteInterceptKey,
-        ]
-      ],
-      validRatings,
-      self._minMeanNoteScore,
-      self._minCRHVsCRNHRatio,
-      self._minRaterAgreeRatio,
-    )
+    with self.time_block("Helpfulness scores pre-harassment "):
+      helpfulnessScoresPreHarassmentFilter = helpfulness_scores.compute_general_helpfulness_scores(
+        scoredNotes[
+          [
+            c.noteAuthorParticipantIdKey,
+            c.currentlyRatedHelpfulBoolKey,
+            c.currentlyRatedNotHelpfulBoolKey,
+            c.internalNoteInterceptKey,
+          ]
+        ],
+        validRatings,
+        self._minMeanNoteScore,
+        self._minCRHVsCRNHRatio,
+        self._minRaterAgreeRatio,
+        ratingsForTraining,
+      )
+      if self._saveIntermediateState:
+        self.firstRoundHelpfulnessScores = helpfulnessScoresPreHarassmentFilter
 
-    # Filters ratings matrix to include only rows (ratings) where the rater was
-    # considered helpful.
-    ratingsHelpfulnessScoreFiltered = helpfulness_scores.filter_ratings_by_helpfulness_scores(
-      ratingsForTraining, helpfulnessScores
-    )
+      # Filters ratings matrix to include only rows (ratings) where the rater was
+      # considered helpful.
+      ratingsHelpfulnessScoreFilteredPreHarassmentFilter = (
+        helpfulness_scores.filter_ratings_by_helpfulness_scores(
+          ratingsForTraining, helpfulnessScoresPreHarassmentFilter
+        )
+      )
+
+    if self._saveIntermediateState:
+      self.ratingsHelpfulnessScoreFilteredPreHarassmentFilter = (
+        ratingsHelpfulnessScoreFilteredPreHarassmentFilter
+      )
+
+    with self.time_block("Harassment tag consensus"):
+      harassmentAbuseNoteParams, _, _ = tag_consensus.train_tag_model(
+        ratingsHelpfulnessScoreFilteredPreHarassmentFilter,
+        c.notHelpfulSpamHarassmentOrAbuseTagKey,
+        noteParamsUnfiltered,
+        raterParamsUnfiltered,
+      )
+
+    # Assigns contributor (author & rater) helpfulness bit based on (1) performance
+    # authoring and reviewing previous and current notes, and (2) including an extra
+    # penalty for rating a harassment/abuse note as helpful.
+    with self.time_block("Helpfulness scores post-harassment"):
+      helpfulnessScores = helpfulness_scores.compute_general_helpfulness_scores(
+        scoredNotes[
+          [
+            c.noteAuthorParticipantIdKey,
+            c.currentlyRatedHelpfulBoolKey,
+            c.currentlyRatedNotHelpfulBoolKey,
+            c.internalNoteInterceptKey,
+          ]
+        ],
+        validRatings,
+        self._minMeanNoteScore,
+        self._minCRHVsCRNHRatio,
+        self._minRaterAgreeRatio,
+        ratings=ratingsForTraining,
+        tagConsensusHarassmentAbuseNotes=harassmentAbuseNoteParams,
+      )
+
+      # Filters ratings matrix to include only rows (ratings) where the rater was
+      # considered helpful.
+      ratingsHelpfulnessScoreFiltered = helpfulness_scores.filter_ratings_by_helpfulness_scores(
+        ratingsForTraining, helpfulnessScores
+      )
+    if self._saveIntermediateState:
+      self.helpfulnessScores = helpfulnessScores
+      self.ratingsHelpfulnessScoreFiltered = ratingsHelpfulnessScoreFiltered
 
     # Re-runs matrix factorization using only ratings given by helpful raters.
-    noteParams, raterParams, globalBias = self._mfRanker.run_mf(
-      ratingsHelpfulnessScoreFiltered,
-      noteInit=noteParamsUnfiltered,
-      userInit=raterParamsUnfiltered,
-    )
+
+    with self.time_block("Final helpfulness-filtering MF"):
+      noteParams, raterParams, globalBias = self._mfRanker.run_mf(
+        ratingsHelpfulnessScoreFiltered,
+        noteInit=noteParamsUnfiltered,
+        userInit=raterParamsUnfiltered,
+      )
+    if self._saveIntermediateState:
+      self.noteParams = noteParams
+      self.raterParams = raterParams
+      self.globalBias = globalBias
 
     # Add pseudo-raters with the most extreme parameters and re-score notes, to estimate
     #  upper and lower confidence bounds on note parameters.
+
     if self._pseudoraters:
-      noteIdMap, raterIdMap, noteRatingIds = self._mfRanker.get_note_and_rater_id_maps(
-        ratingsHelpfulnessScoreFiltered
-      )
-
-      extremeRaters = self._mfRanker.make_extreme_raters(raterParams, raterIdMap)
-
-      (
-        rawRescoredNotesWithEachExtraRater,
-        notesWithConfidenceBounds,
-      ) = self._mfRanker.fit_note_params_for_each_dataset_with_extreme_ratings(
-        extremeRaters,
-        noteRatingIds,
-        ratingsHelpfulnessScoreFiltered,
-        noteParams,
-        raterParams,
-        globalBias,
-      )
-
-      noteParams = noteParams.merge(
-        notesWithConfidenceBounds.reset_index(), on="noteId", how="left"
-      )
-
+      with self.time_block("Pseudoraters"):
+        noteParams = PseudoRatersRunner(
+          ratingsHelpfulnessScoreFiltered, noteParams, raterParams, globalBias, self._mfRanker
+        ).compute_note_parameter_confidence_bounds_with_pseudo_raters()
+        if self._saveIntermediateState:
+          self.prePseudoratersNoteParams = self.noteParams
+          self.noteParams = noteParams
     else:
       for col in c.noteParameterUncertaintyTSVColumns:
         noteParams[col] = np.nan
 
+    # Add low diligence intercepts
+    with self.time_block("Low Diligence Reputation Model"):
+      diligenceParams = get_low_diligence_intercepts(
+        ratingsHelpfulnessScoreFiltered, noteParams, raterParams
+      )
+      noteParams = noteParams.merge(diligenceParams, on=c.noteIdKey)
+
+    if self._saveIntermediateState:
+      self.noteParams = noteParams
+      self.raterParams = raterParams
+      self.globalBias = globalBias
+
     # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
     # and ML output.
-    scoredNotes = note_ratings.compute_scored_notes(
-      ratings,
-      noteParams,
-      raterParams,
-      noteStatusHistory,
-      minRatingsNeeded=self._minRatingsNeeded,
-      crhThreshold=self._crhThreshold,
-      crnhThresholdIntercept=self._crnhThresholdIntercept,
-      crnhThresholdNoteFactorMultiplier=self._crnhThresholdNoteFactorMultiplier,
-      crnhThresholdNMIntercept=self._crnhThresholdNMIntercept,
-      crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
-      crhThresholdLCBIntercept=self._crhThresholdLCBIntercept,
-      crhSuperThreshold=self._crhSuperThreshold,
-      inertiaDelta=self._inertiaDelta,
-      weightedTotalVotes=self._weightedTotalVotes,
-      finalRound=True,
-    )
-    # Takes raterParams from most recent MF run, but use the pre-computed
-    # helpfulness scores.
-    helpfulnessScores = raterParams.merge(
-      helpfulnessScores[
-        [
-          c.raterParticipantIdKey,
-          c.crhCrnhRatioDifferenceKey,
-          c.meanNoteScoreKey,
-          c.raterAgreeRatioKey,
-          c.aboveHelpfulnessThresholdKey,
-        ]
-      ],
-      on=c.raterParticipantIdKey,
-      how="outer",
-    )
+    with self.time_block("Final compute scored notes"):
+      scoredNotes = note_ratings.compute_scored_notes(
+        ratings,
+        noteParams,
+        raterParams,
+        noteStatusHistory,
+        minRatingsNeeded=self._minRatingsNeeded,
+        crhThreshold=self._crhThreshold,
+        crnhThresholdIntercept=self._crnhThresholdIntercept,
+        crnhThresholdNoteFactorMultiplier=self._crnhThresholdNoteFactorMultiplier,
+        crnhThresholdNMIntercept=self._crnhThresholdNMIntercept,
+        crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
+        crhThresholdLCBIntercept=self._crhThresholdLCBIntercept,
+        crhSuperThreshold=self._crhSuperThreshold,
+        inertiaDelta=self._inertiaDelta,
+        finalRound=True,
+      )
+
+      # Takes raterParams from most recent MF run, but use the pre-computed
+      # helpfulness scores.
+      helpfulnessScores = raterParams.merge(
+        helpfulnessScores[
+          [
+            c.raterParticipantIdKey,
+            c.crhCrnhRatioDifferenceKey,
+            c.meanNoteScoreKey,
+            c.raterAgreeRatioKey,
+            c.aboveHelpfulnessThresholdKey,
+          ]
+        ],
+        on=c.raterParticipantIdKey,
+        how="outer",
+      )
+
+    if self._saveIntermediateState:
+      self.scoredNotes = scoredNotes
+      self.helpfulnessScores = helpfulnessScores
 
     return scoredNotes, helpfulnessScores

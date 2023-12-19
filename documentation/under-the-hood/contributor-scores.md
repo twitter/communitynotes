@@ -26,9 +26,15 @@ This score is the average score of notes you’ve written (that have gotten at l
 
 The Rater Helpfulness Score reflects how similar a contributor’s ratings are to the ratings on notes that eventually reached the status of “Helpful” or "Not Helpful” (indicating clear widespread consensus among raters, and not labeled “Needs More Ratings”).
 
-Only [Valid Ratings](#valid-ratings) are used in computing rater helpfulness scores. This is done to both reward quick rating, and to prevent one form of artificially gaming this score (retroactively rating old notes with clear labels).
+First, we compute each raters' [Valid Ratings](#valid-ratings) are used in computing rater helpfulness scores. This is done to both reward quick rating, and to prevent one form of artificially gaming this score (retroactively rating old notes with clear labels).
 
-Rater Helpfulness is not defined until the contributor has made at least one valid rating (defined below). Then the Rater Helpfulness Score is the fraction of their valid ratings that match the final note status label of whether the note was rated helpful or not rated helpful.
+Rater Helpfulness is not defined until the contributor has made at least one valid rating (defined below). Then the Rater Helpfulness Score is equal to 
+
+$$\frac{s - (10 * h)}{t}$$
+With the terms defined as:
+* (s): the number of successful valid ratings they've made (valid ratings that matched the final note status label)
+* (-10 * h): minus a penalty of 10 for note they rated helpful (valid or not) with an extremely [Tag-Consensus Harassment-Abuse Note Score](./ranking-notes.md#tag-consensus-harassment-abuse-note-score)
+* (t): divided by the total number of valid ratings they've made
 
 ## Valid Ratings
 

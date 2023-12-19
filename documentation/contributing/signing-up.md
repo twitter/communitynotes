@@ -1,6 +1,6 @@
 ---
 title: Signing up
-description: Sign up now and become a Community Notes contributor on Twitter
+description: Sign up now and become a Community Notes contributor on X
 navWeight: 2
 ---
 # Signing up
@@ -9,7 +9,7 @@ Sign ups are open to everyone. We want anyone to be able to participate and know
 
 As there are important nuances in each market, we’ll expand the contributor base country-by-country.
 
-{% button buttonTitle="Sign up here" buttonHref="https://twitter.com/i/flow/join-birdwatch" /%}
+{% button buttonTitle="Sign up here" buttonHref="https://x.com/i/flow/join-birdwatch" /%}
 
 ---
 
@@ -17,11 +17,11 @@ As there are important nuances in each market, we’ll expand the contributor ba
 
 To become a Community Notes contributor, accounts must have:
 
-1. **No recent notice of Twitter Rules violations**
+1. **No recent notice of violations of X's [Rules](https://help.x.com/rules-and-policies/twitter-rules)**
 
    Intended to reduce the likelihood of abusive contributions.
 
-2. **Joined Twitter at least 6 months ago**
+2. **Joined X at least 6 months ago**
 
    Intended to reduce spam.
 
@@ -40,14 +40,16 @@ We want anyone to be able to contribute to Community Notes, and may remove or mo
 
 ## Admissions
 
-Our goal is to admit applicants on a periodic basis. We will admit all contributors who meet the required criteria, but if we have more applicants than slots, we will randomly admit accounts, prioritizing those more likely to participate due to having been recently active on Twitter, and those that tend to follow and engage with different tweets than existing contributors do — so as to reduce the likelihood that contributors would be predominantly from one ideology, background, or interest space.
+Our goal is to admit applicants on a periodic basis. We will admit all contributors who meet the required criteria, but if we have more applicants than slots, we will randomly admit accounts — so as to reduce the likelihood that contributors would be predominantly from one ideology, background, or interest space. 
+
+Applicants from countries with larger user bases may experience longer waiting times between signup and admission, as random admissions are drawn from country-specific waitlists. 
 
 ## Contributions are public
 
-To promote transparency, all contributions to Community Notes are [anonymized](./aliases.md) and publicly visible on the Community Notes site, **even if an account’s Tweets are protected**.
+To promote transparency, all contributions to Community Notes are [anonymized](./aliases.md) and publicly visible on the Community Notes site, **even if an account’s posts are protected**.
 
 ## Rules
 
-Contributions are subject to Twitter [Rules](https://help.twitter.com/en/rules-and-policies/twitter-rules), [Terms of Service](https://twitter.com/tos) and [Privacy Policy](https://twitter.com/privacy). Failure to abide by the rules can result in removal from the Community Notes program, and/or other remediations.
+Contributions are subject to X's [Rules](https://help.x.com/rules-and-policies/twitter-rules), [Terms of Service](https://x.com/tos) and [Privacy Policy](https://x.com/privacy). Failure to abide by the rules can result in removal from the Community Notes program, and/or other remediations.
 
 Anyone can report notes they believe aren’t in accordance with those rules by clicking or tapping the ••• menu on a note, and then selecting "Report", or by using this form.

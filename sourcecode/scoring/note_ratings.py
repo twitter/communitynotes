@@ -21,10 +21,18 @@ def is_crh(scoredNotes, minRatingsNeeded, crhThreshold) -> pd.Series:
   )
 
 
-def is_crh_lcb(scoredNotes, minRatingsNeeded, crhThresholdLCBIntercept) -> pd.Series:
+def is_crh_lcb(scoredNotes, minRatingsNeeded, crhThresholdLCBIntercept, inertia=False) -> pd.Series:
   enoughRatings = scoredNotes[c.numRatingsKey] >= minRatingsNeeded
+
   if c.noteInterceptMinKey in scoredNotes.columns:
-    return enoughRatings & (scoredNotes[c.noteInterceptMinKey] >= crhThresholdLCBIntercept)
+    if inertia == False:
+      return enoughRatings & (scoredNotes[c.noteInterceptMinKey] >= crhThresholdLCBIntercept)
+    else:
+      return (
+        enoughRatings
+        & (scoredNotes[c.noteInterceptMinKey] >= crhThresholdLCBIntercept)
+        & (scoredNotes[c.currentLabelKey] == c.currentlyRatedHelpful)
+      )
   else:
     # all False
     return enoughRatings & (~enoughRatings)
@@ -83,7 +91,7 @@ def get_ratings_before_note_status_and_public_tsv(
   # c.timestampMillisOfNoteMostRecentNonNMRLabelKey are determined at runtime and cannot be statically
   # determined from the code above.  If noteStatusHistory is missing any noteIdKey which is found in
   # ratings, then the missing rows will have NaN values for c.createdAtMillisKey and
-  # c.timestampMillisOfNoteMostRecentNonNMRLabelKey, forcing the entire colum to have type np.float.
+  # c.timestampMillisOfNoteMostRecentNonNMRLabelKey, forcing the entire colum to have type float.
   # However, if there are no missing values in column noteIdKey then c.createdAtMillisKey and
   # c.timestampMillisOfNoteMostRecentNonNMRLabelKey will retain their int64 types.  The code below
   # coerces both columns to always have float types so the typecheck below will pass.
@@ -95,11 +103,11 @@ def get_ratings_before_note_status_and_public_tsv(
     ratingsWithNoteLabelInfoTypes = c.ratingTSVTypeMapping
     ratingsWithNoteLabelInfoTypes[
       c.createdAtMillisKey + "_note"
-    ] = np.float  # float because nullable after merge.
+    ] = float  # float because nullable after merge.
     ratingsWithNoteLabelInfoTypes[
       c.timestampMillisOfNoteMostRecentNonNMRLabelKey
-    ] = np.float  # float because nullable.
-    ratingsWithNoteLabelInfoTypes[c.helpfulNumKey] = np.float
+    ] = float  # float because nullable.
+    ratingsWithNoteLabelInfoTypes[c.helpfulNumKey] = float
 
     assert len(ratingsWithNoteLabelInfo) == len(ratings)
     mismatches = [
@@ -182,7 +190,7 @@ def get_ratings_with_scores(
   )
 
   ratingsWithScores = ratingsBeforeNoteStatus[
-    [c.raterParticipantIdKey, c.helpfulNumKey, c.noteIdKey]
+    [c.raterParticipantIdKey, c.helpfulNumKey, c.noteIdKey, c.createdAtMillisKey]
   ].merge(
     scoredNotes[
       [
@@ -371,7 +379,6 @@ def compute_scored_notes(
   crhThresholdLCBIntercept: float,
   crhSuperThreshold: float,
   inertiaDelta: float,
-  weightedTotalVotes: float,
   finalRound: bool = False,
   # TODO: We might want to consider inputing only the series here, instead of the whole callable
   is_crh_function: Callable[..., pd.Series] = is_crh,
@@ -404,7 +411,6 @@ def compute_scored_notes(
         repeated reason tags in not-helpful ratings to achieve CRH status.
       inertiaDelta: Minimum amount which a note that has achieve CRH status must drop below the
         applicable threshold to lose CRH status.
-      weightedTotalVotes: Minimum number of weighted incorrect votes required to lose CRH status.
       finalRound: If true, enable additional status assignment logic which is only applied when
         determining final status.  Given that these mechanisms add complexity we don't apply them
         in earlier rounds.
@@ -425,6 +431,8 @@ def compute_scored_notes(
 
   # Merge with noteParams as necessary
   noteParamsColsToKeep = [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
+  if finalRound:
+    noteParamsColsToKeep += [c.lowDiligenceInterceptKey]
   for col in c.noteParameterUncertaintyTSVColumns:
     if col in noteParams.columns:
       noteParamsColsToKeep.append(col)
@@ -489,6 +497,15 @@ def compute_scored_notes(
           crhThreshold,
           minRatingsNeeded,
         ),
+        scoring_rules.RuleFromFunction(
+          RuleID.LCB_INERTIA,
+          {RuleID.GENERAL_CRH},
+          c.currentlyRatedHelpful,
+          lambda noteStats: is_crh_lcb_function(
+            noteStats, minRatingsNeeded, crhThresholdLCBIntercept - inertiaDelta, True
+          ),
+          onlyApplyToNotesThatSayTweetIsMisleading=True,
+        ),
         scoring_rules.FilterTagOutliers(
           RuleID.TAG_OUTLIER,
           {RuleID.GENERAL_CRH},
@@ -511,7 +528,19 @@ def compute_scored_notes(
           minRatingsNeeded,
         ),
         scoring_rules.FilterIncorrect(
-          RuleID.INCORRECT_OUTLIER, {RuleID.TAG_OUTLIER}, c.needsMoreRatings, weightedTotalVotes
+          RuleID.INCORRECT_OUTLIER,
+          {RuleID.TAG_OUTLIER},
+          c.needsMoreRatings,
+          tagThreshold=2,
+          voteThreshold=3,
+          weightedTotalVotes=2.5,
+          superThreshold=None,
+        ),
+        scoring_rules.FilterLowDiligence(
+          RuleID.LOW_DILIGENCE,
+          {RuleID.INCORRECT_OUTLIER},
+          c.needsMoreRatings,
+          interceptThreshold=0.217,
         ),
       ]
     )

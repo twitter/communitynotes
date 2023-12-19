@@ -14,18 +14,18 @@ The algorithm used to rank Community Notes and compute their statuses is open-so
 
 ![Three Community notes in different statuses](../images/note-statuses.png)
 
-Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses determine which notes are displayed on each of the [Community Notes Site’s timelines](./timeline-tabs.md), and which notes are displayed [on Tweets](../contributing/notes-on-twitter.md).
+Community Notes are submitted and rated by contributors. Ratings are used to determine note statuses (“Helpful”, “Not Helpful”, or “Needs More Ratings”). Note statuses determine which notes are displayed on each of the [Community Notes Site’s timelines](./timeline-tabs.md), and which notes are displayed [on posts](../contributing/notes-on-twitter.md).
 
 All Community Notes start with the Needs More Ratings status until they receive at least 5 total ratings.
 Notes with 5 or more ratings may be assigned a status of Helpful or Not Helpful according to the algorithm described below.
-If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on Twitter even if its status is Helpful.
+If a note is deleted, the algorithm will still score it (using all non-deleted ratings of that note) and the note will receive a status if it’s been rated more than 5 times, although since it is deleted it will not be shown on X even if its status is Helpful.
 
-Notes marking Tweets as "potentially misleading" with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. At this time, only notes that indicate a Tweet is “potentially misleading” and earn the status of Helpful are eligible to be displayed on Tweets.
+Notes marking posts as "potentially misleading" with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. At this time, only notes that indicate a post is “potentially misleading” and earn the status of Helpful are eligible to be displayed on posts.
 Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Additionally, notes with an upper confidence bound estimate of their Note Helpfulness Score (as computed via pseudo-raters) less than -0.04 are assigned Not Helpful, as described in [Modeling Uncertainty](#modeling-uncertainty).
 Notes with scores in between remain with a status of Needs more Ratings.
 
-Identifying notes as Not Helpful improves contributor helpfulness scoring and reduces time contributors spend reviewing low quality notes.
-We plan to enable Helpful statuses for notes marking Tweets as "not misleading" as we continue to evaluate ranking quality and utility to users.
+Identifying notes as Not Helpful improves contributor helpfulness scoring and reduces the time contributors spend reviewing low quality notes.
+We plan to enable Helpful statuses for notes marking posts as "not misleading" as we continue to evaluate ranking quality and utility to users.
 
 When a note reaches a status of Helpful / Not Helpful, they're shown alongside the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
 Notes with the status Needs More Ratings remain sorted by recency (newest first), and notes with a Helpful or Not Helpful status are sorted by their Helpfulness Score.
@@ -69,7 +69,7 @@ Where $\lambda_i=0.15$, the regularization on the intercept terms, is currently 
 
 The resulting scores that we use for each note are the note intercept terms $i_n$. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.
 
-In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$. We also apply "Not Helpful" status to notes based based the upper bound of the uncertainty interval of their intercept (at $-0.04$) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section, in addition to applying "Helpful" status to notes with a lower bound of their uncertainty interval of their intercept of at least $0.31. The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
+In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$. We also apply "Not Helpful" status to notes based on the upper bound of the uncertainty interval of their intercept (at $-0.04$) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section, in addition to applying "Helpful" status to notes with a lower bound of their uncertainty interval of their intercept of at least $0.31$. The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
 
 This approach has a few nice properties:
 
@@ -86,7 +86,7 @@ Additionally, because the matrix factorization is re-trained from scratch every 
 
 While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are adding. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
 
-We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.05, in addition to the rules on the raw intercept values defined in the previous section. We also currently assign notes a "Helpful" status if the min (lower confidence bound) of their intercept is at least 0.31.
+We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.04, in addition to the rules on the raw intercept values defined in the previous section.
 
 ## Tag Outlier Filtering
 
@@ -97,31 +97,53 @@ This approach helps us to maintain data quality by recognizing when there is a t
 
 We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
 
-$$ a_{un} = \frac{\mathbb{1}_{a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5  }  $$
+$$ a_{un} = \frac{\mathbb{1}_ {a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\tilde{f}}} \right)^5  }  $$
 
 Where:
 
 - $\tilde{f} = \eta_{40}^{r_{un}}(||f_n - f_||)$ indicates the 40th percentile of the distances between the rater (user) and note latent factors over all observable ratings $r_{un}$
-- $\mathbb{1}_{a_{un}}$ is 1 if rater $u$ assigned tag $a$ to note $n$ and 0 otherwise.
+- $\mathbb{1}_ {a_{un}}$ is 1 if rater $u$ assigned tag $a$ to note $n$ and 0 otherwise.
 
-We define the total weight of an tag $a$ on note $n$ as:
+We define the total weight of a tag $a$ on note $n$ as:
 
 $$ n_{a} = \sum_{r_{un}} a_{un} $$
 
 Notice the following:
 
-- No single rating can achieve an tag weight $a_{un} > 1$.
+- No single rating can achieve a tag weight $a_{un} > 1$.
 - Ratings where the rater factor and note factor are equal will achieve the maximum weight of 1.0, ratings at a 40th percentile distance will achieve a weight of 0.5, and reviews at 2x the 40th percentile distance will have a weight of ~0.03. All ratings will have positive weight.
 - Assigning higher weights to tags in ratings where the rater and note are closer in the embedding space effectively lends greater weight to critical ratings from raters who tend to share the same perspective as the note.
 
 Given the quantities defined above, we modify scoring as follows:
 
-- When the total weight $a_n$ of an tag exceeds 2.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
-- We disregard the "Typos or unclear language" and "Note not needed on this Tweet" tags, which do not relate to note accuracy.
+- When the total weight $a_n$ of a tag exceeds 2.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
+- We disregard the "Typos or unclear language" tag.
 
 ## Additional Filtering for Incorrect Tags
 
-Because surfacing high-quality information is the primary goal of Community Notes, the ranking algorithm employs extra checks around Currently Rated Helpful notes that ratings indicate might contain incorrect information. For any given note-rater pair, properties including the note and rater factors (See [Matrix Factorization](#matrix-factorization)), a rater's propensity to assign the "Incorrect" tag, and the overall polarization of assigned "Not Helpful" tags predict, at baseline, how likely a rater is to rate a note as "Incorrect". When "Incorrect" ratings on a given note are "surprisingly popular" among raters who would be expected to have a low probability of rating the note "Incorrect", the note will not earn a Currently Rated Helpful status.
+Because surfacing high-quality information is the primary goal of Community Notes, the ranking algorithm employs extra checks around Currently Rated Helpful notes that ratings indicate might contain incorrect information.
+For any given note-rater pair, properties including the note and rater factors (See [Matrix Factorization](#matrix-factorization)), a rater's propensity to assign the "Incorrect" tag, and the overall polarization of assigned "Not Helpful" tags predict, at baseline, how likely a rater is to rate a note as "Incorrect".
+When "Incorrect" ratings on a given note are "surprisingly popular" among raters who would be expected to have a low probability of rating the note "Incorrect", the note is held to a higher threshold to achieve Currently Rated Helpful status.
+Depending on the strength of the signal, a note may be blocked from Currently Rated Helpful status entirely.
+
+## Tag-Consensus Harassment-Abuse Note Score
+
+After the first round matrix factorization described above, we run another matrix factorization that's similar to the first, but with some changes:
+- Instead of using helpful/not-helpful ratings as the labels, we use the harassment and abuse tag as the positive, and helpful ratings as negatives.
+- Because the positive rate is quite low, we use a sigmoid activation and binary cross entropy loss, as well as upweighting the rare positive class examples, instead of unweighted MSE loss.
+
+Thus, having a high note intercept score in this model indicates that a diverse set of raters found the note to be harassment or abuse. If the score is above a very high threshold (2.5), we penalize each rater who has rated the note helpful, even if they did so after it received its final status, by subtracting 10 from the numerator of their rater helpfulness score as described in [Rater Helpfulness Score](./contributor-scores.md#rater-helpfulness-score).
+
+## Note Diligence Score
+
+Community Notes strives for content that X users find broadly helpful, clear and accurate.
+Note Diligence scoring applies an approach similar to the Helpfulness matrix factorization with an explicit focus on note accuracy and sourcing.
+It looks at use of the rating tags “Sources not included or unreliable”, “Sources do not support note” and “Incorrect information” to identify notes that people from different viewpoints agree might have these issues.
+Notes that it scores above a certain threshold are not shown on X.
+
+It works by introducing a rater weight component which gives greater rating weight to raters who have a demonstrated pattern of identifying notes that people from different points of view agree have issues with accuracy or source support.
+Rater weights are determined through a gradient descent process which adds a dimension to the matrix factorization that explicitly captures affinity for identifying notes agreed to have potential diligence issues.
+Once the algorithm has learned rater weights, it uses the weights to augment the loss function to increase the impact of raters who have consistently demonstrated this type of diligence in ratings.
 
 ## CRH Inertia
 
@@ -137,23 +159,25 @@ Similarly, if a note was impacted by tag outlier filter and required note interc
 
 Multi-Model ranking allows Community Notes to run multiple ranking algorithms before reconciling the results to assign final note status.
 We use this ability to test new models, refine current approaches and support expanding the Community Notes contributor base.
-We currently run three note ranking models:
+We currently run several variations of the matrix facgtorizaiton approach.
+Each variation uses the same modeling logic and parameters, but applies the model to different slices of the ratings data.
 
-- The _Core_ model runs the matrix factorization approach described above to determine status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
+- The _Core_ model determines status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
 - The _Expansion_ model runs the same ranking algorithm with the same parameters as the Core model, with the difference that the Expansion model includes all notes with all ratings across Core and Expansion areas.
-- The _Coverage_ model runs the same ranking algorithm and processes the same notes and ratings as the Core model, except the intercept regularization $\lambda_i$ and Helpful note threshold have been [tuned differently](https://github.com/twitter/communitynotes/blob/main/sourcecode/scoring/mf_coverage_scorer.py) to increase the number of Helpful notes.
+- The _ExpansionPlus_ model functions similarity to the _Expansion_ model, extending the reach of Community Notes to additional areas.
+- The _Group_ models operate on smaller segments of the data to specifically improve note ranking in non-English speaking communities.  Users are assigned to modeling groups (e.g. based on region, country or language) and then we run a separate matrix factorization for each group.  The matrix factorization includes all ratings from users in the modeling group, but the scoring results only impact notes which were written by a member of the modeling group and have at least 80% of ratings from within the modeling group.  We initially launched with 12 Group models and plan to monitor and adjust as Community Notes continues to grow.
 
 In cases where a note is ranked by both the Core and Expansion models the Core model is always authoritative.
 This approach allows us to grow Community Notes as quickly as possible in experimental Expansion areas without the risk of compromising quality in Core areas where Community Notes is well established.
-In cases where the Core and Coverage models disagree, a Helpful rating from the Core model always takes precedence.
-If a note is only rated as Helpful by the Coverage model, then the note must surpass a safeguard threshold for the Core model intercept to receive a final Helpful rating.
-We have initialized the Core model safeguard threshold to 0.38, 0.02 below the Core model default Helpfulness threshold of 0.40, and will lower the safeguard threshold as the Coverage model continues to launch.
+Like the Expansion model, the Group models increase Helpful note coverage beyond the Core model.
+Group models only function to promote notes from Needs More Ratings to Helpful status, and only take effect when the Expansion or Core model intercept (as applicable) is between 0.3 and 0.4.
 
-When using Twitter, you can see which model computed the status a given note by looking at the Note Details screen.
+When using X, you can see which model computed the status of a given note by looking at the Note Details screen.
 It might list one of the following models:
 - CoreModel (vX.X). The _Core_ model described above.
 - ExpansionModel (vX.X). The _Expansion_ model described above.
-- CoverageModel (vX.X). The _Coverage_ model described above.
+- ExpansionPlusModel (vX.X).  The _ExpansionPlus_ model described above.
+- GroupModelN (vX.X). The Nth instantiation of the _Group_ model described above.
 - ScoringDriftGuard. This is a scoring rule that locks note statuses after two weeks. See the [next section](#status-stabilization) for more details.
 
 ## Status Stabilization
@@ -165,18 +189,18 @@ As older data comprise an increasingly small fraction of the dataset, ranking re
 To maintain Helpful note quality as Community Notes continues to grow, we are adding logic which stabilizes the status of a note once the note is two weeks old.
 This approach allows us to continue optimizing the ranking algorithm with a focus on the impact on current data while persisting helpful community contributions on older topics.
 Before a note is two weeks old, the helpfulness status will continue to be updated each time time the ranking algorithm is run.
-After a note turns two weeks old we store the helpfulness status for that note and use the stored status in the future, including for displaying notes on Twitter and calculating user contribution statistics.
+After a note turns two weeks old we store the helpfulness status for that note and use the stored status in the future, including for displaying notes on X and calculating user contribution statistics.
 
-While a note may be scored by the Core, Expansion and Coverage models, we only finalize note status based on the Core model.
+While a note may be scored by the Core, Expansion and Group models, we only finalize note status based on the Core model.
 Notes that are only ranked by the Expansion model are not eligible for stabilization since the Expansion model is under development and may be revised to improve quality at any time.
-Similarly, if a note is rated Helpful by the Coverage model and Needs More Ratings by the Core model, we will allow the note status to remain at Helpful even after the note is two weeks old.
-If at any point both models agree and the Core model scores the note as Helpful or the Coverage model scores the note as Needs More Ratings, then the status will be finalized in agreement with both models.
+Similarly, if a note is rated Helpful by a Group model and Needs More Ratings by the Core model, we will allow the note status to remain at Helpful even after the note is two weeks old.
+If at any point both models agree and the Core model scores the note as Helpful or a Group model scores the note as Needs More Ratings, then the status will be finalized in agreement with both models.
 
 ## Determining Note Status Explanation Tags
 
 When notes reach a status of Helpful or Not Helpful, they're displayed alongside the top two explanation tags that were given by raters to explain why they rated the note helpful or not.
 
-This is done by counting the number of times each explanation tag was given filtered to explanation tags that match the final note status (e.g., if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status is reverted to “Needs More Ratings” (this is rare).
+This is done by counting the number of times each explanation tag was given and filtering to explanation tags that match the final note status (e.g., if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status is reverted to “Needs More Ratings” (this is rare).
 
 We break ties between multiple explanation tags by picking the less commonly used reasons, given in order below (#1 is the least commonly used and therefore wins all tiebreaks).
 
@@ -215,11 +239,54 @@ For not-helpful notes:
 3. Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
 4. Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3.
 5. Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
-6. Reconcile scoring results from the Core, Expansion and Coverage models to generate final status for each note.
-7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags.  Stabilize helpfulness status for any notes older than two weeks.
+6. Reconcile scoring results from the Core, Expansion and Group models to generate final status for each note.
+7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and rating tags.  Stabilize helpfulness status for any notes older than two weeks.
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**December 15, 2023**
+- Disable LCB and stop excluding "note not needed" tags from tag filtering.
+
+**November 22, 2023**
+- Launch ExpansionPlus model.
+
+**November 17, 2023**
+- Introduce note diligence scoring through a novel matrix factorization algorithm incorporating rater weights.
+
+**November 13, 2023**
+- Introduce tag-consensus harassment-abuse note scoring to decrease rater helpfulness for raters who have rated notes as Helpful where there is a consensus of harrassemnt or abuse.
+
+**October 20, 2023**
+- Expand filtering applied to "Incorrect" tags to raise the standard for Helpfulness and reduce risk of potentially incorrect Helpful notes.
+
+**October 3, 2023**
+- Rearchitect the backend (batch=>streaming) to dramatically speed up how long it takes between when notes are scored and when they are shown to users (we eliminate an approximately 1hr wait between when the Python scorer had finished and when updated statuses are shown to all users). Because timestamps are written by the Python scorer, they were typically around 1hr (with wide variance) before the new status was actually shown. Going forward, there will be more typically a delay of only minutes between the status timestamps in note status history and when statuses are propagated to be visible to all users.
+
+**September 21, 2023**
+- Dramatically improve matrix factorization optimization stability, by initializing with a 1st pass of users with well-estimated parameters
+- Add a 13th group model
+
+**September 1, 2023**
+
+- Additional tag filtering now better detects unexpected levels of "incorrect" tags.
+
+**August 28, 2023**
+
+- Update the minimum LCB threshold for notes to become CRH to 0.35 from 0.32. 
+
+**August 14, 2023**
+
+- Add additional numRatings field to scored_notes.tsv output, which computes the total number of ratings on a note.
+
+**July 27, 2023**
+
+- Introduced modeling groups and associated Group models to improve Helpful note coverage.
+- Improved model convergence logic to reduce scoring instability.
+- Increased the scoring threshold for identifying Helpful notes based on confidence intervals.
+- Added support for running a subset of scoring logic for development purposes.
+- Added support for computing separate training and validation loss during development.
+- Sunset the Coverage model, which trialed an expansion of Helpful notes through modified regularization.
 
 **April 20, 2023**
 
@@ -244,7 +311,7 @@ For not-helpful notes:
 
 - Introduced support for running multiple ranking models.
 - Launched ranking support for Community Notes global expansion, partitioning notes and ratings by Core and Expansion to maintain note ranking quality while growing globally.
-- Launched Coverage model with increased intercept regularization.  This model will run along-side the Core note ranking model to increase Helpful note coverage.
+- Launched Coverage model with increased intercept regularization.  This model will run alongside the Core note ranking model to increase Helpful note coverage.
 
 
 **January 20, 2023**
@@ -270,24 +337,24 @@ For not-helpful notes:
 
 **November 25, 2022**
 
-- Resumed assigning statuses to notes that indicate the Tweet is “not misleading.” Only such notes written after October 3, 2022 will be eligible to receive statuses, as on that date we [updated the rating form](https://twitter.com/CommunityNotes/status/1576981914296102912) to better capture the helpfulness of notes indicating the Tweet is not misleading.
+- Resumed assigning statuses to notes that indicate the Tweet is “not misleading.” Only such notes written after October 3, 2022 will be eligible to receive statuses, as on that date we [updated the rating form](https://x.com/CommunityNotes/status/1576981914296102912) to better capture the helpfulness of notes indicating the Tweet is not misleading.
 
 **November 10, 2022**
 
 - Launched scoring logic adjusting standards for "Helpful" notes based on tags assigned in reviews labeling the note as "Not Helpful."
 
 **October 3, 2022**
-- Updated the rating form to better capture the strengths of notes which add context without indicating the Tweet is misleading. We have resumed assigning status to notes marking Tweets as "not misleading" in select circumstances as we evaluate ranking quality and utility to users.
+- Updated the rating form to better capture the strengths of notes which add context without indicating the Tweet is misleading. We have resumed assigning status to notes marking posts as "not misleading" in select circumstances as we evaluate ranking quality and utility to users.
 
 **July 13, 2022**
 
 - To prevent manipulation of helpfulness scores through deletion of notes, notes that are deleted will continue to be assigned note statuses based on the ratings they received. These statuses are factored into author helpfulness scores.
 - Valid Ratings Definition Update: instead of just the first 5 ratings on a note, all ratings will be valid if they are within the first 48 hours after note creation and were created before the note first received its status of Helpful or Not Helpful (or if its status flipped between Helpful and Not Helpful, then all ratings will be valid up until that flip occurred).
-- To make the above two changes possible, we are releasing a new dataset, note status history, which contains timestamps for when each note received statuses, and the timestamp and hashed participant ID of the author of a note. This data file is being populated now and will be available on the Community Notes [Data Download](https://twitter.com/i/communitynotes/download-data) page beginning Monday July 18, 2022.
+- To make the above two changes possible, we are releasing a new dataset, note status history, which contains timestamps for when each note received statuses, and the timestamp and hashed participant ID of the author of a note. This data file is being populated now and will be available on the Community Notes [Data Download](https://x.com/i/communitynotes/download-data) page beginning Monday July 18, 2022.
 
 **Mar 09, 2022**
 
-- Temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading”. We observed that notes marking a Tweet as "not misleading" were often rated as “Unhelpful - Tweet doesn’t need a note”, so we paused assigning status to notes marking Tweets as "not misleading" pending improvements to the rating form.
+- Temporarily paused assigning statuses to notes that indicate the Tweet is “not misleading”. We observed that notes marking a post as "not misleading" were often rated as “Unhelpful - Tweet doesn’t need a note”, so we paused assigning status to notes marking posts as "not misleading" pending improvements to the rating form.
 - Adjusted thresholds for notes statuses
 
 **Feb 28, 2022**
