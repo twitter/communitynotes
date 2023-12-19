@@ -24,7 +24,7 @@ Notes marking posts as "potentially misleading" with a Note Helpfulness Score of
 Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Additionally, notes with an upper confidence bound estimate of their Note Helpfulness Score (as computed via pseudo-raters) less than -0.04 are assigned Not Helpful, as described in [Modeling Uncertainty](#modeling-uncertainty).
 Notes with scores in between remain with a status of Needs more Ratings.
 
-Identifying notes as Not Helpful improves contributor helpfulness scoring and reduces time contributors spend reviewing low quality notes.
+Identifying notes as Not Helpful improves contributor helpfulness scoring and reduces the time contributors spend reviewing low quality notes.
 We plan to enable Helpful statuses for notes marking posts as "not misleading" as we continue to evaluate ranking quality and utility to users.
 
 When a note reaches a status of Helpful / Not Helpful, they're shown alongside the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
@@ -69,7 +69,7 @@ Where $\lambda_i=0.15$, the regularization on the intercept terms, is currently 
 
 The resulting scores that we use for each note are the note intercept terms $i_n$. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.
 
-In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$. We also apply "Not Helpful" status to notes based based the upper bound of the uncertainty interval of their intercept (at $-0.04$) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section, in addition to applying "Helpful" status to notes with a lower bound of their uncertainty interval of their intercept of at least $0.31$. The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
+In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$. We also apply "Not Helpful" status to notes based on the upper bound of the uncertainty interval of their intercept (at $-0.04$) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section, in addition to applying "Helpful" status to notes with a lower bound of their uncertainty interval of their intercept of at least $0.31$. The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
 
 This approach has a few nice properties:
 
@@ -84,7 +84,7 @@ Additionally, because the matrix factorization is re-trained from scratch every 
 
 ## Modeling Uncertainty
 
-While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are adding. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirtit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
+While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are adding. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
 
 We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.04, in addition to the rules on the raw intercept values defined in the previous section.
 
@@ -104,19 +104,19 @@ Where:
 - $\tilde{f} = \eta_{40}^{r_{un}}(||f_n - f_||)$ indicates the 40th percentile of the distances between the rater (user) and note latent factors over all observable ratings $r_{un}$
 - $\mathbb{1}_ {a_{un}}$ is 1 if rater $u$ assigned tag $a$ to note $n$ and 0 otherwise.
 
-We define the total weight of an tag $a$ on note $n$ as:
+We define the total weight of a tag $a$ on note $n$ as:
 
 $$ n_{a} = \sum_{r_{un}} a_{un} $$
 
 Notice the following:
 
-- No single rating can achieve an tag weight $a_{un} > 1$.
+- No single rating can achieve a tag weight $a_{un} > 1$.
 - Ratings where the rater factor and note factor are equal will achieve the maximum weight of 1.0, ratings at a 40th percentile distance will achieve a weight of 0.5, and reviews at 2x the 40th percentile distance will have a weight of ~0.03. All ratings will have positive weight.
 - Assigning higher weights to tags in ratings where the rater and note are closer in the embedding space effectively lends greater weight to critical ratings from raters who tend to share the same perspective as the note.
 
 Given the quantities defined above, we modify scoring as follows:
 
-- When the total weight $a_n$ of an tag exceeds 2.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
+- When the total weight $a_n$ of a tag exceeds 2.5 _and_ is in the 95th percentile of all notes with an intercept greater than 0.4, we require the intercept to exceed 0.5 before marking the note as helpful.
 - We disregard the "Typos or unclear language" tag.
 
 ## Additional Filtering for Incorrect Tags
@@ -153,7 +153,7 @@ In some cases, small variations in the note intercept $i_n$ can cause notes to l
 
 To help ensure that changes in Helpful status reflect a clear shift in consensus, we require that the note intercept $i_n$ drops below the applicable threshold by more than 0.01 before the note loses Helpful status.
 For example, if a note achieved Helpful status with note intercept $i_n>0.40$, then the note would need $i_n<0.39$ before losing Helpful status.
-Similarly, if a note was impacted by tag outlier filter and required note intercedpt $i_n>0.50$ to achieve Helpful status, the note would need $i_n<0.49$ to lose Helpful status.
+Similarly, if a note was impacted by tag outlier filter and required note intercept $i_n>0.50$ to achieve Helpful status, the note would need $i_n<0.49$ to lose Helpful status.
 
 ## Multi-Model Note Ranking
 
@@ -172,7 +172,7 @@ This approach allows us to grow Community Notes as quickly as possible in experi
 Like the Expansion model, the Group models increase Helpful note coverage beyond the Core model.
 Group models only function to promote notes from Needs More Ratings to Helpful status, and only take effect when the Expansion or Core model intercept (as applicable) is between 0.3 and 0.4.
 
-When using X, you can see which model computed the status a given note by looking at the Note Details screen.
+When using X, you can see which model computed the status of a given note by looking at the Note Details screen.
 It might list one of the following models:
 - CoreModel (vX.X). The _Core_ model described above.
 - ExpansionModel (vX.X). The _Expansion_ model described above.
@@ -200,7 +200,7 @@ If at any point both models agree and the Core model scores the note as Helpful 
 
 When notes reach a status of Helpful or Not Helpful, they're displayed alongside the top two explanation tags that were given by raters to explain why they rated the note helpful or not.
 
-This is done by counting the number of times each explanation tag was given filtered to explanation tags that match the final note status (e.g., if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status is reverted to “Needs More Ratings” (this is rare).
+This is done by counting the number of times each explanation tag was given and filtering to explanation tags that match the final note status (e.g., if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status is reverted to “Needs More Ratings” (this is rare).
 
 We break ties between multiple explanation tags by picking the less commonly used reasons, given in order below (#1 is the least commonly used and therefore wins all tiebreaks).
 
@@ -240,7 +240,7 @@ For not-helpful notes:
 4. Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3.
 5. Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
 6. Reconcile scoring results from the Core, Expansion and Group models to generate final status for each note.
-7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and ratings tags.  Stabilize helpfulness status for any notes older than two weeks.
+7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and rating tags.  Stabilize helpfulness status for any notes older than two weeks.
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
@@ -311,7 +311,7 @@ For not-helpful notes:
 
 - Introduced support for running multiple ranking models.
 - Launched ranking support for Community Notes global expansion, partitioning notes and ratings by Core and Expansion to maintain note ranking quality while growing globally.
-- Launched Coverage model with increased intercept regularization.  This model will run along-side the Core note ranking model to increase Helpful note coverage.
+- Launched Coverage model with increased intercept regularization.  This model will run alongside the Core note ranking model to increase Helpful note coverage.
 
 
 **January 20, 2023**
