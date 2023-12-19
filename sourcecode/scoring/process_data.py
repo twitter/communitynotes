@@ -86,7 +86,7 @@ def tsv_reader(path: str, mapping, columns, header=False, parser=tsv_parser):
       for filename in os.listdir(path)
       if filename.endswith(".tsv")
     ]
-    return pd.concat(dfs)
+    return pd.concat(dfs, ignore_index=True)
   else:
     return tsv_reader_single(path, mapping, columns, header, parser)
 
