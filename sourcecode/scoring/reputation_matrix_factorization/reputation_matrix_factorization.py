@@ -79,7 +79,8 @@ def _train_one_round(
   learningRate=0.2,
   logRate=15,
   device=torch.device("cpu"),
-  convergence=10**-7,
+  convergence=10**-5,
+  stablePeriod=5,
 ):
   # Identify tensors for training and testing
   notes, raters, _ = dataset
@@ -98,11 +99,12 @@ def _train_one_round(
     loss += model.get_regularization_loss()
     if logRate and epoch % logRate == 0:
       print(f"epoch={epoch:03d} | loss={loss.item():7.4f} | time={time.time() - start:.1f}s")
-    if priorLoss is not None and (priorLoss - loss).abs() < convergence:
-      if logRate:
-        print(f"epoch={epoch:03d} | loss={loss.item():7.4f} | time={time.time() - start:.1f}s")
-      break
-    priorLoss = loss
+    if convergence > 0 and epoch % stablePeriod == 0:
+      if priorLoss is not None and (priorLoss - loss).abs() < convergence:
+        if logRate:
+          print(f"epoch={epoch:03d} | loss={loss.item():7.4f} | time={time.time() - start:.1f}s")
+        break
+      priorLoss = loss
     # Perform backward pass
     loss.backward()
     # Update parameters
@@ -142,7 +144,7 @@ def train_model(
     raters,
     targets,
     posWeight=posWeight,
-    noteWeightPower=initialNoteWeightPower,
+    noteNormExp=initialNoteWeightPower,
     device=device,
   )
   model.raterReputation.requires_grad_(False)
@@ -154,7 +156,6 @@ def train_model(
     learningRate=learningRate,
     logRate=logRate,
     device=device,
-    convergence=-1,
   )
 
   # train round 1
@@ -169,7 +170,6 @@ def train_model(
     learningRate=learningRate,
     logRate=logRate,
     device=device,
-    convergence=-1,
   )
 
   # train round 2
@@ -190,10 +190,10 @@ def train_model(
     raters,
     targets,
     posWeight=posWeight * posWeightThirdRoundMultiplier,
-    raterReputationTensor=raterReputation,
+    raterReputation=raterReputation,
+    reputationExp=raterWeightPower,
     alpha=alpha,
-    raterWeightPower=raterWeightPower,
-    noteWeightPower=finalNoteWeightPower,
+    noteNormExp=finalNoteWeightPower,
     device=device,
   )
   loss2 = _train_one_round(
@@ -204,6 +204,5 @@ def train_model(
     learningRate=learningRate,
     logRate=logRate,
     device=device,
-    convergence=-1,
   )
   return loss0, loss1, loss2
