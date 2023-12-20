@@ -1,4 +1,4 @@
-numpy==1.19.2
-pandas==1.1.5
-torch==1.12.0
-scipy==1.7.3
+numpy==1.26.2
+pandas==2.1.4
+torch==2.1.2
+scipy==1.11.4
