@@ -72,7 +72,7 @@ def parse_args():
   parser.set_defaults(strict_columns=True)
   parser.add_argument(
     "--parallel",
-    help="Disable parallel run of algorithm.",
+    help="Enable parallel run of algorithm.",
     action="store_true",
     dest="parallel",
   )

@@ -94,7 +94,7 @@ def get_top_nonhelpful_tags_per_author(
     # Extract indices of the two largest values in each row
     topTwoIndices = sortedIndices[:, :2]
     noteTopTags = pd.DataFrame(
-      filteredTags.columns[topTwoIndices], columns=["firstTag", "secondTag"]
+      np.array(filteredTags.columns)[topTwoIndices], columns=["firstTag", "secondTag"]
     )
     noteTopTags[c.noteIdKey] = filteredTags.index
 
