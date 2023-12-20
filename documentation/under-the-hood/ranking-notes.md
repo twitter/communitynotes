@@ -71,7 +71,7 @@ The resulting scores that we use for each note are the note intercept terms $i_n
 
 In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$.
 We also require that "Helpful" notes have $abs(f_n) < 0.50$ to identify notes that may lack broad support despite having an intercept $i_n > 0.40$.
-We assign "Not Helpful" status to additional notes based on the upper bound of the uncertainty interval of their intercept (at $-0.04$) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section, in addition to applying "Helpful" status to notes with a lower bound of their uncertainty interval of their intercept of at least $0.31$.
+We assign "Not Helpful" status to additional notes based on the upper bound of the uncertainty interval of their intercept (at $-0.04$) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section.
 The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
 
 This approach has a few nice properties:
