@@ -33,7 +33,6 @@ class MFBaseScorer(Scorer):
     crnhThresholdNoteFactorMultiplier: float = -0.8,
     crnhThresholdNMIntercept: float = -0.15,
     crnhThresholdUCBIntercept: float = -0.04,
-    crhThresholdLCBIntercept: float = 10.00,
     crhSuperThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
     useStableInitialization: bool = True,
@@ -66,8 +65,6 @@ class MFBaseScorer(Scorer):
         to achieve CRNH status.
       crnhThresholdUCBIntercept: Maximum UCB of the intercept (determined with pseudoraters) for
         notes to achieve CRNH status.
-      crhThresholdLCBIntercept: Minimum LCB of the intercept (determined with pseudoraters) for
-        notes to achieve CRH status.
       crhSuperThreshold: Minimum intercept for notes which have consistent and common patterns of
         repeated reason tags in not-helpful ratings to achieve CRH status.
       inertiaDelta: Minimum amount which a note that has achieve CRH status must drop below the
@@ -88,7 +85,6 @@ class MFBaseScorer(Scorer):
     self._crnhThresholdNoteFactorMultiplier = crnhThresholdNoteFactorMultiplier
     self._crnhThresholdNMIntercept = crnhThresholdNMIntercept
     self._crnhThresholdUCBIntercept = crnhThresholdUCBIntercept
-    self._crhThresholdLCBIntercept = crhThresholdLCBIntercept
     self._crhSuperThreshold = crhSuperThreshold
     self._inertiaDelta = inertiaDelta
     self._modelingGroupToInitializeForStability = 13 if useStableInitialization else None
@@ -327,7 +323,6 @@ class MFBaseScorer(Scorer):
         crnhThresholdNoteFactorMultiplier=self._crnhThresholdNoteFactorMultiplier,
         crnhThresholdNMIntercept=self._crnhThresholdNMIntercept,
         crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
-        crhThresholdLCBIntercept=self._crhThresholdLCBIntercept,
         crhSuperThreshold=self._crhSuperThreshold,
         inertiaDelta=self._inertiaDelta,
       )
@@ -477,7 +472,6 @@ class MFBaseScorer(Scorer):
         crnhThresholdNoteFactorMultiplier=self._crnhThresholdNoteFactorMultiplier,
         crnhThresholdNMIntercept=self._crnhThresholdNMIntercept,
         crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
-        crhThresholdLCBIntercept=self._crhThresholdLCBIntercept,
         crhSuperThreshold=self._crhSuperThreshold,
         inertiaDelta=self._inertiaDelta,
         finalRound=True,

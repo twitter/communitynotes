@@ -130,5 +130,4 @@ def get_incorrect_aggregates(
   incorrectAggregates = _get_incorrect_tfidf_ratio(
     ratings_w_user_totals, interval_filter, "_interval"
   )
-
   return incorrectAggregates

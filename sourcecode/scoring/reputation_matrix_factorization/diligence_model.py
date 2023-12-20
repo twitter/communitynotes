@@ -1,10 +1,9 @@
 from .. import constants as c
-from .reputation_matrix_factorization import ReputationMFModel, train_model
+from .dataset import build_dataset
+from .reputation_matrix_factorization import ReputationModelHyperparameters, train_model
 
-import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
 
 
 def get_low_diligence_intercepts(
@@ -13,54 +12,64 @@ def get_low_diligence_intercepts(
   raterParams: pd.DataFrame,
   device=torch.device("cpu"),
 ) -> pd.DataFrame:
-  # Generate input tensors
-  noteIdMap = dict(zip(noteParams[c.noteIdKey], np.arange(len(noteParams), dtype=np.int64)))
-  raterIdMap = dict(
-    zip(raterParams[c.raterParticipantIdKey], np.arange(len(raterParams), dtype=np.int64))
-  )
-  noteTensor = torch.tensor(
-    [noteIdMap[noteId] for noteId in filteredRatings[c.noteIdKey]], device=device
-  )
-  raterTensor = torch.tensor(
-    [raterIdMap[raterId] for raterId in filteredRatings[c.raterParticipantIdKey]], device=device
-  )
-  targetTensor = torch.tensor(
+  # Define dataset
+  targets = (
     (
       filteredRatings[c.notHelpfulIncorrectTagKey]
       + filteredRatings[c.notHelpfulIrrelevantSourcesTagKey]
       + filteredRatings[c.notHelpfulSourcesMissingOrUnreliableTagKey]
-    ).clip(0, 1),
-    device=device,
-    dtype=torch.float32,
+    )
+    .clip(0, 1)
+    .values
   )
-  # Compute low diligence intercepts
-  model = ReputationMFModel(
-    noteParams,
-    raterParams,
+  dataset = build_dataset(
+    filteredRatings, targets, notes=noteParams, raters=raterParams, device=device
+  )
+  # Define hyperparameters
+  hParams = ReputationModelHyperparameters(
+    # Model hyperparameters
+    activationFunction="IDENTITY",
+    nDim=1,
+    stableInit=True,
+    # Optimizaiton hyperparameters
+    numEpochs=300,
+    logRate=30,
+    learningRate=0.2,
+    convergence=10**-5,
+    stablePeriod=5,
+    # Regularization hyperparameters
     l2Lambda=0.03,
     l2NoteBiasMultiplier=1,
     l2RaterBiasMultiplier=10,
-    l2RaterReputationMultiplier=50,
     l2GlobalBiasMultiplier=0,
-    stableInit=True,
-  )
-  loss0, loss1, loss2 = train_model(
-    model=model,
-    dataset=(noteTensor, raterTensor, targetTensor),
-    loss_fn=nn.BCEWithLogitsLoss(reduction="none"),
-    posWeight=100,
+    l2RaterReputationMultiplier=50,
     l2LambdaThirdRoundMultiplier=1,
+    l2NoteBiasThirdRoundMultiplier=1,
+    # Base / first round loss hyperparameters
+    lossFunction="BCEWithLogitsLoss",
+    posWeight=100,
+    noteNormExpFirstRound=0,
+    raterNormExpFirstRound=0,
+    # Second round loss hyperparameters
+    posWeightSecondRoundMultiplier=1,
+    noteNormExpSecondRound=0,
+    raterNormExpSecondRound=0,
+    # Third round loss hyperparameters
     posWeightThirdRoundMultiplier=5,
-    numEpochs=300,
-    logRate=30,
+    noteNormExpThirdRound=-0.5,
+    raterNormExpThirdRound=0,
+    reputationExp=0.5,
     alpha=0.1,
-    raterWeightPower=0.5,
-    initialNoteWeightPower=0,
-    finalNoteWeightPower=-0.5,
-    freezeRaterBias=False,
-    resetReputation=False,
   )
-  print(f"Low diligence training loss: {loss0:.4f}, {loss1:.4f}, {loss2:.4f}")
+
+  # Train model
+  model, loss1, loss2, loss3 = train_model(
+    hParams=hParams,
+    dataset=dataset,
+    device=device,
+  )
+  print(f"Low diligence training loss: {loss1:.4f}, {loss2:.4f}, {loss3:.4f}")
+
   # Compose and return DataFrame
   return pd.DataFrame(
     {

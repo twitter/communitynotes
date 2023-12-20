@@ -22,15 +22,14 @@ class RuleID(Enum):
   GENERAL_CRH = RuleAndVersion("GeneralCRH", "1.0", False)
   GENERAL_CRNH = RuleAndVersion("GeneralCRNH", "1.0", False)
   UCB_CRNH = RuleAndVersion("UcbCRNH", "1.0", False)
-  LCB_CRH = RuleAndVersion("LcbCRH", "1.0", False)
   TAG_OUTLIER = RuleAndVersion("TagFilter", "1.0", False)
   ELEVATED_CRH = RuleAndVersion("CRHSuperThreshold", "1.0", False)
   NM_CRNH = RuleAndVersion("NmCRNH", "1.0", False)
   GENERAL_CRH_INERTIA = RuleAndVersion("GeneralCRHInertia", "1.0", False)
   ELEVATED_CRH_INERTIA = RuleAndVersion("ElevatedCRHInertia", "1.0", False)
-  LCB_INERTIA = RuleAndVersion("LcbCRHInertia", "1.0", False)
   INCORRECT_OUTLIER = RuleAndVersion("FilterIncorrect", "1.0", False)
   LOW_DILIGENCE = RuleAndVersion("FilterLowDiligence", "1.0", False)
+  LARGE_FACTOR = RuleAndVersion("FilterLargeFactor", "1.0", False)
 
   # Rules used in _meta_score.
   META_INITIAL_NMR = RuleAndVersion("MetaInitialNMR", "1.0", False)
@@ -371,6 +370,47 @@ class FilterLowDiligence(ScoringRule):
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
 
     print(f"Total notes impacted by low diligence filtering: {len(noteStatusUpdates)}")
+    noteStatusUpdates[statusColumn] = self._status
+
+    return (noteStatusUpdates, None)
+
+
+class FilterLargeFactor(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    status: str,
+    factorThreshold: float,
+  ):
+    """Filter CRH notes which have especially large factors (whether positive or negative).
+
+    Args:
+      rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
+      dependencies: Rules which must run before this rule can run.
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
+      factorThreshold: threshold for filtering large factors
+    """
+    super().__init__(ruleID, dependencies)
+    self._status = status
+    self._factorThreshold = factorThreshold
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Returns notes on track for CRH with a high low diligence intercept."""
+    # Prune noteStats to only include CRH notes.
+    crhNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][[c.noteIdKey]]
+    crhStats = noteStats.merge(crhNotes, on=c.noteIdKey, how="inner")
+
+    # Identify impacted notes.
+    noteStatusUpdates = crhStats.loc[
+      crhStats[c.internalNoteFactor1Key].abs() > self._factorThreshold
+    ][[c.noteIdKey]]
+
+    pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
+
+    print(f"Total notes impacted by large factor filtering: {len(noteStatusUpdates)}")
     noteStatusUpdates[statusColumn] = self._status
 
     return (noteStatusUpdates, None)

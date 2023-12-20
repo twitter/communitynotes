@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import time
 
 from .. import constants as c
@@ -8,21 +9,59 @@ import torch
 import torch.nn as nn
 
 
+# Define dataclass to represent learning hyperparameters
+@dataclass
+class ReputationModelHyperparameters:
+  # Model hyperparameters
+  activationFunction: str
+  nDim: int
+  stableInit: bool
+  # Optimizaiton hyperparameters
+  numEpochs: int
+  logRate: int
+  learningRate: float
+  convergence: float
+  stablePeriod: int
+  # Regularization hyperparameters
+  l2Lambda: float
+  l2NoteBiasMultiplier: float
+  l2RaterBiasMultiplier: float
+  l2GlobalBiasMultiplier: float
+  l2RaterReputationMultiplier: float
+  l2LambdaThirdRoundMultiplier: float
+  l2NoteBiasThirdRoundMultiplier: float
+  # Base / first round loss hyperparameters
+  lossFunction: str
+  posWeight: float
+  noteNormExpFirstRound: float
+  raterNormExpFirstRound: float
+  # Second round loss hyperparameters
+  posWeightSecondRoundMultiplier: float
+  noteNormExpSecondRound: float
+  raterNormExpSecondRound: float
+  # Third round loss hyperparameters
+  posWeightThirdRoundMultiplier: float
+  noteNormExpThirdRound: float
+  raterNormExpThirdRound: float
+  reputationExp: float
+  alpha: float
+
+
 # Define model with customizable loss, activation, regularization and dimensionality
 class ReputationMFModel(nn.Module):
   def __init__(
     self,
     noteParams,
     raterParams,
-    activation_fn=nn.Identity(),
-    nDim=1,
-    l2Lambda=0.03,
-    l2NoteBiasMultiplier=5,
-    l2RaterBiasMultiplier=5,
-    l2RaterReputationMultiplier=5,
-    l2GlobalBiasMultiplier=1,
+    activation_fn,
+    nDim,
+    l2Lambda,
+    l2NoteBiasMultiplier,
+    l2RaterBiasMultiplier,
+    l2GlobalBiasMultiplier,
+    l2RaterReputationMultiplier,
+    stableInit,
     device=torch.device("cpu"),
-    stableInit=False,
   ):
     super().__init__()
     # Save hyperparameters
@@ -71,25 +110,16 @@ class ReputationMFModel(nn.Module):
 
 
 # Define single pass training loop
-def _train_one_round(
-  model,
-  loss_fn,
-  dataset,
-  numEpochs=150,
-  learningRate=0.2,
-  logRate=15,
-  device=torch.device("cpu"),
-  convergence=10**-5,
-  stablePeriod=5,
-):
+def _train_one_round(model, loss_fn, dataset, hParams):
   # Identify tensors for training and testing
-  notes, raters, _ = dataset
+  notes = dataset.noteTensor
+  raters = dataset.raterTensor
   # Initilaize training state
-  optim = torch.optim.Adam(model.parameters(), lr=learningRate)
+  optim = torch.optim.Adam(model.parameters(), lr=hParams.learningRate)
   epoch = 0
   start = time.time()
   priorLoss = None
-  while epoch <= numEpochs:
+  while epoch <= hParams.numEpochs:
     # Set gradients to zero
     optim.zero_grad()
     # Perform forward pass
@@ -97,11 +127,11 @@ def _train_one_round(
     # Compute loss
     loss = loss_fn(pred.flatten())
     loss += model.get_regularization_loss()
-    if logRate and epoch % logRate == 0:
+    if hParams.logRate and epoch % hParams.logRate == 0:
       print(f"epoch={epoch:03d} | loss={loss.item():7.4f} | time={time.time() - start:.1f}s")
-    if convergence > 0 and epoch % stablePeriod == 0:
-      if priorLoss is not None and (priorLoss - loss).abs() < convergence:
-        if logRate:
+    if hParams.convergence > 0 and epoch % hParams.stablePeriod == 0:
+      if priorLoss is not None and (priorLoss - loss).abs() < hParams.convergence:
+        if hParams.logRate:
           print(f"epoch={epoch:03d} | loss={loss.item():7.4f} | time={time.time() - start:.1f}s")
         break
       priorLoss = loss
@@ -114,95 +144,105 @@ def _train_one_round(
   return loss.item()
 
 
-def train_model(
-  model,
-  dataset,
-  loss_fn,
-  posWeight=50,
-  l2LambdaThirdRoundMultiplier=1,
-  posWeightThirdRoundMultiplier=1,
-  numEpochs=150,
-  learningRate=0.2,
-  logRate=15,
-  device=torch.device("cpu"),
-  alpha=0,
-  raterWeightPower=1,
-  initialNoteWeightPower=0,
-  finalNoteWeightPower=-0.5,
-  freezeRaterBias=False,
-  resetReputation=False,
-):
-  # unpack dataset
-  notes, raters, targets = dataset
+def _sigmoid_range(low, high):
+  sigmoid_fn = torch.nn.Sigmoid()
+  return lambda tensor: sigmoid_fn(tensor) * (high - low) + low
 
-  # train round 0
+
+# TODO: replace string constants with enums
+def train_model(
+  hParams,
+  dataset,
+  device=torch.device("cpu"),
+):
+  # Unpack dataset
+  notes = dataset.noteTensor
+  raters = dataset.raterTensor
+  targets = dataset.targetTensor
+
+  # Define model
+  activation_fn = None
+  if hParams.activationFunction == "SIGMOID":
+    activation_fn = nn.Sigmoid()
+  elif hParams.activationFunction == "SIGMOID_RANGE":
+    activation_fn = _sigmoid_range(-0.2, 1.2)
+  else:
+    assert hParams.activationFunction == "IDENTITY"
+    activation_fn = nn.Identity()
+  loss_fn = None
+  if hParams.lossFunction == "MSELoss":
+    loss_fn = nn.MSELoss(reduction="none")
+  else:
+    assert hParams.lossFunction == "BCEWithLogitsLoss"
+    loss_fn = nn.BCEWithLogitsLoss(reduction="none")
+
+  model = ReputationMFModel(
+    dataset.notes,
+    dataset.raters,
+    activation_fn=activation_fn,
+    nDim=hParams.nDim,
+    l2Lambda=hParams.l2Lambda,
+    l2NoteBiasMultiplier=hParams.l2NoteBiasMultiplier,
+    l2RaterBiasMultiplier=hParams.l2RaterBiasMultiplier,
+    l2GlobalBiasMultiplier=hParams.l2GlobalBiasMultiplier,
+    l2RaterReputationMultiplier=hParams.l2RaterReputationMultiplier,
+    stableInit=hParams.stableInit,
+  )
+
+  # train round 1
   print("Reputation Matrix Factorization:")
-  print("Round 0:")
-  initial_loss_fn = WeightedLoss(
+  print("Round 1:")
+  loss_fn_1 = WeightedLoss(
     loss_fn,
     notes,
     raters,
     targets,
-    posWeight=posWeight,
-    noteNormExp=initialNoteWeightPower,
+    posWeight=hParams.posWeight,
+    noteNormExp=hParams.noteNormExpFirstRound,
+    raterNormExp=hParams.raterNormExpFirstRound,
     device=device,
   )
   model.raterReputation.requires_grad_(False)
-  loss0 = _train_one_round(
-    model,
-    initial_loss_fn,
-    dataset,
-    numEpochs=numEpochs,
-    learningRate=learningRate,
-    logRate=logRate,
-    device=device,
-  )
-
-  # train round 1
-  print("\nRound 1:")
-  model.raterReputation.requires_grad_(True)
-  model.noteBias.requires_grad_(False)
-  loss1 = _train_one_round(
-    model,
-    initial_loss_fn,
-    dataset,
-    numEpochs=numEpochs,
-    learningRate=learningRate,
-    logRate=logRate,
-    device=device,
-  )
+  loss1 = _train_one_round(model, loss_fn_1, dataset, hParams)
 
   # train round 2
   print("\nRound 2:")
-  model.l2Lambda = model.l2Lambda * l2LambdaThirdRoundMultiplier
+  loss_fn_2 = WeightedLoss(
+    loss_fn,
+    notes,
+    raters,
+    targets,
+    posWeight=hParams.posWeight * hParams.posWeightSecondRoundMultiplier,
+    noteNormExp=hParams.noteNormExpSecondRound,
+    raterNormExp=hParams.raterNormExpSecondRound,
+    device=device,
+  )
+  model.raterReputation.requires_grad_(True)
+  model.noteBias.requires_grad_(False)
+  loss2 = _train_one_round(model, loss_fn_2, dataset, hParams)
+
+  # train round 3
+  print("\nRound 3:")
+  model.l2Lambda = hParams.l2Lambda * hParams.l2LambdaThirdRoundMultiplier
+  model.l2NoteBiasMultiplier = hParams.l2NoteBiasMultiplier * hParams.l2NoteBiasThirdRoundMultiplier
   model.noteBias.requires_grad_(True)
   model.noteEmbedding.requires_grad_(False)
   model.raterEmbedding.requires_grad_(False)
   model.raterReputation.requires_grad_(False)
-  if freezeRaterBias:
-    model.raterBias.requires_grad_(False)
-  if resetReputation:
-    model.reset_reputation()
   raterReputation = model.raterReputation.weight.detach().clone().clip(min=0)
-  final_loss_fn = WeightedLoss(
+  loss_fn_3 = WeightedLoss(
     loss_fn,
     notes,
     raters,
     targets,
-    posWeight=posWeight * posWeightThirdRoundMultiplier,
+    posWeight=hParams.posWeight * hParams.posWeightThirdRoundMultiplier,
     raterReputation=raterReputation,
-    reputationExp=raterWeightPower,
-    alpha=alpha,
-    noteNormExp=finalNoteWeightPower,
+    reputationExp=hParams.reputationExp,
+    alpha=hParams.alpha,
+    noteNormExp=hParams.noteNormExpThirdRound,
+    raterNormExp=hParams.raterNormExpThirdRound,
     device=device,
   )
-  loss2 = _train_one_round(
-    model,
-    final_loss_fn,
-    dataset,
-    numEpochs=numEpochs,
-    learningRate=learningRate,
-    logRate=logRate,
-    device=device,
-  )
-  return loss0, loss1, loss2
+  loss3 = _train_one_round(model, loss_fn_3, dataset, hParams)
+
+  return model, loss1, loss2, loss3
