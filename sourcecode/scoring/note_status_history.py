@@ -1,3 +1,5 @@
+import time
+
 from . import constants as c
 from .scoring_rules import RuleID
 
@@ -87,13 +89,18 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   # Update the current status in accordance with this scoring run.
   assert not pd.isna(mergedNote[c.finalRatingStatusKey])
   mergedNote[c.currentLabelKey] = mergedNote[c.finalRatingStatusKey]
+  mergedNote[c.currentCoreStatusKey] = mergedNote[c.coreRatingStatusKey]
+  mergedNote[c.currentExpansionStatusKey] = mergedNote[c.expansionRatingStatusKey]
+  mergedNote[c.currentGroupStatusKey] = mergedNote[c.groupRatingStatusKey]
+  mergedNote[c.currentDecidedByKey] = mergedNote[c.decidedByKey]
+  mergedNote[c.currentModelingGroupKey] = mergedNote[c.modelingGroupKey]
   mergedNote[c.timestampMillisOfNoteCurrentLabelKey] = currentTimeMillis
 
   # Lock notes which are (1) not already locked, (2) old enough to lock and (3)
   # were decided by logic which has global display impact.  Criteria (3) guarantees
   # that any CRH note which is shown to all users will have the status locked, but
   # also means that if a note is scored as NMR by all trusted models and CRH by an
-  # expimental model we will avoid locking the note to NMR even though the note was
+  # experimental model we will avoid locking the note to NMR even though the note was
   # in scope for a trusted model and scored as NMR at the time of status locking.
   # The note will continue to be CRH only as long as an experimental model continues
   # scoring the note as CRH (or a core model scores the note as CRH).  If at any point
@@ -102,9 +109,9 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
 
   # Check whether the note has already been locked.
   notAlreadyLocked = pd.isna(mergedNote[c.lockedStatusKey])
-  # Check whether the note is old enough to be eligble for locking.
+  # Check whether the note is old enough to be eligible for locking.
   lockEligible = _noteLockMillis < (currentTimeMillis - mergedNote[c.createdAtMillisKey])
-  # Check whether the note was decided by a rule which dispalys globally
+  # Check whether the note was decided by a rule which displays globally
   trustedRule = mergedNote[c.decidedByKey] in {
     rule.get_name() for rule in RuleID if rule.value.lockingEnabled
   }
@@ -148,6 +155,36 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   return mergedNote
 
 
+def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn=0.25) -> None:
+  """Validate that number of CRH notes remains within an accepted bound.
+
+  Assert fails and scoring exits with error if maximum allowable churn is exceeded.
+
+  Args:
+    mergedStatuses: NSH DF with new and old data combined.
+    maxCrhChurn: maximum fraction of unlocked notes to gain or lose CRH status.
+
+  Returns:
+    None
+  """
+  # Prune to unlocked notes.
+  mergedStatuses = mergedStatuses[mergedStatuses[c.timestampMillisOfStatusLockKey].isna()]
+  # Identify new and old CRH notes.
+  oldCrhNotes = frozenset(
+    mergedStatuses[mergedStatuses[c.currentLabelKey] == c.currentlyRatedHelpful][c.noteIdKey]
+  )
+  newCrhNotes = frozenset(
+    mergedStatuses[mergedStatuses[c.finalRatingStatusKey] == c.currentlyRatedHelpful][c.noteIdKey]
+  )
+  # Validate that changes are within allowable bounds.
+  assert (
+    (len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
+  ), f"Too many new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
+  assert (
+    (len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
+  ), f"Too few new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
+
+
 def update_note_status_history(
   oldNoteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
@@ -161,10 +198,27 @@ def update_note_status_history(
   Returns:
       pd.DataFrame: noteStatusHistory
   """
-  currentTimeMillis = c.epochMillis
+  if c.useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory:
+    # When running in prod, we use the latest time possible, so as to include as many valid ratings
+    # as possible, and be closest to the time the new note statuses are user-visible.
+    currentTimeMillis = 1000 * time.time()
+  else:
+    # When running in test, we use the overridable epochMillis constant.
+    currentTimeMillis = c.epochMillis
   newScoredNotesSuffix = "_sn"
   mergedStatuses = oldNoteStatusHistory.merge(
-    scoredNotes[[c.noteIdKey, c.createdAtMillisKey, c.finalRatingStatusKey, c.decidedByKey]].rename(
+    scoredNotes[
+      [
+        c.noteIdKey,
+        c.createdAtMillisKey,
+        c.finalRatingStatusKey,
+        c.decidedByKey,
+        c.coreRatingStatusKey,
+        c.expansionRatingStatusKey,
+        c.groupRatingStatusKey,
+        c.modelingGroupKey,
+      ]
+    ].rename(
       {
         c.createdAtMillisKey: c.createdAtMillisKey + newScoredNotesSuffix,
       },
@@ -176,6 +230,8 @@ def update_note_status_history(
   assert len(mergedStatuses) == len(
     oldNoteStatusHistory
   ), "scoredNotes and oldNoteStatusHistory should both contain all notes"
+  if len(mergedStatuses) > c.minNumNotesForProdData:
+    _check_flips(mergedStatuses)
 
   def apply_update(mergedNote):
     return _update_single_note_status_history(

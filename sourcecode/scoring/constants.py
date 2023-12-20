@@ -1,7 +1,14 @@
+from contextlib import contextmanager
+import os
 import time
 
 import numpy as np
+import pandas as pd
 
+
+# Default number of threads to use in torch if os.cpu_count() is unavailable
+# and no value is specified.
+defaultNumThreads = os.cpu_count() or 8
 
 # Store the timestamp at which the constants module is initialized.  Note
 # that module initialization occurs only once regardless of how many times
@@ -12,12 +19,16 @@ import numpy as np
 #
 # https://docs.python.org/3/tutorial/modules.html#more-on-modules
 epochMillis = 1000 * time.time()
-
-maxTrainError = 0.09
+useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory = True
+# Use this size threshld to isolate code which should be run differently in small
+# scale unit tests.
+minNumNotesForProdData = 200
 
 # Explanation Tags
 minRatingsToGetTag = 2
 minTagsNeededForStatus = 2
+tagPercentileForNormalization = 40
+intervalHalfWidth = 0.3
 
 # Data Filenames
 scoredNotesOutputPath = "scoredNotes.tsv"
@@ -35,6 +46,7 @@ createdAtMillisKey = "createdAtMillis"
 summaryKey = "summary"
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 modelingPopulationKey = "modelingPopulation"
+modelingGroupKey = "modelingGroup"
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
@@ -51,6 +63,7 @@ ratingCreatedBeforePublicTSVReleasedKey = "ratingCreatedBeforePublicTSVReleased"
 # Timestamps
 deletedNoteTombstonesLaunchTime = 1652918400000  # May 19, 2022 UTC
 notMisleadingUILaunchTime = 1664755200000  # October 3, 2022 UTC
+lastRatingTagsChangeTimeMillis = 1639699200000  # 2021/12/15 UTC
 publicTSVTimeDelay = 172800000  # 48 hours
 
 # Explanation Tags
@@ -107,14 +120,38 @@ coreRaterInterceptKey = "coreRaterIntercept"
 coreRaterFactor1Key = "coreRaterFactor1"
 coreRatingStatusKey = "coreRatingStatus"
 coreActiveRulesKey = "coreActiveRules"
+coreNoteInterceptMaxKey = "coreNoteInterceptMax"
+coreNoteInterceptMinKey = "coreNoteInterceptMin"
 # Expansion Model
 expansionNoteInterceptKey = "expansionNoteIntercept"
 expansionNoteFactor1Key = "expansionNoteFactor1"
 expansionRatingStatusKey = "expansionRatingStatus"
+expansionNoteInterceptMaxKey = "expansionNoteInterceptMax"
+expansionNoteInterceptMinKey = "expansionNoteInterceptMin"
+# ExpansionPlus Model
+expansionPlusNoteInterceptKey = "expansionPlusNoteIntercept"
+expansionPlusNoteFactor1Key = "expansionPlusNoteFactor1"
+expansionPlusRatingStatusKey = "expansionPlusRatingStatus"
 # Coverage Model
 coverageNoteInterceptKey = "coverageNoteIntercept"
 coverageNoteFactor1Key = "coverageNoteFactor1"
 coverageRatingStatusKey = "coverageRatingStatus"
+coverageNoteInterceptMaxKey = "coverageNoteInterceptMax"
+coverageNoteInterceptMinKey = "coverageNoteInterceptMin"
+# Group Model
+groupNoteInterceptKey = "groupNoteIntercept"
+groupNoteFactor1Key = "groupNoteFactor1"
+groupRatingStatusKey = "groupRatingStatus"
+groupNoteInterceptMaxKey = "groupNoteInterceptMax"
+groupNoteInterceptMinKey = "groupNoteInterceptMin"
+groupRaterInterceptKey = "groupRaterIntercept"
+groupRaterFactor1Key = "groupRaterFactor1"
+# Harassment/Abuse Tag
+harassmentNoteInterceptKey = "harassmentNoteIntercept"
+harassmentNoteFactor1Key = "harassmentNoteFactor1"
+harassmentRaterInterceptKey = "harassmentRaterIntercept"
+harassmentRaterFactor1Key = "harassmentRaterFactor1"
+
 
 # Ids and Indexes
 noteIdKey = "noteId"
@@ -128,6 +165,8 @@ noteCountKey = "noteCount"
 ratingCountKey = "ratingCount"
 numRatingsKey = "numRatings"
 numRatingsLast28DaysKey = "numRatingsLast28"
+ratingFromInitialModelingGroupKey = "ratingFromInitialModelingGroup"
+percentFromInitialModelingGroupKey = "percentFromInitialModelingGroup"
 
 # Helpfulness Score Keys
 crhRatioKey = "CRHRatio"
@@ -137,6 +176,8 @@ meanNoteScoreKey = "meanNoteScore"
 raterAgreeRatioKey = "raterAgreeRatio"
 ratingAgreesWithNoteStatusKey = "ratingAgreesWithNoteStatus"
 aboveHelpfulnessThresholdKey = "aboveHelpfulnessThreshold"
+totalHelpfulHarassmentRatingsPenaltyKey = "totalHelpfulHarassmentPenalty"
+raterAgreeRatioWithHarassmentAbusePenaltyKey = "raterAgreeRatioKeyWithHarassmentAbusePenalty"
 
 # Note Status Labels
 currentlyRatedHelpful = "CURRENTLY_RATED_HELPFUL"
@@ -148,8 +189,10 @@ currentlyRatedHelpfulBoolKey = "crhBool"
 currentlyRatedNotHelpfulBoolKey = "crnhBool"
 awaitingMoreRatingsBoolKey = "awaitingBool"
 
+helpfulOtherTagKey = "helpfulOther"
+
 helpfulTagsAndTieBreakOrder = [
-  (0, "helpfulOther"),
+  (0, helpfulOtherTagKey),
   (8, "helpfulInformative"),
   (7, "helpfulClear"),
   (3, "helpfulEmpathetic"),
@@ -167,24 +210,34 @@ helpfulTagsTiebreakOrder = [tag for (tiebreakOrder, tag) in sorted(helpfulTagsAn
 # elements which are already in the list to maintain compatibility with
 # BirdwatchNoteNotHelpfulTags.get in Scala.
 
+notHelpfulIncorrectTagKey = "notHelpfulIncorrect"
+notHelpfulOtherTagKey = "notHelpfulOther"
 notHelpfulSpamHarassmentOrAbuseTagKey = "notHelpfulSpamHarassmentOrAbuse"
 notHelpfulArgumentativeOrBiasedTagKey = "notHelpfulArgumentativeOrBiased"
 notHelpfulHardToUnderstandKey = "notHelpfulHardToUnderstand"
 notHelpfulNoteNotNeededKey = "notHelpfulNoteNotNeeded"
+notHelpfulSourcesMissingOrUnreliableTagKey = "notHelpfulSourcesMissingOrUnreliable"
+notHelpfulIrrelevantSourcesTagKey = "notHelpfulIrrelevantSources"
+notHelpfulOpinionSpeculationOrBiasTagKey = "notHelpfulOpinionSpeculationOrBias"
+notHelpfulMissingKeyPointsTagKey = "notHelpfulMissingKeyPoints"
+notHelpfulOutdatedTagKey = "notHelpfulOutdated"
+notHelpfulOffTopicTagKey = "notHelpfulOffTopic"
+notHelpfulOpinionSpeculationTagKey = "notHelpfulOpinionSpeculation"
 
+## This list is in TSV Order, but with indices for tiebreak order.
 notHelpfulTagsAndTieBreakOrder = [
-  (0, "notHelpfulOther"),
-  (8, "notHelpfulIncorrect"),
-  (2, "notHelpfulSourcesMissingOrUnreliable"),
-  (4, "notHelpfulOpinionSpeculationOrBias"),
-  (5, "notHelpfulMissingKeyPoints"),
-  (12, "notHelpfulOutdated"),
+  (0, notHelpfulOtherTagKey),  ## should lose all tiebreaks
+  (8, notHelpfulIncorrectTagKey),
+  (2, notHelpfulSourcesMissingOrUnreliableTagKey),
+  (4, notHelpfulOpinionSpeculationOrBiasTagKey),
+  (5, notHelpfulMissingKeyPointsTagKey),
+  (12, notHelpfulOutdatedTagKey),  ## should win all tiebreaks
   (10, notHelpfulHardToUnderstandKey),
   (7, notHelpfulArgumentativeOrBiasedTagKey),
-  (9, "notHelpfulOffTopic"),
+  (9, notHelpfulOffTopicTagKey),
   (11, notHelpfulSpamHarassmentOrAbuseTagKey),
-  (1, "notHelpfulIrrelevantSources"),
-  (3, "notHelpfulOpinionSpeculation"),
+  (1, notHelpfulIrrelevantSourcesTagKey),
+  (3, notHelpfulOpinionSpeculationTagKey),
   (6, notHelpfulNoteNotNeededKey),
 ]
 notHelpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in notHelpfulTagsAndTieBreakOrder]
@@ -205,6 +258,15 @@ notHelpfulTagsAdjustedRatioColumns = [
   f"{column}{ratioSuffix}" for column in notHelpfulTagsAdjustedColumns
 ]
 ratingWeightKey = "ratingWeight"
+
+lowDiligenceInterceptKey = "lowDiligenceIntercept"
+incorrectFilterColumns = [
+  "notHelpfulIncorrect_interval",
+  "p_incorrect_user_interval",
+  "num_voters_interval",
+  "tf_idf_incorrect_interval",
+  lowDiligenceInterceptKey,
+]
 
 misleadingTags = [
   "misleadingOther",
@@ -230,39 +292,41 @@ notMisleadingTagsAndTypes = [(tag, np.int64) for tag in notMisleadingTags]
 noteTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
-    (noteAuthorParticipantIdKey, np.object),
+    (noteAuthorParticipantIdKey, object),
     (createdAtMillisKey, np.int64),
     (tweetIdKey, np.int64),
-    (classificationKey, np.object),
-    ("believable", np.object),
-    ("harmful", np.object),
-    ("validationDifficulty", np.object),
+    (classificationKey, object),
+    ("believable", object),
+    ("harmful", object),
+    ("validationDifficulty", object),
   ]
   + misleadingTagsAndTypes
   + notMisleadingTagsAndTypes
-  + [
-    ("trustworthySources", np.int64),
-    (summaryKey, np.object),
-  ]
+  + [("trustworthySources", np.int64), (summaryKey, object), ("isMediaNote", np.int64)]
 )
 noteTSVColumns = [col for (col, dtype) in noteTSVColumnsAndTypes]
 noteTSVTypes = [dtype for (col, dtype) in noteTSVColumnsAndTypes]
 noteTSVTypeMapping = {col: dtype for (col, dtype) in noteTSVColumnsAndTypes}
 
+versionKey = "version"
+agreeKey = "agree"
+disagreeKey = "disagree"
+ratedOnTweetIdKey = "ratedOnTweetId"
 ratingTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
-    (raterParticipantIdKey, np.object),
+    (raterParticipantIdKey, object),
     (createdAtMillisKey, np.int64),
-    ("version", np.int64),
-    ("agree", np.int64),
-    ("disagree", np.int64),
+    (versionKey, np.int64),
+    (agreeKey, np.int64),
+    (disagreeKey, np.int64),
     (helpfulKey, np.int64),
     (notHelpfulKey, np.int64),
-    (helpfulnessLevelKey, np.object),
+    (helpfulnessLevelKey, object),
   ]
   + helpfulTagsAndTypesTSVOrder
   + notHelpfulTagsAndTypesTSVOrder
+  + [(ratedOnTweetIdKey, np.int64)]
 )
 
 ratingTSVColumns = [col for (col, dtype) in ratingTSVColumnsAndTypes]
@@ -279,26 +343,37 @@ mostRecentNonNMRLabelKey = "mostRecentNonNMRStatus"
 timestampMillisOfStatusLockKey = "timestampMillisOfStatusLock"
 lockedStatusKey = "lockedStatus"
 timestampMillisOfRetroLockKey = "timestampMillisOfRetroLock"
+currentCoreStatusKey = "currentCoreStatus"
+currentExpansionStatusKey = "currentExpansionStatus"
+currentGroupStatusKey = "currentGroupStatus"
+currentDecidedByKey = "currentDecidedBy"
+currentModelingGroupKey = "currentModelingGroup"
 
 noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
-  (noteAuthorParticipantIdKey, np.object),
+  (noteAuthorParticipantIdKey, object),
   (createdAtMillisKey, np.int64),
   (timestampMillisOfNoteFirstNonNMRLabelKey, np.double),  # double because nullable.
-  (firstNonNMRLabelKey, np.object),
+  (firstNonNMRLabelKey, object),
   (timestampMillisOfNoteCurrentLabelKey, np.double),  # double because nullable.
-  (currentLabelKey, np.object),
+  (currentLabelKey, object),
   (timestampMillisOfNoteMostRecentNonNMRLabelKey, np.double),  # double because nullable.
-  (mostRecentNonNMRLabelKey, np.object),
+  (mostRecentNonNMRLabelKey, object),
   (timestampMillisOfStatusLockKey, np.double),  # double because nullable.
-  (lockedStatusKey, np.object),
+  (lockedStatusKey, object),
   (timestampMillisOfRetroLockKey, np.double),  # double because nullable.
+  (currentCoreStatusKey, object),
+  (currentExpansionStatusKey, object),
+  (currentGroupStatusKey, object),
+  (currentDecidedByKey, object),
+  (currentModelingGroupKey, object),
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypes = [dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypeMapping = {
   col: dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes
 }
+
 
 # Earn In + Earn Out
 enrollmentState = "enrollmentState"
@@ -330,34 +405,49 @@ emergingRatingCount = 10
 aggregateRatingReceivedTotal = "aggregateRatingReceivedTotal"
 core = "CORE"
 expansion = "EXPANSION"
+expansionPlus = "EXPANSION_PLUS"
 
 userEnrollmentTSVColumnsAndTypes = [
-  (participantIdKey, np.str),
-  (enrollmentState, np.str),
+  (participantIdKey, str),
+  (enrollmentState, str),
   (successfulRatingNeededToEarnIn, np.int64),
   (timestampOfLastStateChange, np.int64),
   (timestampOfLastEarnOut, np.double),  # double because nullable.
-  (modelingPopulationKey, np.str),
+  (modelingPopulationKey, str),
+  (modelingGroupKey, np.float64),
 ]
 userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
 
-noteParameterUncertaintyTSVColumnsAndTypes = [
-  ("noteFactor1_max", np.double),
-  ("noteFactor1_median", np.double),
-  ("noteFactor1_min", np.double),
-  ("noteFactor1_refit_orig", np.double),
-  ("noteIntercept_max", np.double),
-  ("noteIntercept_median", np.double),
-  ("noteIntercept_min", np.double),
-  ("noteIntercept_refit_orig", np.double),
+noteInterceptMaxKey = "internalNoteIntercept_max"
+noteInterceptMinKey = "internalNoteIntercept_min"
+noteParameterUncertaintyTSVMainColumnsAndTypes = [
+  (noteInterceptMaxKey, np.double),
+  (noteInterceptMinKey, np.double),
+]
+noteParameterUncertaintyTSVAuxColumnsAndTypes = [
+  ("internalNoteFactor1_max", np.double),
+  ("internalNoteFactor1_median", np.double),
+  ("internalNoteFactor1_min", np.double),
+  ("internalNoteFactor1_refit_orig", np.double),
+  ("internalNoteIntercept_median", np.double),
+  ("internalNoteIntercept_refit_orig", np.double),
   ("ratingCount_all", np.int64),
   ("ratingCount_neg_fac", np.int64),
   ("ratingCount_pos_fac", np.int64),
 ]
+noteParameterUncertaintyTSVColumnsAndTypes = (
+  noteParameterUncertaintyTSVAuxColumnsAndTypes + noteParameterUncertaintyTSVMainColumnsAndTypes
+)
 noteParameterUncertaintyTSVColumns = [
   col for (col, _) in noteParameterUncertaintyTSVColumnsAndTypes
+]
+noteParameterUncertaintyTSVAuxColumns = [
+  col for (col, _) in noteParameterUncertaintyTSVAuxColumnsAndTypes
+]
+noteParameterUncertaintyTSVMainColumns = [
+  col for (col, _) in noteParameterUncertaintyTSVMainColumnsAndTypes
 ]
 noteParameterUncertaintyTSVTypes = [
   dtype for (_, dtype) in noteParameterUncertaintyTSVColumnsAndTypes
@@ -370,7 +460,6 @@ auxiliaryScoredNotesTSVColumns = (
   [
     noteIdKey,
     ratingWeightKey,
-    numRatingsKey,
     createdAtMillisKey,
     noteAuthorParticipantIdKey,
     awaitingMoreRatingsBoolKey,
@@ -384,36 +473,68 @@ auxiliaryScoredNotesTSVColumns = (
   + notHelpfulTagsTSVOrder
   + notHelpfulTagsAdjustedColumns
   + notHelpfulTagsAdjustedRatioColumns
-  + noteParameterUncertaintyTSVColumns
+  + incorrectFilterColumns
+)
+
+deprecatedNoteModelOutputColumns = frozenset(
+  {
+    coverageNoteInterceptKey,
+    coverageNoteFactor1Key,
+    coverageRatingStatusKey,
+    coverageNoteInterceptMinKey,
+    coverageNoteInterceptMaxKey,
+  }
 )
 
 noteModelOutputTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
   (coreNoteInterceptKey, np.double),
   (coreNoteFactor1Key, np.double),
-  (finalRatingStatusKey, np.str),
-  (firstTagKey, np.str),
-  (secondTagKey, np.str),
+  (finalRatingStatusKey, str),
+  (firstTagKey, str),
+  (secondTagKey, str),
   # Note that this column was formerly named "activeRules" and the name is now
   # updated to "coreActiveRules".  The data values remain the compatible,
   # but the new column only contains rules that ran when deciding status based on
   # the core model.
-  (coreActiveRulesKey, np.str),
-  (activeFilterTagsKey, np.str),
-  (classificationKey, np.str),
+  (coreActiveRulesKey, str),
+  (activeFilterTagsKey, str),
+  (classificationKey, str),
   (createdAtMillisKey, np.int64),
-  (coreRatingStatusKey, np.str),
-  (metaScorerActiveRulesKey, np.str),
-  (decidedByKey, np.str),
+  (coreRatingStatusKey, str),
+  (metaScorerActiveRulesKey, str),
+  (decidedByKey, str),
   (expansionNoteInterceptKey, np.double),
   (expansionNoteFactor1Key, np.double),
-  (expansionRatingStatusKey, np.str),
+  (expansionRatingStatusKey, str),
   (coverageNoteInterceptKey, np.double),
   (coverageNoteFactor1Key, np.double),
-  (coverageRatingStatusKey, np.str),
+  (coverageRatingStatusKey, str),
+  (coreNoteInterceptMinKey, np.double),
+  (coreNoteInterceptMaxKey, np.double),
+  (expansionNoteInterceptMinKey, np.double),
+  (expansionNoteInterceptMaxKey, np.double),
+  (coverageNoteInterceptMinKey, np.double),
+  (coverageNoteInterceptMaxKey, np.double),
+  (groupNoteInterceptKey, np.double),
+  (groupNoteFactor1Key, np.double),
+  (groupRatingStatusKey, str),
+  (groupNoteInterceptMaxKey, np.double),
+  (groupNoteInterceptMinKey, np.double),
+  (modelingGroupKey, np.float64),
+  (numRatingsKey, np.int64),
+  (timestampMillisOfNoteCurrentLabelKey, np.double),
+  (expansionPlusNoteInterceptKey, np.double),
+  (expansionPlusNoteFactor1Key, np.double),
+  (expansionPlusRatingStatusKey, str),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
+deprecatedNoteModelOutputTSVColumnsAndTypes = [
+  (col, dtype)
+  for (col, dtype) in noteModelOutputTSVColumnsAndTypes
+  if col in deprecatedNoteModelOutputColumns
+]
 
 raterModelOutputTSVColumnsAndTypes = [
   (raterParticipantIdKey, np.int64),
@@ -422,25 +543,38 @@ raterModelOutputTSVColumnsAndTypes = [
   (crhCrnhRatioDifferenceKey, np.double),
   (meanNoteScoreKey, np.double),
   (raterAgreeRatioKey, np.double),
-  (successfulRatingHelpfulCount, np.int64),
-  (successfulRatingNotHelpfulCount, np.int64),
-  (successfulRatingTotal, np.int64),
-  (unsuccessfulRatingHelpfulCount, np.int64),
-  (unsuccessfulRatingNotHelpfulCount, np.int64),
-  (unsuccessfulRatingTotal, np.int64),
-  (ratingsAwaitingMoreRatings, np.int64),
-  (ratedAfterDecision, np.int64),
-  (notesCurrentlyRatedHelpful, np.int64),
-  (notesCurrentlyRatedNotHelpful, np.int64),
-  (notesAwaitingMoreRatings, np.int64),
-  (enrollmentState, np.int32),
-  (successfulRatingNeededToEarnIn, np.int64),
-  (authorTopNotHelpfulTagValues, np.str),
-  (timestampOfLastStateChange, np.int64),
-  (aboveHelpfulnessThresholdKey, np.bool_),
-  (isEmergingWriterKey, np.bool_),
-  (aggregateRatingReceivedTotal, np.int64),
+  (successfulRatingHelpfulCount, pd.Int64Dtype()),
+  (successfulRatingNotHelpfulCount, pd.Int64Dtype()),
+  (successfulRatingTotal, pd.Int64Dtype()),
+  (unsuccessfulRatingHelpfulCount, pd.Int64Dtype()),
+  (unsuccessfulRatingNotHelpfulCount, pd.Int64Dtype()),
+  (unsuccessfulRatingTotal, pd.Int64Dtype()),
+  (ratingsAwaitingMoreRatings, pd.Int64Dtype()),
+  (ratedAfterDecision, pd.Int64Dtype()),
+  (notesCurrentlyRatedHelpful, pd.Int64Dtype()),
+  (notesCurrentlyRatedNotHelpful, pd.Int64Dtype()),
+  (notesAwaitingMoreRatings, pd.Int64Dtype()),
+  (enrollmentState, pd.Int64Dtype()),
+  (successfulRatingNeededToEarnIn, pd.Int64Dtype()),
+  (authorTopNotHelpfulTagValues, str),
+  (timestampOfLastStateChange, np.double),
+  (aboveHelpfulnessThresholdKey, np.float64),  # nullable bool
+  (isEmergingWriterKey, pd.BooleanDtype()),
+  (aggregateRatingReceivedTotal, pd.Int64Dtype()),
   (timestampOfLastEarnOut, np.double),
+  (groupRaterInterceptKey, np.double),
+  (groupRaterFactor1Key, np.double),
+  (modelingGroupKey, np.float64),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
+
+
+@contextmanager
+def time_block(label):
+  start = time.time()
+  try:
+    yield
+  finally:
+    end = time.time()
+    print(f"{label} elapsed time: {end - start:.2f} secs ({((end-start)/60.0):.2f} mins)")

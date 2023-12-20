@@ -18,6 +18,9 @@ class MFCoreScorer(MFBaseScorer):
     seed: Optional[int] = None,
     pseudoraters: Optional[bool] = False,
     core_threshold: float = 0.5,
+    useStableInitialization: bool = True,
+    saveIntermediateState: bool = False,
+    threads: int = c.defaultNumThreads,
   ) -> None:
     """Configure MFCoreScorer object.
 
@@ -26,9 +29,19 @@ class MFCoreScorer(MFBaseScorer):
       pseudoraters: if True, compute optional pseudorater confidence intervals
       core_threshold: float specifying the fraction of reviews which must be from CORE users
         for a note to be in scope for the CORE model.
+      threads: number of threads to use for intra-op parallelism in pytorch
     """
-    super().__init__(seed, pseudoraters)
+    super().__init__(
+      seed,
+      pseudoraters,
+      useStableInitialization=useStableInitialization,
+      saveIntermediateState=saveIntermediateState,
+      threads=threads,
+    )
     self._core_threshold = core_threshold
+
+  def get_name(self):
+    return "MFCoreScorer"
 
   def _get_note_col_mapping(self) -> Dict[str, str]:
     """Returns a dict mapping default note column names to custom names for a specific model."""
@@ -37,6 +50,8 @@ class MFCoreScorer(MFBaseScorer):
       c.internalNoteFactor1Key: c.coreNoteFactor1Key,
       c.internalRatingStatusKey: c.coreRatingStatusKey,
       c.internalActiveRulesKey: c.coreActiveRulesKey,
+      c.noteInterceptMinKey: c.coreNoteInterceptMinKey,
+      c.noteInterceptMaxKey: c.coreNoteInterceptMaxKey,
     }
 
   def _get_user_col_mapping(self) -> Dict[str, str]:
@@ -55,6 +70,8 @@ class MFCoreScorer(MFBaseScorer):
       c.coreRatingStatusKey,
       c.coreActiveRulesKey,
       c.activeFilterTagsKey,
+      c.coreNoteInterceptMinKey,
+      c.coreNoteInterceptMaxKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
@@ -69,8 +86,12 @@ class MFCoreScorer(MFBaseScorer):
       c.aboveHelpfulnessThresholdKey,
     ]
 
+  # TODO(bradm): split this into two functions for better modularity / readability.
   def _filter_input(
-    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollment: pd.DataFrame
+    self,
+    ratingsOrig: pd.DataFrame,
+    noteStatusHistoryOrig: pd.DataFrame,
+    userEnrollment: pd.DataFrame,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Prune the contents of ratings and noteStatusHistory to scope model behavior.
 
@@ -93,14 +114,37 @@ class MFCoreScorer(MFBaseScorer):
         ratings: ratings filtered to only contain rows of interest
         noteStatusHistory: noteStatusHistory filtered to only contain rows of interest
     """
-    # Prepare userEnrollment for join with ratings.
-    userEnrollment[_CORE_BOOL] = userEnrollment[c.modelingPopulationKey] == c.core
-    userEnrollment = userEnrollment.rename(columns={c.participantIdKey: c.raterParticipantIdKey})
-    # Compute stats to identify notes which are in scope.
     print("Identifying core notes and ratings")
-    print(f"  Total ratings: {len(ratings)}")
+    # Identify EXPANSION_PLUS users and notes
+    expansionPlusUsers = set(
+      userEnrollment[userEnrollment[c.modelingPopulationKey] == c.expansionPlus][
+        c.participantIdKey
+      ].values
+    )
+    print(f"  EXPANSION_PLUS users: {len(expansionPlusUsers)}")
+    expansionPlusNotes = set(
+      noteStatusHistoryOrig[
+        noteStatusHistoryOrig[c.noteAuthorParticipantIdKey].isin(expansionPlusUsers)
+      ][c.noteIdKey].values
+    )
+    print(f"  EXPANSION_PLUS notes: {len(expansionPlusNotes)}")
+    # Remove EXPANSION_PLUS users and notes
+    print(f"  original note status history length: {len(noteStatusHistoryOrig)}")
+    noteStatusHistory = noteStatusHistoryOrig[
+      ~noteStatusHistoryOrig[c.noteAuthorParticipantIdKey].isin(expansionPlusUsers)
+    ]
+    print(f"  note status history length after EXPANSION_PLUS filter: {len(noteStatusHistory)}")
+    print(f"  original ratings length: {len(ratingsOrig)}")
+    ratings = ratingsOrig[~ratingsOrig[c.raterParticipantIdKey].isin(expansionPlusUsers)]
+    ratings = ratings[~ratings[c.noteIdKey].isin(expansionPlusNotes)]
+    print(f"  ratings length after EXPANSION_PLUS filter: {len(ratings)}")
+    # Separate CORE and EXPANSION notes.
+    userEnrollment[_CORE_BOOL] = userEnrollment[c.modelingPopulationKey] == c.core
+    userGroups = userEnrollment[[c.participantIdKey, _CORE_BOOL]].copy()
     ratings = ratings.merge(
-      userEnrollment[[c.raterParticipantIdKey, _CORE_BOOL]], on=c.raterParticipantIdKey, how="left"
+      userGroups.rename(columns={c.participantIdKey: c.raterParticipantIdKey}),
+      on=c.raterParticipantIdKey,
+      how="left",
     )
     print(f"  Ratings from user without modelingPopulation: {pd.isna(ratings[_CORE_BOOL]).sum()}")
     ratings = ratings.fillna({_CORE_BOOL: True})
@@ -128,4 +172,5 @@ class MFCoreScorer(MFBaseScorer):
     ratings = ratings[ratings[c.noteIdKey].isin(coreNotes)]
     noteStatusHistory = noteStatusHistory[noteStatusHistory[c.noteIdKey].isin(coreNotes)]
     print(f"  Core ratings: {len(ratings)}")
+
     return ratings, noteStatusHistory

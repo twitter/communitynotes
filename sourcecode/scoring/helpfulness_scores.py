@@ -1,3 +1,5 @@
+from typing import Optional
+
 from . import constants as c
 
 import numpy as np
@@ -20,7 +22,8 @@ def author_helpfulness(
   Returns:
     pd.DataFrame: one row per author, containing columns for author helpfulness scores
   """
-  scoredNotes[c.noteCountKey] = 1
+
+  scoredNotes.loc[:, c.noteCountKey] = 1
   authorCounts = scoredNotes.groupby(c.noteAuthorParticipantIdKey).sum(numeric_only=True)[
     [
       c.currentlyRatedHelpfulBoolKey,
@@ -69,6 +72,11 @@ def compute_general_helpfulness_scores(
   minMeanNoteScore: float,
   minCRHVsCRNHRatio: float,
   minRaterAgreeRatio: float,
+  ratings: Optional[pd.DataFrame] = None,
+  tagConsensusHarassmentAbuseNotes: Optional[pd.DataFrame] = None,
+  tagConsensusHarassmentHelpfulRatingPenalty=10,
+  multiplyPenaltyByHarassmentScore: bool = False,
+  minimumHarassmentScoreToPenalize: float = 2.5,
 ) -> pd.DataFrame:
   """Given notes scored by matrix factorization, compute helpfulness scores.
   Author helpfulness scores are based on the scores of the notes you wrote.
@@ -83,6 +91,7 @@ def compute_general_helpfulness_scores(
         comparing how often an author produces CRH / CRNH notes.  See author_helpfulness.
       minRaterAgreeRatio: minimum standard for how often a rater must predict the
         eventual outcome when rating before a note is assigned status.
+      ratings: all ratings (to check if tag-consensus harassment/abuse notes were rated helpful)
   Returns:
       helpfulness_scores pandas.DataFrame: 1 row per user, with helpfulness scores as columns.
   """
@@ -100,26 +109,67 @@ def compute_general_helpfulness_scores(
         c.crhCrnhRatioDifferenceKey,
         c.meanNoteScoreKey,
         c.raterAgreeRatioKey,
+        c.ratingAgreesWithNoteStatusKey,
+        c.ratingCountKey,
       ]
     ]
   )
 
+  if (ratings is None) or (tagConsensusHarassmentAbuseNotes is None):
+    helpfulnessScores[c.totalHelpfulHarassmentRatingsPenaltyKey] = 0
+  else:
+    filteredAbuseNotes = tagConsensusHarassmentAbuseNotes[
+      tagConsensusHarassmentAbuseNotes[c.harassmentNoteInterceptKey]
+      >= minimumHarassmentScoreToPenalize
+    ]
+    helpfulRatingsOnBadNotes = ratings[ratings[c.helpfulNumKey] == 1].merge(
+      filteredAbuseNotes, on=c.noteIdKey
+    )
+
+    helpfulRatingsOnBadNotes[
+      c.totalHelpfulHarassmentRatingsPenaltyKey
+    ] = tagConsensusHarassmentHelpfulRatingPenalty
+    if multiplyPenaltyByHarassmentScore:
+      helpfulRatingsOnBadNotes[c.totalHelpfulHarassmentRatingsPenaltyKey] *= (
+        helpfulRatingsOnBadNotes[c.harassmentNoteInterceptKey] / minimumHarassmentScoreToPenalize
+      )
+
+    helpfulRatingsOnBadNotesCount = (
+      helpfulRatingsOnBadNotes.groupby(c.raterParticipantIdKey)
+      .sum()[[c.totalHelpfulHarassmentRatingsPenaltyKey]]
+      .reset_index()
+    )
+    helpfulnessScores = helpfulnessScores.merge(
+      helpfulRatingsOnBadNotesCount, on=c.raterParticipantIdKey, how="left"
+    )
+    helpfulnessScores[c.totalHelpfulHarassmentRatingsPenaltyKey].fillna(0, inplace=True)
+
+  helpfulnessScores[c.raterAgreeRatioWithHarassmentAbusePenaltyKey] = (
+    helpfulnessScores[c.ratingAgreesWithNoteStatusKey]
+    - helpfulnessScores[c.totalHelpfulHarassmentRatingsPenaltyKey]
+  ) / helpfulnessScores[c.ratingCountKey]
+
   helpfulnessScores[c.aboveHelpfulnessThresholdKey] = (
     (
-      (helpfulnessScores[c.crhCrnhRatioDifferenceKey] >= minCRHVsCRNHRatio)
-      & (helpfulnessScores[c.meanNoteScoreKey] >= minMeanNoteScore)
+      (
+        (helpfulnessScores[c.crhCrnhRatioDifferenceKey] >= minCRHVsCRNHRatio)
+        & (helpfulnessScores[c.meanNoteScoreKey] >= minMeanNoteScore)
+      )
+      | (
+        pd.isna(helpfulnessScores[c.crhCrnhRatioDifferenceKey])
+        & pd.isna(helpfulnessScores[c.meanNoteScoreKey])
+      )
+      | (
+        pd.isna(helpfulnessScores[c.crhCrnhRatioDifferenceKey])
+        & helpfulnessScores[c.meanNoteScoreKey]
+        >= minMeanNoteScore
+      )
     )
-    | (
-      pd.isna(helpfulnessScores[c.crhCrnhRatioDifferenceKey])
-      & pd.isna(helpfulnessScores[c.meanNoteScoreKey])
-    )
-    | (
-      pd.isna(helpfulnessScores[c.crhCrnhRatioDifferenceKey])
-      & helpfulnessScores[c.meanNoteScoreKey]
-      >= minMeanNoteScore
-    )
-  ) & (helpfulnessScores[c.raterAgreeRatioKey] >= minRaterAgreeRatio)
+    & (helpfulnessScores[c.raterAgreeRatioKey] >= minRaterAgreeRatio)
+    & (helpfulnessScores[c.raterAgreeRatioWithHarassmentAbusePenaltyKey] >= minRaterAgreeRatio)
+  )
 
+  helpfulnessScores.drop(columns=[c.ratingCountKey, c.ratingAgreesWithNoteStatusKey], inplace=True)
   return helpfulnessScores
 
 
@@ -139,11 +189,9 @@ def filter_ratings_by_helpfulness_scores(
   Returns:
       filtered_ratings pandas.DataFrame: same schema as input ratings, but filtered.
   """
-
-  includedUsers = helpfulnessScores[helpfulnessScores[c.aboveHelpfulnessThresholdKey]][
-    [c.raterParticipantIdKey]
+  includedUsers = helpfulnessScores.loc[
+    helpfulnessScores[c.aboveHelpfulnessThresholdKey], [c.raterParticipantIdKey]
   ]
-
   ratingsHelpfulnessScoreFiltered = includedUsers.merge(
     ratingsForTraining, on=c.raterParticipantIdKey
   )

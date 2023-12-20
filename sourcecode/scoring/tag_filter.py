@@ -37,9 +37,7 @@ def _get_weight_from_distance(distances: pd.Series) -> pd.Series:
   """Transforms non-negative distances to weights in the range (0, 1].
 
   This function transforms distances to weights between zero (exclusive) and one (inclusive).
-  See the link below for a plot showing the transformation function.  Note that we normalize
-  distances such that the review with the median {note, rater} distance has weight 0.5.
-  https://homework.study.com/cimages/multimages/16/graph1247713316447442307.png
+  Distances closer to 0 get weight close to 1.0, and the weights drop off as distances increase.
 
   Args:
     distances: pd.Series of non-negative float values representing distances between notes and raters.
@@ -47,8 +45,8 @@ def _get_weight_from_distance(distances: pd.Series) -> pd.Series:
   Returns:
     pd.Series of rating weights corresponding to the input distances.
   """
-  normalizationFactor = np.percentile(distances, 40)
-  return (1 + (distances.div(normalizationFactor) ** 5)) ** -1
+  normalizationFactor = np.percentile(distances, c.tagPercentileForNormalization)
+  return 1.0 / (1 + (distances / normalizationFactor) ** 5)
 
 
 def _get_rating_weight(

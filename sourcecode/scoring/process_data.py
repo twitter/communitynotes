@@ -1,43 +1,12 @@
+from abc import ABC, abstractmethod
 from io import StringIO
-from typing import Dict, List, Tuple
+import os
+from typing import Dict, List, Optional, Tuple
 
 from . import constants as c, note_status_history
 
-from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-
-
-def get_data(
-  notesPath: str,
-  ratingsPath: str,
-  noteStatusHistoryPath: str,
-  userEnrollmentPath: str,
-  headers: bool,
-  shouldFilterNotMisleadingNotes: bool = True,
-  logging: bool = True,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-  """All-in-one function for reading Birdwatch notes and ratings from TSV files.
-  It does both reading and pre-processing.
-
-  Args:
-      notesPath (str): file path
-      ratingsPath (str): file path
-      noteStatusHistoryPath (str): file path
-      headers: If true, expect first row of input files to be headers.
-      shouldFilterNotMisleadingNotes (bool, optional): Throw out not-misleading notes if True. Defaults to True.
-      logging (bool, optional): Print out debug output. Defaults to True.
-
-  Returns:
-      Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
-  """
-  notes, ratings, noteStatusHistory, userEnrollment = read_from_tsv(
-    notesPath, ratingsPath, noteStatusHistoryPath, userEnrollmentPath, headers
-  )
-  notes, ratings, noteStatusHistory = preprocess_data(
-    notes, ratings, noteStatusHistory, shouldFilterNotMisleadingNotes, logging
-  )
-  return notes, ratings, noteStatusHistory, userEnrollment
 
 
 def read_from_strings(
@@ -85,9 +54,11 @@ def tsv_parser(
   """
   try:
     firstLine = rawTSV.split("\n")[0]
-    if len(firstLine.split("\t")) != len(columns):
-      raise ValueError
-    return pd.read_csv(
+    num_fields = len(firstLine.split("\t"))
+    if num_fields != len(columns):
+      raise ValueError(f"Expected {len(columns)} columns, but got {num_fields}")
+
+    data = pd.read_csv(
       StringIO(rawTSV),
       sep="\t",
       names=columns,
@@ -95,20 +66,35 @@ def tsv_parser(
       header=0 if header else None,
       index_col=[],
     )
-  except (ValueError, IndexError):
-    raise ValueError("invalid input")
+    return data
+  except (ValueError, IndexError) as e:
+    raise ValueError(f"Invalid input: {e}")
 
 
-def tsv_reader(path: str, mapping, columns, header=False):
+def tsv_reader_single(path: str, mapping, columns, header=False, parser=tsv_parser):
+  """Read a single TSV file."""
   with open(path, "r", encoding='utf-8') as handle:
     return tsv_parser(handle.read(), mapping, columns, header)
 
 
+def tsv_reader(path: str, mapping, columns, header=False, parser=tsv_parser):
+  """Read a single TSV file or a directory of TSV files."""
+  if os.path.isdir(path):
+    dfs = [
+      tsv_reader_single(os.path.join(path, filename), mapping, columns, header, parser)
+      for filename in os.listdir(path)
+      if filename.endswith(".tsv")
+    ]
+    return pd.concat(dfs, ignore_index=True)
+  else:
+    return tsv_reader_single(path, mapping, columns, header, parser)
+
+
 def read_from_tsv(
-  notesPath: str,
-  ratingsPath: str,
-  noteStatusHistoryPath: str,
-  userEnrollmentPath: str,
+  notesPath: Optional[str],
+  ratingsPath: Optional[str],
+  noteStatusHistoryPath: Optional[str],
+  userEnrollmentPath: Optional[str],
   headers: bool,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Mini function to read notes, ratings, and noteStatusHistory from TSVs.
@@ -122,43 +108,54 @@ def read_from_tsv(
   Returns:
       Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
   """
-  notes = tsv_reader(notesPath, c.noteTSVTypeMapping, c.noteTSVColumns, header=headers)
-  ratings = tsv_reader(ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns, header=headers)
-  noteStatusHistory = tsv_reader(
-    noteStatusHistoryPath,
-    c.noteStatusHistoryTSVTypeMapping,
-    c.noteStatusHistoryTSVColumns,
-    header=headers,
-  )
-  userEnrollment = tsv_reader(
-    userEnrollmentPath, c.userEnrollmentTSVTypeMapping, c.userEnrollmentTSVColumns, header=headers
-  )
+  if notesPath is None:
+    notes = None
+  else:
+    notes = tsv_reader(notesPath, c.noteTSVTypeMapping, c.noteTSVColumns, header=headers)
+    assert len(notes.columns) == len(c.noteTSVColumns) and all(notes.columns == c.noteTSVColumns), (
+      f"note columns don't match: \n{[col for col in notes.columns if not col in c.noteTSVColumns]} are extra columns, "
+      + f"\n{[col for col in c.noteTSVColumns if not col in notes.columns]} are missing."
+    )  # ensure constants file is up to date.
 
-  assert len(notes.columns) == len(c.noteTSVColumns) and all(notes.columns == c.noteTSVColumns), (
-    f"note columns don't match: \n{[col for col in notes.columns if not col in c.noteTSVColumns]} are extra columns, "
-    + f"\n{[col for col in c.noteTSVColumns if not col in notes.columns]} are missing."
-  )  # ensure constants file is up to date.
+  if ratingsPath is None:
+    ratings = None
+  else:
+    ratings = tsv_reader(ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns, header=headers)
+    assert len(ratings.columns.values) == len(c.ratingTSVColumns) and all(
+      ratings.columns == c.ratingTSVColumns
+    ), (
+      f"ratings columns don't match: \n{[col for col in ratings.columns if not col in c.ratingTSVColumns]} are extra columns, "
+      + f"\n{[col for col in c.ratingTSVColumns if not col in ratings.columns]} are missing."
+    )  # ensure constants file is up to date.
 
-  assert len(ratings.columns.values) == len(c.ratingTSVColumns) and all(
-    ratings.columns == c.ratingTSVColumns
-  ), (
-    f"ratings columns don't match: \n{[col for col in ratings.columns if not col in c.ratingTSVColumns]} are extra columns, "
-    + f"\n{[col for col in c.ratingTSVColumns if not col in ratings.columns]} are missing."
-  )  # ensure constants file is up to date.
+  if noteStatusHistoryPath is None:
+    noteStatusHistory = None
+  else:
+    noteStatusHistory = tsv_reader(
+      noteStatusHistoryPath,
+      c.noteStatusHistoryTSVTypeMapping,
+      c.noteStatusHistoryTSVColumns,
+      header=headers,
+    )
+    assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
+      noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
+    ), (
+      f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
+      + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
+    )
 
-  assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
-    noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
-  ), (
-    f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
-    + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
-  )
-
-  assert len(userEnrollment.columns.values) == len(c.userEnrollmentTSVColumns) and all(
-    userEnrollment.columns == c.userEnrollmentTSVColumns
-  ), (
-    f"userEnrollment columns don't match: \n{[col for col in userEnrollment.columns if not col in c.userEnrollmentTSVColumns]} are extra columns, "
-    + f"\n{[col for col in c.userEnrollmentTSVColumns if not col in userEnrollment.columns]} are missing."
-  )
+  if userEnrollmentPath is None:
+    userEnrollment = None
+  else:
+    userEnrollment = tsv_reader(
+      userEnrollmentPath, c.userEnrollmentTSVTypeMapping, c.userEnrollmentTSVColumns, header=headers
+    )
+    assert len(userEnrollment.columns.values) == len(c.userEnrollmentTSVColumns) and all(
+      userEnrollment.columns == c.userEnrollmentTSVColumns
+    ), (
+      f"userEnrollment columns don't match: \n{[col for col in userEnrollment.columns if not col in c.userEnrollmentTSVColumns]} are extra columns, "
+      + f"\n{[col for col in c.userEnrollmentTSVColumns if not col in userEnrollment.columns]} are missing."
+    )
 
   return notes, ratings, noteStatusHistory, userEnrollment
 
@@ -331,7 +328,7 @@ def preprocess_data(
   ratings.loc[ratings[c.helpfulnessLevelKey] == c.helpfulValueTsv, c.helpfulNumKey] = 1
   ratings = ratings.loc[~pd.isna(ratings[c.helpfulNumKey])]
 
-  notes[c.tweetIdKey] = notes[c.tweetIdKey].astype(np.str)
+  notes[c.tweetIdKey] = notes[c.tweetIdKey].astype(str)
 
   noteStatusHistory = note_status_history.merge_note_info(noteStatusHistory, notes)
 
@@ -351,7 +348,10 @@ def preprocess_data(
 
 
 def filter_ratings(
-  ratings: pd.DataFrame, minNumRatingsPerRater: int, minNumRatersPerNote: int, logging: bool = True
+  ratings: pd.DataFrame,
+  minNumRatingsPerRater: int,
+  minNumRatersPerNote: int,
+  logging: bool = True,
 ) -> pd.DataFrame:
   """Apply min number of ratings for raters & notes. Instead of iterating these filters
   until convergence, simply stop after going back and force once.
@@ -368,97 +368,30 @@ def filter_ratings(
       pd.DataFrame: filtered ratings
   """
 
-  n = ratings.groupby(c.noteIdKey).size().reset_index()
-  notesWithMinNumRatings = n[n[0] >= minNumRatersPerNote]
+  def filter_notes(ratings):
+    note_counts = ratings[c.noteIdKey].value_counts()
+    valid_notes = note_counts[note_counts >= minNumRatersPerNote].index
+    return ratings[ratings[c.noteIdKey].isin(valid_notes)]
 
-  ratingsNoteFiltered = ratings.merge(notesWithMinNumRatings[[c.noteIdKey]], on=c.noteIdKey)
+  def filter_raters(ratings):
+    rater_counts = ratings[c.raterParticipantIdKey].value_counts()
+    valid_raters = rater_counts[rater_counts >= minNumRatingsPerRater].index
+    return ratings[ratings[c.raterParticipantIdKey].isin(valid_raters)]
+
+  ratings = filter_notes(ratings)
+  ratings = filter_raters(ratings)
+  ratings = filter_notes(ratings)
 
   if logging:
-    print("Filter notes and ratings with too few ratings")
+    # Log final details
+    unique_notes = ratings[c.noteIdKey].nunique()
+    unique_raters = ratings[c.raterParticipantIdKey].nunique()
     print(
-      "  After Filtering Notes w/less than %d Ratings, Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d"
-      % (
-        minNumRatersPerNote,
-        len(ratingsNoteFiltered),
-        len(np.unique(ratingsNoteFiltered[c.noteIdKey])),
-        len(np.unique(ratingsNoteFiltered[c.raterParticipantIdKey])),
-      )
+      f"After applying min {minNumRatingsPerRater} ratings per rater and min {minNumRatersPerNote} raters per note: \n"
+      + f"Num Ratings: {len(ratings)}, Num Unique Notes Rated: {unique_notes}, Num Unique Raters: {unique_raters}"
     )
-  r = ratingsNoteFiltered.groupby(c.raterParticipantIdKey).size().reset_index()
-  ratersWithMinNumRatings = r[r[0] >= minNumRatingsPerRater]
 
-  ratingsDoubleFiltered = ratingsNoteFiltered.merge(
-    ratersWithMinNumRatings[[c.raterParticipantIdKey]], on=c.raterParticipantIdKey
-  )
-  if logging:
-    print(
-      "  After Filtering Raters w/less than %s Notes, Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d"
-      % (
-        minNumRatingsPerRater,
-        len(ratingsDoubleFiltered),
-        len(np.unique(ratingsDoubleFiltered[c.noteIdKey])),
-        len(np.unique(ratingsDoubleFiltered[c.raterParticipantIdKey])),
-      )
-    )
-  n = ratingsDoubleFiltered.groupby(c.noteIdKey).size().reset_index()
-  notesWithMinNumRatings = n[n[0] >= minNumRatersPerNote]
-  ratingsForTraining = ratingsDoubleFiltered.merge(
-    notesWithMinNumRatings[[c.noteIdKey]], on=c.noteIdKey
-  )
-  if logging:
-    print(
-      "  After Final Filtering of Notes w/less than %d Ratings, Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d"
-      % (
-        minNumRatersPerNote,
-        len(ratingsForTraining),
-        len(np.unique(ratingsForTraining[c.noteIdKey])),
-        len(np.unique(ratingsForTraining[c.raterParticipantIdKey])),
-      )
-    )
-  return ratingsForTraining
-
-
-def visualize_parameters(noteParams: pd.DataFrame, raterParams: pd.DataFrame) -> None:
-  """Plot/describe note and rater params.
-
-  Args:
-      noteParams (pd.DataFrame)
-      raterParams (pd.DataFrame)
-  """
-  print(noteParams.describe())
-
-  plt.figure()
-  noteParams[c.coreNoteInterceptKey].plot(kind="hist", bins=20)
-
-  plt.figure()
-  noteParams[c.coreNoteFactor1Key].plot(kind="hist", bins=20)
-
-  plt.figure()
-  noteParams.plot(kind="scatter", x=c.coreNoteFactor1Key, y=c.coreNoteInterceptKey, alpha=0.05)
-
-  print(raterParams.describe())
-
-  plt.figure()
-  raterParams[c.coreRaterInterceptKey].plot(kind="hist", bins=20)
-
-  plt.figure()
-  raterParams[c.coreRaterFactor1Key].plot(kind="hist", bins=20)
-
-
-def visualize_helpfulness(helpfulness_scores: pd.DataFrame) -> None:
-  """Plot user helpfulness scores.
-
-  Args:
-      helpfulness_scores (pd.DataFrame)
-  """
-  plt.figure()
-  helpfulness_scores[c.crhCrnhRatioDifferenceKey].plot(kind="hist", bins=20)
-
-  plt.figure()
-  helpfulness_scores[c.meanNoteScoreKey].plot(kind="hist", bins=20)
-
-  plt.figure()
-  helpfulness_scores[c.raterAgreeRatioKey].plot(kind="hist", bins=20)
+  return ratings
 
 
 def write_tsv_local(df: pd.DataFrame, path: str) -> None:
@@ -477,3 +410,71 @@ def write_tsv_local(df: pd.DataFrame, path: str) -> None:
 
   assert path is not None
   assert df.to_csv(path, index=False, header=True, sep="\t") is None
+
+
+class CommunityNotesDataLoader(ABC):
+  """Base class which local and prod data loaders extend.
+
+  The DataLoader base class stores necessary files and defines "get_data" function which can be passed to
+  parallel scoring
+  """
+
+  def __init__(self) -> None:
+    """Configure a new CommunityNotesDataLoader object.
+
+    Args:
+      local (bool, optional): if not None, seed value to ensure deterministic execution
+    """
+
+  @abstractmethod
+  def get_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Returns notes, ratings, noteStatusHistory, and userEnrollment DataFrames"""
+
+
+class LocalDataLoader(CommunityNotesDataLoader):
+  def __init__(
+    self,
+    notesPath: str,
+    ratingsPath: str,
+    noteStatusHistoryPath: str,
+    userEnrollmentPath: str,
+    headers: bool,
+    shouldFilterNotMisleadingNotes: bool = True,
+    logging: bool = True,
+  ) -> None:
+    """
+    Args:
+        notesPath (str): file path
+        ratingsPath (str): file path
+        noteStatusHistoryPath (str): file path
+        userEnrollmentPath (str): file path
+        headers: If true, expect first row of input files to be headers.
+        shouldFilterNotMisleadingNotes (bool, optional): Throw out not-misleading notes if True. Defaults to True.
+        logging (bool, optional): Print out debug output. Defaults to True.
+    """
+    self.notesPath = notesPath
+    self.ratingsPath = ratingsPath
+    self.noteStatusHistoryPath = noteStatusHistoryPath
+    self.userEnrollmentPath = userEnrollmentPath
+    self.headers = headers
+    self.shouldFilterNotMisleadingNotes = shouldFilterNotMisleadingNotes
+    self.logging = logging
+
+  def get_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """All-in-one function for reading Birdwatch notes and ratings from TSV files.
+    It does both reading and pre-processing.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]: notes, ratings, noteStatusHistory, userEnrollment
+    """
+    notes, ratings, noteStatusHistory, userEnrollment = read_from_tsv(
+      self.notesPath,
+      self.ratingsPath,
+      self.noteStatusHistoryPath,
+      self.userEnrollmentPath,
+      self.headers,
+    )
+    notes, ratings, noteStatusHistory = preprocess_data(
+      notes, ratings, noteStatusHistory, self.shouldFilterNotMisleadingNotes, self.logging
+    )
+    return notes, ratings, noteStatusHistory, userEnrollment

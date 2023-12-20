@@ -3,6 +3,7 @@ from typing import List, Optional
 
 from . import constants as c
 
+import numpy as np
 import pandas as pd
 
 
@@ -67,28 +68,45 @@ def get_top_nonhelpful_tags_per_author(
     two non-helpful tags associated with the author
   """
   # Finds the top two non-helpful tags per note.
-  noteTagTotals = (
-    reputationFilteredRatings.groupby(c.noteIdKey).sum(numeric_only=True).reset_index()
-  )
-  # Default tags to the empty string.
-  noteTagTotals[c.firstTagKey] = ""
-  noteTagTotals[c.secondTagKey] = ""
-  noteTopTags = noteTagTotals.apply(
-    lambda row: top_tags(
-      row,
-      c.minRatingsToGetTag,
-      c.minTagsNeededForStatus,
-      tagsConsidered=c.notHelpfulTagsTiebreakOrder,
-    ),
-    axis=1,
-  )[[c.noteIdKey, c.firstTagKey, c.secondTagKey]]
-  # Aggreagtes top two tags per author.
-  notesToUse = noteStatusHistory[[c.noteAuthorParticipantIdKey, c.noteIdKey]]
-  authorTagsAgg = (
-    notesToUse.merge(noteTopTags, on=[c.noteIdKey])
-    .groupby(c.noteAuthorParticipantIdKey)
-    .agg(Counter)
-  )
+  with c.time_block("NH Tags: Top 2 per note"):
+    # Aggregate ratings by note ID
+    noteTagTotals = reputationFilteredRatings.groupby(c.noteIdKey).sum(numeric_only=True)[
+      c.notHelpfulTagsTiebreakOrder[::-1]  # Put winning tags at front.
+    ]
+
+    # Filter tags and apply minimum rating threshold
+    filteredTags = noteTagTotals.where(lambda x: x >= c.minRatingsToGetTag)
+    filteredTags.dropna(thresh=2, inplace=True)  # only keep rows with at least 2 non-NaN entries
+
+    negativeTags = -1 * filteredTags.to_numpy()
+
+    # Create a small value for tie-breaking, proportional to the column indices
+    # The small value should be smaller than the smallest difference between any two elements (ints)
+    epsilon = 1e-3
+    tieBreakers = np.arange(negativeTags.shape[1]) * epsilon
+
+    # Add the tie_breaker to the array
+    negativeTieBrokenTags = tieBreakers + negativeTags
+
+    # Use argsort on the modified array
+    sortedIndices = np.argsort(negativeTieBrokenTags, axis=1)
+
+    # Extract indices of the two largest values in each row
+    topTwoIndices = sortedIndices[:, :2]
+    noteTopTags = pd.DataFrame(
+      filteredTags.columns[topTwoIndices], columns=["firstTag", "secondTag"]
+    )
+    noteTopTags[c.noteIdKey] = filteredTags.index
+
+  with c.time_block("NH Tags: Top 2 per author"):
+    # Aggregates top two tags per author.
+    notesToUse = noteStatusHistory[[c.noteAuthorParticipantIdKey, c.noteIdKey]]
+    authorTagsAgg = (
+      notesToUse.merge(noteTopTags, on=[c.noteIdKey], how="left")
+      .groupby(c.noteAuthorParticipantIdKey)
+      .agg(Counter)
+    )
+
   # Chooses top two tags per author.
   def _set_top_tags(row: pd.Series) -> pd.Series:
     # Note that row[c.firstTagKey] and row[c.secondTagKey] are both Counter
@@ -96,13 +114,15 @@ def get_top_nonhelpful_tags_per_author(
     tagTuples = [
       (count, c.notHelpfulTagsTiebreakMapping[tag], c.notHelpfulTagsEnumMapping[tag])
       for tag, count in (row[c.firstTagKey] + row[c.secondTagKey]).items()
-      if tag
+      if (tag is not None) and not pd.isna(tag)
     ]
-    tags = sorted([tag for (_, _, tag) in sorted(tagTuples, reverse=True)[:2]])
+    tags = [tsvId for (_, tieBreakId, tsvId) in sorted(tagTuples, reverse=True)[:2]]
     topNotHelpfulTags = ",".join([str(tag) for tag in tags])
     row[c.authorTopNotHelpfulTagValues] = topNotHelpfulTags
     return row
 
-  return authorTagsAgg.apply(_set_top_tags, axis=1).reset_index()[
-    [c.noteAuthorParticipantIdKey, c.authorTopNotHelpfulTagValues]
-  ]
+  with c.time_block("NH Tags: Set Top Tags"):
+    topTwoPerAuthor = authorTagsAgg.apply(_set_top_tags, axis=1).reset_index()[
+      [c.noteAuthorParticipantIdKey, c.authorTopNotHelpfulTagValues]
+    ]
+  return topTwoPerAuthor
