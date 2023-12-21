@@ -34,7 +34,7 @@ intervalHalfWidth = 0.3
 scoredNotesOutputPath = "scoredNotes.tsv"
 enrollmentInputPath = "userEnrollment-00000.tsv"
 notesInputPath = "notes-00000.tsv"
-ratingsInputPath = "ratings-00000.tsv"
+ratingsInputPath = "ratings"
 noteStatusHistoryInputPath = "noteStatusHistory-00000.tsv"
 
 # TSV Column Names
@@ -132,12 +132,13 @@ expansionNoteInterceptMinKey = "expansionNoteInterceptMin"
 expansionPlusNoteInterceptKey = "expansionPlusNoteIntercept"
 expansionPlusNoteFactor1Key = "expansionPlusNoteFactor1"
 expansionPlusRatingStatusKey = "expansionPlusRatingStatus"
-# Coverage Model
+# Coverage / Helpfulness Reputation Model
 coverageNoteInterceptKey = "coverageNoteIntercept"
 coverageNoteFactor1Key = "coverageNoteFactor1"
 coverageRatingStatusKey = "coverageRatingStatus"
 coverageNoteInterceptMaxKey = "coverageNoteInterceptMax"
 coverageNoteInterceptMinKey = "coverageNoteInterceptMin"
+raterHelpfulnessReputationKey = "raterHelpfulnessReputation"
 # Group Model
 groupNoteInterceptKey = "groupNoteIntercept"
 groupNoteFactor1Key = "groupNoteFactor1"
@@ -478,9 +479,6 @@ auxiliaryScoredNotesTSVColumns = (
 
 deprecatedNoteModelOutputColumns = frozenset(
   {
-    coverageNoteInterceptKey,
-    coverageNoteFactor1Key,
-    coverageRatingStatusKey,
     coverageNoteInterceptMinKey,
     coverageNoteInterceptMaxKey,
   }
@@ -565,6 +563,7 @@ raterModelOutputTSVColumnsAndTypes = [
   (groupRaterInterceptKey, np.double),
   (groupRaterFactor1Key, np.double),
   (modelingGroupKey, np.float64),
+  (raterHelpfulnessReputationKey, np.double),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}

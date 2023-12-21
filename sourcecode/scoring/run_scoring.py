@@ -20,6 +20,7 @@ from .mf_expansion_plus_scorer import MFExpansionPlusScorer
 from .mf_expansion_scorer import MFExpansionScorer
 from .mf_group_scorer import MFGroupScorer, coalesce_group_models, groupScorerCount
 from .process_data import CommunityNotesDataLoader
+from .reputation_scorer import ReputationScorer
 from .scorer import Scorer
 from .scoring_rules import RuleID
 
@@ -60,6 +61,8 @@ def _get_scorers(
     scorers[Scorers.MFExpansionPlusScorer] = [
       MFExpansionPlusScorer(seed, useStableInitialization=useStableInitialization, threads=12)
     ]
+  if enabledScorers is None or Scorers.ReputationScorer in enabledScorers:
+    scorers[Scorers.ReputationScorer] = [ReputationScorer(seed, threads=12)]
   if enabledScorers is None or Scorers.MFGroupScorer in enabledScorers:
     # Note that index 0 is reserved, corresponding to no group assigned, so scoring group
     # numbers begin with index 1.

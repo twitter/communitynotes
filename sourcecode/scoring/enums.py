@@ -11,6 +11,7 @@ class Scorers(Enum):
   # not just a single MFGroupScorer instance.
   MFGroupScorer = auto()
   MFExpansionPlusScorer = auto()
+  ReputationScorer = auto()
 
 
 def scorers_from_csv(csv: str) -> Set[Scorers]:
