@@ -16,24 +16,60 @@ class Constants:
 
 
 class MatrixFactorization:
+  """
+  This class implements a Matrix Factorization model, commonly used in recommendation systems 
+  and collaborative filtering. It decomposes a matrix into the product of two lower-dimensional matrices, 
+  capturing latent factors in the data.
+
+  Attributes:
+      l2_lambda (float): Regularization parameter for L2 regularization.
+      l2_intercept_multiplier (float): Multiplier for the intercept in L2 regularization.
+      initLearningRate (float): Initial learning rate for the optimizer.
+      noInitLearningRate (float): Learning rate used when no initial values are provided.
+      convergence (float): Convergence threshold for the training process.
+      numFactors (int): Number of latent factors to model.
+      useGlobalIntercept (bool): Flag to use a global intercept in the model.
+      logging (bool): Enable or disable logging.
+      flipFactorsForIdentification (bool): Adjust factors for model identification.
+      model (BiasedMatrixFactorization, optional): An instance of a biased matrix factorization model.
+      featureCols (List[str]): Feature columns to use in the model.
+      labelCol (str): Label column in the data.
+      useSigmoidCrossEntropy (bool): Use sigmoid cross-entropy loss if True, else mean squared error loss.
+      posWeight (optional): Positive weight parameter for the loss function.
+
+  Methods:
+      get_final_train_error(): Returns the final training error after model fitting.
+      get_new_mf_with_same_args(): Creates a new instance of MatrixFactorization with the same configuration.
+      _initialize_note_and_rater_id_maps(ratings): Initializes mappings for note and rater IDs based on the provided ratings DataFrame.
+      get_note_and_rater_id_maps(ratings): Extracts and returns mappings for note and rater IDs along with processed rating features and labels.
+      _initialize_parameters(): Initializes or resets the model parameters with given initial values or defaults.
+      _get_parameters_from_trained_model(): Retrieves parameters from the trained model for analysis or further use.
+      _create_mf_model(): Initializes the matrix factorization model and its parameters.
+      _compute_and_print_loss(): Computes and logs the loss during training, useful for monitoring model performance.
+      _create_train_validate_sets(): Splits the data into training and validation sets for model fitting.
+      _fit_model(): Executes the model training process, adjusting parameters to minimize the loss.
+      prepare_features_and_labels(): Prepares features and labels from the dataset for model training.
+      run_mf(): Main method to run matrix factorization on provided data, returning trained model parameters and performance metrics.
+      _flip_factors_for_identification(): Adjusts factor sign for model identifiability and interpretation.
+  """
+     
   def __init__(
     self,
-    l2_lambda=0.03,
-    l2_intercept_multiplier=5,
-    initLearningRate=0.2,
-    noInitLearningRate=1.0,
-    convergence=1e-7,
-    numFactors=1,
-    useGlobalIntercept=True,
-    logging=True,
-    flipFactorsForIdentification=True,
+    l2_lambda: float = 0.03,
+    l2_intercept_multiplier: int = 5,
+    initLearningRate: float = 0.2,
+    noInitLearningRate: float = 1.0,
+    convergence: float = 1e-7,
+    numFactors: float = 1,
+    useGlobalIntercept: bool = True,
+    logging: bool = True,
+    flipFactorsForIdentification: bool = True,
     model: Optional[BiasedMatrixFactorization] = None,
     featureCols: List[str] = [c.noteIdKey, c.raterParticipantIdKey],
     labelCol: str = c.helpfulNumKey,
-    useSigmoidCrossEntropy=False,
-    posWeight=None,
-  ) -> None:
-    """Configure matrix factorization note ranking."""
+    useSigmoidCrossEntropy: bool = False,
+    posWeight: Optional[float] = None,
+    ) -> None:
     self._l2_lambda = l2_lambda
     self._l2_intercept_multiplier = l2_intercept_multiplier
     self._initLearningRate = initLearningRate
@@ -72,8 +108,7 @@ class MatrixFactorization:
     self.trainModelData: Optional[ModelData] = None
     self.validateModelData: Optional[ModelData] = None
 
-  def get_final_train_error(self) -> Optional[float]:
-    return self.train_errors[-1] if self.train_errors else None
+  def get_final_train_error(self) -> Optional[float]: return self.train_errors[-1] if self.train_errors else None
 
   def get_new_mf_with_same_args(self):
     return MatrixFactorization(
