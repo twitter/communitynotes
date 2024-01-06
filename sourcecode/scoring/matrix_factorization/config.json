@@ -8,6 +8,6 @@
         "num_factors": 1,
         "use_global_intercept": true,
         "logging": true,
-        "flip_factor_identification": true,
+        "flip_factor_identification": true
     }
 }
