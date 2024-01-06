@@ -9,6 +9,13 @@ import numpy as np
 import pandas as pd
 import torch
 
+import json
+
+current_file_path = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(current_file_path, "config.json")
+with open(config_path) as json_file:
+  config = json.load(json_file)
+
 @dataclasses.dataclass
 class Constants:
   noteIndexKey = "noteIndex"
