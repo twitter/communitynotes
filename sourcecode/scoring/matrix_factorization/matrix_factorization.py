@@ -24,8 +24,8 @@ class MatrixFactorization:
   Attributes:
       l2_lambda (float): Regularization parameter for L2 regularization.
       l2_intercept_multiplier (float): Multiplier for the intercept in L2 regularization.
-      initLearningRate (float): Initial learning rate for the optimizer.
-      noInitLearningRate (float): Learning rate used when no initial values are provided.
+      init_lr (float): Initial learning rate for the optimizer.
+      noinit_lr (float): Learning rate used when no initial values are provided.
       convergence (float): Convergence threshold for the training process.
       numFactors (int): Number of latent factors to model.
       useGlobalIntercept (bool): Flag to use a global intercept in the model.
@@ -57,8 +57,8 @@ class MatrixFactorization:
     self,
     l2_lambda: float = 0.03,
     l2_intercept_multiplier: int = 5,
-    initLearningRate: float = 0.2,
-    noInitLearningRate: float = 1.0,
+    init_lr: float = 0.2,
+    noinit_lr: float = 1.0,
     convergence: float = 1e-7,
     numFactors: float = 1,
     useGlobalIntercept: bool = True,
@@ -72,8 +72,8 @@ class MatrixFactorization:
     ) -> None:
     self._l2_lambda = l2_lambda
     self._l2_intercept_multiplier = l2_intercept_multiplier
-    self._initLearningRate = initLearningRate
-    self._noInitLearningRate = noInitLearningRate
+    self._init_lr = init_lr
+    self._noinit_lr = noinit_lr
     self._convergence = convergence
     self._numFactors = numFactors
     self._useGlobalIntercept = useGlobalIntercept
@@ -114,8 +114,8 @@ class MatrixFactorization:
     return MatrixFactorization(
       l2_lambda=self._l2_lambda,
       l2_intercept_multiplier=self._l2_intercept_multiplier,
-      initLearningRate=self._initLearningRate,
-      noInitLearningRate=self._noInitLearningRate,
+      init_lr=self._init_lr,
+      noinit_lr=self._noinit_lr,
       convergence=self._convergence,
       numFactors=self._numFactors,
       useGlobalIntercept=self._useGlobalIntercept,
@@ -281,10 +281,10 @@ class MatrixFactorization:
 
     if (noteInit is not None) and (userInit is not None):
       self.optimizer = torch.optim.Adam(
-        self.mf_model.parameters(), lr=self._initLearningRate
+        self.mf_model.parameters(), lr=self._init_lr
       )  # smaller learning rate
     else:
-      self.optimizer = torch.optim.Adam(self.mf_model.parameters(), lr=self._noInitLearningRate)
+      self.optimizer = torch.optim.Adam(self.mf_model.parameters(), lr=self._noinit_lr)
     if self._logging:
       print(self.mf_model.device)
     self.mf_model.to(self.mf_model.device)
