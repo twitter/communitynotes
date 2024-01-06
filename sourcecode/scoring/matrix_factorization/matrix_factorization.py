@@ -16,6 +16,20 @@ config_path = os.path.join(current_file_path, "config.json")
 with open(config_path) as json_file:
   config = json.load(json_file)
 
+CONFIG_PARAMS = config.get("PARAMS", {})
+EXPECTED_TYPES = {
+    "l2_lambda": float,
+    "l2_intercept_multiplier": int,
+    "init_lr": float,
+    "noinit_lr": float,
+    "convergence": float,
+    "num_factors": int,
+    "use_global_intercept": bool,
+    "use_sigmoid_crossentropy": bool,
+    "logging": bool,
+    "flip_factor_identification": bool
+}
+
 @dataclasses.dataclass
 class Constants:
   noteIndexKey = "noteIndex"
@@ -61,34 +75,26 @@ class MatrixFactorization:
   """
      
   def __init__(
-    self,
-    l2_lambda: float,
-    l2_intercept_multiplier: int,
-    init_lr: float,
-    noinit_lr: float,
-    convergence: float,
-    num_factors: int,
-    use_global_intercept: bool,
-    use_sigmoid_crossentropy: bool,
-    logging: bool,
-    flip_factor_identification: bool,
+    self, 
+    config = CONFIG_PARAMS,
     model: Optional[BiasedMatrixFactorization] = None,
     feature_cols: List[str] = [c.noteIdKey, c.raterParticipantIdKey],
     label_col: str = c.helpfulNumKey,
     pos_weight: Optional[float] = None,
     ) -> None:
-    self._l2_lambda = l2_lambda
-    self._l2_intercept_multiplier = l2_intercept_multiplier
-    self._init_lr = init_lr
-    self._noinit_lr = noinit_lr
-    self._convergence = convergence
-    self._num_factors = num_factors
-    self._use_global_intercept = use_global_intercept
-    self._logging = logging
+    for param, expected_type in EXPECTED_TYPES.items():
+      value = config.get(param, CONFIG_PARAMS[param])
+      if value is not None and not isinstance(value, expected_type):
+          try:
+              value = expected_type(value)
+          except ValueError:
+              raise ValueError(f"Parameter {param} is expected to be of type {expected_type.__name__}, but got {type(value).__name__}")
+
+      setattr(self, f"_{param}", value)
+
     self._flip_factor_identification = flip_factor_identification
     self._feature_cols = feature_cols
     self._label_col = label_col
-    self._use_sigmoid_crossentropy = use_sigmoid_crossentropy
     self._pos_weight = pos_weight
 
     if self._use_sigmoid_crossentropy:

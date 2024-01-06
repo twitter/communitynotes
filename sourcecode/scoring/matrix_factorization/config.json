@@ -1,0 +1,13 @@
+{
+    "PARAMS": {
+        "l2_lambda": 0.03,
+        "l2_intercept_multiplier": 5,
+        "init_lr": 0.2,
+        "noinit_lr": 1.0,
+        "convergence": 1e-7,
+        "num_factors": 1,
+        "use_global_intercept": true,
+        "logging": true,
+        "flip_factor_identification": true,
+    }
+}
