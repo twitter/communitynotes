@@ -83,7 +83,7 @@ class MatrixFactorization:
     pos_weight: Optional[float] = None,
     ) -> None:
     for param, expected_type in EXPECTED_TYPES.items():
-      value = config.get(param, CONFIG_PARAM.get(param))
+      value = config.get(param, CONFIG_PARAMS.get(param))
       if value is not None and not isinstance(value, expected_type):
           try:
               value = expected_type(value)
