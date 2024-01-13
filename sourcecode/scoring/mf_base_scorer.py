@@ -11,6 +11,74 @@ import pandas as pd
 import torch
 
 
+def get_ratings_for_stable_init(
+  ratingsForTraining: pd.DataFrame,
+  userEnrollmentRaw: pd.DataFrame,
+  modelingGroupToInitializeForStability: int,
+  minPercentRatingsFromModelingGroup: float = 0.75,
+  minNumRatingsToIncludeInStableInitialization: int = 5,
+) -> pd.DataFrame:
+  """Returns a subset of ratings to use for training an initial matrix factorization.
+  Args:
+      ratingsForTraining (pd.DataFrame)
+      userEnrollmentRaw (pd.DataFrame)
+      modelingGroupToInitializeForStability: modeling group for round 0 ratings
+      minPercentRatingsFromModelingGroup: notes must have this fraction of ratings from the modeling group
+      minNumRatingsToIncludeInStableInitialization: required from modeling group
+
+  Returns:
+      DF containing a subset of ratings
+  """
+  ratingsForTrainingWithModelingGroup = ratingsForTraining.merge(
+    userEnrollmentRaw[[c.participantIdKey, c.modelingGroupKey]],
+    left_on=c.raterParticipantIdKey,
+    right_on=c.participantIdKey,
+  )
+
+  ratingsForTrainingWithModelingGroup[c.ratingFromInitialModelingGroupKey] = (
+    ratingsForTrainingWithModelingGroup[c.modelingGroupKey] == modelingGroupToInitializeForStability
+  )
+
+  # Only include ratings from the modeling group
+  ratingsForStableInitialization = ratingsForTrainingWithModelingGroup[
+    ratingsForTrainingWithModelingGroup[c.ratingFromInitialModelingGroupKey]
+  ]
+
+  # Only include notes that have received at least 75% of their ratings from the modeling group (and 5 total)
+  ratingsForTrainingWithModelingGroup[c.ratingCountKey] = 1
+  noteStatsByRatedModelingGroup = (
+    ratingsForTrainingWithModelingGroup.groupby(c.noteIdKey)
+    .sum()[[c.ratingFromInitialModelingGroupKey, c.ratingCountKey]]
+    .reset_index()
+  )
+  noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey] = (
+    noteStatsByRatedModelingGroup[c.ratingFromInitialModelingGroupKey]
+    / noteStatsByRatedModelingGroup[c.ratingCountKey]
+  )
+  noteStatsByRatedModelingGroup[
+    c.percentFromInitialModelingGroupKey
+  ] = noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey].fillna(0)
+  notesRatedMostlyByInitialModelingGroup = noteStatsByRatedModelingGroup[
+    (
+      noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey]
+      >= minPercentRatingsFromModelingGroup
+    )
+    & (
+      noteStatsByRatedModelingGroup[c.ratingCountKey]
+      >= minNumRatingsToIncludeInStableInitialization
+    )
+  ]
+  ratingsForStableInitialization = ratingsForStableInitialization.merge(
+    notesRatedMostlyByInitialModelingGroup[[c.noteIdKey]], on=c.noteIdKey
+  )
+
+  assert (
+    len(ratingsForStableInitialization) > 0
+  ), "No ratings from stable initialization modeling group."
+
+  return ratingsForStableInitialization
+
+
 # TODO: Consider merging compute_scored_notes, is_crh, is_crnh, filter_ratings,
 # compute_general_helpfulness_scores and filter_ratings_by_helpfulness_scores into this class.
 # These functions are only called by this class, and merging them in will allow accessing
@@ -38,6 +106,8 @@ class MFBaseScorer(Scorer):
     useStableInitialization: bool = True,
     saveIntermediateState: bool = False,
     threads: int = c.defaultNumThreads,
+    maxFirstMFTrainError: float = 0.16,
+    maxFinalMFTrainError: float = 0.09,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -71,6 +141,8 @@ class MFBaseScorer(Scorer):
         applicable threshold to lose CRH status.
       useStableInitialization: whether to use a specific modeling group of users to stably initialize
       threads: number of threads to use for intra-op parallelism in pytorch
+      maxFirstMFTrainError: maximum error allowed for the first MF training process
+      maxFinalMFTrainError: maximum error allowed for the final MF training process
     """
     super().__init__(seed, threads)
     self._pseudoraters = pseudoraters
@@ -89,11 +161,25 @@ class MFBaseScorer(Scorer):
     self._inertiaDelta = inertiaDelta
     self._modelingGroupToInitializeForStability = 13 if useStableInitialization else None
     self._saveIntermediateState = saveIntermediateState
+    self._maxFirstMFTrainError = maxFirstMFTrainError
+    self._maxFinalMFTrainError = maxFinalMFTrainError
     self._mfRanker = MatrixFactorization()
 
-  def get_final_train_error(self) -> Optional[float]:
-    """Return the final training error for the MF ranker."""
-    return self._mfRanker.get_final_train_error()
+  def assert_train_error_is_below_threshold(self, ratings, maxTrainError) -> None:
+    """
+    If we are running a non-test run (number of ratings is above threshold),
+    assert that the final training error for the MF ranker is below the threshold.
+    """
+    testRun = (
+      ratings[c.noteIdKey].nunique() < c.minNumNotesForProdData if ratings is not None else False
+    )
+    if not testRun:
+      finalTrainError = self._mfRanker.get_final_train_error()
+      if finalTrainError is None:
+        raise ValueError("Final train error is None")
+      else:
+        if finalTrainError > maxTrainError:
+          raise ValueError(f"Train error ({finalTrainError}) is above threshold ({maxTrainError})")
 
   def get_crh_threshold(self) -> float:
     """Return CRH threshold for general scoring logic."""
@@ -181,8 +267,6 @@ class MFBaseScorer(Scorer):
     self,
     ratingsForTraining: pd.DataFrame,
     userEnrollmentRaw: pd.DataFrame,
-    minPercentRatingsFromModelingGroup: float = 0.75,
-    minNumRatingsToIncludeInStableInitialization: int = 5,
   ):
     """Train a matrix factorization model on the ratingsForTraining data.
     Due to stability issues when trained on the entire dataset with no initialization, this is done in
@@ -205,53 +289,9 @@ class MFBaseScorer(Scorer):
       return self._run_regular_matrix_factorization(ratingsForTraining)
 
     with self.time_block("Prepare data for stable initialization"):
-      ratingsForTrainingWithModelingGroup = ratingsForTraining.merge(
-        userEnrollmentRaw[[c.participantIdKey, c.modelingGroupKey]],
-        left_on=c.raterParticipantIdKey,
-        right_on=c.participantIdKey,
+      ratingsForStableInitialization = get_ratings_for_stable_init(
+        ratingsForTraining, userEnrollmentRaw, self._modelingGroupToInitializeForStability
       )
-
-      ratingsForTrainingWithModelingGroup[c.ratingFromInitialModelingGroupKey] = (
-        ratingsForTrainingWithModelingGroup[c.modelingGroupKey]
-        == self._modelingGroupToInitializeForStability
-      )
-
-      # Only include ratings from the modeling group
-      ratingsForStableInitialization = ratingsForTrainingWithModelingGroup[
-        ratingsForTrainingWithModelingGroup[c.ratingFromInitialModelingGroupKey]
-      ]
-
-      # Only include notes that have received at least 75% of their ratings from the modeling group (and 5 total)
-      ratingsForTrainingWithModelingGroup[c.ratingCountKey] = 1
-      noteStatsByRatedModelingGroup = (
-        ratingsForTrainingWithModelingGroup.groupby(c.noteIdKey)
-        .sum()[[c.ratingFromInitialModelingGroupKey, c.ratingCountKey]]
-        .reset_index()
-      )
-      noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey] = (
-        noteStatsByRatedModelingGroup[c.ratingFromInitialModelingGroupKey]
-        / noteStatsByRatedModelingGroup[c.ratingCountKey]
-      )
-      noteStatsByRatedModelingGroup[
-        c.percentFromInitialModelingGroupKey
-      ] = noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey].fillna(0)
-      notesRatedMostlyByInitialModelingGroup = noteStatsByRatedModelingGroup[
-        (
-          noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey]
-          >= minPercentRatingsFromModelingGroup
-        )
-        & (
-          noteStatsByRatedModelingGroup[c.ratingCountKey]
-          >= minNumRatingsToIncludeInStableInitialization
-        )
-      ]
-      ratingsForStableInitialization = ratingsForStableInitialization.merge(
-        notesRatedMostlyByInitialModelingGroup[[c.noteIdKey]], on=c.noteIdKey
-      )
-
-      assert (
-        len(ratingsForStableInitialization) > 0
-      ), "No ratings from stable initialization modeling group."
 
     with self.time_block("MF on stable-initialization subset"):
       initializationMF = self._mfRanker.get_new_mf_with_same_args()
@@ -309,6 +349,7 @@ class MFBaseScorer(Scorer):
       self.noteParamsUnfiltered = noteParamsUnfiltered
       self.raterParamsUnfiltered = raterParamsUnfiltered
       self.globalBias = globalBias
+    self.assert_train_error_is_below_threshold(ratingsForTraining, self._maxFirstMFTrainError)
 
     # Get a dataframe of scored notes based on the algorithm results above
     with self.time_block("Compute scored notes"):
@@ -419,8 +460,7 @@ class MFBaseScorer(Scorer):
       self.ratingsHelpfulnessScoreFiltered = ratingsHelpfulnessScoreFiltered
 
     # Re-runs matrix factorization using only ratings given by helpful raters.
-
-    with self.time_block("Final helpfulness-filtering MF"):
+    with self.time_block("Final helpfulness-filtered MF"):
       noteParams, raterParams, globalBias = self._mfRanker.run_mf(
         ratingsHelpfulnessScoreFiltered,
         noteInit=noteParamsUnfiltered,
@@ -430,10 +470,12 @@ class MFBaseScorer(Scorer):
       self.noteParams = noteParams
       self.raterParams = raterParams
       self.globalBias = globalBias
+    self.assert_train_error_is_below_threshold(
+      ratingsHelpfulnessScoreFiltered, self._maxFinalMFTrainError
+    )
 
     # Add pseudo-raters with the most extreme parameters and re-score notes, to estimate
     #  upper and lower confidence bounds on note parameters.
-
     if self._pseudoraters:
       with self.time_block("Pseudoraters"):
         noteParams = PseudoRatersRunner(
@@ -449,7 +491,7 @@ class MFBaseScorer(Scorer):
     # Add low diligence intercepts
     with self.time_block("Low Diligence Reputation Model"):
       diligenceParams = get_low_diligence_intercepts(
-        ratingsHelpfulnessScoreFiltered, noteParams, raterParams
+        ratingsHelpfulnessScoreFiltered, raterInitState=raterParams
       )
       noteParams = noteParams.merge(diligenceParams, on=c.noteIdKey)
 

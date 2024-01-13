@@ -1,3 +1,5 @@
+from typing import Optional
+
 from .. import constants as c
 from .dataset import build_dataset
 from .reputation_matrix_factorization import ReputationModelHyperparameters, train_model
@@ -8,8 +10,8 @@ import torch
 
 def get_low_diligence_intercepts(
   filteredRatings: pd.DataFrame,
-  noteParams: pd.DataFrame,
-  raterParams: pd.DataFrame,
+  noteInitState: Optional[pd.DataFrame] = None,
+  raterInitState: Optional[pd.DataFrame] = None,
   device=torch.device("cpu"),
 ) -> pd.DataFrame:
   # Define dataset
@@ -22,15 +24,12 @@ def get_low_diligence_intercepts(
     .clip(0, 1)
     .values
   )
-  dataset = build_dataset(
-    filteredRatings, targets, notes=noteParams, raters=raterParams, device=device
-  )
+  dataset = build_dataset(filteredRatings, targets, device=device)
   # Define hyperparameters
   hParams = ReputationModelHyperparameters(
     # Model hyperparameters
     activationFunction="IDENTITY",
     nDim=1,
-    stableInit=True,
     # Optimizaiton hyperparameters
     numEpochs=300,
     logRate=30,
@@ -66,6 +65,8 @@ def get_low_diligence_intercepts(
   model, loss1, loss2, loss3 = train_model(
     hParams=hParams,
     dataset=dataset,
+    noteInitState=noteInitState,
+    raterInitState=raterInitState,
     device=device,
   )
   print(f"Low diligence training loss: {loss1:.4f}, {loss2:.4f}, {loss3:.4f}")
@@ -73,7 +74,7 @@ def get_low_diligence_intercepts(
   # Compose and return DataFrame
   return pd.DataFrame(
     {
-      c.noteIdKey: noteParams[c.noteIdKey],
+      c.noteIdKey: dataset.notes,
       c.lowDiligenceInterceptKey: model.noteBias.weight.cpu().flatten().detach().numpy(),
     }
   )

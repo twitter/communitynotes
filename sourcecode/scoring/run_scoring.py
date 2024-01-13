@@ -14,7 +14,6 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from . import constants as c, contributor_state, note_ratings, note_status_history, scoring_rules
 from .enums import Scorers
-from .mf_base_scorer import MFBaseScorer
 from .mf_core_scorer import MFCoreScorer
 from .mf_expansion_plus_scorer import MFExpansionPlusScorer
 from .mf_expansion_scorer import MFExpansionScorer
@@ -62,7 +61,9 @@ def _get_scorers(
       MFExpansionPlusScorer(seed, useStableInitialization=useStableInitialization, threads=12)
     ]
   if enabledScorers is None or Scorers.ReputationScorer in enabledScorers:
-    scorers[Scorers.ReputationScorer] = [ReputationScorer(seed, threads=12)]
+    scorers[Scorers.ReputationScorer] = [
+      ReputationScorer(seed, useStableInitialization=useStableInitialization, threads=12)
+    ]
   if enabledScorers is None or Scorers.MFGroupScorer in enabledScorers:
     # Note that index 0 is reserved, corresponding to no group assigned, so scoring group
     # numbers begin with index 1.
@@ -130,12 +131,10 @@ def _merge_results(
 def _run_scorer_parallelizable(
   scorer: Scorer,
   runParallel: bool,
-  maxReruns: int,
   ratings: Optional[pd.DataFrame] = None,
   noteStatusHistory: Optional[pd.DataFrame] = None,
   userEnrollment: Optional[pd.DataFrame] = None,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
-  maxMFTrainError: float = 0.09,
 ):
   if runParallel:
     assert dataLoader is not None, "must provide a dataLoader to run parallel"
@@ -143,39 +142,10 @@ def _run_scorer_parallelizable(
       _, ratings, noteStatusHistory, userEnrollment = dataLoader.get_data()
 
   scorerStartTime = time.perf_counter()
-  result = None
-  runCounter = 0
-  allowedRuns = maxReruns + 1
-  testRun = (
-    ratings[c.noteIdKey].nunique() < c.minNumNotesForProdData if ratings is not None else False
-  )
-
-  if isinstance(scorer, MFBaseScorer) and not isinstance(scorer, MFGroupScorer):
-    while runCounter < allowedRuns:
-      result = ModelResult(*scorer.score(ratings, noteStatusHistory, userEnrollment))
-      # Check whether model converged as expected, and if so conclude training
-      trainError = scorer.get_final_train_error()
-      if testRun or (trainError is not None and trainError < maxMFTrainError):
-        break
-      # Retrain if necessary
-      print(
-        f"Training error of {trainError} for {scorer.get_name()} exceeded allowed maximum of {maxMFTrainError}"
-      )
-      if scorer._seed is not None:
-        scorer._seed = scorer._seed + 1
-      runCounter += 1
-    # Guarantee that we left the while loop due to an acceptable scoring result.
-    assert testRun or (trainError is not None and trainError < maxMFTrainError), (
-      # trainError is None during certain unit tests, so check that number of ratings is
-      # very low to guarantee this is not a production case.
-      f"{scorer.get_name()} exceeded {allowedRuns} attempts without achieving acceptable training error."
-    )
-  else:
-    result = ModelResult(*scorer.score(ratings, noteStatusHistory, userEnrollment))
-    runCounter += 1
-
+  result = ModelResult(*scorer.score(ratings, noteStatusHistory, userEnrollment))
   scorerEndTime = time.perf_counter()
-  return result, (scorerEndTime - scorerStartTime), runCounter
+
+  return result, (scorerEndTime - scorerStartTime)
 
 
 def _run_scorers(
@@ -183,7 +153,6 @@ def _run_scorers(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
-  maxReruns: int,
   runParallel: bool = True,
   maxWorkers: Optional[int] = None,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
@@ -217,40 +186,36 @@ def _run_scorers(
       futures = [
         executor.submit(
           _run_scorer_parallelizable,
-          s,
-          True,
-          maxReruns,
+          scorer=scorer,
+          runParallel=True,
           dataLoader=dataLoader,
         )
-        for s in scorers
+        for scorer in scorers
       ]
       modelResultsAndTimes = [f.result() for f in futures]
   else:
     modelResultsAndTimes = [
       _run_scorer_parallelizable(
-        s,
-        False,
-        maxReruns,
-        ratings,
-        noteStatusHistory,
-        userEnrollment,
+        scorer=scorer,
+        runParallel=False,
+        ratings=ratings,
+        noteStatusHistory=noteStatusHistory,
+        userEnrollment=userEnrollment,
       )
-      for s in scorers
+      for scorer in scorers
     ]
 
-  modelResults, scorerTimes, runCounts = zip(*modelResultsAndTimes)
+  modelResults, scorerTimes = zip(*modelResultsAndTimes)
 
   overallTime = time.perf_counter() - overallStartTime
   print(
     f"""----
-  Completed individual scorers. Ran in parallel: {runParallel}.  Succeeded in {overallTime:.2f} seconds. 
-  Individual scorers: (name, runtime, run counter): {list(zip(
-    [scorer.get_name() for scorer in scorers],
-    ['{:.2f}'.format(t/60.0) + " mins" for t in scorerTimes],
-    runCounts
-  ))}
-  Run Counters are only >1 if loss was too high, forcing a re-train (should be 1).
-  ----"""
+    Completed individual scorers. Ran in parallel: {runParallel}.  Succeeded in {overallTime:.2f} seconds. 
+    Individual scorers: (name, runtime): {list(zip(
+      [scorer.get_name() for scorer in scorers],
+      ['{:.2f}'.format(t/60.0) + " mins" for t in scorerTimes]
+    ))}
+    ----"""
   )
 
   # Initialize return data frames.
@@ -647,11 +612,10 @@ def run_scoring(
     seed, pseudoraters, enabledScorers, useStableInitialization=useStableInitialization
   )
   scoredNotes, helpfulnessScores, auxiliaryNoteInfo = _run_scorers(
-    list(chain(*scorers.values())),
-    ratings,
-    noteStatusHistory,
-    userEnrollment,
-    maxReruns,
+    scorers=list(chain(*scorers.values())),
+    ratings=ratings,
+    noteStatusHistory=noteStatusHistory,
+    userEnrollment=userEnrollment,
     runParallel=runParallel,
     dataLoader=dataLoader,
     # Restrict parallelism to 6 processes.  Memory usage scales linearly with the number of

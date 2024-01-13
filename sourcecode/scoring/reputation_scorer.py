@@ -1,6 +1,8 @@
 from typing import List, Optional, Tuple
 
 from . import constants as c
+from .matrix_factorization.matrix_factorization import MatrixFactorization
+from .mf_base_scorer import get_ratings_for_stable_init
 from .mf_core_scorer import filter_core_input
 from .process_data import filter_ratings
 from .reputation_matrix_factorization.helpfulness_model import get_helpfulness_reputation_results
@@ -20,6 +22,7 @@ class ReputationScorer(Scorer):
     minNumRatingsPerRater: int = 10,
     minNumRatersPerNote: int = 5,
     crhThreshold: float = 0.28,
+    useStableInitialization: bool = True,
   ):
     """Configure ReputationScorer object.
 
@@ -35,6 +38,7 @@ class ReputationScorer(Scorer):
     self._minNumRatingsPerRater = minNumRatingsPerRater
     self._minNumRatersPerNote = minNumRatersPerNote
     self._crhThreshold = crhThreshold
+    self._modelingGroupToInitializeForStability = 13 if useStableInitialization else None
 
   def get_name(self):
     return "ReputationScorer"
@@ -80,12 +84,19 @@ class ReputationScorer(Scorer):
     if self._seed is not None:
       print(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
+    # Calculate initialization factors if necessary
+    noteParamsInit = None
+    raterParamsInit = None
+    if self._modelingGroupToInitializeForStability:
+      ratingsForStableInitialization = get_ratings_for_stable_init(
+        ratings, userEnrollmentRaw, self._modelingGroupToInitializeForStability
+      )
+      mfRanker = MatrixFactorization()
+      noteParamsInit, raterParamsInit, _ = mfRanker.run_mf(ratingsForStableInitialization)
     # Apply model
-    notes = ratings[[c.noteIdKey]].drop_duplicates().sort_values(c.noteIdKey)
-    raters = (
-      ratings[[c.raterParticipantIdKey]].drop_duplicates().sort_values(c.raterParticipantIdKey)
+    noteStats, raterStats = get_helpfulness_reputation_results(
+      ratings, noteInitState=noteParamsInit, raterInitState=raterParamsInit
     )
-    noteStats, raterStats = get_helpfulness_reputation_results(ratings, notes, raters)
     # Assign rating status
     noteStats[c.coverageRatingStatusKey] = c.needsMoreRatings
     noteStats.loc[

@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 import time
+from typing import Optional
 
 from .. import constants as c
 from .weighted_loss import WeightedLoss
 
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 
@@ -15,7 +17,6 @@ class ReputationModelHyperparameters:
   # Model hyperparameters
   activationFunction: str
   nDim: int
-  stableInit: bool
   # Optimizaiton hyperparameters
   numEpochs: int
   logRate: int
@@ -51,8 +52,7 @@ class ReputationModelHyperparameters:
 class ReputationMFModel(nn.Module):
   def __init__(
     self,
-    noteParams,
-    raterParams,
+    dataset,
     activation_fn,
     nDim,
     l2Lambda,
@@ -60,7 +60,8 @@ class ReputationMFModel(nn.Module):
     l2RaterBiasMultiplier,
     l2GlobalBiasMultiplier,
     l2RaterReputationMultiplier,
-    stableInit,
+    noteInitState: Optional[pd.DataFrame] = None,
+    raterInitState: Optional[pd.DataFrame] = None,
     device=torch.device("cpu"),
   ):
     super().__init__()
@@ -74,20 +75,40 @@ class ReputationMFModel(nn.Module):
     self.l2GlobalBiasMultiplier = l2GlobalBiasMultiplier
     self.format = {"device": device, "dtype": torch.float32}
     # Create parameters
-    self.noteEmbedding = nn.Embedding(len(noteParams), self.nDim, **self.format)
-    self.raterEmbedding = nn.Embedding(len(raterParams), self.nDim, **self.format)
-    self.noteBias = nn.Embedding(len(noteParams), 1, **self.format)
-    self.raterBias = nn.Embedding(len(raterParams), 1, **self.format)
-    self.raterReputation = nn.Embedding(len(raterParams), 1, **self.format)
+    self.noteEmbedding = nn.Embedding(dataset.notes.shape[0], self.nDim, **self.format)
+    self.raterEmbedding = nn.Embedding(dataset.raters.shape[0], self.nDim, **self.format)
+    self.noteBias = nn.Embedding(dataset.notes.shape[0], 1, **self.format)
+    self.raterBias = nn.Embedding(dataset.raters.shape[0], 1, **self.format)
+    self.raterReputation = nn.Embedding(dataset.raters.shape[0], 1, **self.format)
     self.globalBias = nn.Parameter(torch.tensor(0.0, **self.format))
     # Initialize rater reputation to 1
     self.raterReputation.weight = nn.Parameter(
       torch.ones(self.raterReputation.weight.shape[0], 1, **self.format)
     )
-    if stableInit:
+    if raterInitState is not None:
+      mapping = dict(raterInitState[[c.raterParticipantIdKey, c.internalRaterFactor1Key]].values)
+      print("Initializing raters:")
+      print(f"  num raters: {dataset.raters.shape[0]}")
       self.raterEmbedding.weight = nn.Parameter(
-        torch.tensor(raterParams[c.internalRaterFactor1Key].values).reshape(-1, 1).to(device)
+        torch.tensor([mapping.get(rater, 0.0) for rater in dataset.raters])
+        .to(torch.float32)
+        .reshape(-1, 1)
+        .to(device)
       )
+      print(f"  uninitialized raters: {(self.raterEmbedding.weight == 0).flatten().sum()}")
+      print(f"  initialized raters: {(self.raterEmbedding.weight != 0).flatten().sum()}")
+    if noteInitState is not None:
+      print("Initializing notes:")
+      print(f"  num notes: {dataset.notes.shape[0]}")
+      mapping = dict(noteInitState[[c.noteIdKey, c.internalNoteFactor1Key]].values)
+      self.noteEmbedding.weight = nn.Parameter(
+        torch.tensor([mapping.get(note, 0.0) for note in dataset.notes])
+        .reshape(-1, 1)
+        .to(torch.float32)
+        .to(device)
+      )
+      print(f"  uninitialized notes: {(self.noteEmbedding.weight == 0).flatten().sum()}")
+      print(f"  initialized notes: {(self.noteEmbedding.weight != 0).flatten().sum()}")
 
   def forward(self, notes, raters):
     pred = (self.noteEmbedding(notes) * self.raterEmbedding(raters)).sum(
@@ -153,6 +174,8 @@ def _sigmoid_range(low, high):
 def train_model(
   hParams,
   dataset,
+  noteInitState: Optional[pd.DataFrame] = None,
+  raterInitState: Optional[pd.DataFrame] = None,
   device=torch.device("cpu"),
 ):
   # Unpack dataset
@@ -177,8 +200,7 @@ def train_model(
     loss_fn = nn.BCEWithLogitsLoss(reduction="none")
 
   model = ReputationMFModel(
-    dataset.notes,
-    dataset.raters,
+    dataset,
     activation_fn=activation_fn,
     nDim=hParams.nDim,
     l2Lambda=hParams.l2Lambda,
@@ -186,7 +208,8 @@ def train_model(
     l2RaterBiasMultiplier=hParams.l2RaterBiasMultiplier,
     l2GlobalBiasMultiplier=hParams.l2GlobalBiasMultiplier,
     l2RaterReputationMultiplier=hParams.l2RaterReputationMultiplier,
-    stableInit=hParams.stableInit,
+    noteInitState=noteInitState,
+    raterInitState=raterInitState,
   )
 
   # train round 1
