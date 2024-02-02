@@ -38,6 +38,10 @@ The people on X span a wide gamut of backgrounds and experiences, and we believe
 Any post can receive a Community Note.
 {% /accordionItem %}
 
+{% accordionItem title="Does blocking/muting impact the display of Community Notes?" %}
+We want everyone to feel comfortable contributing to Community Notes, so contributors participate under [aliases](../contributing/aliases.md). This allows contributors to write and rate notes without sharing their X usernames. To keep aliases visibly independent of X usernames, blocking or muting does not impact the visibility of notes written by the account. In addition to enhancing privacy, this also allows post authors (and anyone on X) to be able to see the proposed notes on their posts.
+{% /accordionItem %}
+
 {% accordionItem title="There’s a Community Note on one of my posts. What does that mean?" %}
 Post authors with Community Notes on their posts can request additional review or report notes. [Learn more](../contributing/additional-review.md).
 {% /accordionItem %}
