@@ -13,7 +13,7 @@ These appear in the notifications tab. They look like this:
 
 ![X app with a notification showing someone a note that's been added to a post to which they replied, Liked or reposted](../images/tweet-liked-alert.png)
 
-These notifications are sent when a note has been showing on a post for 24 hours, has been found particularly helpful (indicated by a [note intercept score](../under-the-hood/note-ranking-code.md) of 0.45 or higher), and was written within the past week.
+These notifications are sent when a note has been showing on a post for 24 hours, has been found helpful (indicated by a [Currently Rated Helpful status](../under-the-hood/ranking-notes.md#note-status)), and was written within the past week.
 
 ## Alerts when a note needs your help
 
