@@ -1,3 +1,4 @@
+import os
 import dataclasses
 from typing import List, Optional, Tuple
 
@@ -8,6 +9,26 @@ import numpy as np
 import pandas as pd
 import torch
 
+import json
+
+current_file_path = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(current_file_path, "config.json")
+with open(config_path) as json_file:
+  config = json.load(json_file)
+
+CONFIG_PARAMS = config.get("PARAMS", {})
+EXPECTED_TYPES = {
+    "l2_lambda": float,
+    "l2_intercept_multiplier": int,
+    "init_lr": float,
+    "noinit_lr": float,
+    "convergence": float,
+    "num_factors": int,
+    "use_global_intercept": bool,
+    "use_sigmoid_crossentropy": bool,
+    "logging": bool,
+    "flip_factor_identification": bool
+}
 
 @dataclasses.dataclass
 class Constants:
@@ -16,52 +37,80 @@ class Constants:
 
 
 class MatrixFactorization:
-  def __init__(
-    self,
-    l2_lambda=0.03,
-    l2_intercept_multiplier=5,
-    initLearningRate=0.2,
-    noInitLearningRate=1.0,
-    convergence=1e-7,
-    numFactors=1,
-    useGlobalIntercept=True,
-    logging=True,
-    flipFactorsForIdentification=True,
-    model: Optional[BiasedMatrixFactorization] = None,
-    featureCols: List[str] = [c.noteIdKey, c.raterParticipantIdKey],
-    labelCol: str = c.helpfulNumKey,
-    useSigmoidCrossEntropy=False,
-    posWeight=None,
-  ) -> None:
-    """Configure matrix factorization note ranking."""
-    self._l2_lambda = l2_lambda
-    self._l2_intercept_multiplier = l2_intercept_multiplier
-    self._initLearningRate = initLearningRate
-    self._noInitLearningRate = noInitLearningRate
-    self._convergence = convergence
-    self._numFactors = numFactors
-    self._useGlobalIntercept = useGlobalIntercept
-    self._logging = logging
-    self._flipFactorsForIdentification = flipFactorsForIdentification
-    self._featureCols = featureCols
-    self._labelCol = labelCol
-    self._useSigmoidCrossEntropy = useSigmoidCrossEntropy
-    self._posWeight = posWeight
+  """
+  This class implements a Matrix Factorization model, commonly used in recommendation systems 
+  and collaborative filtering. It decomposes a matrix into the product of two lower-dimensional matrices, 
+  capturing latent factors in the data.
 
-    if self._useSigmoidCrossEntropy:
-      if self._posWeight:
+  Attributes:
+      l2_lambda (float): Regularization parameter for L2 regularization.
+      l2_intercept_multiplier (float): Multiplier for the intercept in L2 regularization.
+      init_lr (float): Initial learning rate for the optimizer.
+      noinit_lr (float): Learning rate used when no initial values are provided.
+      convergence (float): Convergence threshold for the training process.
+      num_factors (int): Number of latent factors to model.
+      use_global_intercept (bool): Flag to use a global intercept in the model.
+      use_sigmoid_crossentropy (bool): Use sigmoid cross-entropy loss if True, else mean squared error loss.
+      logging (bool): Enable or disable logging.
+      flip_factor_identification (bool): Adjust factors for model identification.
+      model (BiasedMatrixFactorization, optional): An instance of a biased matrix factorization model.
+      feature_cols (List[str]): Feature columns to use in the model.
+      label_col (str): Label column in the data.
+      pos_weight (optional): Positive weight parameter for the loss function.
+
+  Methods:
+      get_final_train_error(): Returns the final training error after model fitting.
+      get_new_mf_with_same_args(): Creates a new instance of MatrixFactorization with the same configuration.
+      _initialize_note_and_rater_id_maps(ratings): Initializes mappings for note and rater IDs based on the provided ratings DataFrame.
+      get_note_and_rater_id_maps(ratings): Extracts and returns mappings for note and rater IDs along with processed rating features and labels.
+      _initialize_parameters(): Initializes or resets the model parameters with given initial values or defaults.
+      _get_parameters_from_trained_model(): Retrieves parameters from the trained model for analysis or further use.
+      _create_mf_model(): Initializes the matrix factorization model and its parameters.
+      _compute_and_print_loss(): Computes and logs the loss during training, useful for monitoring model performance.
+      _create_train_validate_sets(): Splits the data into training and validation sets for model fitting.
+      _fit_model(): Executes the model training process, adjusting parameters to minimize the loss.
+      prepare_features_and_labels(): Prepares features and labels from the dataset for model training.
+      run_mf(): Main method to run matrix factorization on provided data, returning trained model parameters and performance metrics.
+      _flip_factors_for_identification(): Adjusts factor sign for model identifiability and interpretation.
+  """
+     
+  def __init__(
+    self, 
+    config = CONFIG_PARAMS,
+    model: Optional[BiasedMatrixFactorization] = None,
+    feature_cols: List[str] = [c.noteIdKey, c.raterParticipantIdKey],
+    label_col: str = c.helpfulNumKey,
+    pos_weight: Optional[float] = None,
+    ) -> None:
+    for param, expected_type in EXPECTED_TYPES.items():
+      value = config.get(param, CONFIG_PARAMS.get(param))
+      if value is not None and not isinstance(value, expected_type):
+          try:
+              value = expected_type(value)
+          except ValueError:
+              raise ValueError(f"Parameter {param} is expected to be of type {expected_type.__name__}, but got {type(value).__name__}")
+
+      setattr(self, f"_{param}", value)
+
+    self._flip_factor_identification = flip_factor_identification
+    self._feature_cols = feature_cols
+    self._label_col = label_col
+    self._pos_weight = pos_weight
+
+    if self._use_sigmoid_crossentropy:
+      if self._pos_weight:
         if logging:
-          print(f"Using pos weight: {self._posWeight} with BCEWithLogitsLoss")
+          print(f"Using pos weight: {self._pos_weight} with BCEWithLogitsLoss")
         self.criterion = torch.nn.BCEWithLogitsLoss(
-          pos_weight=torch.Tensor(np.array(self._posWeight))
+          pos_weight=torch.Tensor(np.array(self._pos_weight))
         )
       else:
         if logging:
           print("Using BCEWithLogitsLoss")
         self.criterion = torch.nn.BCEWithLogitsLoss()
     else:
-      if self._posWeight:
-        raise ValueError("posWeight is not supported for MSELoss")
+      if self._pos_weight:
+        raise ValueError("pos_weight is not supported for MSELoss")
       self.criterion = torch.nn.MSELoss()
 
     self.train_errors: List[float] = []
@@ -72,23 +121,22 @@ class MatrixFactorization:
     self.trainModelData: Optional[ModelData] = None
     self.validateModelData: Optional[ModelData] = None
 
-  def get_final_train_error(self) -> Optional[float]:
-    return self.train_errors[-1] if self.train_errors else None
+  def get_final_train_error(self) -> Optional[float]: return self.train_errors[-1] if self.train_errors else None
 
   def get_new_mf_with_same_args(self):
     return MatrixFactorization(
       l2_lambda=self._l2_lambda,
       l2_intercept_multiplier=self._l2_intercept_multiplier,
-      initLearningRate=self._initLearningRate,
-      noInitLearningRate=self._noInitLearningRate,
+      init_lr=self._init_lr,
+      noinit_lr=self._noinit_lr,
       convergence=self._convergence,
-      numFactors=self._numFactors,
-      useGlobalIntercept=self._useGlobalIntercept,
+      num_factors=self._num_factors,
+      use_global_intercept=self._use_global_intercept,
       logging=self._logging,
-      flipFactorsForIdentification=self._flipFactorsForIdentification,
+      flip_factor_identification=self._flip_factor_identification,
       model=None,
-      featureCols=self._featureCols,
-      labelCol=self._labelCol,
+      feature_cols=self._feature_cols,
+      label_col=self._label_col,
     )
 
   def _initialize_note_and_rater_id_maps(
@@ -112,7 +160,7 @@ class MatrixFactorization:
     """
     # We are extracting only the subset of note data from the ratings data frame that is needed to
     # run matrix factorization. This avoids accidentally losing data through `dropna`.
-    noteData = ratings[self._featureCols + [self._labelCol]]
+    noteData = ratings[self._feature_cols + [self._label_col]]
     assert not pd.isna(noteData).values.any(), "noteData must not contain nan values"
 
     raterIdMap = (
@@ -164,10 +212,10 @@ class MatrixFactorization:
         np.expand_dims(noteInit[c.internalNoteInterceptKey].astype(np.float32).values, axis=1)
       )
 
-      for i in range(1, self._numFactors + 1):
+      for i in range(1, self._num_factors + 1):
         noteInit[c.note_factor_key(i)].fillna(0.0, inplace=True)
       self.mf_model.note_factors.weight.data = torch.tensor(
-        noteInit[[c.note_factor_key(i) for i in range(1, self._numFactors + 1)]]
+        noteInit[[c.note_factor_key(i) for i in range(1, self._num_factors + 1)]]
         .astype(np.float32)
         .values
       )
@@ -182,10 +230,10 @@ class MatrixFactorization:
         np.expand_dims(userInit[c.internalRaterInterceptKey].astype(np.float32).values, axis=1)
       )
 
-      for i in range(1, self._numFactors + 1):
+      for i in range(1, self._num_factors + 1):
         userInit[c.rater_factor_key(i)].fillna(0.0, inplace=True)
       self.mf_model.user_factors.weight.data = torch.tensor(
-        userInit[[c.rater_factor_key(i) for i in range(1, self._numFactors + 1)]]
+        userInit[[c.rater_factor_key(i) for i in range(1, self._num_factors + 1)]]
         .astype(np.float32)
         .values
       )
@@ -211,7 +259,7 @@ class MatrixFactorization:
       c.internalRaterInterceptKey
     ] = self.mf_model.user_intercepts.weight.data.cpu().numpy()
 
-    for i in range(self._numFactors):
+    for i in range(self._num_factors):
       noteParams[c.note_factor_key(i + 1)] = self.mf_model.note_factors.weight.data.cpu().numpy()[
         :, i
       ]
@@ -219,7 +267,7 @@ class MatrixFactorization:
         :, i
       ]
 
-    if self._flipFactorsForIdentification:
+    if self._flip_factor_identification:
       noteParams, raterParams = self._flip_factors_for_identification(noteParams, raterParams)
 
     return noteParams, raterParams
@@ -246,10 +294,10 @@ class MatrixFactorization:
 
     if (noteInit is not None) and (userInit is not None):
       self.optimizer = torch.optim.Adam(
-        self.mf_model.parameters(), lr=self._initLearningRate
+        self.mf_model.parameters(), lr=self._init_lr
       )  # smaller learning rate
     else:
-      self.optimizer = torch.optim.Adam(self.mf_model.parameters(), lr=self._noInitLearningRate)
+      self.optimizer = torch.optim.Adam(self.mf_model.parameters(), lr=self._noinit_lr)
     if self._logging:
       print(self.mf_model.device)
     self.mf_model.to(self.mf_model.device)
@@ -260,8 +308,8 @@ class MatrixFactorization:
     self.mf_model = BiasedMatrixFactorization(
       n_users,
       n_notes,
-      use_global_intercept=self._useGlobalIntercept,
-      n_factors=self._numFactors,
+      use_global_intercept=self._use_global_intercept,
+      n_factors=self._num_factors,
       logging=self._logging,
     )
     if self._logging:
@@ -406,7 +454,7 @@ class MatrixFactorization:
         self.ratingFeaturesAndLabels[c.noteIdKey] == specificNoteId
       ]
 
-    rating_labels = torch.FloatTensor(ratingFeaturesAndLabels[self._labelCol].values).to(
+    rating_labels = torch.FloatTensor(ratingFeaturesAndLabels[self._label_col].values).to(
       self.mf_model.device
     )
     user_indexes = torch.LongTensor(ratingFeaturesAndLabels[Constants.raterIndexKey].values).to(
@@ -457,7 +505,7 @@ class MatrixFactorization:
     assert self.mf_model.note_factors.weight.data.cpu().numpy().shape[0] == self.noteIdMap.shape[0]
 
     globalIntercept = None
-    if self._useGlobalIntercept:
+    if self._use_global_intercept:
       globalIntercept = self.mf_model.global_intercept
       if self._logging:
         print("Global Intercept: ", globalIntercept.item())
@@ -482,7 +530,7 @@ class MatrixFactorization:
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]: noteParams, raterParams
     """
-    for i in range(1, self._numFactors + 1):
+    for i in range(1, self._num_factors + 1):
       noteFactorName = c.note_factor_key(i)
       raterFactorName = c.rater_factor_key(i)
 
