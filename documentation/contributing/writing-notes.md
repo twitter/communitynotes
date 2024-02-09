@@ -28,11 +28,17 @@ Anyone can read and rate Community Notes, but only contributors who've [unlocked
 
 To keep note quality high and prevent spam, there’s a limit to the number of note proposals contributors can write in a 24 hour period.
 
-The limit is equal to the contributor’s Writing Impact plus 5, unless Writing Impact is negative, in which case the limit is 1.
+The limit is based on both the contributor's:
+* [Writing Impact](./writing-and-rating-impact.md) score
+* Helpful note hit rate (defined as Writing Impact divided by total number of notes written)
+
+If Writing Impact is negative, the limit is 1. Otherwise, the limit is the minimum of:
+* Writing Impact + 5
+* Hit rate × 200
 
 This dynamic limit helps ensure that contributors can write more notes as they build a track record of writing notes people find helpful.
 
-For example:
+For example, if one has a hit rate of 20% (common among top writers):
 
 - A contributor with -1 Writing Impact can write 1 note every 24 hours.
 - A contributor with 0 Writing Impact can write 5 notes every 24 hours.
@@ -40,6 +46,11 @@ For example:
 - A contributor with 12 Writing Impact can write 17 notes every 24 hours.
 - …etc
 
+However, to limit large numbers of proposed notes in lower hit rate cases, if one has a hit rate of 5%:
+
+- A contributor with 12 Writing Impact but 5% hit rate can write 10 notes every 24 hours.
+- A contributor with 100 Writing Impact but 5% hit rate can write 10 notes every 24 hours.
+  
 
 ### What makes a good Community Note?
 
