@@ -44,7 +44,7 @@ def tsv_parser(
   """Parse a TSV input and raise an Exception if the input is not formatted as expected.
 
   Args:
-    rawTSV: str contianing entire TSV input
+    rawTSV: str containing entire TSV input
     mapping: Dict mapping column names to types
     columns: List of column names
     header: bool indicating whether the input will have a header
