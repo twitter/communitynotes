@@ -62,7 +62,7 @@ class ScoringRule(ABC):
   """Scoring logic describing how to assign a ratingStatus given raw scoring signals and note attributes.
 
   Each ScoringRule must have a name and version. Each ScoringRule must implement a score_notes function,
-  which accepts as input the raw attributes of notes and currently assigned lables and returns (1) a
+  which accepts as input the raw attributes of notes and currently assigned labels and returns (1) a
   DataFrame specifying the noteIDs and associated status which the rule will assign, and (2) a DF
   containing any new columns which should be added to the output for those noteIDs.
   """
@@ -96,7 +96,7 @@ class ScoringRule(ABC):
     """Identify which notes the ScoringRule should be active for, and any new columns to add for those notes.
 
     Args:
-      noteStats: Raw note attributes, scoring signals and attirbutes for notes.
+      noteStats: Raw note attributes, scoring signals and attributes for notes.
       currentLabels: the ratingStatus assigned to each note from prior ScoringRules.
       statusColumn: str indicating column where status should be assigned.
 
@@ -158,7 +158,7 @@ class RuleFromFunction(ScoringRule):
     """Returns noteIDs for notes matched by the boolean function."""
     mask = self._function(noteStats)
     if self._onlyApplyToNotesThatSayTweetIsMisleading:
-      # Check for inequality with "not misleading" to include notes whose classificaiton
+      # Check for inequality with "not misleading" to include notes whose classification
       # is nan (i.e. deleted notes).
       mask = mask & (noteStats[c.classificationKey] != c.noteSaysTweetIsNotMisleadingKey)
 
@@ -255,7 +255,7 @@ class FilterTagOutliers(ScoringRule):
         print(f"outlier filtering disabled for tag: {tag}")
         continue
       tagFilteredNotes = crhStats[
-        # Adjusted total must pass minimum threhsold set across all tags.
+        # Adjusted total must pass minimum threshold set across all tags.
         (crhStats[adjustedColumn] > self._minAdjustedTotal)
         # Adjusted ratio must exceed percentile based total for this specific tag.
         & (crhStats[adjustedRatioColumn] > thresholds[adjustedRatioColumn])
@@ -263,7 +263,7 @@ class FilterTagOutliers(ScoringRule):
       impactedNotes = pd.concat(
         [impactedNotes, pd.DataFrame({c.noteIdKey: tagFilteredNotes, c.activeFilterTagsKey: tag})]
       )
-    # log and consolidate imapcted notes
+    # log and consolidate impacted notes
     print(f"Total {{note, tag}} pairs where tag filter logic triggered: {len(impactedNotes)}")
     impactedNotes = impactedNotes.groupby(c.noteIdKey).aggregate(list).reset_index()
     impactedNotes[c.activeFilterTagsKey] = [
@@ -293,7 +293,7 @@ class FilterIncorrect(ScoringRule):
       dependencies: Rules which must run before this rule can run.
       status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
       tagThreshold: threshold for number of included raters to issue a tag
-      voteThreshold: threshold for number of included raters (raters must have issued a NH tag to be inclueed)
+      voteThreshold: threshold for number of included raters (raters must have issued a NH tag to be included)
       weightedTotalVotes: For the filter to trigger, the sum of weighted incorrect votes must
         exceed the minAdjustedTotal.
       superThreshold: if set, allow notes with an intercept above threshold to bypass the filter.
@@ -668,7 +668,7 @@ class AddCRHInertia(ScoringRule):
         & (noteStats[c.internalNoteInterceptKey] >= self._threshold)
         # Note must have been rated CRH during the last scoring run.
         & (noteStats[c.currentLabelKey] == c.currentlyRatedHelpful)
-        # Check for inequality with "not misleading" to include notes whose classificaiton
+        # Check for inequality with "not misleading" to include notes whose classification
         # is nan (i.e. deleted notes).
         & (noteStats[c.classificationKey] != c.noteSaysTweetIsNotMisleadingKey)
       ][[c.noteIdKey]],
@@ -804,5 +804,5 @@ def apply_scoring_rules(
   )
   scoredNotes[c.awaitingMoreRatingsBoolKey] = scoredNotes[statusColumn] == c.needsMoreRatings
 
-  # Return completed DF including original noteStats signals merged wtih scoring results
+  # Return completed DF including original noteStats signals merged with scoring results
   return scoredNotes

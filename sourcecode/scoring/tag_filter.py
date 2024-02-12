@@ -1,4 +1,4 @@
-"""Utilites for tag based scoring logic."""
+"""Utilities for tag based scoring logic."""
 
 from typing import Dict
 
@@ -125,7 +125,7 @@ def get_tag_thresholds(ratings: pd.DataFrame, percentile: int) -> Dict[str, floa
 
   Args:
     ratings: DataFrame containing adjusted ratio columns
-    percnetile: int in the range [0, 100)
+    percentile: int in the range [0, 100)
 
   Returns:
     Dictionary mapping adjusted ratio columns to a threshold value

@@ -2,7 +2,7 @@
 
 This file defines "run_scoring" which invokes all Community Notes scoring algorithms,
 merges results and computes contribution statistics for users.  run_scoring should be
-intergrated into main files for execution in internal and external environments.
+integrated into main files for execution in internal and external environments.
 """
 
 from collections import namedtuple
@@ -385,7 +385,7 @@ def _compute_note_stats(
   scorers have run guarantees completeness over all Community Notes data.
 
   Args:
-    ratings: pd.DataFrame continaing *all* ratings on *all* notes from *all* users.
+    ratings: pd.DataFrame containing *all* ratings on *all* notes from *all* users.
     noteStatusHistory: pd.DataFrame containing complete noteStatusHistory for all notes.
 
   Returns:
@@ -441,7 +441,7 @@ def _compute_helpfulness_scores(
       helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
   """
   with c.time_block("Meta Helpfulness Scorers: Setup"):
-    # Generate a uunified view of note scoring information for computing contributor stats
+    # Generate a unified view of note scoring information for computing contributor stats
     assert len(scoredNotes) == len(auxiliaryNoteInfo), "notes in both note inputs must match"
     scoredNotesWithStats = scoredNotes.merge(
       # noteId and timestamp are the only common fields, and should always be equal.

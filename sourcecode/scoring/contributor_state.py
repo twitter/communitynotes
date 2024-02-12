@@ -8,7 +8,7 @@ import pandas as pd
 def should_earn_in(contributorScoresWithEnrollment: pd.DataFrame):
   """
   The participant should earn in when they are in the earnedOutAcknowledged and newUser state.
-  To earn in, we need to check that the rating impact is larger than the succesfully ratings
+  To earn in, we need to check that the rating impact is larger than the successfully ratings
   needed to earn in. This constant is fixed for new users (ratingImpactForEarnIn), for
   earnedOutNoAcknowledge it will be set int the CombineEventAndSnapshot job to +5 their current
   rating impact with a minimum of ratingImpactForEarnIn.
@@ -118,7 +118,7 @@ def _get_visible_rating_counts(
 ) -> pd.DataFrame:
   """
   Given scored notes from the algorithm, all ratings, and note status history, this function
-  analyzes how succesfully a user rates notes. It aggregates how successfully/unsucessfully
+  analyzes how successfully a user rates notes. It aggregates how successfully/unsuccessfully
   a notes ratings aligns with a contributors ratings.
 
   Args:
@@ -452,7 +452,7 @@ def get_contributor_scores(
 ) -> pd.DataFrame:
   """
   Given the outputs of the MF model, this function aggregates stats over notes and ratings. The
-  contributor scores are merged and attached to helfpulness scores in the algorithm.
+  contributor scores are merged and attached to helpfulness scores in the algorithm.
 
   Args:
       scoredNotes (pd.DataFrame): scored notes

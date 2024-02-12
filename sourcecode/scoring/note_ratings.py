@@ -159,7 +159,7 @@ def get_ratings_with_scores(
   doTypeCheck: bool = True,
 ) -> pd.DataFrame:
   """
-  This funciton merges the note status history, ratings, and scores for later aggregation.
+  This function merges the note status history, ratings, and scores for later aggregation.
 
   Args:
       ratings (pd.DataFrame): all ratings
@@ -368,7 +368,7 @@ def compute_scored_notes(
   is_crnh_ucb_function: Callable[..., pd.Series] = is_crnh_ucb,
 ) -> pd.DataFrame:
   """
-  Merges note status history, ratings, and model output. It annotes the data frame with
+  Merges note status history, ratings, and model output. It annotates the data frame with
   different note statuses, and features needed to calculate contributor stats.
 
   Args:

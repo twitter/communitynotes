@@ -82,7 +82,7 @@ def filter_core_input(
   # and (2) less than half of the ratings are from CORE users.  Any other note is considered
   # a CORE note.  This construction means that we only count a note as EXPANSION when there
   # is reason to believe that the EXPANSION model could assign the note status.  In all other
-  # case we leave the note as CORE so that the note will be eligble for locking.  In effect,
+  # case we leave the note as CORE so that the note will be eligible for locking.  In effect,
   # this approach biases us towards locking note status at 2 weeks and only avoiding locking
   # when a note is scored by the EXPANSION model.
   print(f"  Total notes: {len(noteStatusHistory)}")
