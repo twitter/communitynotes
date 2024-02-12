@@ -20,7 +20,7 @@ defaultNumThreads = os.cpu_count() or 8
 # https://docs.python.org/3/tutorial/modules.html#more-on-modules
 epochMillis = 1000 * time.time()
 useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory = True
-# Use this size threshld to isolate code which should be run differently in small
+# Use this size threshold to isolate code which should be run differently in small
 # scale unit tests.
 minNumNotesForProdData = 200
 
