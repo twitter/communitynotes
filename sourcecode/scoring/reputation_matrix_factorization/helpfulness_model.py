@@ -22,7 +22,7 @@ def get_helpfulness_reputation_results(
     # Model hyperparameters
     activationFunction="IDENTITY",
     nDim=1,
-    # Optimizaiton hyperparameters
+    # Optimization hyperparameters
     numEpochs=300,
     logRate=30,
     learningRate=0.2,
