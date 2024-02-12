@@ -28,7 +28,7 @@ def _coalesce_columns(df: pd.DataFrame, columnPrefix: str) -> pd.DataFrame:
 
   Args:
     df: DataFrame containing columns to condense
-    collumnPrefix: Prefix used to detect columns to coalesce, and the name for
+    columnPrefix: Prefix used to detect columns to coalesce, and the name for
       the output column.
 
   Returns:
