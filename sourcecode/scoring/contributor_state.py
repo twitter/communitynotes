@@ -7,7 +7,7 @@ import pandas as pd
 
 def should_earn_in(contributorScoresWithEnrollment: pd.DataFrame):
   """
-  The participant should earn in when they are in the earnedOutAcknowledged and newUser state.
+  The participant should earn in when they are in the earnedOutAcknowledged, earnedoutNoAck and newUser state.
   To earn in, we need to check that the rating impact is larger than the succesfully ratings
   needed to earn in. This constant is fixed for new users (ratingImpactForEarnIn), for
   earnedOutNoAcknowledge it will be set int the CombineEventAndSnapshot job to +5 their current
@@ -19,7 +19,6 @@ def should_earn_in(contributorScoresWithEnrollment: pd.DataFrame):
   return (
     (contributorScoresWithEnrollment[c.enrollmentState] != c.earnedIn)
     & (contributorScoresWithEnrollment[c.enrollmentState] != c.atRisk)
-    & (contributorScoresWithEnrollment[c.enrollmentState] != c.earnedOutNoAcknowledge)
     & (
       contributorScoresWithEnrollment[c.ratingImpact]
       >= contributorScoresWithEnrollment[c.successfulRatingNeededToEarnIn]
@@ -30,7 +29,7 @@ def should_earn_in(contributorScoresWithEnrollment: pd.DataFrame):
 def is_at_risk(authorEnrollmentCounts: pd.DataFrame):
   """
   The author is at risk when they have written 2 CRNH notes of the last 5 notes. NewUser
-  and EarnedOutAcknowledged states cannot transition to this state because they cannot
+  EarnedOutNoAck, and EarnedOutAcknowledged states cannot transition to this state because they cannot
   write notes, and must first Earn in to Birdwatch.
 
   Args:
@@ -38,6 +37,7 @@ def is_at_risk(authorEnrollmentCounts: pd.DataFrame):
   """
   return (
     (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
+    & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutNoAcknowledge)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
     & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] == c.isAtRiskCRNHCount)
   )
@@ -56,6 +56,7 @@ def is_earned_out(authorEnrollmentCounts: pd.DataFrame):
   return (
     (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
+    & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutNoAcknowledge)
     & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] > c.isAtRiskCRNHCount)
   )
 
@@ -63,7 +64,7 @@ def is_earned_out(authorEnrollmentCounts: pd.DataFrame):
 def is_earned_in(authorEnrollmentCounts):
   """
   The author is at earned out when they have written <2 CRNH notes of the last 5 notes.
-  NewUser and EarnedOutAcknowledged states cannot transition to this state because they cannot
+  NewUser, EarnedOutNoAck, and EarnedOutAcknowledged states cannot transition to this state because they cannot
   write notes, and must first Earn in to Birdwatch.
 
   Args:
@@ -72,6 +73,7 @@ def is_earned_in(authorEnrollmentCounts):
   return (
     (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
+    & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutNoAcknowledge)
     & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] < c.isAtRiskCRNHCount)
   )
 

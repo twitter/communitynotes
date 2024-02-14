@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 
 from .. import constants as c
 from .model import BiasedMatrixFactorization, ModelData
+from .normalized_loss import NormalizedLoss
 
 import numpy as np
 import pandas as pd
@@ -18,8 +19,6 @@ class Constants:
 class MatrixFactorization:
   def __init__(
     self,
-    l2_lambda=0.03,
-    l2_intercept_multiplier=5,
     initLearningRate=0.2,
     noInitLearningRate=1.0,
     convergence=1e-7,
@@ -32,10 +31,15 @@ class MatrixFactorization:
     labelCol: str = c.helpfulNumKey,
     useSigmoidCrossEntropy=False,
     posWeight=None,
+    userFactorLambda=0.03,
+    noteFactorLambda=0.03,
+    userInterceptLambda=0.03 * 5,
+    noteInterceptLambda=0.03 * 5,
+    globalInterceptLambda=0.03 * 5,
+    diamondLambda=0,
+    normalizedLossHyperparameters=None,
   ) -> None:
     """Configure matrix factorization note ranking."""
-    self._l2_lambda = l2_lambda
-    self._l2_intercept_multiplier = l2_intercept_multiplier
     self._initLearningRate = initLearningRate
     self._noInitLearningRate = noInitLearningRate
     self._convergence = convergence
@@ -47,22 +51,30 @@ class MatrixFactorization:
     self._labelCol = labelCol
     self._useSigmoidCrossEntropy = useSigmoidCrossEntropy
     self._posWeight = posWeight
+    self._userFactorLambda = userFactorLambda
+    self._noteFactorLambda = noteFactorLambda
+    self._userInterceptLambda = userInterceptLambda
+    self._noteInterceptLambda = noteInterceptLambda
+    self._globalInterceptLambda = globalInterceptLambda
+    self._diamondLambda = diamondLambda
+    self._normalizedLossHyperparameters = normalizedLossHyperparameters
+    self._lossModule: Optional[NormalizedLoss] = None
 
     if self._useSigmoidCrossEntropy:
       if self._posWeight:
         if logging:
           print(f"Using pos weight: {self._posWeight} with BCEWithLogitsLoss")
         self.criterion = torch.nn.BCEWithLogitsLoss(
-          pos_weight=torch.Tensor(np.array(self._posWeight))
+          pos_weight=torch.Tensor(np.array(self._posWeight)), reduction="none"
         )
       else:
         if logging:
           print("Using BCEWithLogitsLoss")
-        self.criterion = torch.nn.BCEWithLogitsLoss()
+        self.criterion = torch.nn.BCEWithLogitsLoss(reduction="none")
     else:
       if self._posWeight:
         raise ValueError("posWeight is not supported for MSELoss")
-      self.criterion = torch.nn.MSELoss()
+      self.criterion = torch.nn.MSELoss(reduction="none")
 
     self.train_errors: List[float] = []
     self.test_errors: List[float] = []
@@ -77,8 +89,6 @@ class MatrixFactorization:
 
   def get_new_mf_with_same_args(self):
     return MatrixFactorization(
-      l2_lambda=self._l2_lambda,
-      l2_intercept_multiplier=self._l2_intercept_multiplier,
       initLearningRate=self._initLearningRate,
       noInitLearningRate=self._noInitLearningRate,
       convergence=self._convergence,
@@ -89,6 +99,11 @@ class MatrixFactorization:
       model=None,
       featureCols=self._featureCols,
       labelCol=self._labelCol,
+      userFactorLambda=self._userFactorLambda,
+      noteFactorLambda=self._noteFactorLambda,
+      userInterceptLambda=self._userInterceptLambda,
+      noteInterceptLambda=self._noteInterceptLambda,
+      globalInterceptLambda=self._globalInterceptLambda,
     )
 
   def _initialize_note_and_rater_id_maps(
@@ -245,10 +260,12 @@ class MatrixFactorization:
     self._initialize_parameters(noteInit, userInit, globalInterceptInit)
 
     if (noteInit is not None) and (userInit is not None):
+      print(f"learning rate set to :{self._initLearningRate}")
       self.optimizer = torch.optim.Adam(
         self.mf_model.parameters(), lr=self._initLearningRate
       )  # smaller learning rate
     else:
+      print(f"learning rate set to :{self._noInitLearningRate}")
       self.optimizer = torch.optim.Adam(self.mf_model.parameters(), lr=self._noInitLearningRate)
     if self._logging:
       print(self.mf_model.device)
@@ -277,12 +294,12 @@ class MatrixFactorization:
     assert self.mf_model is not None
     assert self.trainModelData is not None
     y_pred = self.mf_model(self.trainModelData)
-    train_loss_value = self.criterion(y_pred, self.trainModelData.rating_labels).item()
+    train_loss_value = self.criterion(y_pred, self.trainModelData.rating_labels).mean().item()
     if self.validateModelData is not None:
       y_pred_validate = self.mf_model(self.validateModelData)
-      validate_loss_value = self.criterion(
-        y_pred_validate, self.validateModelData.rating_labels
-      ).item()
+      validate_loss_value = (
+        self.criterion(y_pred_validate, self.validateModelData.rating_labels).mean().item()
+      )
     else:
       validate_loss_value = None
 
@@ -323,6 +340,30 @@ class MatrixFactorization:
     else:
       self.trainModelData = self.modelData
 
+  def _get_loss(self, epoch: Optional[int] = None):
+    assert self.mf_model is not None
+    y_pred = self.mf_model(self.trainModelData)
+    if self._lossModule is not None:
+      loss = self._lossModule(y_pred)
+    else:
+      assert self.trainModelData is not None
+      loss = self.criterion(y_pred, self.trainModelData.rating_labels).mean()
+    regularizationLoss = self._get_reg_loss()
+    return loss + regularizationLoss
+
+  def _get_reg_loss(self):
+    l2_reg_loss = torch.tensor(0.0).to(self.mf_model.device)
+    l2_reg_loss += self._userFactorLambda * (self.mf_model.user_factors.weight**2).mean()
+    l2_reg_loss += self._noteFactorLambda * (self.mf_model.note_factors.weight**2).mean()
+    l2_reg_loss += self._userInterceptLambda * (self.mf_model.user_intercepts.weight**2).mean()
+    l2_reg_loss += self._noteInterceptLambda * (self.mf_model.note_intercepts.weight**2).mean()
+    l2_reg_loss += self._globalInterceptLambda * (self.mf_model.global_intercept**2).mean()
+    l2_reg_loss += (
+      self._diamondLambda
+      * (self.mf_model.note_factors.weight * self.mf_model.note_intercepts.weight).abs().mean()
+    )
+    return l2_reg_loss
+
   def _fit_model(
     self,
     validate_percent: Optional[float] = None,
@@ -339,24 +380,11 @@ class MatrixFactorization:
         rating (torch.FloatTensor)
     """
     assert self.mf_model is not None
-    self._create_train_validate_sets()
+    self._create_train_validate_sets(validate_percent)
     assert self.trainModelData is not None
 
-    l2_lambda_intercept = self._l2_lambda * self._l2_intercept_multiplier
     prev_loss = 1e10
-
-    y_pred = self.mf_model(self.trainModelData)
-    loss = self.criterion(y_pred, self.trainModelData.rating_labels)
-    l2_reg_loss = torch.tensor(0.0).to(self.mf_model.device)
-
-    for name, param in self.mf_model.named_parameters():
-      if "intercept" in name:
-        l2_reg_loss += l2_lambda_intercept * (param**2).mean()
-      else:
-        l2_reg_loss += self._l2_lambda * (param**2).mean()
-
-    loss += l2_reg_loss
-
+    loss = self._get_loss()
     epoch = 0
 
     while (abs(loss.item() - prev_loss) > self._convergence) and (
@@ -374,17 +402,7 @@ class MatrixFactorization:
       self.optimizer.zero_grad()
 
       # Predict and calculate loss
-      y_pred = self.mf_model(self.trainModelData)
-      loss = self.criterion(y_pred, self.trainModelData.rating_labels)
-      l2_reg_loss = torch.tensor(0.0).to(self.mf_model.device)
-
-      for name, param in self.mf_model.named_parameters():
-        if "intercept" in name:
-          l2_reg_loss += l2_lambda_intercept * (param**2).mean()
-        else:
-          l2_reg_loss += self._l2_lambda * (param**2).mean()
-
-      loss += l2_reg_loss
+      loss = self._get_loss(epoch=epoch)
 
       if epoch % print_interval == 0:
         self._compute_and_print_loss(loss.item(), epoch, final=False)
@@ -453,6 +471,21 @@ class MatrixFactorization:
     self.prepare_features_and_labels(specificNoteId)
 
     train_loss, loss, validate_loss = self._fit_model(validatePercent)
+    if self._normalizedLossHyperparameters is not None:
+      _, raterParams = self._get_parameters_from_trained_model()
+      assert self.modelData is not None
+      self._lossModule = NormalizedLoss(
+        self.criterion,
+        self.ratingFeaturesAndLabels,
+        self.modelData.rating_labels,
+        self._normalizedLossHyperparameters,
+        self._labelCol,
+        raterParams,
+        device=self.mf_model.device,
+      )
+      self._create_mf_model(None, userInit, None)
+      train_loss, loss, validate_loss = self._fit_model(validatePercent)
+      self._lossModule = None
 
     assert self.mf_model.note_factors.weight.data.cpu().numpy().shape[0] == self.noteIdMap.shape[0]
 
