@@ -183,6 +183,50 @@ It might list one of the following models:
 - GroupModelN (vX.X). The Nth instantiation of the _Group_ model described above.
 - ScoringDriftGuard. This is a scoring rule that locks note statuses after two weeks. See the [next section](#status-stabilization) for more details.
 
+## Expanded Consensus Trial
+
+As of February 13, 2024 we are trialing a refinement to the matrix factorization approach above designed to improve and expand the detection of Helpful notes.
+The refined approach uses two rounds of optimization.
+The first round modifies the loss term described above to reduce regularization on factors, increase regularization on intercepts and introduce regularization on the product of a note's intercept and factor magnitude.
+The second round uses the user factors learned during the first round to weight ratings and introduces normalization across raters.
+
+As with the baseline matrix factorization approach, we predict each rating as
+
+$$ \hat{r}_{un} = \mu + i_u + i_n + f_u \cdot f_n $$
+
+During the first round, we minimize the loss shown below over the set of all observed ratings $r_{un}$.
+Note that this model uses a single-dimensional factor representation. 
+
+```math
+\sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_{iu} i_u^2 + \lambda_{in} i_n^2 + \lambda_{\mu} \mu^2 + \lambda_{fu} f_u^2 + \lambda_{fn} f_n^2 + \lambda_{if} i_n |f_n|
+```
+
+Where $\lambda_{iu}=30\lambda$, $\lambda_{in}=5\lambda$, $\lambda_{\mu}=5\lambda$, $\lambda_{fu}=\dfrac{\lambda}{4}$, $\lambda_{fn}=\dfrac{\lambda}{3}$, $\lambda_{if}=25\lambda$ and $\lambda=0.03$.
+This modification appears to have several advantages:
+
+- Decreased regularization on user factors ($\lambda_{fu}$) and note factors ($\lambda_{fn}$) allows the model to learn more accurate representations for users and notes.
+- Introduction of regularization on the product of note intercept and factor magnitudes ($\lambda_{if}$) pressures the model to decide whether the ratings on a note are most explained by universal appeal or partisan perspective.
+- Increased regularization on note intercepts ($\lambda_{in}$) encourages the model to hold a high standard when deciding that a note has universal appeal.
+
+During the second round, we apply a weight $w_{un}$ to each rating prediction error.  We define $w_{un}$ as follows.
+
+- let $t_p = |\\{r_{un} \text{ such that } f_u \geq 0\\}|$
+- let $t_n = |\\{r_{un} \text{ such that } f_u \lt 0\\}|$
+- let $w^S_{un} = \dfrac{t_n}{t_p} \text{ if } f_u \geq 0 \text{ else } 1$
+- let $w^U_u = (\sum\limits_{n} w^S_{un})^{-0.25}$
+- let $w_{un} = w^S_{un} w^U_u$
+
+Notice that the weights $w^S_{un}$ function to balance the loss across ratings from users with positive and negative factors, and the weights $w^U_u$ function to attenuate the loss attributed to the most active users.
+
+Consequently, the loss optimized during the second round is:
+
+```math
+\sum_{r_{un}} w_{un} (r_{un} - \hat{r}_{un})^2 + \lambda_{iu} i_u^2 + \lambda_{in} i_n^2 + \lambda_{\mu} \mu^2 + \lambda_{fu} f_u^2 + \lambda_{fn} f_n^2 + \lambda_{if} i_n |f_n|
+```
+
+Combined with the regularization adjustments from the first round, the added weighting functions to improve the learned user representation, ultimatley allowing the model to recognize more instances of consensus among user that hold different perspectives.
+We have deployed the expanded consensus trial algorithm in Group Model 14 and plan to expand deployment as we evaluate performance in the initial trial.
+
 ## Status Stabilization
 
 As Community Notes has scaled from inception to global availability we've seen an increasing number of notes and ratings spanning a widening array of topics.
@@ -247,6 +291,9 @@ For not-helpful notes:
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**February 13, 2024**
+- Introduce expanded consensus trial algorithm with a single group model.
 
 **December 20, 2023**
 - Introduce note factor threshold for "Helpful" notes requiring $abs(f_n) < 0.50$.
