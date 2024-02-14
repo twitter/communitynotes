@@ -8,7 +8,10 @@ import pandas as pd
 
 
 # Number of MFGroupScorer objects we expect to instantiate
-groupScorerCount = 13
+groupScorerCount = 14
+
+# Group ID assigned to trial scoring algorithm
+trialScoringGroup = 14
 
 # Mapping of how many threads to assign to each group scorer
 _groupScorerParalleism = {
@@ -100,6 +103,24 @@ class MFGroupScorer(MFBaseScorer):
     pseudoraters: Optional[bool] = False,
     groupThreshold: float = 0.8,
     saveIntermediateState: bool = False,
+    userFactorLambda=None,
+    noteFactorLambda=None,
+    userInterceptLambda=None,
+    noteInterceptLambda=None,
+    globalInterceptLambda=None,
+    diamondLambda=None,
+    normalizedLossHyperparameters=None,
+    maxFirstMFTrainError: float = 0.16,
+    maxFinalMFTrainError: float = 0.09,
+    requireInternalAuthor: bool = True,
+    minMeanNoteScore: float = 0.05,
+    crhThreshold: float = 0.40,
+    crnhThresholdIntercept: float = -0.05,
+    crnhThresholdNoteFactorMultiplier: float = -0.8,
+    crnhThresholdNMIntercept: float = -0.15,
+    crhSuperThreshold: float = 0.5,
+    lowDiligenceThreshold: float = 0.217,
+    factorThreshold: float = 0.5,
   ) -> None:
     """Configure MFGroupScorer object.
 
@@ -123,6 +144,23 @@ class MFGroupScorer(MFBaseScorer):
       useStableInitialization=False,
       saveIntermediateState=saveIntermediateState,
       threads=_groupScorerParalleism.get(groupNumber, 4),
+      userFactorLambda=userFactorLambda,
+      noteFactorLambda=noteFactorLambda,
+      userInterceptLambda=userInterceptLambda,
+      noteInterceptLambda=noteInterceptLambda,
+      globalInterceptLambda=globalInterceptLambda,
+      diamondLambda=diamondLambda,
+      normalizedLossHyperparameters=normalizedLossHyperparameters,
+      maxFirstMFTrainError=maxFirstMFTrainError,
+      maxFinalMFTrainError=maxFinalMFTrainError,
+      minMeanNoteScore=minMeanNoteScore,
+      crhThreshold=crhThreshold,
+      crnhThresholdIntercept=crnhThresholdIntercept,
+      crnhThresholdNoteFactorMultiplier=crnhThresholdNoteFactorMultiplier,
+      crnhThresholdNMIntercept=crnhThresholdNMIntercept,
+      crhSuperThreshold=crhSuperThreshold,
+      lowDiligenceThreshold=lowDiligenceThreshold,
+      factorThreshold=factorThreshold,
     )
     assert groupNumber > 0, "groupNumber must be positive.  0 is reserved for unassigned."
     assert groupNumber <= groupScorerCount, "groupNumber exceeds maximum expected groups."
@@ -136,6 +174,7 @@ class MFGroupScorer(MFBaseScorer):
     self._groupRaterInterceptKey = f"{c.groupRaterInterceptKey}_{self._groupNumber}"
     self._groupRaterFactor1Key = f"{c.groupRaterFactor1Key}_{self._groupNumber}"
     self._modelingGroupKey = f"{c.modelingGroupKey}_{self._groupNumber}"
+    self._requireInternalAuthor = requireInternalAuthor
 
   def get_name(self):
     return f"MFGroupScorer_{self._groupNumber}"
@@ -266,14 +305,15 @@ class MFGroupScorer(MFBaseScorer):
         userScores: filtered and updated user scoring output
     """
     # Prune notes according to authorship filter.
-    noteScores = noteScores.merge(
-      userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(
-        columns={c.participantIdKey: c.noteAuthorParticipantIdKey}
-      ),
-      how="left",
-    )
-    noteScores = noteScores[noteScores[c.modelingGroupKey] == self._groupNumber]
-    noteScores = noteScores.drop(columns=c.modelingGroupKey)
+    if self._requireInternalAuthor:
+      noteScores = noteScores.merge(
+        userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(
+          columns={c.participantIdKey: c.noteAuthorParticipantIdKey}
+        ),
+        how="left",
+      )
+      noteScores = noteScores[noteScores[c.modelingGroupKey] == self._groupNumber]
+      noteScores = noteScores.drop(columns=c.modelingGroupKey)
     # Identify notes with enough ratings from within the modeling group.
     ratings = ratings.merge(
       userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(

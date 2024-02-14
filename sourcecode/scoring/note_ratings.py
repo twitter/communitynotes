@@ -366,6 +366,8 @@ def compute_scored_notes(
   is_crh_function: Callable[..., pd.Series] = is_crh,
   is_crnh_diamond_function: Callable[..., pd.Series] = is_crnh_diamond,
   is_crnh_ucb_function: Callable[..., pd.Series] = is_crnh_ucb,
+  lowDiligenceThreshold: float = 0.217,
+  factorThreshold: float = 0.5,
 ) -> pd.DataFrame:
   """
   Merges note status history, ratings, and model output. It annotes the data frame with
@@ -504,13 +506,13 @@ def compute_scored_notes(
           RuleID.LOW_DILIGENCE,
           {RuleID.INCORRECT_OUTLIER},
           c.needsMoreRatings,
-          interceptThreshold=0.217,
+          interceptThreshold=lowDiligenceThreshold,
         ),
         scoring_rules.FilterLargeFactor(
           RuleID.LARGE_FACTOR,
           {RuleID.LOW_DILIGENCE},
           c.needsMoreRatings,
-          factorThreshold=0.5,
+          factorThreshold=factorThreshold,
         ),
       ]
     )

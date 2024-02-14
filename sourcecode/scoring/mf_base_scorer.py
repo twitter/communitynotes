@@ -102,12 +102,21 @@ class MFBaseScorer(Scorer):
     crnhThresholdNMIntercept: float = -0.15,
     crnhThresholdUCBIntercept: float = -0.04,
     crhSuperThreshold: float = 0.5,
+    lowDiligenceThreshold: float = 0.217,
+    factorThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
     useStableInitialization: bool = True,
     saveIntermediateState: bool = False,
     threads: int = c.defaultNumThreads,
     maxFirstMFTrainError: float = 0.16,
     maxFinalMFTrainError: float = 0.09,
+    userFactorLambda=None,
+    noteFactorLambda=None,
+    userInterceptLambda=None,
+    noteInterceptLambda=None,
+    globalInterceptLambda=None,
+    diamondLambda=None,
+    normalizedLossHyperparameters=None,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -163,7 +172,30 @@ class MFBaseScorer(Scorer):
     self._saveIntermediateState = saveIntermediateState
     self._maxFirstMFTrainError = maxFirstMFTrainError
     self._maxFinalMFTrainError = maxFinalMFTrainError
-    self._mfRanker = MatrixFactorization()
+    self._lowDiligenceThreshold = lowDiligenceThreshold
+    self._factorThreshold = factorThreshold
+    mfArgs = dict(
+      [
+        pair
+        for pair in [
+          ("userFactorLambda", userFactorLambda) if userFactorLambda is not None else None,
+          ("noteFactorLambda", noteFactorLambda) if noteFactorLambda is not None else None,
+          ("userInterceptLambda", userInterceptLambda) if userInterceptLambda is not None else None,
+          ("noteInterceptLambda", noteInterceptLambda) if noteInterceptLambda is not None else None,
+          ("globalInterceptLambda", globalInterceptLambda)
+          if globalInterceptLambda is not None
+          else None,
+          ("diamondLambda", diamondLambda) if diamondLambda is not None else None,
+          ("normalizedLossHyperparameters", normalizedLossHyperparameters)
+          if normalizedLossHyperparameters is not None
+          else None,
+          ("initLearningRate", 0.02 if normalizedLossHyperparameters is not None else 0.2),
+          ("noInitLearningRate", 0.02 if normalizedLossHyperparameters is not None else 1.0),
+        ]
+        if pair is not None
+      ]
+    )
+    self._mfRanker = MatrixFactorization(**mfArgs)
 
   def assert_train_error_is_below_threshold(self, ratings, maxTrainError) -> None:
     """
@@ -366,6 +398,7 @@ class MFBaseScorer(Scorer):
         crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
         crhSuperThreshold=self._crhSuperThreshold,
         inertiaDelta=self._inertiaDelta,
+        lowDiligenceThreshold=self._lowDiligenceThreshold,
       )
     if self._saveIntermediateState:
       self.firstRoundScoredNotes = scoredNotes
@@ -516,7 +549,9 @@ class MFBaseScorer(Scorer):
         crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
         crhSuperThreshold=self._crhSuperThreshold,
         inertiaDelta=self._inertiaDelta,
+        lowDiligenceThreshold=self._lowDiligenceThreshold,
         finalRound=True,
+        factorThreshold=self._factorThreshold,
       )
 
       # Takes raterParams from most recent MF run, but use the pre-computed

@@ -14,10 +14,16 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from . import constants as c, contributor_state, note_ratings, note_status_history, scoring_rules
 from .enums import Scorers
+from .matrix_factorization.normalized_loss import NormalizedLossHyperparameters
 from .mf_core_scorer import MFCoreScorer
 from .mf_expansion_plus_scorer import MFExpansionPlusScorer
 from .mf_expansion_scorer import MFExpansionScorer
-from .mf_group_scorer import MFGroupScorer, coalesce_group_models, groupScorerCount
+from .mf_group_scorer import (
+  MFGroupScorer,
+  coalesce_group_models,
+  groupScorerCount,
+  trialScoringGroup,
+)
 from .process_data import CommunityNotesDataLoader
 from .reputation_scorer import ReputationScorer
 from .scorer import Scorer
@@ -72,7 +78,34 @@ def _get_scorers(
       # adding the group scorers in descending order so we start work on Group 13 first.
       MFGroupScorer(groupNumber=i, seed=seed)
       for i in range(groupScorerCount, 0, -1)
+      if i != trialScoringGroup
     ]
+    scorers[Scorers.MFGroupScorer].append(
+      MFGroupScorer(
+        groupNumber=trialScoringGroup,
+        seed=seed,
+        noteInterceptLambda=0.03 * 30,
+        userInterceptLambda=0.03 * 5,
+        globalInterceptLambda=0.03 * 5,
+        noteFactorLambda=0.03 / 3,
+        userFactorLambda=0.03 / 4,
+        diamondLambda=0.03 * 25,
+        normalizedLossHyperparameters=NormalizedLossHyperparameters(
+          globalSignNorm=True, noteSignAlpha=None, noteNormExp=0, raterNormExp=-0.25
+        ),
+        maxFinalMFTrainError=0.16,
+        requireInternalAuthor=False,
+        groupThreshold=0.4,
+        minMeanNoteScore=-0.01,
+        crhThreshold=0.09,
+        crhSuperThreshold=0.2,
+        crnhThresholdIntercept=-0.01,
+        crnhThresholdNoteFactorMultiplier=0,
+        crnhThresholdNMIntercept=-0.02,
+        lowDiligenceThreshold=1000,
+        factorThreshold=0.4,
+      )
+    )
 
   return scorers
 
@@ -309,15 +342,28 @@ def meta_score(
       coreCrhThreshold = coreScorer.get_crh_threshold()
       expansionCrhThreshold = expansionScorer.get_crh_threshold()
       for i in range(1, groupScorerCount + 1):
-        rules.append(
-          scoring_rules.ApplyGroupModelResult(
-            RuleID[f"GROUP_MODEL_{i}"],
-            {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
-            i,
-            coreCrhThreshold,
-            expansionCrhThreshold,
+        if i != trialScoringGroup:
+          rules.append(
+            scoring_rules.ApplyGroupModelResult(
+              RuleID[f"GROUP_MODEL_{i}"],
+              {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+              i,
+              coreCrhThreshold,
+              expansionCrhThreshold,
+            )
           )
-        )
+        else:
+          rules.append(
+            scoring_rules.ApplyGroupModelResult(
+              RuleID[f"GROUP_MODEL_{i}"],
+              {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+              i,
+              None,
+              None,
+              minSafeguardThreshold=None,
+            )
+          )
+
     rules.extend(
       [
         scoring_rules.ScoringDriftGuard(
