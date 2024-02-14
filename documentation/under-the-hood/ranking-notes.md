@@ -210,8 +210,8 @@ This modification appears to have several advantages:
 
 During the second round, we apply a weight $w_{un}$ to each rating prediction error.  We define $w_{un}$ as follows.
 
-- let $t_p = |\\{r_{un} \text{ such that } f_u \geq 0\\}|$
-- let $t_n = |\\{r_{un} \text{ such that } f_u \lt 0\\}|$
+- let $t_p = |\\{r_{un} \text{ where } f_u \geq 0\\}|$
+- let $t_n = |\\{r_{un} \text{ where } f_u \lt 0\\}|$
 - let $w^S_{un} = \dfrac{t_n}{t_p} \text{ if } f_u \geq 0 \text{ else } 1$
 - let $w^U_u = (\sum\limits_{n} w^S_{un})^{-0.25}$
 - let $w_{un} = w^S_{un} w^U_u$
@@ -224,7 +224,7 @@ Consequently, the loss optimized during the second round is:
 \sum_{r_{un}} w_{un} (r_{un} - \hat{r}_{un})^2 + \lambda_{iu} i_u^2 + \lambda_{in} i_n^2 + \lambda_{\mu} \mu^2 + \lambda_{fu} f_u^2 + \lambda_{fn} f_n^2 + \lambda_{if} i_n |f_n|
 ```
 
-Combined with the regularization adjustments from the first round, the added weighting functions to improve the learned user representation, ultimatley allowing the model to recognize more instances of consensus among user that hold different perspectives.
+Combined with the regularization adjustments from the first round, the added weighting functions to improve the learned user representation, ultimately allowing the model to recognize more instances of consensus among users that hold different perspectives.
 We have deployed the expanded consensus trial algorithm in Group Model 14 and plan to expand deployment as we evaluate performance in the initial trial.
 
 ## Status Stabilization
