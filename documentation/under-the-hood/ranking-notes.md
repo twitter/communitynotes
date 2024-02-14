@@ -205,7 +205,7 @@ Where $\lambda_{iu}=30\lambda$, $\lambda_{in}=5\lambda$, $\lambda_{\mu}=5\lambda
 This modification appears to have several advantages:
 
 - Decreased regularization on user factors ($\lambda_{fu}$) and note factors ($\lambda_{fn}$) allows the model to learn more accurate representations for users and notes.
-- Introduction of regularization on the product of note intercept and factor magnitudes ($\lambda_{if}$) pressures the model to decide whether the ratings on a note are most explained by universal appeal or partisan perspective.
+- Introduction of regularization on the product of note intercept and factor magnitudes ($\lambda_{if}$) pressures the model to decide whether the ratings on a note are most explained by universal appeal or appeal to raters of a particular factor.
 - Increased regularization on note intercepts ($\lambda_{in}$) encourages the model to hold a high standard when deciding that a note has universal appeal.
 
 During the second round, we apply a weight $w_{un}$ to each rating prediction error.  We define $w_{un}$ as follows.
