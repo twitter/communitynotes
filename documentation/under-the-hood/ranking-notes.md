@@ -197,9 +197,9 @@ $$ \hat{r}_{un} = \mu + i_u + i_n + f_u \cdot f_n $$
 During the first round, we minimize the loss shown below over the set of all observed ratings $r_{un}$.
 Note that this model uses a single-dimensional factor representation. 
 
-```math
+$$
 \sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_{iu} i_u^2 + \lambda_{in} i_n^2 + \lambda_{\mu} \mu^2 + \lambda_{fu} f_u^2 + \lambda_{fn} f_n^2 + \lambda_{if} i_n |f_n|
-```
+$$
 
 Where $\lambda_{iu}=30\lambda$, $\lambda_{in}=5\lambda$, $\lambda_{\mu}=5\lambda$, $\lambda_{fu}=\dfrac{\lambda}{4}$, $\lambda_{fn}=\dfrac{\lambda}{3}$, $\lambda_{if}=25\lambda$ and $\lambda=0.03$.
 This modification appears to have several advantages:
@@ -220,9 +220,9 @@ Notice that the weights $w^S_{un}$ function to balance the loss across ratings f
 
 Consequently, the loss optimized during the second round is:
 
-```math
+$$
 \sum_{r_{un}} w_{un} (r_{un} - \hat{r}_{un})^2 + \lambda_{iu} i_u^2 + \lambda_{in} i_n^2 + \lambda_{\mu} \mu^2 + \lambda_{fu} f_u^2 + \lambda_{fn} f_n^2 + \lambda_{if} i_n |f_n|
-```
+$$
 
 Combined with the regularization adjustments from the first round, the added weighting functions to improve the learned user representation, ultimately allowing the model to recognize more instances of consensus among users that hold different perspectives.
 We have deployed the expanded consensus trial algorithm in Group Model 14 and plan to expand deployment as we evaluate performance in the initial trial.
