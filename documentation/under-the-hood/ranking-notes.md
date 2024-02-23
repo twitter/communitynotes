@@ -135,7 +135,7 @@ After the first round matrix factorization described above, we run another matri
 - Instead of using helpful/not-helpful ratings as the labels, we use the harassment and abuse tag as the positive, and helpful ratings as negatives.
 - Because the positive rate is quite low, we use a sigmoid activation and binary cross entropy loss, as well as upweighting the rare positive class examples, instead of unweighted MSE loss.
 
-Thus, having a high note intercept score in this model indicates that a diverse set of raters found the note to be harassment or abuse. If the score is above a very high threshold (2.5), we penalize each rater who has rated the note helpful, even if they did so after it received its final status, by subtracting 10 from the numerator of their rater helpfulness score as described in [Rater Helpfulness Score](./contributor-scores.md#rater-helpfulness-score).
+Thus, having a high note intercept score in this model indicates that a diverse set of raters found the note to be harassment or abuse. If the score is above a high threshold (2.0), we penalize each rater who has rated the note helpful, even if they did so after it received its final status, by subtracting (5.0 * note_harassment_abuse_intercept) from the numerator of their rater helpfulness score as described in [Rater Helpfulness Score](./contributor-scores.md#rater-helpfulness-score).
 
 ## Note Diligence Score
 
@@ -291,6 +291,9 @@ For not-helpful notes:
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**February 23, 2024**
+- Increase rater helpfulness score penalties for making helpful ratings on notes that have high tag-consensus harassment-abuse model intercepts by multiplying the previous penalty by the intercept score, and decrease the threshold at which raters are penalized for rating them helpful.
 
 **February 13, 2024**
 - Introduce expanded consensus trial algorithm with a single group model.
