@@ -75,8 +75,8 @@ def compute_general_helpfulness_scores(
   ratings: Optional[pd.DataFrame] = None,
   tagConsensusHarassmentAbuseNotes: Optional[pd.DataFrame] = None,
   tagConsensusHarassmentHelpfulRatingPenalty=10,
-  multiplyPenaltyByHarassmentScore: bool = False,
-  minimumHarassmentScoreToPenalize: float = 2.5,
+  multiplyPenaltyByHarassmentScore: bool = True,
+  minimumHarassmentScoreToPenalize: float = 2.0,
 ) -> pd.DataFrame:
   """Given notes scored by matrix factorization, compute helpfulness scores.
   Author helpfulness scores are based on the scores of the notes you wrote.

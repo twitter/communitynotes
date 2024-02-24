@@ -47,6 +47,7 @@ summaryKey = "summary"
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 modelingPopulationKey = "modelingPopulation"
 modelingGroupKey = "modelingGroup"
+numberOfTimesEarnedOutKey = "numberOfTimesEarnedOut"
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
@@ -416,10 +417,16 @@ userEnrollmentTSVColumnsAndTypes = [
   (timestampOfLastEarnOut, np.double),  # double because nullable.
   (modelingPopulationKey, str),
   (modelingGroupKey, np.float64),
+  (numberOfTimesEarnedOutKey, np.int64),
 ]
 userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
+# TODO: Remove the "old" user enrollment schemas below once numberOfTimesEarnedOut is in production
+userEnrollmentTSVColumnsOld = [col for (col, _) in userEnrollmentTSVColumnsAndTypes[:7]]
+userEnrollmentTSVTypeMappingOld = {
+  col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes[:7]
+}
 
 noteInterceptMaxKey = "internalNoteIntercept_max"
 noteInterceptMinKey = "internalNoteIntercept_min"
@@ -564,6 +571,7 @@ raterModelOutputTSVColumnsAndTypes = [
   (groupRaterFactor1Key, np.double),
   (modelingGroupKey, np.float64),
   (raterHelpfulnessReputationKey, np.double),
+  (numberOfTimesEarnedOutKey, np.int64),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
