@@ -102,7 +102,7 @@ class MFBaseScorer(Scorer):
     crnhThresholdNMIntercept: float = -0.15,
     crnhThresholdUCBIntercept: float = -0.04,
     crhSuperThreshold: float = 0.5,
-    lowDiligenceThreshold: float = 0.217,
+    lowDiligenceThreshold: float = 0.263,
     factorThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
     useStableInitialization: bool = True,
@@ -117,6 +117,9 @@ class MFBaseScorer(Scorer):
     globalInterceptLambda=None,
     diamondLambda=None,
     normalizedLossHyperparameters=None,
+    multiplyPenaltyByHarassmentScore: bool = True,
+    minimumHarassmentScoreToPenalize: float = 2.0,
+    tagConsensusHarassmentHelpfulRatingPenalty: int = 10,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -174,6 +177,9 @@ class MFBaseScorer(Scorer):
     self._maxFinalMFTrainError = maxFinalMFTrainError
     self._lowDiligenceThreshold = lowDiligenceThreshold
     self._factorThreshold = factorThreshold
+    self.multiplyPenaltyByHarassmentScore = multiplyPenaltyByHarassmentScore
+    self.minimumHarassmentScoreToPenalize = minimumHarassmentScoreToPenalize
+    self.tagConsensusHarassmentHelpfulRatingPenalty = tagConsensusHarassmentHelpfulRatingPenalty
     mfArgs = dict(
       [
         pair
@@ -460,6 +466,7 @@ class MFBaseScorer(Scorer):
         c.notHelpfulSpamHarassmentOrAbuseTagKey,
         noteParamsUnfiltered,
         raterParamsUnfiltered,
+        name="harassment",
       )
 
     # Assigns contributor (author & rater) helpfulness bit based on (1) performance
@@ -481,6 +488,9 @@ class MFBaseScorer(Scorer):
         self._minRaterAgreeRatio,
         ratings=ratingsForTraining,
         tagConsensusHarassmentAbuseNotes=harassmentAbuseNoteParams,
+        tagConsensusHarassmentHelpfulRatingPenalty=self.tagConsensusHarassmentHelpfulRatingPenalty,
+        multiplyPenaltyByHarassmentScore=self.multiplyPenaltyByHarassmentScore,
+        minimumHarassmentScoreToPenalize=self.minimumHarassmentScoreToPenalize,
       )
 
       # Filters ratings matrix to include only rows (ratings) where the rater was

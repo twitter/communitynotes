@@ -56,7 +56,6 @@ def is_earned_out(authorEnrollmentCounts: pd.DataFrame):
   return (
     (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
-    & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutNoAcknowledge)
     & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] > c.isAtRiskCRNHCount)
   )
 
@@ -401,9 +400,27 @@ def get_contributor_state(
     contributorScoresWithEnrollment.loc[
       is_at_risk(contributorScoresWithEnrollment), c.enrollmentState
     ] = c.enrollmentStateToThrift[c.atRisk]
+
+    # for earned out users, first increment the number of times they have earned out,
+    # use this to overwrite successful rating needed to earn in,
+    # then set new state
+    earnedOutUsers = is_earned_out(contributorScoresWithEnrollment)
+    contributorScoresWithEnrollment.loc[earnedOutUsers, c.numberOfTimesEarnedOutKey] = (
+      contributorScoresWithEnrollment.loc[earnedOutUsers, c.numberOfTimesEarnedOutKey] + 1
+    )
+
     contributorScoresWithEnrollment.loc[
-      is_earned_out(contributorScoresWithEnrollment), c.enrollmentState
-    ] = c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
+      earnedOutUsers, c.successfulRatingNeededToEarnIn
+    ] = contributorScoresWithEnrollment.loc[earnedOutUsers].apply(
+      lambda row: c.ratingImpactForEarnIn
+      + max([row[c.ratingImpact], 0])
+      + (c.ratingImpactForEarnIn * row[c.numberOfTimesEarnedOutKey]),
+      axis=1,
+    )
+
+    contributorScoresWithEnrollment.loc[
+      earnedOutUsers, c.enrollmentState
+    ] = c.enrollmentStateToThrift[c.earnedOutAcknowledged]
 
     contributorScoresWithEnrollment.loc[
       is_earned_in(contributorScoresWithEnrollment), c.enrollmentState

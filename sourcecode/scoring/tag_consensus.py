@@ -1,3 +1,5 @@
+from typing import Optional
+
 from . import constants as c, process_data
 from .matrix_factorization.matrix_factorization import MatrixFactorization
 
@@ -10,7 +12,7 @@ def train_tag_model(
   helpfulModelNoteParams: pd.DataFrame = None,
   helpfulModelRaterParams: pd.DataFrame = None,
   useSigmoidCrossEntropy: bool = True,
-  name: str = "harassment",
+  name: Optional[str] = None,
 ):
   print(f"-------------------Training for tag {tag}-------------------")
   ratingDataForTag, labelColName = prepare_tag_data(ratings, tag)
@@ -62,6 +64,8 @@ def train_tag_model(
     noteInit=helpfulModelNoteParams,
   )
 
+  if name is None:
+    name = tag.split("elpful")[-1]
   noteParams.columns = [col.replace("internal", name) for col in noteParams.columns]
   raterParams.columns = [col.replace("internal", name) for col in raterParams.columns]
   return noteParams, raterParams, globalBias

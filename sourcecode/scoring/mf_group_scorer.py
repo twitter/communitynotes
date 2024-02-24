@@ -119,8 +119,11 @@ class MFGroupScorer(MFBaseScorer):
     crnhThresholdNoteFactorMultiplier: float = -0.8,
     crnhThresholdNMIntercept: float = -0.15,
     crhSuperThreshold: float = 0.5,
-    lowDiligenceThreshold: float = 0.217,
+    lowDiligenceThreshold: float = 0.263,
     factorThreshold: float = 0.5,
+    multiplyPenaltyByHarassmentScore: bool = True,
+    minimumHarassmentScoreToPenalize: float = 2.0,
+    tagConsensusHarassmentHelpfulRatingPenalty: int = 10,
   ) -> None:
     """Configure MFGroupScorer object.
 
@@ -161,6 +164,9 @@ class MFGroupScorer(MFBaseScorer):
       crhSuperThreshold=crhSuperThreshold,
       lowDiligenceThreshold=lowDiligenceThreshold,
       factorThreshold=factorThreshold,
+      multiplyPenaltyByHarassmentScore=multiplyPenaltyByHarassmentScore,
+      minimumHarassmentScoreToPenalize=minimumHarassmentScoreToPenalize,
+      tagConsensusHarassmentHelpfulRatingPenalty=tagConsensusHarassmentHelpfulRatingPenalty,
     )
     assert groupNumber > 0, "groupNumber must be positive.  0 is reserved for unassigned."
     assert groupNumber <= groupScorerCount, "groupNumber exceeds maximum expected groups."

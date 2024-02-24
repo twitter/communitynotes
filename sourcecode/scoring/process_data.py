@@ -147,15 +147,28 @@ def read_from_tsv(
   if userEnrollmentPath is None:
     userEnrollment = None
   else:
-    userEnrollment = tsv_reader(
-      userEnrollmentPath, c.userEnrollmentTSVTypeMapping, c.userEnrollmentTSVColumns, header=headers
-    )
-    assert len(userEnrollment.columns.values) == len(c.userEnrollmentTSVColumns) and all(
-      userEnrollment.columns == c.userEnrollmentTSVColumns
-    ), (
-      f"userEnrollment columns don't match: \n{[col for col in userEnrollment.columns if not col in c.userEnrollmentTSVColumns]} are extra columns, "
-      + f"\n{[col for col in c.userEnrollmentTSVColumns if not col in userEnrollment.columns]} are missing."
-    )
+    try:
+      userEnrollment = tsv_reader(
+        userEnrollmentPath,
+        c.userEnrollmentTSVTypeMapping,
+        c.userEnrollmentTSVColumns,
+        header=headers,
+      )
+      assert len(userEnrollment.columns.values) == len(c.userEnrollmentTSVColumns) and all(
+        userEnrollment.columns == c.userEnrollmentTSVColumns
+      ), (
+        f"userEnrollment columns don't match: \n{[col for col in userEnrollment.columns if not col in c.userEnrollmentTSVColumns]} are extra columns, "
+        + f"\n{[col for col in c.userEnrollmentTSVColumns if not col in userEnrollment.columns]} are missing."
+      )
+    except ValueError:
+      # TODO: clean up fallback for old mappings once numberOfTimesEarnedOut column is in production
+      userEnrollment = tsv_reader(
+        userEnrollmentPath,
+        c.userEnrollmentTSVTypeMappingOld,
+        c.userEnrollmentTSVColumnsOld,
+        header=headers,
+      )
+      userEnrollment[c.numberOfTimesEarnedOutKey] = 0
 
   return notes, ratings, noteStatusHistory, userEnrollment
 

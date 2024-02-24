@@ -104,6 +104,9 @@ def _get_scorers(
         crnhThresholdNMIntercept=-0.02,
         lowDiligenceThreshold=1000,
         factorThreshold=0.4,
+        multiplyPenaltyByHarassmentScore=False,
+        minimumHarassmentScoreToPenalize=2.5,
+        tagConsensusHarassmentHelpfulRatingPenalty=10,
       )
     )
 
@@ -537,6 +540,7 @@ def _compute_helpfulness_scores(
           c.successfulRatingNeededToEarnIn,
           c.authorTopNotHelpfulTagValues,
           c.isEmergingWriterKey,
+          c.numberOfTimesEarnedOutKey,
         ]
       ],
       on=c.raterParticipantIdKey,
