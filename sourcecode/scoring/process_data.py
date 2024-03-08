@@ -232,16 +232,16 @@ def _filter_misleading_notes(
       f"Preprocess Data: Filter misleading notes, starting with {len(ratings)} ratings on {len(np.unique(ratings[c.noteIdKey]))} notes"
     )
     print(
-      f"  Keeping {ratings[notDeletedMisleadingKey].sum()} ratings on {len(np.unique(ratings.loc[ratings[notDeletedMisleadingKey],c.noteIdKey]))} misleading notes"
+      f"  Keeping {ratings[notDeletedMisleadingKey].sum()} ratings on {len(np.unique(ratings.loc[ratings[notDeletedMisleadingKey],c.noteIdKey]))} notes that claim the tweet is misleading"
     )
     print(
       f"  Keeping {ratings[deletedButInNSHKey].sum()} ratings on {len(np.unique(ratings.loc[ratings[deletedButInNSHKey],c.noteIdKey]))} deleted notes that were previously scored (in note status history)"
     )
     print(
-      f"  Keeping {notDeletedNotMisleadingNewUI.sum()} ratings on {len(np.unique(ratings.loc[notDeletedNotMisleadingNewUI,c.noteIdKey]))} non-misleading notes after the new UI launch time"
+      f"  Keeping {notDeletedNotMisleadingNewUI.sum()} ratings on {len(np.unique(ratings.loc[notDeletedNotMisleadingNewUI,c.noteIdKey]))} notes that do not claim the tweet is misleading, but after the new UI launch time"
     )
     print(
-      f"  Removing {notDeletedNotMisleadingOldUI.sum()} ratings on {len(np.unique(ratings.loc[notDeletedNotMisleadingOldUI, c.noteIdKey]))} older notes that aren't deleted, but are not-misleading."
+      f"  Removing {notDeletedNotMisleadingOldUI.sum()} ratings on {len(np.unique(ratings.loc[notDeletedNotMisleadingOldUI, c.noteIdKey]))} older notes that aren't deleted, but do not claim the tweet is misleading."
     )
     print(
       f"  Removing {deletedNotInNSH.sum()} ratings on {len(np.unique(ratings.loc[deletedNotInNSH, c.noteIdKey]))} notes that were deleted and not in note status history (e.g. old)."
