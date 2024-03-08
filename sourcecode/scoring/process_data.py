@@ -182,9 +182,13 @@ def _filter_misleading_notes(
   """
   This function actually filters ratings (not notes), based on which notes they rate.
 
-  Filter out ratings of notes that say the Tweet isn't misleading.
-  Also filter out ratings of deleted notes, unless they were deleted after
-    c.deletedNotesTombstoneLaunchTime, and appear in noteStatusHistory.
+  Keep ratings of undeleted notes that either:
+    - say the Tweet is misleading
+    - OR it's after the new UI launch time, c.notMisleadingUILaunchTime. 
+       (After that timestamp, we start assessing the helpfulness of notes that say the Tweet isn't misleading.
+        Before that timestamp, we did not assess the helpfulness of such notes.)
+  Also keep ratings of deleted notes if:
+    - they were scored in noteStatusHistory
 
   Args:
       notes (pd.DataFrame): _description_
@@ -234,6 +238,9 @@ def _filter_misleading_notes(
       f"  Keeping {ratings[deletedButInNSHKey].sum()} ratings on {len(np.unique(ratings.loc[ratings[deletedButInNSHKey],c.noteIdKey]))} deleted notes that were previously scored (in note status history)"
     )
     print(
+      f"  Keeping {notDeletedNotMisleadingNewUI.sum()} ratings on {len(np.unique(ratings.loc[notDeletedNotMisleadingNewUI,c.noteIdKey]))} non-misleading notes after the new UI launch time"
+    )
+    print(
       f"  Removing {notDeletedNotMisleadingOldUI.sum()} ratings on {len(np.unique(ratings.loc[notDeletedNotMisleadingOldUI, c.noteIdKey]))} older notes that aren't deleted, but are not-misleading."
     )
     print(
@@ -255,7 +262,7 @@ def _filter_misleading_notes(
   return ratings
 
 
-def remove_duplicate_ratings(ratings: pd.DataFrame) -> pd.DataFrame:
+def remove_duplicate_ratings(ratings: pd.DataFrame) -> pd.DataFrame:  
   """Drop duplicate ratings, then assert that there is exactly one rating per noteId per raterId.
 
   Args:
