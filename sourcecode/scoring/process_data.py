@@ -173,6 +173,22 @@ def read_from_tsv(
   return notes, ratings, noteStatusHistory, userEnrollment
 
 
+def get_unique_size(df: pd.DataFrame, k: str, rows: pd.Index = None) -> int:
+  """Return the number of unique values in a column `k` of a DataFrame `df` at `rows`.
+
+  Args:
+      df (pd.DataFrame): DataFrame
+      k (str): column name
+      rows (pd.Index, optional): rows to consider. Defaults to None.
+      
+  Returns:
+      int: number of unique values in the column
+  """
+  if rows is not None:
+    df = df.loc[rows]
+  return len(np.unique(df[k]))
+
+
 def _filter_misleading_notes(
   notes: pd.DataFrame,
   ratings: pd.DataFrame,
@@ -182,9 +198,14 @@ def _filter_misleading_notes(
   """
   This function actually filters ratings (not notes), based on which notes they rate.
 
-  Filter out ratings of notes that say the Tweet isn't misleading.
-  Also filter out ratings of deleted notes, unless they were deleted after
-    c.deletedNotesTombstoneLaunchTime, and appear in noteStatusHistory.
+  For deleted notes (c.classificationKey is NaN):
+    - Keep ratings of notes that appear in noteStatusHistory (previously scored)
+    - Remove ratings of notes that do not appear in noteStatusHistory
+  For still available notes (c.classificationKey is either MISINFORMED_OR_POTENTIALLY_MISLEADING or NOT_MISLEADING):
+    - Keep ratings of notes saying the associated tweet is misleading
+    - For those saying the associated tweet is not misleading:
+      - Keep ratings after the new UI launch time, c.notMisleadingUILaunchTime
+      - Remove ratings before the new UI launch time, c.notMisleadingUILaunchTime
 
   Args:
       notes (pd.DataFrame): _description_
@@ -202,54 +223,99 @@ def _filter_misleading_notes(
     suffixes=("", "_nsh"),
   )
 
-  deletedNoteKey = "deletedNote"
-  notDeletedMisleadingKey = "notDeletedMisleading"
-  deletedButInNSHKey = "deletedButInNSH"
   createdAtMillisNSHKey = c.createdAtMillisKey + "_nsh"
 
-  ratings[deletedNoteKey] = pd.isna(ratings[c.classificationKey])
-  ratings[notDeletedMisleadingKey] = np.invert(ratings[deletedNoteKey]) & (
-    ratings[c.classificationKey] == c.notesSaysTweetIsMisleadingKey
-  )
-  ratings[deletedButInNSHKey] = ratings[deletedNoteKey] & np.invert(
-    pd.isna(ratings[createdAtMillisNSHKey])
-  )
+  # rows in ratings that are on deleted notes, check if the note is in noteStatusHistory
+  deletedNote = pd.isna(ratings[c.classificationKey])
 
-  deletedNotInNSH = (ratings[deletedNoteKey]) & pd.isna(ratings[createdAtMillisNSHKey])
-  notDeletedNotMisleadingOldUI = (
-    ratings[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey
-  ) & (ratings[createdAtMillisNSHKey] <= c.notMisleadingUILaunchTime)
-  notDeletedNotMisleadingNewUI = (
-    ratings[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey
-  ) & (ratings[createdAtMillisNSHKey] > c.notMisleadingUILaunchTime)
+  # deleted but in noteStatusHistory, keep
+  deletedButInNSHNote = deletedNote & pd.notna(ratings[createdAtMillisNSHKey])
+  # deleted and not in noteStatusHistory, remove
+  deletedNotInNSHNote = deletedNote & pd.isna(ratings[createdAtMillisNSHKey])
+
+  # rows in ratings that are on still available notes, check if the note says the tweet is misleading or not
+  availableNote = pd.notna(ratings[c.classificationKey])
+
+  # not deleted and says the tweet is misleading, keep
+  notDeletedMisleadingNote = ratings[c.classificationKey] == c.notesSaysTweetIsMisleadingKey
+
+  # not deleted and says the tweet is not misleading, check if it's after or before the new UI launch time
+  notDeletedNotMisleadingNote = ratings[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey
+
+  # not deleted, says the tweet is not misleading, and after new UI launch time, keep
+  notDeletedNotMisleadingNewUINote = (ratings[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey) & (ratings[createdAtMillisNSHKey] > c.notMisleadingUILaunchTime)
+  # not deleted, says the tweet is not misleading, and before new UI launch time, remove
+  notDeletedNotMisleadingOldUINote = (ratings[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey) & (ratings[createdAtMillisNSHKey] <= c.notMisleadingUILaunchTime)
 
   if logging:
     print(
-      f"Preprocess Data: Filter misleading notes, starting with {len(ratings)} ratings on {len(np.unique(ratings[c.noteIdKey]))} notes"
+      f"Finished filtering misleading notes\n"
+      f"Preprocess Data: Filter misleading notes, starting with {len(ratings)} ratings on {get_unique_size(ratings, c.noteIdKey)} notes"
     )
     print(
-      f"  Keeping {ratings[notDeletedMisleadingKey].sum()} ratings on {len(np.unique(ratings.loc[ratings[notDeletedMisleadingKey],c.noteIdKey]))} misleading notes"
+      f"For {deletedNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=deletedNote)} deleted notes"
     )
     print(
-      f"  Keeping {ratings[deletedButInNSHKey].sum()} ratings on {len(np.unique(ratings.loc[ratings[deletedButInNSHKey],c.noteIdKey]))} deleted notes that were previously scored (in note status history)"
+      f"  Keep {deletedButInNSHNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=deletedButInNSHNote)} deleted notes that are in noteStatusHistory (e.g., previously scored)"
     )
     print(
-      f"  Removing {notDeletedNotMisleadingOldUI.sum()} ratings on {len(np.unique(ratings.loc[notDeletedNotMisleadingOldUI, c.noteIdKey]))} older notes that aren't deleted, but are not-misleading."
+      f"  Remove {deletedNotInNSHNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=deletedNotInNSHNote)} deleted notes that are not in noteStatusHistory (e.g., old)"
     )
     print(
-      f"  Removing {deletedNotInNSH.sum()} ratings on {len(np.unique(ratings.loc[deletedNotInNSH, c.noteIdKey]))} notes that were deleted and not in note status history (e.g. old)."
+      f"For {availableNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=availableNote)} still available notes"
     )
+    print(
+      f"  Keep {notDeletedMisleadingNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=notDeletedMisleadingNote)} available notes saying the associated tweet is misleading"
+    )
+    print(
+      f"  For {notDeletedNotMisleadingNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=notDeletedNotMisleadingNote)} available notes saying the associated tweet is not misleading"
+    )
+    print(
+      f"    Keep {notDeletedNotMisleadingNewUINote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=notDeletedNotMisleadingNewUINote)} available and not misleading notes, and after the new UI launch time"
+    )
+    print(
+      f"    Remove {notDeletedNotMisleadingOldUINote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=notDeletedNotMisleadingOldUINote)} available and not misleading notes, and before the new UI launch time"
+    )
+  
+  # Validate expectation that all notes with ratings are either deleted or not deleted
+  assert len(ratings) == (
+    deletedNote.sum() + availableNote.sum()
+  ), "rows of ratings must equal to the sum of ratings on deleted notes and ratings on available notes"
+  assert get_unique_size(ratings, c.noteIdKey) == (
+    get_unique_size(ratings, c.noteIdKey, rows=deletedNote) + get_unique_size(ratings, c.noteIdKey, rows=availableNote)
+  ), "rows of notes must equal to the sum of deleted notes and available notes"
+
+  # Validate expectation that all deleted notes must be either in noteStatusHistory or not in noteStatusHistory
+  assert deletedNote.sum() == (
+    deletedButInNSHNote.sum() + deletedNotInNSHNote.sum()
+  ), "all ratings on deleted notes must be either in noteStatusHistory or not in noteStatusHistory"
+  assert get_unique_size(ratings, c.noteIdKey, rows=deletedNote) == (
+    get_unique_size(ratings, c.noteIdKey, rows=deletedButInNSHNote) + get_unique_size(ratings, c.noteIdKey, rows=deletedNotInNSHNote)
+  ), "all deleted notes must be either in noteStatusHistory or not in noteStatusHistory"
+
+  # Validate expectation that all available notes must either say Tweet Is Misleading or Tweet Is Not Misleading
+  assert availableNote.sum() == (
+    notDeletedMisleadingNote.sum() + notDeletedNotMisleadingNote.sum()
+  ), "all ratings on available notes must either say Tweet Is Misleading or Tweet Is Not Misleading"
+  assert get_unique_size(ratings, c.noteIdKey, rows=availableNote) == (
+    get_unique_size(ratings, c.noteIdKey, rows=notDeletedMisleadingNote) + get_unique_size(ratings, c.noteIdKey, rows=notDeletedNotMisleadingNote)
+  ), "all available notes must either say Tweet Is Misleading or Tweet Is Not Misleading"
+
+  # Validate expectation that all available and not misleading notes must be either after or before the new UI launch time
+  assert notDeletedNotMisleadingNote.sum() == (
+    notDeletedNotMisleadingNewUINote.sum() + notDeletedNotMisleadingOldUINote.sum()
+  ), "all ratings on available and not misleading notes must be either after or before the new UI launch time"
+  assert get_unique_size(ratings, c.noteIdKey, rows=notDeletedNotMisleadingNote) == (
+    get_unique_size(ratings, c.noteIdKey, rows=notDeletedNotMisleadingNewUINote) + get_unique_size(ratings, c.noteIdKey, rows=notDeletedNotMisleadingOldUINote)
+  ), "all available and not misleading notes must be either after or before the new UI launch time"
 
   ratings = ratings[
-    ratings[notDeletedMisleadingKey] | ratings[deletedButInNSHKey] | notDeletedNotMisleadingNewUI
+    deletedButInNSHNote | notDeletedMisleadingNote | notDeletedNotMisleadingNewUINote
   ]
   ratings = ratings.drop(
     columns=[
       createdAtMillisNSHKey,
       c.classificationKey,
-      deletedNoteKey,
-      notDeletedMisleadingKey,
-      deletedButInNSHKey,
     ]
   )
   return ratings
@@ -303,11 +369,12 @@ def preprocess_data(
   shouldFilterNotMisleadingNotes: bool = True,
   logging: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-  """Populate helpfulNumKey, a unified column that merges the helpfulness answers from
+  """Populate helpfulNumKey, a unified column that merges the helpfulness answers from 
   the V1 and V2 rating forms together, as described in
   https://twitter.github.io/communitynotes/ranking-notes/#helpful-rating-mapping.
 
-  Also, filter notes that indicate the Tweet is misleading, if the flag is True.
+  Also, remove notes that indicate the associated tweet is not misleading, 
+  if the `shouldFilterNotMisleadingNotes` flag is True.
 
   Args:
       notes (pd.DataFrame)
@@ -330,19 +397,52 @@ def preprocess_data(
       "Timestamp of latest note in data: ",
       pd.to_datetime(notes[c.createdAtMillisKey], unit="ms").max(),
     )
+    print(
+      f"Original row numbers from provided tsv files\n",
+      f"  notes: {len(notes)}\n",
+      f"  ratings: {len(ratings)}\n",
+      f"  noteStatusHistory: {len(noteStatusHistory)}\n",
+    )
+  
+  # each rating must have a unique (noteId, raterParticipantId) pair
   ratings = remove_duplicate_ratings(ratings)
+  # each note must have a unique noteId
   notes = remove_duplicate_notes(notes)
 
+  if logging:
+    print(
+      f"After removing duplicates, there are {len(notes)} notes and {len(ratings)} ratings from {get_unique_size(ratings, c.noteIdKey)} notes\n"
+      f"  Thus, {len(notes) - get_unique_size(ratings, c.noteIdKey)} notes have no ratings yet, removed..."
+    )
+
+  # add a new column `helpfulNum` to `ratings`
+  # `helpfulNum` is a unified column that merges the helpfulness answers from the V1 and V2 rating forms together
+  # `helpfulNum` is a float, with 0.0 for not helpful, 0.5 for somewhat helpful, and 1.0 for helpful
   ratings.loc[:, c.helpfulNumKey] = np.nan
   ratings.loc[ratings[c.helpfulKey] == 1, c.helpfulNumKey] = 1
   ratings.loc[ratings[c.notHelpfulKey] == 1, c.helpfulNumKey] = 0
   ratings.loc[ratings[c.helpfulnessLevelKey] == c.notHelpfulValueTsv, c.helpfulNumKey] = 0
   ratings.loc[ratings[c.helpfulnessLevelKey] == c.somewhatHelpfulValueTsv, c.helpfulNumKey] = 0.5
   ratings.loc[ratings[c.helpfulnessLevelKey] == c.helpfulValueTsv, c.helpfulNumKey] = 1
+  num_raw_ratings = len(ratings)
   ratings = ratings.loc[~pd.isna(ratings[c.helpfulNumKey])]
+
+  if logging:
+    print(
+      f"After populating helpfulNumKey, there are {len(ratings)} ratings from {get_unique_size(ratings, c.noteIdKey)} notes\n"
+      f"  Thus, {num_raw_ratings - len(ratings)} ratings have no helpfulness labels (i.e., helpfulKey=0 and notHelpfulKey=0), removed..."
+    )
 
   notes[c.tweetIdKey] = notes[c.tweetIdKey].astype(str)
 
+  # merge `notes` with `noteStatusHistory`
+  # `noteStatusHistory` contains the status of all previously scored notes, including deleted ones
+  # `notes` contains currently available notes, including the new ones (from last release timestamp) but excluding deleted ones
+  # after the merge, `noteStatusHistory` will have a new column called `classification`, populated from `notes` dataframe
+  # `classification` is the status of the note, which can be one of the following:
+  # - MISINFORMED_OR_POTENTIALLY_MISLEADING
+  # - NOT_MISLEADING
+  # - NaN (if the note is deleted)
   noteStatusHistory = note_status_history.merge_note_info(noteStatusHistory, notes)
 
   if shouldFilterNotMisleadingNotes:
@@ -350,11 +450,11 @@ def preprocess_data(
 
   if logging:
     print(
-      "Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d"
+      "After data preprocess, Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d\n"
       % (
         len(ratings),
-        len(np.unique(ratings[c.noteIdKey])),
-        len(np.unique(ratings[c.raterParticipantIdKey])),
+        get_unique_size(ratings, c.noteIdKey),
+        get_unique_size(ratings, c.raterParticipantIdKey),
       )
     )
   return notes, ratings, noteStatusHistory
