@@ -62,7 +62,11 @@ class Scorer(ABC):
     """Returns a list of columns which should be excluded from helpfulnessScores output."""
 
   def _filter_input(
-    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollment: pd.DataFrame
+    self,
+    noteTopics: pd.DataFrame,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    userEnrollment: pd.DataFrame,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Prune the contents of ratings and noteStatusHistory to scope model behavior.
 
@@ -134,6 +138,7 @@ class Scorer(ABC):
 
   def score(
     self,
+    noteTopics: pd.DataFrame,
     ratingsRaw: pd.DataFrame,
     noteStatusHistoryRaw: pd.DataFrame,
     userEnrollmentRaw: pd.DataFrame,
@@ -141,6 +146,7 @@ class Scorer(ABC):
     """Process ratings to assign status to notes and optionally compute rater properties.
 
     Args:
+      noteTopics: DF specifying {note, topic} pairs
       ratingsRaw (pd.DataFrame): preprocessed ratings
       noteStatusHistoryRaw (pd.DataFrame): one row per note; history of when note had each status
       userEnrollmentRaw (pd.DataFrame): one row per user specifying enrollment properties
@@ -156,7 +162,7 @@ class Scorer(ABC):
     # Transform input, run core scoring algorithm, transform output.
     with self.time_block("Filter input"):
       ratings, noteStatusHistory = self._filter_input(
-        ratingsRaw, noteStatusHistoryRaw, userEnrollmentRaw
+        noteTopics, ratingsRaw, noteStatusHistoryRaw, userEnrollmentRaw
       )
       # If there are no ratings left after filtering, then return empty dataframes.
       if len(ratings) == 0:

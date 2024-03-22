@@ -44,6 +44,7 @@ notHelpfulKey = "notHelpful"
 helpfulnessLevelKey = "helpfulnessLevel"
 createdAtMillisKey = "createdAtMillis"
 summaryKey = "summary"
+noteTopicKey = "noteTopic"
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 modelingPopulationKey = "modelingPopulation"
 modelingGroupKey = "modelingGroup"
@@ -148,6 +149,11 @@ groupNoteInterceptMaxKey = "groupNoteInterceptMax"
 groupNoteInterceptMinKey = "groupNoteInterceptMin"
 groupRaterInterceptKey = "groupRaterIntercept"
 groupRaterFactor1Key = "groupRaterFactor1"
+# Topic Model
+topicNoteInterceptKey = "topicNoteIntercept"
+topicNoteFactor1Key = "topicNoteFactor1"
+topicRatingStatusKey = "topicRatingStatus"
+topicNoteConfidentKey = "topicNoteConfident"
 # Harassment/Abuse Tag
 harassmentNoteInterceptKey = "harassmentNoteIntercept"
 harassmentNoteFactor1Key = "harassmentNoteFactor1"
@@ -408,6 +414,8 @@ aggregateRatingReceivedTotal = "aggregateRatingReceivedTotal"
 core = "CORE"
 expansion = "EXPANSION"
 expansionPlus = "EXPANSION_PLUS"
+topWriterWritingImpact = 10
+topWriterHitRate = 0.04
 
 userEnrollmentTSVColumnsAndTypes = [
   (participantIdKey, str),
@@ -422,11 +430,6 @@ userEnrollmentTSVColumnsAndTypes = [
 userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
-# TODO: Remove the "old" user enrollment schemas below once numberOfTimesEarnedOut is in production
-userEnrollmentTSVColumnsOld = [col for (col, _) in userEnrollmentTSVColumnsAndTypes[:7]]
-userEnrollmentTSVTypeMappingOld = {
-  col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes[:7]
-}
 
 noteInterceptMaxKey = "internalNoteIntercept_max"
 noteInterceptMinKey = "internalNoteIntercept_min"
@@ -532,6 +535,11 @@ noteModelOutputTSVColumnsAndTypes = [
   (expansionPlusNoteInterceptKey, np.double),
   (expansionPlusNoteFactor1Key, np.double),
   (expansionPlusRatingStatusKey, str),
+  (topicNoteInterceptKey, np.double),
+  (topicNoteFactor1Key, np.double),
+  (topicRatingStatusKey, str),
+  (noteTopicKey, str),
+  (topicNoteConfidentKey, str),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
@@ -571,7 +579,7 @@ raterModelOutputTSVColumnsAndTypes = [
   (groupRaterFactor1Key, np.double),
   (modelingGroupKey, np.float64),
   (raterHelpfulnessReputationKey, np.double),
-  (numberOfTimesEarnedOutKey, np.int64),
+  (numberOfTimesEarnedOutKey, np.float64),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}

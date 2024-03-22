@@ -13,7 +13,7 @@ import time
 from typing import Dict, List, Optional, Set, Tuple
 
 from . import constants as c, contributor_state, note_ratings, note_status_history, scoring_rules
-from .enums import Scorers
+from .enums import Scorers, Topics
 from .matrix_factorization.normalized_loss import NormalizedLossHyperparameters
 from .mf_core_scorer import MFCoreScorer
 from .mf_expansion_plus_scorer import MFExpansionPlusScorer
@@ -24,10 +24,12 @@ from .mf_group_scorer import (
   groupScorerCount,
   trialScoringGroup,
 )
+from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
 from .process_data import CommunityNotesDataLoader
 from .reputation_scorer import ReputationScorer
 from .scorer import Scorer
 from .scoring_rules import RuleID
+from .topic_model import TopicModel
 
 import numpy as np
 import pandas as pd
@@ -109,6 +111,10 @@ def _get_scorers(
         tagConsensusHarassmentHelpfulRatingPenalty=10,
       )
     )
+  if enabledScorers is None or Scorers.MFTopicScorer in enabledScorers:
+    scorers[Scorers.MFTopicScorer] = [
+      MFTopicScorer(topicName=topic.name, seed=seed) for topic in Topics
+    ]
 
   return scorers
 
@@ -167,6 +173,7 @@ def _merge_results(
 def _run_scorer_parallelizable(
   scorer: Scorer,
   runParallel: bool,
+  noteTopics: pd.DataFrame,
   ratings: Optional[pd.DataFrame] = None,
   noteStatusHistory: Optional[pd.DataFrame] = None,
   userEnrollment: Optional[pd.DataFrame] = None,
@@ -178,7 +185,7 @@ def _run_scorer_parallelizable(
       _, ratings, noteStatusHistory, userEnrollment = dataLoader.get_data()
 
   scorerStartTime = time.perf_counter()
-  result = ModelResult(*scorer.score(ratings, noteStatusHistory, userEnrollment))
+  result = ModelResult(*scorer.score(noteTopics, ratings, noteStatusHistory, userEnrollment))
   scorerEndTime = time.perf_counter()
 
   return result, (scorerEndTime - scorerStartTime)
@@ -186,6 +193,7 @@ def _run_scorer_parallelizable(
 
 def _run_scorers(
   scorers: List[Scorer],
+  noteTopics: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
@@ -202,6 +210,7 @@ def _run_scorers(
 
   Args:
     scorers (List[Scorer]): Instantiated Scorer objects for note ranking.
+    noteTopics: DF pairing notes with topics
     ratings (pd.DataFrame): Complete DF containing all ratings after preprocessing.
     noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
     userEnrollment (pd.DataFrame): The enrollment state for each contributor
@@ -224,6 +233,7 @@ def _run_scorers(
           _run_scorer_parallelizable,
           scorer=scorer,
           runParallel=True,
+          noteTopics=noteTopics,
           dataLoader=dataLoader,
         )
         for scorer in scorers
@@ -234,6 +244,7 @@ def _run_scorers(
       _run_scorer_parallelizable(
         scorer=scorer,
         runParallel=False,
+        noteTopics=noteTopics,
         ratings=ratings,
         noteStatusHistory=noteStatusHistory,
         userEnrollment=userEnrollment,
@@ -270,6 +281,7 @@ def _run_scorers(
       modelResult.auxiliaryNoteInfo,
     )
   scoredNotes, helpfulnessScores = coalesce_group_models(scoredNotes, helpfulnessScores)
+  scoredNotes = coalesce_topic_models(scoredNotes)
 
   return scoredNotes, helpfulnessScores, auxiliaryNoteInfo
 
@@ -366,7 +378,17 @@ def meta_score(
               minSafeguardThreshold=None,
             )
           )
-
+    if enabledScorers is None or Scorers.MFTopicScorer in enabledScorers:
+      for topic in Topics:
+        if topic == Topics.Unassigned:
+          continue
+        rules.append(
+          scoring_rules.ApplyTopicModelResult(
+            RuleID[f"TOPIC_MODEL_{topic.value}"],
+            {RuleID.EXPANSION_PLUS_MODEL, RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+            topic,
+          )
+        )
     rules.extend(
       [
         scoring_rules.ScoringDriftGuard(
@@ -541,11 +563,13 @@ def _compute_helpfulness_scores(
           c.authorTopNotHelpfulTagValues,
           c.isEmergingWriterKey,
           c.numberOfTimesEarnedOutKey,
+          c.ratingImpact,
         ]
       ],
       on=c.raterParticipantIdKey,
       how="outer",
     )
+    contributorScores = contributor_state.calculate_ri_to_earn_in(contributorScores)
 
     # Consolidates all information on raters / authors.
     helpfulnessScores = helpfulnessScores.merge(
@@ -624,6 +648,7 @@ def _validate(
 
 
 def run_scoring(
+  notes: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
@@ -639,6 +664,7 @@ def run_scoring(
   """Invokes note scoring algorithms, merges results and computes user stats.
 
   Args:
+    notes (pd.DataFrame): notes including text
     ratings (pd.DataFrame): preprocessed ratings
     noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
     userEnrollment (pd.DataFrame): The enrollment state for each contributor
@@ -658,11 +684,15 @@ def run_scoring(
   """
   # Apply individual scoring models and obtained merged result.
   currentTimeMillis = c.epochMillis
+  with c.time_block("Note Topic Assignment"):
+    topicModel = TopicModel()
+    noteTopics = topicModel.get_note_topics(notes)
   scorers = _get_scorers(
     seed, pseudoraters, enabledScorers, useStableInitialization=useStableInitialization
   )
   scoredNotes, helpfulnessScores, auxiliaryNoteInfo = _run_scorers(
     scorers=list(chain(*scorers.values())),
+    noteTopics=noteTopics,
     ratings=ratings,
     noteStatusHistory=noteStatusHistory,
     userEnrollment=userEnrollment,

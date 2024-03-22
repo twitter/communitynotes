@@ -90,10 +90,11 @@ def main():
 
   # Load input dataframes.
   dataLoader = LocalDataLoader(args.notes, args.ratings, args.status, args.enrollment, args.headers)
-  _, ratings, statusHistory, userEnrollment = dataLoader.get_data()
+  notes, ratings, statusHistory, userEnrollment = dataLoader.get_data()
 
   # Invoke scoring and user contribution algorithms.
   scoredNotes, helpfulnessScores, newStatus, auxNoteInfo = run_scoring(
+    notes,
     ratings,
     statusHistory,
     userEnrollment,

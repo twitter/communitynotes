@@ -11,6 +11,47 @@ import pandas as pd
 import torch
 
 
+def coalesce_columns(df: pd.DataFrame, columnPrefix: str) -> pd.DataFrame:
+  """Condense all columns beginning with columnPrefix into a single column.
+
+  With each row there must be at most one column with a non-NaN value in the set of
+  columns beginning with columnPrefix.  If a non-NaN value is present that will
+  become the value in the condensed column, otherwise the value will be NaN.  After
+  column values are condensed the original (prefixed) columns will be dropped.
+
+  Args:
+    df: DataFrame containing columns to condense
+    collumnPrefix: Prefix used to detect columns to coalesce, and the name for
+      the output column.
+
+  Returns:
+    DataFrame with all columns prefixed by columnPrefix dropped and replaced by
+    a single column named columnPrefix
+
+  Raises:
+    AssertionError if multiple columns prefixed by columnPrefix have non-NaN values
+    for any row.
+  """
+  # Identify columns to coalesce
+  columns = [col for col in df.columns if col.startswith(f"{columnPrefix}_")]
+  if not columns:
+    return df
+  # Validate that at most one column is set, and store which rows have a column set
+  rowResults = np.invert(df[columns].isna()).sum(axis=1)
+  assert all(rowResults <= 1), "each row should only be in one modeling group"
+
+  # Coalesce results
+  def _get_value(row):
+    idx = row.first_valid_index()
+    return row[idx] if idx is not None else np.nan
+
+  coalesced = df[columns].apply(_get_value, axis=1)
+  # Drop old columns and replace with new
+  df = df.drop(columns=columns)
+  df[columnPrefix] = coalesced
+  return df
+
+
 def get_ratings_for_stable_init(
   ratingsForTraining: pd.DataFrame,
   userEnrollmentRaw: pd.DataFrame,

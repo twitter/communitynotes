@@ -77,6 +77,28 @@ def is_earned_in(authorEnrollmentCounts):
   )
 
 
+def is_top_writer(authorEnrollmentCounts):
+  """
+  The author is a top writer when they have at least 10 WI and 4% hit rate
+
+  Args:
+    authorEnrollmentCounts (pd.DataFrame): Scored Notes + User Enrollment status
+  """
+  # check whether any notes have been written at all to avoid divide by zero
+  totalNotes = (
+    authorEnrollmentCounts[c.notesCurrentlyRatedHelpful]
+    + authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful]
+    + authorEnrollmentCounts[c.notesAwaitingMoreRatings]
+  ).apply(lambda row: max([row, 1]), 1)
+  writingImpact = (
+    authorEnrollmentCounts[c.notesCurrentlyRatedHelpful]
+    - authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful]
+  )
+  return (writingImpact >= c.topWriterWritingImpact) & (
+    (writingImpact / totalNotes) >= c.topWriterHitRate
+  )
+
+
 def _get_rated_after_decision(
   ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame
 ) -> pd.DataFrame:
@@ -302,6 +324,45 @@ def is_emerging_writer(scoredNotes: pd.DataFrame):
   return emergingWriter[[c.noteAuthorParticipantIdKey, c.isEmergingWriterKey]]
 
 
+def calculate_ri_to_earn_in(contributorScoresWithEnrollment: pd.DataFrame) -> pd.DataFrame:
+  """
+  A function updates rating impact needed to earn in for earned out users
+  Args:
+      scoredNotes (pd.DataFrame): scored notes
+  Returns:
+    pd.DataFrame: emergingWriter The contributor scores with enrollments
+  """
+  earnedOutUsers = (
+    contributorScoresWithEnrollment[c.enrollmentState]
+    == c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
+  )
+
+  contributorScoresWithEnrollment.loc[
+    earnedOutUsers, c.successfulRatingNeededToEarnIn
+  ] = contributorScoresWithEnrollment.apply(
+    lambda row: c.ratingImpactForEarnIn
+    + max([row[c.ratingImpact], 0])
+    + (c.ratingImpactForEarnIn * row[c.numberOfTimesEarnedOutKey]),
+    axis=1,
+  ).loc[earnedOutUsers]
+
+  # for top writers, overwrite the score required to earn in with non-escalating version
+  topWriters = is_top_writer(contributorScoresWithEnrollment)
+
+  contributorScoresWithEnrollment.loc[
+    (earnedOutUsers) & (topWriters), c.successfulRatingNeededToEarnIn
+  ] = contributorScoresWithEnrollment.apply(
+    lambda row: c.ratingImpactForEarnIn + max([row[c.ratingImpact], 0]),
+    axis=1,
+  ).loc[(earnedOutUsers) & (topWriters)]
+
+  contributorScoresWithEnrollment.loc[
+    earnedOutUsers, c.enrollmentState
+  ] = c.enrollmentStateToThrift[c.earnedOutAcknowledged]
+
+  return contributorScoresWithEnrollment.drop(columns=[c.ratingImpact])
+
+
 def get_contributor_state(
   scoredNotes: pd.DataFrame,
   ratings: pd.DataFrame,
@@ -409,18 +470,10 @@ def get_contributor_state(
       contributorScoresWithEnrollment.loc[earnedOutUsers, c.numberOfTimesEarnedOutKey] + 1
     )
 
-    contributorScoresWithEnrollment.loc[
-      earnedOutUsers, c.successfulRatingNeededToEarnIn
-    ] = contributorScoresWithEnrollment.loc[earnedOutUsers].apply(
-      lambda row: c.ratingImpactForEarnIn
-      + max([row[c.ratingImpact], 0])
-      + (c.ratingImpactForEarnIn * row[c.numberOfTimesEarnedOutKey]),
-      axis=1,
-    )
-
+    # use earned out no ack internally to identify newly earned out users
     contributorScoresWithEnrollment.loc[
       earnedOutUsers, c.enrollmentState
-    ] = c.enrollmentStateToThrift[c.earnedOutAcknowledged]
+    ] = c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
 
     contributorScoresWithEnrollment.loc[
       is_earned_in(contributorScoresWithEnrollment), c.enrollmentState
