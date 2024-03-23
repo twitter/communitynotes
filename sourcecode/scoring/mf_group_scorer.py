@@ -1,9 +1,8 @@
 from typing import Dict, List, Optional, Tuple
 
 from . import constants as c
-from .mf_base_scorer import MFBaseScorer
+from .mf_base_scorer import MFBaseScorer, coalesce_columns
 
-import numpy as np
 import pandas as pd
 
 
@@ -19,47 +18,6 @@ _groupScorerParalleism = {
   # Others can default to 4.
   13: 8
 }
-
-
-def _coalesce_columns(df: pd.DataFrame, columnPrefix: str) -> pd.DataFrame:
-  """Condense all columns beginning with columnPrefix into a single column.
-
-  With each row there must be at most one column with a non-NaN value in the set of
-  columns beginning with columnPrefix.  If a non-NaN value is present that will
-  become the value in the condensed column, otherwise the value will be NaN.  After
-  column values are condensed the original (prefixed) columns will be dropped.
-
-  Args:
-    df: DataFrame containing columns to condense
-    collumnPrefix: Prefix used to detect columns to coalesce, and the name for
-      the output column.
-
-  Returns:
-    DataFrame with all columns prefixed by columnPrefix dropped and replaced by
-    a single column named columnPrefix
-
-  Raises:
-    AssertionError if multiple columns prefixed by columnPrefix have non-NaN values
-    for any row.
-  """
-  # Identify columns to coalesce
-  columns = [col for col in df.columns if col.startswith(f"{columnPrefix}_")]
-  if not columns:
-    return df
-  # Validate that at most one column is set, and store which rows have a column set
-  rowResults = np.invert(df[columns].isna()).sum(axis=1)
-  assert all(rowResults <= 1), "each row should only be in one modeling group"
-
-  # Coalesce results
-  def _get_value(row):
-    idx = row.first_valid_index()
-    return row[idx] if idx is not None else np.nan
-
-  coalesced = df[columns].apply(_get_value, axis=1)
-  # Drop old columns and replace with new
-  df = df.drop(columns=columns)
-  df[columnPrefix] = coalesced
-  return df
 
 
 def coalesce_group_models(
@@ -87,10 +45,10 @@ def coalesce_group_models(
     c.groupNoteInterceptMinKey,
     c.modelingGroupKey,
   ]:
-    scoredNotes = _coalesce_columns(scoredNotes, col)
+    scoredNotes = coalesce_columns(scoredNotes, col)
 
   for col in [c.groupRaterInterceptKey, c.groupRaterFactor1Key, c.modelingGroupKey]:
-    helpfulnessScores = _coalesce_columns(helpfulnessScores, col)
+    helpfulnessScores = coalesce_columns(helpfulnessScores, col)
 
   return scoredNotes, helpfulnessScores
 
@@ -251,7 +209,11 @@ class MFGroupScorer(MFBaseScorer):
     ]
 
   def _filter_input(
-    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollment: pd.DataFrame
+    self,
+    noteTopics: pd.DataFrame,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    userEnrollment: pd.DataFrame,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Prune the contents of ratings to only include ratings from users in the modeling group.
 

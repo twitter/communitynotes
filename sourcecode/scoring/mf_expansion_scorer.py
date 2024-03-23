@@ -92,6 +92,7 @@ class MFExpansionScorer(MFBaseScorer):
 
   def _filter_input(
     self,
+    noteTopics: pd.DataFrame,
     ratingsOrig: pd.DataFrame,
     noteStatusHistoryOrig: pd.DataFrame,
     userEnrollment: pd.DataFrame,

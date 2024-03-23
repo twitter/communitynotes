@@ -72,7 +72,11 @@ class ReputationScorer(Scorer):
     return []
 
   def _filter_input(
-    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollment: pd.DataFrame
+    self,
+    noteTopics: pd.DataFrame,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    userEnrollment: pd.DataFrame,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     ratings, noteStatusHistory = filter_core_input(ratings, noteStatusHistory, userEnrollment)
     ratings = filter_ratings(ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote)
