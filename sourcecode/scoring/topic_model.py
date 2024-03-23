@@ -38,7 +38,7 @@ class TopicModel(object):
       },
       Topics.GazaConflict: {
         "israel",
-        "palestin",
+        "palestine",
         "gaza",
         "jerusalem",
       },
