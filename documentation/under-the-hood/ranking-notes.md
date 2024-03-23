@@ -183,6 +183,25 @@ It might list one of the following models:
 - GroupModelN (vX.X). The Nth instantiation of the _Group_ model described above.
 - ScoringDriftGuard. This is a scoring rule that locks note statuses after two weeks. See the [next section](#status-stabilization) for more details.
 
+## Topic Modeling
+
+The Core, Expansion, ExpansionPlus and Group models described in Multi-Model Note Ranking learn latent representations for notes and users that are generally effective at modeling viewpoints across a wide range of notes.
+Empirically, we have observed that some topics are better represented with narrower modeling that can learn viewpoint representations for a more specific topic.  
+Improving the strength of modeling for a topic allows us to better identify notes that are helpful to people from different points of view on the given topic.
+
+[Our initial approach](https://github.com/twitter/communitynotes/blob/main/sourcecode/scoring/topic_model.py) to topic specific modeling contains two phases.
+In the first phase each post with one or more notes is assigned to a predefined set of topics where each topic is specified using a short list of associated seed terms (e.g. “Messi”, “Ronaldo”, etc.).
+If any of the notes on a post match a seed term, then the post and all associated notes are assigned to that topic.
+Posts without matches or with multiple matches are unassigned.
+After initial assignment, a multi-class logistic regression model trained on the data labeled with seed terms expands coverage for each topic by classifying unassigned posts.
+Posts that are not confidently labeled by the model remain unassigned and are not included in topic modeling.
+
+In the second phase, we train a _Topic Model_ over all of the notes and ratings which have been assigned to each topic.
+The topic model uses the same architecture and hyperparameters as the Core model.
+At present, the topic models function to uphold a high standard of helpfulness across viewpoints by preventing some notes from receiving Helpful status if the note is not found Helpful across the space of topic representations or if the note is too aligned with a single perspective.
+If topic modeling assigns an intercept below 0.25 or a factor magnitude greater than 0.5, then the note will only be eligible for Needs More Ratings or Not Helpful status.
+Note that to ensure topic model factors and intercepts reflect sufficient underlying signal, topic models only update note status if the note has 5 or more raters with both positive and negative factors in the topic model.
+
 ## Expanded Consensus Trial
 
 As of February 13, 2024 we are trialing a refinement to the matrix factorization approach above designed to improve and expand the detection of Helpful notes.
@@ -291,6 +310,9 @@ For not-helpful notes:
 8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**March 22, 2024**
+- Initial launch of Topic Models, including topic assignment based on seed terms and logistic regression, with modeling mirroring the Core model architecture.
 
 **February 23, 2024**
 - Increase rater helpfulness score penalties for making helpful ratings on notes that have high tag-consensus harassment-abuse model intercepts by multiplying the previous penalty by the intercept score, and decrease the threshold at which raters are penalized for rating them helpful.
