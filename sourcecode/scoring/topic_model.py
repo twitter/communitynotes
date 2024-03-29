@@ -12,7 +12,6 @@ evaluates the efficacy of per-topic note scoring.
 from typing import List, Tuple
 
 from . import constants as c
-
 from .enums import Topics
 
 import numpy as np
@@ -28,7 +27,7 @@ class TopicModel(object):
     """Initialize a list of seed terms for each topic."""
     self._seedTerms = {
       Topics.UkraineConflict: {
-        "ukraine",
+        "ukrain",  # intentionally shortened for expanded matching
         "russia",
         "kiev",
         "kyiv",
@@ -38,12 +37,12 @@ class TopicModel(object):
       },
       Topics.GazaConflict: {
         "israel",
-        "palestin",
+        "palestin",  # intentionally shortened for expanded matching
         "gaza",
         "jerusalem",
       },
       Topics.MessiRonaldo: {
-        "messi",
+        "messi ",  # intentional whitespace to prevent prefix matches
         "ronaldo",
       },
     }
@@ -97,7 +96,7 @@ class TopicModel(object):
     # Identify stop words
     blockedTokens = set()
     for terms in self._seedTerms.values():
-      blockedTokens |= terms
+      blockedTokens |= {t.strip() for t in terms}
     print(f"  Total tokens to filter: {len(blockedTokens)}")
     stopWords = [v for v in rawVocabulary if any(t in v for t in blockedTokens)]
     print(f"  Total identified stopwords: {len(stopWords)}")
