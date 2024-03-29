@@ -745,8 +745,8 @@ class ApplyTopicModelResult(ScoringRule):
     ruleID: RuleID,
     dependencies: Set[RuleID],
     topic: Topics,
-    topicNMRInterceptThreshold: Optional[float] = 0.25,
-    topicNMRFactorThreshold: Optional[float] = 0.5,
+    topicNMRInterceptThreshold: Optional[float] = 0.24,
+    topicNMRFactorThreshold: Optional[float] = 0.51,
   ):
     """Set any note scored by a topic model to NMR if the note is presently CRH and has low topic intercept.
 

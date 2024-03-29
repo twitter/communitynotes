@@ -161,6 +161,7 @@ class MFBaseScorer(Scorer):
     multiplyPenaltyByHarassmentScore: bool = True,
     minimumHarassmentScoreToPenalize: float = 2.0,
     tagConsensusHarassmentHelpfulRatingPenalty: int = 10,
+    useReputation: bool = True,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -221,6 +222,7 @@ class MFBaseScorer(Scorer):
     self.multiplyPenaltyByHarassmentScore = multiplyPenaltyByHarassmentScore
     self.minimumHarassmentScoreToPenalize = minimumHarassmentScoreToPenalize
     self.tagConsensusHarassmentHelpfulRatingPenalty = tagConsensusHarassmentHelpfulRatingPenalty
+    self._useReputation = useReputation
     mfArgs = dict(
       [
         pair
@@ -430,140 +432,159 @@ class MFBaseScorer(Scorer):
       self.globalBias = globalBias
     self.assert_train_error_is_below_threshold(ratingsForTraining, self._maxFirstMFTrainError)
 
-    # Get a dataframe of scored notes based on the algorithm results above
-    with self.time_block("Compute scored notes"):
-      scoredNotes = note_ratings.compute_scored_notes(
-        ratings,
-        noteParamsUnfiltered,
-        raterParamsUnfiltered,
-        noteStatusHistory,
-        minRatingsNeeded=self._minRatingsNeeded,
-        crhThreshold=self._crhThreshold,
-        crnhThresholdIntercept=self._crnhThresholdIntercept,
-        crnhThresholdNoteFactorMultiplier=self._crnhThresholdNoteFactorMultiplier,
-        crnhThresholdNMIntercept=self._crnhThresholdNMIntercept,
-        crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
-        crhSuperThreshold=self._crhSuperThreshold,
-        inertiaDelta=self._inertiaDelta,
-        lowDiligenceThreshold=self._lowDiligenceThreshold,
-      )
-    if self._saveIntermediateState:
-      self.firstRoundScoredNotes = scoredNotes
+    # If reputation is disabled, generate final intercepts, factors and note status
+    # based on the first round scoring results.  Disabling reputation can be desirable
+    # in situations where the overall volume of ratings is lower (e.g. topic models).
+    if not self._useReputation:
+      assert "Topic" in self.get_name(), f"Unexpected scorer: {self.get_name()}"
+      print(f"Skipping rep-filtering for {self.get_name()}")
+      noteParams = noteParamsUnfiltered
+      raterParams = raterParamsUnfiltered
+      finalRoundRatings = ratingsForTraining
+      helpfulnessScores = raterParams[[c.raterParticipantIdKey]]
+      helpfulnessScores[
+        [
+          c.crhCrnhRatioDifferenceKey,
+          c.meanNoteScoreKey,
+          c.raterAgreeRatioKey,
+          c.aboveHelpfulnessThresholdKey,
+        ]
+      ] = np.nan
+    else:
+      assert "Topic" not in self.get_name(), f"Unexpected scorer: {self.get_name()}"
+      print(f"Performing rep-filtering for {self.get_name()}")
+      # Get a dataframe of scored notes based on the algorithm results above
+      with self.time_block("Compute scored notes"):
+        scoredNotes = note_ratings.compute_scored_notes(
+          ratings,
+          noteParamsUnfiltered,
+          raterParamsUnfiltered,
+          noteStatusHistory,
+          minRatingsNeeded=self._minRatingsNeeded,
+          crhThreshold=self._crhThreshold,
+          crnhThresholdIntercept=self._crnhThresholdIntercept,
+          crnhThresholdNoteFactorMultiplier=self._crnhThresholdNoteFactorMultiplier,
+          crnhThresholdNMIntercept=self._crnhThresholdNMIntercept,
+          crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
+          crhSuperThreshold=self._crhSuperThreshold,
+          inertiaDelta=self._inertiaDelta,
+          lowDiligenceThreshold=self._lowDiligenceThreshold,
+        )
+      if self._saveIntermediateState:
+        self.firstRoundScoredNotes = scoredNotes
 
-    # Determine "valid" ratings
-    with self.time_block("Compute valid ratings"):
-      validRatings = note_ratings.get_valid_ratings(
-        ratings,
-        noteStatusHistory,
-        scoredNotes[
-          [
-            c.noteIdKey,
-            c.currentlyRatedHelpfulBoolKey,
-            c.currentlyRatedNotHelpfulBoolKey,
-            c.awaitingMoreRatingsBoolKey,
-          ]
-        ],
-      )
-    if self._saveIntermediateState:
-      self.validRatings = validRatings
+      # Determine "valid" ratings
+      with self.time_block("Compute valid ratings"):
+        validRatings = note_ratings.get_valid_ratings(
+          ratings,
+          noteStatusHistory,
+          scoredNotes[
+            [
+              c.noteIdKey,
+              c.currentlyRatedHelpfulBoolKey,
+              c.currentlyRatedNotHelpfulBoolKey,
+              c.awaitingMoreRatingsBoolKey,
+            ]
+          ],
+        )
+      if self._saveIntermediateState:
+        self.validRatings = validRatings
 
-    # Assigns contributor (author & rater) helpfulness bit based on (1) performance
-    # authoring and reviewing previous and current notes.
-    with self.time_block("Helpfulness scores pre-harassment "):
-      helpfulnessScoresPreHarassmentFilter = helpfulness_scores.compute_general_helpfulness_scores(
-        scoredNotes[
-          [
-            c.noteAuthorParticipantIdKey,
-            c.currentlyRatedHelpfulBoolKey,
-            c.currentlyRatedNotHelpfulBoolKey,
-            c.internalNoteInterceptKey,
-          ]
-        ],
-        validRatings,
-        self._minMeanNoteScore,
-        self._minCRHVsCRNHRatio,
-        self._minRaterAgreeRatio,
-        ratingsForTraining,
-      )
+      # Assigns contributor (author & rater) helpfulness bit based on (1) performance
+      # authoring and reviewing previous and current notes.
+      with self.time_block("Helpfulness scores pre-harassment "):
+        helpfulnessScoresPreHarassmentFilter = (
+          helpfulness_scores.compute_general_helpfulness_scores(
+            scoredNotes[
+              [
+                c.noteAuthorParticipantIdKey,
+                c.currentlyRatedHelpfulBoolKey,
+                c.currentlyRatedNotHelpfulBoolKey,
+                c.internalNoteInterceptKey,
+              ]
+            ],
+            validRatings,
+            self._minMeanNoteScore,
+            self._minCRHVsCRNHRatio,
+            self._minRaterAgreeRatio,
+            ratingsForTraining,
+          )
+        )
       if self._saveIntermediateState:
         self.firstRoundHelpfulnessScores = helpfulnessScoresPreHarassmentFilter
 
       # Filters ratings matrix to include only rows (ratings) where the rater was
       # considered helpful.
-      ratingsHelpfulnessScoreFilteredPreHarassmentFilter = (
-        helpfulness_scores.filter_ratings_by_helpfulness_scores(
-          ratingsForTraining, helpfulnessScoresPreHarassmentFilter
+      with self.time_block("Filtering by helpfulness score"):
+        ratingsHelpfulnessScoreFilteredPreHarassmentFilter = (
+          helpfulness_scores.filter_ratings_by_helpfulness_scores(
+            ratingsForTraining, helpfulnessScoresPreHarassmentFilter
+          )
         )
-      )
 
-    if self._saveIntermediateState:
-      self.ratingsHelpfulnessScoreFilteredPreHarassmentFilter = (
-        ratingsHelpfulnessScoreFilteredPreHarassmentFilter
-      )
+      if self._saveIntermediateState:
+        self.ratingsHelpfulnessScoreFilteredPreHarassmentFilter = (
+          ratingsHelpfulnessScoreFilteredPreHarassmentFilter
+        )
 
-    with self.time_block("Harassment tag consensus"):
-      harassmentAbuseNoteParams, _, _ = tag_consensus.train_tag_model(
-        ratingsHelpfulnessScoreFilteredPreHarassmentFilter,
-        c.notHelpfulSpamHarassmentOrAbuseTagKey,
-        noteParamsUnfiltered,
-        raterParamsUnfiltered,
-        name="harassment",
-      )
+      with self.time_block("Harassment tag consensus"):
+        harassmentAbuseNoteParams, _, _ = tag_consensus.train_tag_model(
+          ratingsHelpfulnessScoreFilteredPreHarassmentFilter,
+          c.notHelpfulSpamHarassmentOrAbuseTagKey,
+          noteParamsUnfiltered,
+          raterParamsUnfiltered,
+          name="harassment",
+        )
 
-    # Assigns contributor (author & rater) helpfulness bit based on (1) performance
-    # authoring and reviewing previous and current notes, and (2) including an extra
-    # penalty for rating a harassment/abuse note as helpful.
-    with self.time_block("Helpfulness scores post-harassment"):
-      helpfulnessScores = helpfulness_scores.compute_general_helpfulness_scores(
-        scoredNotes[
-          [
-            c.noteAuthorParticipantIdKey,
-            c.currentlyRatedHelpfulBoolKey,
-            c.currentlyRatedNotHelpfulBoolKey,
-            c.internalNoteInterceptKey,
-          ]
-        ],
-        validRatings,
-        self._minMeanNoteScore,
-        self._minCRHVsCRNHRatio,
-        self._minRaterAgreeRatio,
-        ratings=ratingsForTraining,
-        tagConsensusHarassmentAbuseNotes=harassmentAbuseNoteParams,
-        tagConsensusHarassmentHelpfulRatingPenalty=self.tagConsensusHarassmentHelpfulRatingPenalty,
-        multiplyPenaltyByHarassmentScore=self.multiplyPenaltyByHarassmentScore,
-        minimumHarassmentScoreToPenalize=self.minimumHarassmentScoreToPenalize,
-      )
+      # Assigns contributor (author & rater) helpfulness bit based on (1) performance
+      # authoring and reviewing previous and current notes, and (2) including an extra
+      # penalty for rating a harassment/abuse note as helpful.
+      with self.time_block("Helpfulness scores post-harassment"):
+        helpfulnessScores = helpfulness_scores.compute_general_helpfulness_scores(
+          scoredNotes[
+            [
+              c.noteAuthorParticipantIdKey,
+              c.currentlyRatedHelpfulBoolKey,
+              c.currentlyRatedNotHelpfulBoolKey,
+              c.internalNoteInterceptKey,
+            ]
+          ],
+          validRatings,
+          self._minMeanNoteScore,
+          self._minCRHVsCRNHRatio,
+          self._minRaterAgreeRatio,
+          ratings=ratingsForTraining,
+          tagConsensusHarassmentAbuseNotes=harassmentAbuseNoteParams,
+          tagConsensusHarassmentHelpfulRatingPenalty=self.tagConsensusHarassmentHelpfulRatingPenalty,
+          multiplyPenaltyByHarassmentScore=self.multiplyPenaltyByHarassmentScore,
+          minimumHarassmentScoreToPenalize=self.minimumHarassmentScoreToPenalize,
+        )
 
-      # Filters ratings matrix to include only rows (ratings) where the rater was
-      # considered helpful.
-      ratingsHelpfulnessScoreFiltered = helpfulness_scores.filter_ratings_by_helpfulness_scores(
+      finalRoundRatings = helpfulness_scores.filter_ratings_by_helpfulness_scores(
         ratingsForTraining, helpfulnessScores
       )
-    if self._saveIntermediateState:
-      self.helpfulnessScores = helpfulnessScores
-      self.ratingsHelpfulnessScoreFiltered = ratingsHelpfulnessScoreFiltered
 
-    # Re-runs matrix factorization using only ratings given by helpful raters.
-    with self.time_block("Final helpfulness-filtered MF"):
-      noteParams, raterParams, globalBias = self._mfRanker.run_mf(
-        ratingsHelpfulnessScoreFiltered,
-        noteInit=noteParamsUnfiltered,
-        userInit=raterParamsUnfiltered,
-      )
+      # Re-runs matrix factorization using only ratings given by helpful raters.
+      with self.time_block("Final helpfulness-filtered MF"):
+        noteParams, raterParams, globalBias = self._mfRanker.run_mf(
+          finalRoundRatings,
+          noteInit=noteParamsUnfiltered,
+          userInit=raterParamsUnfiltered,
+        )
     if self._saveIntermediateState:
       self.noteParams = noteParams
       self.raterParams = raterParams
       self.globalBias = globalBias
-    self.assert_train_error_is_below_threshold(
-      ratingsHelpfulnessScoreFiltered, self._maxFinalMFTrainError
-    )
+      self.helpfulnessScores = helpfulnessScores
+      self.finalRoundRatings = finalRoundRatings
+    self.assert_train_error_is_below_threshold(finalRoundRatings, self._maxFinalMFTrainError)
 
     # Add pseudo-raters with the most extreme parameters and re-score notes, to estimate
     #  upper and lower confidence bounds on note parameters.
     if self._pseudoraters:
       with self.time_block("Pseudoraters"):
         noteParams = PseudoRatersRunner(
-          ratingsHelpfulnessScoreFiltered, noteParams, raterParams, globalBias, self._mfRanker
+          finalRoundRatings, noteParams, raterParams, globalBias, self._mfRanker
         ).compute_note_parameter_confidence_bounds_with_pseudo_raters()
         if self._saveIntermediateState:
           self.prePseudoratersNoteParams = self.noteParams
@@ -574,9 +595,7 @@ class MFBaseScorer(Scorer):
 
     # Add low diligence intercepts
     with self.time_block("Low Diligence Reputation Model"):
-      diligenceParams = get_low_diligence_intercepts(
-        ratingsHelpfulnessScoreFiltered, raterInitState=raterParams
-      )
+      diligenceParams = get_low_diligence_intercepts(finalRoundRatings, raterInitState=raterParams)
       noteParams = noteParams.merge(diligenceParams, on=c.noteIdKey)
 
     if self._saveIntermediateState:

@@ -100,6 +100,7 @@ class MFTopicScorer(MFBaseScorer):
       multiplyPenaltyByHarassmentScore=multiplyPenaltyByHarassmentScore,
       minimumHarassmentScoreToPenalize=minimumHarassmentScoreToPenalize,
       tagConsensusHarassmentHelpfulRatingPenalty=tagConsensusHarassmentHelpfulRatingPenalty,
+      useReputation=False,
     )
     self._topicName = topicName
     self._topicNoteInterceptKey = f"{c.topicNoteInterceptKey}_{self._topicName}"
