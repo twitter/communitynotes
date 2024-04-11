@@ -306,7 +306,7 @@ For not-helpful notes:
 # Prescoring
 
 1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence).
-2. For each scorer (Core, Expansion, and multiple Group and Topic scorers):
+2. For each scorer (Core, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
     - Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.
     - Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
     - Fit the harassment-abuse tag-consensus matrix factorization model on the helpfulness-score filtered ratings, then update Author and Rater Helpfulness scores using the output of the tag-consensus model.
@@ -314,7 +314,7 @@ For not-helpful notes:
 # Scoring
 
 1. Load the output of step 2 above from prescoring, but re-run step 1 on the newest available notes and ratings data.
-2. For each scorer (Core, Expansion, and multiple Group and Topic scorers):
+2. For each scorer (Core, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
     - Re-fit the matrix factorization model on ratings data that’s been filtered by user helpfulness scores in step 3.
     - Fit the note diligence matrix factorization model.
     - Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
