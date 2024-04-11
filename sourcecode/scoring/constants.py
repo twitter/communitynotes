@@ -1,6 +1,8 @@
 from contextlib import contextmanager
+from dataclasses import dataclass
 import os
 import time
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -101,6 +103,8 @@ internalNoteFactorKeyBase = "internalNoteFactor"
 internalRaterFactorKeyBase = "internalRaterFactor"
 internalRatingStatusKey = "internalRatingStatus"
 internalActiveRulesKey = "internalActiveRules"
+
+scorerNameKey = "scorerName"
 
 
 def note_factor_key(i):
@@ -416,6 +420,7 @@ expansion = "EXPANSION"
 expansionPlus = "EXPANSION_PLUS"
 topWriterWritingImpact = 10
 topWriterHitRate = 0.04
+hasCrnhSinceEarnOut = "hasCrnhSinceEarnOut"
 
 userEnrollmentTSVColumnsAndTypes = [
   (participantIdKey, str),
@@ -494,6 +499,19 @@ deprecatedNoteModelOutputColumns = frozenset(
   }
 )
 
+prescoringNoteModelOutputTSVColumnsAndTypes = [
+  (noteIdKey, np.int64),
+  (internalNoteInterceptKey, np.double),
+  (internalNoteFactor1Key, np.double),
+  (scorerNameKey, str),
+]
+prescoringNoteModelOutputTSVColumns = [
+  col for (col, dtype) in prescoringNoteModelOutputTSVColumnsAndTypes
+]
+prescoringNoteModelOutputTSVTypeMapping = {
+  col: dtype for (col, dtype) in prescoringNoteModelOutputTSVColumnsAndTypes
+}
+
 noteModelOutputTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
   (coreNoteInterceptKey, np.double),
@@ -549,6 +567,26 @@ deprecatedNoteModelOutputTSVColumnsAndTypes = [
   if col in deprecatedNoteModelOutputColumns
 ]
 
+prescoringRaterModelOutputTSVColumnsAndTypes = [
+  (raterParticipantIdKey, object),
+  (internalRaterInterceptKey, np.double),
+  (internalRaterFactor1Key, np.double),
+  (crhCrnhRatioDifferenceKey, np.double),
+  (meanNoteScoreKey, np.double),
+  (raterAgreeRatioKey, np.double),
+  (
+    aboveHelpfulnessThresholdKey,
+    "boolean",
+  ),  # nullable bool https://pandas.pydata.org/docs/user_guide/boolean.html
+  (scorerNameKey, str),
+]
+prescoringRaterModelOutputTSVColumns = [
+  col for (col, dtype) in prescoringRaterModelOutputTSVColumnsAndTypes
+]
+prescoringRaterModelOutputTSVTypeMapping = {
+  col: dtype for (col, dtype) in prescoringRaterModelOutputTSVColumnsAndTypes
+}
+
 raterModelOutputTSVColumnsAndTypes = [
   (raterParticipantIdKey, np.int64),
   (coreRaterInterceptKey, np.double),
@@ -593,3 +631,42 @@ def time_block(label):
   finally:
     end = time.time()
     print(f"{label} elapsed time: {end - start:.2f} secs ({((end-start)/60.0):.2f} mins)")
+
+
+@dataclass
+class ScoringArgs:
+  noteTopics: pd.DataFrame
+  ratings: pd.DataFrame
+  noteStatusHistory: pd.DataFrame
+  userEnrollment: pd.DataFrame
+
+  def remove_large_args_for_multiprocessing(self):
+    self.ratings = None
+    self.noteStatusHistory = None
+    self.userEnrollment = None
+
+
+@dataclass
+class PrescoringArgs(ScoringArgs):
+  pass
+
+
+@dataclass
+class FinalScoringArgs(ScoringArgs):
+  prescoringNoteModelOutput: pd.DataFrame
+  prescoringRaterModelOutput: pd.DataFrame
+
+  def remove_large_args_for_multiprocessing(self):
+    self.ratings = None
+    self.noteStatusHistory = None
+    self.userEnrollment = None
+    self.prescoringNoteModelOutput = None
+    self.prescoringRaterModelOutput = None
+
+
+@dataclass
+class ModelResult:
+  scoredNotes: pd.DataFrame
+  helpfulnessScores: pd.DataFrame
+  auxiliaryNoteInfo: pd.DataFrame
+  scorerName: Optional[str]

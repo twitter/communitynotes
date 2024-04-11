@@ -4,7 +4,9 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 from . import constants as c
+from .constants import FinalScoringArgs, ModelResult, PrescoringArgs
 
+import numpy as np
 import pandas as pd
 import torch
 
@@ -46,8 +48,16 @@ class Scorer(ABC):
     """Returns a list of columns which should be present in the scoredNotes output."""
 
   @abstractmethod
+  def get_internal_scored_notes_cols(self) -> List[str]:
+    """Returns a list of internal columns which should be present in the scoredNotes output."""
+
+  @abstractmethod
   def get_helpfulness_scores_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the helpfulnessScores output."""
+
+  @abstractmethod
+  def get_internal_helpfulness_scores_cols(self) -> List[str]:
+    """Returns a list of internal columns which should be present in the helpfulnessScores output."""
 
   @abstractmethod
   def get_auxiliary_note_info_cols(self) -> List[str]:
@@ -120,73 +130,177 @@ class Scorer(ABC):
     return {}
 
   @abstractmethod
-  def _score_notes_and_users(
+  def _prescore_notes_and_users(
     self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Process ratings to assign status to notes and optionally compute rater properties.
+    """
+    Runs initial rounds of the matrix factorization scoring algorithm and returns intermediate
+    output that can be used to initialize and reduce the runtime of final scoring.
+
+    Args:
+        ratings (pd.DataFrame)
+        noteStatusHistory (pd.DataFrame)
+        userEnrollmentRaw (pd.DataFrame)
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+          prescoringNoteModelOutput (pd.DataFrame)
+          prescoringRaterModelOutput (pd.DataFrame)
+    """
+
+  @abstractmethod
+  def _score_notes_and_users(
+    self,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    prescoringNoteModelOutput: pd.DataFrame,
+    prescoringRaterModelOutput: pd.DataFrame,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Run the matrix factorization scoring algorithm.
+
+    See links below for more info:
+      https://twitter.github.io/communitynotes/ranking-notes/
+      https://twitter.github.io/communitynotes/contributor-scores/.
 
     Args:
       ratings (pd.DataFrame): preprocessed ratings
       noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
-      userEnrollmentRaw (pd.DataFrame): one row per user specifying enrollment properties
-
+      prescoringNoteModelOutput (pd.DataFrame)
+      raterParamsUnfiltered (pd.DataFrame)
+      usePreviouslySavedStateIfExists (bool)
     Returns:
       Tuple[pd.DataFrame, pd.DataFrame]:
         noteScores pd.DataFrame: one row per note contained note scores and parameters.
         userScores pd.DataFrame: one row per user containing a column for each helpfulness score.
     """
 
-  def score(
-    self,
-    noteTopics: pd.DataFrame,
-    ratingsRaw: pd.DataFrame,
-    noteStatusHistoryRaw: pd.DataFrame,
-    userEnrollmentRaw: pd.DataFrame,
-  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame], Optional[pd.DataFrame]]:
-    """Process ratings to assign status to notes and optionally compute rater properties.
-
-    Args:
-      noteTopics: DF specifying {note, topic} pairs
-      ratingsRaw (pd.DataFrame): preprocessed ratings
-      noteStatusHistoryRaw (pd.DataFrame): one row per note; history of when note had each status
-      userEnrollmentRaw (pd.DataFrame): one row per user specifying enrollment properties
-
-    Returns:
-      Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-        scoredNotes pd.DataFrame: one row per note contained note scores and parameters.
-        helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
-        auxiliaryNoteInfo: one row per note containing adjusted and ratio tag values
+  def prescore(self, scoringArgs: PrescoringArgs) -> ModelResult:
+    """
+    Runs initial rounds of the matrix factorization scoring algorithm and returns intermediate
+    output that can be used to initialize and reduce the runtime of final scoring.
     """
     torch.set_num_threads(self._threads)
-    print(f"Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}")
+    print(
+      f"prescore: Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}"
+    )
+
     # Transform input, run core scoring algorithm, transform output.
     with self.time_block("Filter input"):
       ratings, noteStatusHistory = self._filter_input(
-        noteTopics, ratingsRaw, noteStatusHistoryRaw, userEnrollmentRaw
+        scoringArgs.noteTopics,
+        scoringArgs.ratings,
+        scoringArgs.noteStatusHistory,
+        scoringArgs.userEnrollment,
       )
       # If there are no ratings left after filtering, then return empty dataframes.
       if len(ratings) == 0:
-        return (
-          pd.DataFrame(columns=self.get_scored_notes_cols()),
-          pd.DataFrame(columns=self.get_helpfulness_scores_cols())
-          if self.get_helpfulness_scores_cols()
-          else None,
-          pd.DataFrame(columns=self.get_auxiliary_note_info_cols())
-          if self.get_auxiliary_note_info_cols()
-          else None,
+        return ModelResult(
+          pd.DataFrame(columns=self.get_internal_scored_notes_cols()),
+          (
+            pd.DataFrame(columns=self.get_internal_helpfulness_scores_cols())
+            if self.get_internal_helpfulness_scores_cols()
+            else None
+          ),
+          (
+            pd.DataFrame(columns=self.get_auxiliary_note_info_cols())
+            if self.get_auxiliary_note_info_cols()
+            else None
+          ),
+          self.get_name(),
         )
 
+    noteScores, userScores = self._prescore_notes_and_users(
+      ratings, noteStatusHistory, scoringArgs.userEnrollment
+    )
+
+    # Return dataframes with specified columns in specified order
+    # Reindex fills required columns with NaN if they aren't present in the original df.
+    return ModelResult(
+      scoredNotes=noteScores.reindex(
+        columns=c.prescoringNoteModelOutputTSVColumns, fill_value=np.nan
+      ),
+      helpfulnessScores=userScores.reindex(
+        columns=c.prescoringRaterModelOutputTSVColumns, fill_value=np.nan
+      ),
+      auxiliaryNoteInfo=noteScores.reindex(
+        columns=self.get_auxiliary_note_info_cols(), fill_value=np.nan
+      ),
+      scorerName=self.get_name(),
+    )
+
+  def _return_empty_final_scores(self) -> ModelResult:
+    return ModelResult(
+      scoredNotes=pd.DataFrame(columns=self.get_scored_notes_cols()),
+      helpfulnessScores=(
+        pd.DataFrame(columns=self.get_helpfulness_scores_cols())
+        if self.get_helpfulness_scores_cols()
+        else None
+      ),
+      auxiliaryNoteInfo=(
+        pd.DataFrame(columns=self.get_auxiliary_note_info_cols())
+        if self.get_auxiliary_note_info_cols()
+        else None
+      ),
+      scorerName=self.get_name(),
+    )
+
+  def score_final(self, scoringArgs: FinalScoringArgs) -> ModelResult:
+    """
+    Process ratings to assign status to notes and optionally compute rater properties.
+
+    Accepts prescoringNoteModelOutput and prescoringRaterModelOutput as args (fields on scoringArgs)
+    which are the outputs of the prescore() function.  These are used to initialize the final scoring.
+    It filters the prescoring output to only include the rows relevant to this scorer, based on the
+    c.scorerNameKey field of those dataframes.
+    """
+    torch.set_num_threads(self._threads)
+    print(
+      f"score_final: Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}"
+    )
+
+    # Filter unfiltered params to just params for this scorer (with copy).
+    # Avoid editing the dataframe in FinalScoringArgs, which is shared across scorers.
+    prescoringNoteModelOutput = scoringArgs.prescoringNoteModelOutput[
+      scoringArgs.prescoringNoteModelOutput[c.scorerNameKey] == self.get_name()
+    ].drop(columns=c.scorerNameKey, inplace=False)
+    if scoringArgs.prescoringRaterModelOutput is None:
+      return self._return_empty_final_scores()
+    prescoringRaterModelOutput = scoringArgs.prescoringRaterModelOutput[
+      scoringArgs.prescoringRaterModelOutput[c.scorerNameKey] == self.get_name()
+    ].drop(columns=c.scorerNameKey, inplace=False)
+
+    # Filter raw input
+    with self.time_block("Filter input"):
+      ratings, noteStatusHistory = self._filter_input(
+        scoringArgs.noteTopics,
+        scoringArgs.ratings,
+        scoringArgs.noteStatusHistory,
+        scoringArgs.userEnrollment,
+      )
+      # If there are no ratings left after filtering, then return empty dataframes.
+      if len(ratings) == 0:
+        return self._return_empty_final_scores()
+
     noteScores, userScores = self._score_notes_and_users(
-      ratings, noteStatusHistory, userEnrollmentRaw
+      ratings=ratings,
+      noteStatusHistory=noteStatusHistory,
+      prescoringNoteModelOutput=prescoringNoteModelOutput,
+      prescoringRaterModelOutput=prescoringRaterModelOutput,
     )
 
     with self.time_block("Postprocess output"):
+      # Only some subclasses do any postprocessing.
+      # E.g. topic models add confidence bit, group models prune according to authorship filter.
       noteScores, userScores = self._postprocess_output(
-        noteScores, userScores, ratingsRaw, noteStatusHistoryRaw, userEnrollmentRaw
+        noteScores,
+        userScores,
+        scoringArgs.ratings,
+        scoringArgs.noteStatusHistory,
+        scoringArgs.userEnrollment,
       )
       noteScores = noteScores.rename(columns=self._get_note_col_mapping())
       userScores = userScores.rename(columns=self._get_user_col_mapping())
-      # TODO: Tolerate unexpcted columns if --nostrict-columns is set.
+
       # Process noteScores
       noteScores = noteScores.drop(columns=self._get_dropped_note_cols())
       assert set(noteScores.columns) == set(
@@ -194,6 +308,7 @@ class Scorer(ABC):
       ), f"""all columns must be either dropped or explicitly defined in an output. 
       Extra columns that were in noteScores: {set(noteScores.columns) - set(self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols())}
       Missing expected columns that should've been in noteScores: {set(self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols()) - set(noteScores.columns)}"""
+
       # Process userScores
       userScores = userScores.drop(columns=self._get_dropped_user_cols())
       assert set(userScores.columns) == set(self.get_helpfulness_scores_cols()), f"""all columns must be either dropped or explicitly defined in an output. 
@@ -201,12 +316,57 @@ class Scorer(ABC):
       Missing expected columns that should've been in userScores: {set(self.get_helpfulness_scores_cols()) - set(userScores.columns)}"""
 
     # Return dataframes with specified columns in specified order
-    return (
-      noteScores[self.get_scored_notes_cols()],
-      userScores[self.get_helpfulness_scores_cols()]
+    return ModelResult(
+      scoredNotes=noteScores[self.get_scored_notes_cols()],
+      helpfulnessScores=userScores[self.get_helpfulness_scores_cols()]
       if self.get_helpfulness_scores_cols()
       else None,
-      noteScores[self.get_auxiliary_note_info_cols()]
+      auxiliaryNoteInfo=noteScores[self.get_auxiliary_note_info_cols()]
       if self.get_auxiliary_note_info_cols()
       else None,
+      scorerName=self.get_name(),
+    )
+
+  def score(
+    self,
+    noteTopics: pd.DataFrame,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    userEnrollment: pd.DataFrame,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    This function is deprecated and only included for testing purposes for now. Not intended to be called in
+    main code flow (since the scorer will be split, and this function calls both phases sequentially)
+    """
+    print(
+      "CALLED DEPRECATED scorer.score() function. Prefer sequentially calling prescore() then score_final()."
+    )
+
+    prescoringModelResult = self.prescore(
+      PrescoringArgs(
+        noteTopics=noteTopics,
+        ratings=ratings,
+        noteStatusHistory=noteStatusHistory,
+        userEnrollment=userEnrollment,
+      )
+    )
+
+    if prescoringModelResult.scoredNotes is not None:
+      prescoringModelResult.scoredNotes[c.scorerNameKey] = prescoringModelResult.scorerName
+    if prescoringModelResult.helpfulnessScores is not None:
+      prescoringModelResult.helpfulnessScores[c.scorerNameKey] = prescoringModelResult.scorerName
+
+    finalScoringArgs = FinalScoringArgs(
+      noteTopics=noteTopics,
+      ratings=ratings,
+      noteStatusHistory=noteStatusHistory,
+      userEnrollment=userEnrollment,
+      prescoringNoteModelOutput=prescoringModelResult.scoredNotes,
+      prescoringRaterModelOutput=prescoringModelResult.helpfulnessScores,
+    )
+    finalModelResult = self.score_final(finalScoringArgs)
+    return (
+      finalModelResult.scoredNotes,
+      finalModelResult.helpfulnessScores,
+      finalModelResult.auxiliaryNoteInfo,
     )
