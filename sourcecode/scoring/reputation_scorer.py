@@ -52,7 +52,23 @@ class ReputationScorer(Scorer):
       c.coverageRatingStatusKey,
     ]
 
+  def get_internal_scored_notes_cols(self) -> List[str]:
+    """Returns a list of columns which should be present in the scoredNotes output."""
+    return [
+      c.noteIdKey,
+      c.internalNoteInterceptKey,
+      c.internalNoteFactor1Key,
+      c.internalRatingStatusKey,
+    ]
+
   def get_helpfulness_scores_cols(self) -> List[str]:
+    """Returns a list of columns which should be present in the helpfulnessScores output."""
+    return [
+      c.raterParticipantIdKey,
+      c.raterHelpfulnessReputationKey,
+    ]
+
+  def get_internal_helpfulness_scores_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the helpfulnessScores output."""
     return [
       c.raterParticipantIdKey,
@@ -82,24 +98,38 @@ class ReputationScorer(Scorer):
     ratings = filter_ratings(ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote)
     return ratings, noteStatusHistory
 
-  def _score_notes_and_users(
+  def _prescore_notes_and_users(
     self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     if self._seed is not None:
       print(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
     # Calculate initialization factors if necessary
-    noteParamsInit = None
-    raterParamsInit = None
+    noteParamsInit = pd.DataFrame()
+    raterParamsInit = pd.DataFrame()
     if self._modelingGroupToInitializeForStability:
       ratingsForStableInitialization = get_ratings_for_stable_init(
         ratings, userEnrollmentRaw, self._modelingGroupToInitializeForStability
       )
       mfRanker = MatrixFactorization()
       noteParamsInit, raterParamsInit, _ = mfRanker.run_mf(ratingsForStableInitialization)
+    return noteParamsInit, raterParamsInit
+
+  def _score_notes_and_users(
+    self,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    prescoringNoteModelOutput: pd.DataFrame,
+    prescoringRaterModelOutput: pd.DataFrame,
+    usePreviouslySavedStateIfExists: bool = True,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    if self._seed is not None:
+      print(f"seeding with {self._seed}")
+      torch.manual_seed(self._seed)
+
     # Apply model
     noteStats, raterStats = get_helpfulness_reputation_results(
-      ratings, noteInitState=noteParamsInit, raterInitState=raterParamsInit
+      ratings, noteInitState=prescoringNoteModelOutput, raterInitState=prescoringRaterModelOutput
     )
     # Assign rating status
     noteStats[c.coverageRatingStatusKey] = c.needsMoreRatings

@@ -26,7 +26,7 @@ def should_earn_in(contributorScoresWithEnrollment: pd.DataFrame):
   )
 
 
-def is_at_risk(authorEnrollmentCounts: pd.DataFrame):
+def newly_at_risk(authorEnrollmentCounts: pd.DataFrame):
   """
   The author is at risk when they have written 2 CRNH notes of the last 5 notes. NewUser
   EarnedOutNoAck, and EarnedOutAcknowledged states cannot transition to this state because they cannot
@@ -39,6 +39,7 @@ def is_at_risk(authorEnrollmentCounts: pd.DataFrame):
     (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutNoAcknowledge)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
+    & (authorEnrollmentCounts[c.enrollmentState] != c.atRisk)
     & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] == c.isAtRiskCRNHCount)
   )
 
@@ -60,7 +61,7 @@ def is_earned_out(authorEnrollmentCounts: pd.DataFrame):
   )
 
 
-def is_earned_in(authorEnrollmentCounts):
+def newly_earned_in(authorEnrollmentCounts):
   """
   The author is at earned out when they have written <2 CRNH notes of the last 5 notes.
   NewUser, EarnedOutNoAck, and EarnedOutAcknowledged states cannot transition to this state because they cannot
@@ -73,6 +74,7 @@ def is_earned_in(authorEnrollmentCounts):
     (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutNoAcknowledge)
+    & (authorEnrollmentCounts[c.enrollmentState] != c.earnedIn)
     & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] < c.isAtRiskCRNHCount)
   )
 
@@ -324,13 +326,51 @@ def is_emerging_writer(scoredNotes: pd.DataFrame):
   return emergingWriter[[c.noteAuthorParticipantIdKey, c.isEmergingWriterKey]]
 
 
+def single_trigger_earn_out(contributorScoresWithEnrollment: pd.DataFrame) -> pd.DataFrame:
+  """
+  A function that earns out users with a negative writing impact upon any CRNH note
+  Args:
+      contributorScoresWithEnrollment (pd.DataFrame): contributor scores with state and current enrollment
+  Returns:
+    pd.DataFrame: updated contributor scores reflecting single trigger earned out users
+  """
+  earnedOutUsers = (
+    (
+      contributorScoresWithEnrollment[c.notesCurrentlyRatedNotHelpful].fillna(0, inplace=False)
+      > contributorScoresWithEnrollment[c.notesCurrentlyRatedHelpful].fillna(0, inplace=False)
+    )
+    & (contributorScoresWithEnrollment[c.hasCrnhSinceEarnOut] == True)
+    & (
+      contributorScoresWithEnrollment[c.enrollmentState]
+      != c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
+    )
+    & (
+      contributorScoresWithEnrollment[c.enrollmentState]
+      != c.enrollmentStateToThrift[c.earnedOutAcknowledged]
+    )
+    & (contributorScoresWithEnrollment[c.enrollmentState] != c.enrollmentStateToThrift[c.newUser])
+  )
+
+  contributorScoresWithEnrollment.loc[earnedOutUsers, c.numberOfTimesEarnedOutKey] = (
+    contributorScoresWithEnrollment.loc[earnedOutUsers, c.numberOfTimesEarnedOutKey] + 1
+  )
+
+  # use earned out no ack internally to identify newly earned out users
+  contributorScoresWithEnrollment.loc[
+    earnedOutUsers, c.enrollmentState
+  ] = c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
+  contributorScoresWithEnrollment.loc[earnedOutUsers, c.timestampOfLastStateChange] = c.epochMillis
+
+  return contributorScoresWithEnrollment.drop(columns=[c.hasCrnhSinceEarnOut])
+
+
 def calculate_ri_to_earn_in(contributorScoresWithEnrollment: pd.DataFrame) -> pd.DataFrame:
   """
-  A function updates rating impact needed to earn in for earned out users
+  A function that updates rating impact needed to earn in for earned out users
   Args:
-      scoredNotes (pd.DataFrame): scored notes
+      contributorScoresWithEnrollment (pd.DataFrame): contributor scores with state and current enrollment
   Returns:
-    pd.DataFrame: emergingWriter The contributor scores with enrollments
+    pd.DataFrame: dataframe with updated rating impact required to earn in for earned out users
   """
   earnedOutUsers = (
     contributorScoresWithEnrollment[c.enrollmentState]
@@ -342,7 +382,7 @@ def calculate_ri_to_earn_in(contributorScoresWithEnrollment: pd.DataFrame) -> pd
   ] = contributorScoresWithEnrollment.apply(
     lambda row: c.ratingImpactForEarnIn
     + max([row[c.ratingImpact], 0])
-    + (c.ratingImpactForEarnIn * row[c.numberOfTimesEarnedOutKey]),
+    + (c.ratingImpactForEarnIn * max(row[c.numberOfTimesEarnedOutKey] - 1, 0)),
     axis=1,
   ).loc[earnedOutUsers]
 
@@ -388,7 +428,7 @@ def get_contributor_state(
     # for users in state Earned Out Ack, update the timestamp of last earn out; this ensures they are only judged against
     # their rating target until they resume writing notes
     userEnrollment.loc[
-      userEnrollment[c.enrollmentState] == 3, c.timestampOfLastEarnOut
+      userEnrollment[c.enrollmentState] == c.earnedOutAcknowledged, c.timestampOfLastEarnOut
     ] = c.epochMillis
 
     # We need to consider only the last 5 notes for enrollment state. The ratings are aggregated historically.
@@ -409,6 +449,8 @@ def get_contributor_state(
       sinceLastEarnOut=True,
     )
     contributorScores.fillna(0, inplace=True)
+
+  contributorScores[c.hasCrnhSinceEarnOut] = contributorScores[c.notesCurrentlyRatedNotHelpful] > 0
 
   with c.time_block("Contributor State: Top NH Tags Per Author"):
     # We merge in the top not helpful tags
@@ -439,7 +481,6 @@ def get_contributor_state(
     )
 
     # We set the new contributor state.
-    contributorScoresWithEnrollment[c.timestampOfLastStateChange] = c.epochMillis
     contributorScoresWithEnrollment.fillna(
       inplace=True,
       value={
@@ -459,8 +500,15 @@ def get_contributor_state(
       should_earn_in(contributorScoresWithEnrollment), c.enrollmentState
     ] = c.enrollmentStateToThrift[c.earnedIn]
     contributorScoresWithEnrollment.loc[
-      is_at_risk(contributorScoresWithEnrollment), c.enrollmentState
+      should_earn_in(contributorScoresWithEnrollment), c.timestampOfLastStateChange
+    ] = c.epochMillis
+
+    contributorScoresWithEnrollment.loc[
+      newly_at_risk(contributorScoresWithEnrollment), c.enrollmentState
     ] = c.enrollmentStateToThrift[c.atRisk]
+    contributorScoresWithEnrollment.loc[
+      newly_at_risk(contributorScoresWithEnrollment), c.timestampOfLastStateChange
+    ] = c.epochMillis
 
     # for earned out users, first increment the number of times they have earned out,
     # use this to overwrite successful rating needed to earn in,
@@ -476,12 +524,30 @@ def get_contributor_state(
     ] = c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
 
     contributorScoresWithEnrollment.loc[
-      is_earned_in(contributorScoresWithEnrollment), c.enrollmentState
+      earnedOutUsers, c.timestampOfLastStateChange
+    ] = c.epochMillis
+
+    # at risk users transitioning back to earned in
+    contributorScoresWithEnrollment.loc[
+      newly_earned_in(contributorScoresWithEnrollment), c.enrollmentState
     ] = c.enrollmentStateToThrift[c.earnedIn]
+    contributorScoresWithEnrollment.loc[
+      newly_earned_in(contributorScoresWithEnrollment), c.timestampOfLastStateChange
+    ] = c.epochMillis
 
     contributorScoresWithEnrollment[c.enrollmentState] = contributorScoresWithEnrollment[
       c.enrollmentState
     ].map(_transform_to_thrift_code)
+
+    mappedUserEnrollment = userEnrollment[
+      [c.participantIdKey, c.timestampOfLastEarnOut, c.enrollmentState]
+    ]
+    mappedUserEnrollment[c.enrollmentState] = mappedUserEnrollment[c.enrollmentState].map(
+      _transform_to_thrift_code
+    )
+    mappedUserEnrollment = mappedUserEnrollment.rename(
+      columns={c.enrollmentState: c.enrollmentState + "_prev"}
+    )
 
     # This addresses an issue in the TSV dump in HDFS getting corrupted. It removes lines
     # users that do not have an id.
@@ -510,7 +576,7 @@ def get_contributor_state(
       len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 4]),
     )
 
-  return contributorScoresWithEnrollment
+  return contributorScoresWithEnrollment, mappedUserEnrollment
 
 
 def get_contributor_scores(

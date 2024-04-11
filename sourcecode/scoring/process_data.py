@@ -397,6 +397,21 @@ def filter_ratings(
   return ratings
 
 
+def write_prescoring_output(
+  prescoringNoteModelOutput: pd.DataFrame,
+  prescoringRaterModelOutput: pd.DataFrame,
+  noteModelOutputPath: str,
+  raterModelOutputPath: str,
+):
+  prescoringNoteModelOutput = prescoringNoteModelOutput[c.prescoringNoteModelOutputTSVColumns]
+  assert all(prescoringNoteModelOutput.columns == c.prescoringNoteModelOutputTSVColumns)
+  write_tsv_local(prescoringNoteModelOutput, noteModelOutputPath)
+
+  prescoringRaterModelOutput = prescoringRaterModelOutput[c.prescoringRaterModelOutputTSVColumns]
+  assert all(prescoringRaterModelOutput.columns == c.prescoringRaterModelOutputTSVColumns)
+  write_tsv_local(prescoringRaterModelOutput, raterModelOutputPath)
+
+
 def write_tsv_local(df: pd.DataFrame, path: str) -> None:
   """Write DF as a TSV stored to local disk.
 
@@ -433,6 +448,10 @@ class CommunityNotesDataLoader(ABC):
   def get_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Returns notes, ratings, noteStatusHistory, and userEnrollment DataFrames"""
 
+  @abstractmethod
+  def get_prescoring_model_output(self) -> pd.DataFrame:
+    """Returns first round rater model output."""
+
 
 class LocalDataLoader(CommunityNotesDataLoader):
   def __init__(
@@ -444,6 +463,8 @@ class LocalDataLoader(CommunityNotesDataLoader):
     headers: bool,
     shouldFilterNotMisleadingNotes: bool = True,
     logging: bool = True,
+    prescoringNoteModelOutputPath: Optional[str] = None,
+    prescoringRaterModelOutputPath: Optional[str] = None,
   ) -> None:
     """
     Args:
@@ -459,6 +480,8 @@ class LocalDataLoader(CommunityNotesDataLoader):
     self.ratingsPath = ratingsPath
     self.noteStatusHistoryPath = noteStatusHistoryPath
     self.userEnrollmentPath = userEnrollmentPath
+    self.prescoringNoteModelOutputPath = prescoringNoteModelOutputPath
+    self.prescoringRaterModelOutputPath = prescoringRaterModelOutputPath
     self.headers = headers
     self.shouldFilterNotMisleadingNotes = shouldFilterNotMisleadingNotes
     self.logging = logging
@@ -481,3 +504,41 @@ class LocalDataLoader(CommunityNotesDataLoader):
       notes, ratings, noteStatusHistory, self.shouldFilterNotMisleadingNotes, self.logging
     )
     return notes, ratings, noteStatusHistory, userEnrollment
+
+  def get_prescoring_model_output(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    print(
+      f"Attempting to read prescoring model output from {self.prescoringNoteModelOutputPath} and {self.prescoringRaterModelOutputPath}"
+    )
+    if self.prescoringRaterModelOutputPath is None:
+      prescoringRaterModelOutput = None
+    else:
+      prescoringRaterModelOutput = tsv_reader(
+        self.prescoringRaterModelOutputPath,
+        c.prescoringRaterModelOutputTSVTypeMapping,
+        c.prescoringRaterModelOutputTSVColumns,
+        header=True,
+      )
+      assert len(prescoringRaterModelOutput.columns) == len(
+        c.prescoringRaterModelOutputTSVColumns
+      ) and all(prescoringRaterModelOutput.columns == c.prescoringRaterModelOutputTSVColumns), (
+        f"Rater model output columns don't match: \n{[col for col in prescoringRaterModelOutput.columns if not col in c.prescoringRaterModelOutputTSVColumns]} are extra columns, "
+        + f"\n{[col for col in c.prescoringRaterModelOutputTSVColumns if not col in prescoringRaterModelOutput.columns]} are missing."
+      )  # ensure constants file is up to date.
+
+    if self.prescoringNoteModelOutputPath is None:
+      prescoringNoteModelOutput = None
+    else:
+      prescoringNoteModelOutput = tsv_reader(
+        self.prescoringNoteModelOutputPath,
+        c.prescoringNoteModelOutputTSVTypeMapping,
+        c.prescoringNoteModelOutputTSVColumns,
+        header=True,
+      )
+      assert len(prescoringNoteModelOutput.columns) == len(
+        c.prescoringNoteModelOutputTSVColumns
+      ) and all(prescoringNoteModelOutput.columns == c.prescoringNoteModelOutputTSVColumns), (
+        f"Note model output columns don't match: \n{[col for col in prescoringNoteModelOutput.columns if not col in c.prescoringNoteModelOutputTSVColumns]} are extra columns, "
+        + f"\n{[col for col in c.prescoringNoteModelOutputTSVColumns if not col in prescoringNoteModelOutput.columns]} are missing."
+      )  # ensure constants file is up to date.
+
+    return prescoringNoteModelOutput, prescoringRaterModelOutput
