@@ -303,16 +303,29 @@ For not-helpful notes:
 
 ## Complete Algorithm Steps:
 
+# Prescoring
+
 1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence).
-2. Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.
-3. Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
-4. Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3.
-5. Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
-6. Reconcile scoring results from the Core, Expansion, Group and Topic models to generate final status for each note.
-7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and rating tags.  Stabilize helpfulness status for any notes older than two weeks.
-8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
+2. For each scorer (Core, Expansion, and multiple Group and Topic scorers):
+    - Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.
+    - Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
+    - Fit the harassment-abuse tag-consensus matrix factorization model on the helpfulness-score filtered ratings, then update Author and Rater Helpfulness scores using the output of the tag-consensus model.
+
+# Scoring
+
+1. Load the output of step 2 above from prescoring, but re-run step 1 on the newest available notes and ratings data.
+2. For each scorer (Core, Expansion, and multiple Group and Topic scorers):
+    - Re-fit the matrix factorization model on ratings data that’s been filtered by user helpfulness scores in step 3.
+    - Fit the note diligence matrix factorization model.
+    - Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
+3. Reconcile scoring results from each scorer to generate final status for each note.
+4. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and rating tags.  Stabilize helpfulness status for any notes older than two weeks.
+5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**April 11, 2024**
+- Split the scorer into separate prescoring and final scoring phases.
 
 **March 29, 2024**
 - Modify Topic Models to remove rating filters when computing note intercepts and factors.
