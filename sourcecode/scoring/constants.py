@@ -634,6 +634,34 @@ def time_block(label):
 
 
 @dataclass
+class SharedMemoryDataframeInfo:
+  sharedMemoryName: str
+  columns: list
+  dataShape: tuple
+  dtypesDict: dict
+  npDtype: str
+
+
+@dataclass
+class ScoringArgsSharedMemory:
+  noteTopics: SharedMemoryDataframeInfo
+  ratings: SharedMemoryDataframeInfo
+  noteStatusHistory: SharedMemoryDataframeInfo
+  userEnrollment: SharedMemoryDataframeInfo
+
+
+@dataclass
+class PrescoringArgsSharedMemory(ScoringArgsSharedMemory):
+  pass
+
+
+@dataclass
+class FinalScoringArgsSharedMemory(ScoringArgsSharedMemory):
+  prescoringNoteModelOutput: SharedMemoryDataframeInfo
+  prescoringRaterModelOutput: SharedMemoryDataframeInfo
+
+
+@dataclass
 class ScoringArgs:
   noteTopics: pd.DataFrame
   ratings: pd.DataFrame
@@ -641,6 +669,7 @@ class ScoringArgs:
   userEnrollment: pd.DataFrame
 
   def remove_large_args_for_multiprocessing(self):
+    self.noteTopics = None
     self.ratings = None
     self.noteStatusHistory = None
     self.userEnrollment = None

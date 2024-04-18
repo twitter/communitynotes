@@ -85,15 +85,13 @@ class PseudoRatersRunner:
     assert (noteParamsFromNewModel == self.noteParams).all().all()
 
   def _make_extreme_raters(self, raterParams: pd.DataFrame, raterIdMap: pd.DataFrame):
-    """Populates self.extremeRaters, which is a list of dicts with rater id info
+    """Populates self.extremeRaters, which is a list of dicts with rater id info"""
 
-    Args:
-        raterParams (_type_): _description_
-        raterIdMap (_type_): _description_
-    """
+    # Because LCB is turned off and we therefore don't use not-helpful pseudoratings anymore,
+    # we only include the min rater intercept (which produces the highest possible note intercept)
+    # If we were to use not-helpful pseudoratings, we would also include the max rater intercept.
     raterInterceptValues = [
       raterParams[c.internalRaterInterceptKey].min(),
-      raterParams[c.internalRaterInterceptKey].max(),
     ]
     raterFactorValues = [
       raterParams[c.internalRaterFactor1Key].min(),
@@ -211,7 +209,8 @@ class PseudoRatersRunner:
     for extremeRater in self.extremeRaters:
       extremeRater[c.raterParticipantIdKey] = str(extremeRater[c.raterParticipantIdKey])
 
-      for helpfulNum in (0.0, 1.0):
+      # Since LCB is turned off, don't waste compute on not-helpful pseudoratings.
+      for helpfulNum in [1.0]:  # Only helpful ratings
         extremeRater[c.helpfulNumKey] = helpfulNum
         self.extremeRatingsToAddWithoutNotes.append(extremeRater.copy())
 
