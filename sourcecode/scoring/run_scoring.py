@@ -5,8 +5,10 @@ merges results and computes contribution statistics for users.  run_scoring shou
 intergrated into main files for execution in internal and external environments.
 """
 import concurrent.futures
+import copy
 from itertools import chain
 import multiprocessing
+from multiprocessing import shared_memory  # type: ignore
 import time
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
@@ -169,29 +171,101 @@ def _merge_results(
   return scoredNotes, helpfulnessScores, auxiliaryNoteInfo
 
 
+def _load_data_with_data_loader_parallelizable(
+  dataLoader: CommunityNotesDataLoader, scoringArgs: ScoringArgs
+) -> ScoringArgs:
+  """
+  Load data from the dataLoader into the scoringArgs object. This function is designed to be run
+  in a multiprocessing pool,
+
+  Deprecated: prefer _load_data_from_shared_memory_parallelizable.
+  """
+  _, ratings, noteStatusHistory, userEnrollment = dataLoader.get_data()
+
+  scoringArgs.ratings = ratings
+  scoringArgs.noteStatusHistory = noteStatusHistory
+  scoringArgs.userEnrollment = userEnrollment
+  if type(scoringArgs) == FinalScoringArgs:
+    prescoringNoteModelOutput, prescoringRaterParams = dataLoader.get_prescoring_model_output()
+    scoringArgs.prescoringNoteModelOutput = prescoringNoteModelOutput
+    scoringArgs.prescoringRaterModelOutput = prescoringRaterParams
+  return scoringArgs
+
+
+def _load_data_from_shared_memory_parallelizable(
+  scoringArgsSharedMemory: c.ScoringArgsSharedMemory, scoringArgs: ScoringArgs
+) -> ScoringArgs:
+  """
+  Load data from shared memory into the scoringArgs object. This function is designed to be run
+  in a multiprocessing pool.
+  """
+  scoringArgs.noteTopics = get_df_from_shared_memory(scoringArgsSharedMemory.noteTopics)
+  scoringArgs.ratings = get_df_from_shared_memory(scoringArgsSharedMemory.ratings)
+  scoringArgs.noteStatusHistory = get_df_from_shared_memory(
+    scoringArgsSharedMemory.noteStatusHistory
+  )
+  scoringArgs.userEnrollment = get_df_from_shared_memory(scoringArgsSharedMemory.userEnrollment)
+
+  if type(scoringArgs) == FinalScoringArgs:
+    assert type(scoringArgsSharedMemory) == c.FinalScoringArgsSharedMemory
+    scoringArgs.prescoringNoteModelOutput = get_df_from_shared_memory(
+      scoringArgsSharedMemory.prescoringNoteModelOutput
+    )
+    scoringArgs.prescoringRaterModelOutput = get_df_from_shared_memory(
+      scoringArgsSharedMemory.prescoringRaterModelOutput
+    )
+  return scoringArgs
+
+
 def _run_scorer_parallelizable(
   scorer: Scorer,
   runParallel: bool,
   scoringArgs: ScoringArgs,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
+  scoringArgsSharedMemory=None,
 ) -> Tuple[ModelResult, float]:
+  """
+  Run scoring (either prescoring or final scoring) for a single scorer.
+  This function is designed to be run in a multiprocessing pool, so you can run this function
+  for each scorer in parallel.
+
+  We determine whether to run prescoring or final scoring based on the type of scoringArgs
+    (PrescoringArgs or FinalScoringArgs).
+
+  If runParallel is False, then we read input dataframes from scoringArgs.
+
+  If runParallel is True, then we ignore the dataframe attributes of scoringArgs, and read
+  the input dataframes from shared memory if scoringArgsSharedMemory is not None (preferred),
+  or from the dataLoader if scoringArgsSharedMemory is None. However, using the dataLoader to
+  re-read the dataframes from disk is much slower than using shared memory and is deprecated.
+  """
+  scorerStartTime = time.perf_counter()
+
+  # Load data if multiprocessing
   if runParallel:
-    assert dataLoader is not None, "must provide a dataLoader to run parallel"
-    print(f"Since parallel, loading data in run_scoring process for {scorer.get_name()}")
-    ## TODO: also load prescoringNoteModelOutput, raterParamsUnfiltered from data loader.
-    _, ratings, noteStatusHistory, userEnrollment = dataLoader.get_data()
+    with c.time_block(f"{scorer.get_name()} run_scorer_parallelizable: Loading data"):
+      scoringArgs.remove_large_args_for_multiprocessing()  # Should be redundant
+      scoringArgs = copy.deepcopy(scoringArgs)
 
-    scoringArgs.ratings = ratings
-    scoringArgs.noteStatusHistory = noteStatusHistory
-    scoringArgs.userEnrollment = userEnrollment
-    if type(scoringArgs) == FinalScoringArgs:
-      print(
-        f"Loading prescoring model output for final scoring, in parallel for scorer {scorer.get_name()}."
-      )
-      prescoringNoteModelOutput, prescoringRaterParams = dataLoader.get_prescoring_model_output()
-      scoringArgs.prescoringNoteModelOutput = prescoringNoteModelOutput
-      scoringArgs.prescoringRaterModelOutput = prescoringRaterParams
+      if scoringArgsSharedMemory is not None:
+        print(
+          f"{scorer.get_name()} run_scorer_parallelizable just started in parallel: loading data from shared memory."
+        )
+        scoringArgs = _load_data_from_shared_memory_parallelizable(
+          scoringArgsSharedMemory, scoringArgs
+        )
+        print(f"{scorer.get_name()} run_scorer_parallelizable just finished loading data from shared memory.")
+      elif dataLoader is not None:
+        print(
+          f"{scorer.get_name()} run_scorer_parallelizable just started in parallel: loading data with dataLoader."
+        )
+        scoringArgs = _load_data_with_data_loader_parallelizable(dataLoader, scoringArgs)
+      else:
+        raise ValueError(
+          "Must provide either scoringArgsSharedMemory or dataLoader to run parallel"
+        )
 
+  # Run scoring
   scorerStartTime = time.perf_counter()
   if type(scoringArgs) == PrescoringArgs:
     scoringResults = scorer.prescore(scoringArgs)
@@ -202,6 +276,75 @@ def _run_scorer_parallelizable(
   scorerEndTime = time.perf_counter()
 
   return scoringResults, (scorerEndTime - scorerStartTime)
+
+
+def save_df_to_shared_memory(df: pd.DataFrame, shms: List) -> c.SharedMemoryDataframeInfo:
+  """
+  Intended to be called before beginning multiprocessing: saves the df to shared memory
+  and returns the info needed to access it, as well as appends it to the list of shared memory objects
+  so it's not garbage collected and can be closed later.
+  """
+  cols = df.columns
+  data = df.to_numpy()
+  df_dtypes_dict = dict(list(zip(df.columns, df.dtypes)))
+  shm = shared_memory.SharedMemory(create=True, size=data.nbytes)
+  np_array = np.ndarray(data.shape, dtype=data.dtype, buffer=shm.buf)
+  np_array[:] = data[:]
+  shms.append(shm)  # save the shared memory object so we can close it later
+  return c.SharedMemoryDataframeInfo(
+    sharedMemoryName=shm.name,
+    columns=cols,
+    dataShape=data.shape,
+    dtypesDict=df_dtypes_dict,
+    npDtype=np_array.dtype,
+  )
+
+
+def get_df_from_shared_memory(sharedMemoryDfInfo: c.SharedMemoryDataframeInfo) -> pd.DataFrame:
+  """
+  Intended to be called from a process within a multiprocessing pool in parallel.
+  Read a dataframe from shared memory and return it.
+  """
+  existing_shm = shared_memory.SharedMemory(name=sharedMemoryDfInfo.sharedMemoryName)
+  np_array = np.ndarray(
+    sharedMemoryDfInfo.dataShape, buffer=existing_shm.buf, dtype=sharedMemoryDfInfo.npDtype
+  )
+  df = pd.DataFrame(np_array, columns=sharedMemoryDfInfo.columns)
+  df = df.astype(sharedMemoryDfInfo.dtypesDict)
+  return df
+
+
+def _save_dfs_to_shared_memory(
+  scoringArgs: ScoringArgs,
+) -> Tuple[List[shared_memory.SharedMemory], c.ScoringArgsSharedMemory]:
+  """
+  Save large dfs to shared memory. Called before beginning multiprocessing.
+  """
+  shms: List[shared_memory.SharedMemory] = []
+  noteTopics = save_df_to_shared_memory(scoringArgs.noteTopics, shms)
+  ratings = save_df_to_shared_memory(scoringArgs.ratings, shms)
+  noteStatusHistory = save_df_to_shared_memory(scoringArgs.noteStatusHistory, shms)
+  userEnrollment = save_df_to_shared_memory(scoringArgs.userEnrollment, shms)
+
+  if type(scoringArgs) == FinalScoringArgs:
+    prescoringNoteModelOutput = save_df_to_shared_memory(
+      scoringArgs.prescoringNoteModelOutput, shms
+    )
+    prescoringRaterModelOutput = save_df_to_shared_memory(
+      scoringArgs.prescoringRaterModelOutput, shms
+    )
+    return shms, c.FinalScoringArgsSharedMemory(
+      noteTopics,
+      ratings,
+      noteStatusHistory,
+      userEnrollment,
+      prescoringNoteModelOutput,
+      prescoringRaterModelOutput,
+    )
+  else:
+    return shms, c.PrescoringArgsSharedMemory(
+      noteTopics, ratings, noteStatusHistory, userEnrollment
+    )
 
 
 def _run_scorers(
@@ -231,10 +374,12 @@ def _run_scorers(
   # Apply scoring algorithms
   overallStartTime = time.perf_counter()
   if runParallel:
+    shms, scoringArgsSharedMemory = _save_dfs_to_shared_memory(scoringArgs)
+
     with concurrent.futures.ProcessPoolExecutor(
-      mp_context=multiprocessing.get_context("spawn"), max_workers=maxWorkers
+      mp_context=multiprocessing.get_context("fork"),
+      max_workers=maxWorkers,
     ) as executor:
-      assert dataLoader is not None
       print(f"Starting parallel scorer execution with {len(scorers)} scorers.")
       # Pass mostly-empty scoringArgs: the data is too large to be copied in-memory to
       # each process, so must be re-loaded from disk by every scorer's dataLoader.
@@ -244,12 +389,17 @@ def _run_scorers(
           _run_scorer_parallelizable,
           scorer=scorer,
           runParallel=True,
+          scoringArgs=copy.deepcopy(scoringArgs),
           dataLoader=dataLoader,
-          scoringArgs=scoringArgs,
+          scoringArgsSharedMemory=copy.deepcopy(scoringArgsSharedMemory),
         )
         for scorer in scorers
       ]
       modelResultsAndTimes = [f.result() for f in futures]
+
+      for shm in shms:
+        shm.close()
+        shm.unlink()  # free the shared memory
   else:
     modelResultsAndTimes = [
       _run_scorer_parallelizable(
