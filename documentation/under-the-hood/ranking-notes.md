@@ -24,7 +24,7 @@ Notes marking posts as "potentially misleading" with a Note Helpfulness Score of
 Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Additionally, notes with an upper confidence bound estimate of their Note Helpfulness Score (as computed via pseudo-raters) less than -0.04 are assigned Not Helpful, as described in [Modeling Uncertainty](#modeling-uncertainty).
 Notes with scores in between remain with a status of Needs more Ratings.
 
-Identifying notes as Not Helpful improves contributor helpfulness scoring and reduces the time contributors spend reviewing low quality notes.
+Identifying notes as Not Helpful improves contributor helpfulness scoring and reduces the time contributors spend reviewing low-quality notes.
 We plan to enable Helpful statuses for notes marking posts as "not misleading" as we continue to evaluate ranking quality and utility to users.
 
 When a note reaches a status of Helpful / Not Helpful, they're shown alongside the two most commonly chosen explanation tags which describe the reason the note was rated helpful or unhelpful.
@@ -47,7 +47,7 @@ When rating notes, contributors answer the question “Is this note helpful?” 
 - `Yes` from the original 2-option version of the rating form maps to `1.0`.
 - `No` from the original 2-option version of the rating form maps to `0.0`.
 
-Specific values in the mapping may change in the future, and will be updated here.
+Specific values in the mapping may change in the future and will be updated here.
 
 ## Matrix Factorization
 
@@ -67,10 +67,12 @@ $$ \sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) +
 
 Where $\lambda_i=0.15$, the regularization on the intercept terms, is currently 5 times higher than $\lambda_f=0.03$, the regularization on the factors.
 
+Note: for now, to avoid overfitting on our very small dataset, we only use 1-dimensional factors. We expect to increase this dimensionality as our dataset size grows significantly.
+
 The resulting scores that we use for each note are the note intercept terms $i_n$. These scores on our current data give an approximately Normal distribution, where notes with the highest and lowest intercepts tend to have factors closer to zero.
 
-In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* abs(f_n)$.
-We also require that "Helpful" notes have $abs(f_n) < 0.50$ to identify notes that may lack broad support despite having an intercept $i_n > 0.40$.
+In general, we set the thresholds to achieve a “Helpful” status at 0.40, including less than 10% of the notes, and our threshold to achieve a “Not Helpful” status at $-0.05 - 0.8 \* \text{abs}(f_n)$.
+We also require that "Helpful" notes have $\text{abs}(f_n) < 0.50$ to identify notes that may lack broad support despite having an intercept $i_n > 0.40$.
 We assign "Not Helpful" status to additional notes based on the upper bound of the uncertainty interval of their intercept (at $-0.04$) as defined in the [Modeling Uncertainty](#modeling-uncertainty) section.
 The [Tag Outlier Filtering](#tag-outlier-filtering) section describes an extension to the general thresholds.
 
@@ -81,21 +83,19 @@ This approach has a few nice properties:
 - Rater-specific intercept terms capture how lenient or generous each rater is with their helpful ratings
 - We are able to include somewhat helpful ratings naturally as 0.5s
 
-Note: for now, to avoid overfitting on our very small dataset, we only use 1-dimensional factors. We expect to increase this dimensionality as our dataset size grows significantly.
-
 Additionally, because the matrix factorization is re-trained from scratch every hour, we have added additional logic to detect if the loss is more than expected (currently by detecting if the loss is above a hard threshold of 0.09) that may have resulted from an unlucky initialization and local mode, and then re-fit the model if so.
 
 ## Modeling Uncertainty
 
-While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are adding. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
+While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are added. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
 
 We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.04, in addition to the rules on the raw intercept values defined in the previous section.
 
 ## Tag Outlier Filtering
 
 In some cases, a note may appear helpful but miss key points about the tweet or lack sources.
-Reviewers who rate a note as "Not Helpful" can associate [tag](../contributing/examples.md) with their review to identify specific shortcomings of the note.
-When a note has receives high levels of a "Not Helpful" tag, we require a higher intercept before rating the note as "Helpful".
+Reviewers who rate a note as "Not Helpful" can associate [tags](../contributing/examples.md) with their review to identify specific shortcomings of the note.
+When a note has received high levels of a "Not Helpful" tag, we require a higher intercept before rating the note as "Helpful".
 This approach helps us to maintain data quality by recognizing when there is a troubling pattern on an otherwise strong note.
 
 We define the quantity $a_{un}$ to represent the _weight_ given to tag $a$ identified by reviewer (user) $u$ on note $n$:
@@ -104,7 +104,7 @@ $$ a_{un} = \frac{\mathbb{1}_ {a_{un}}}{ 1 + \left( {{||f_u - f_n||} \over {\til
 
 Where:
 
-- $\tilde{f} = \eta_{40}^{r_{un}}(||f_n - f_||)$ indicates the 40th percentile of the distances between the rater (user) and note latent factors over all observable ratings $r_{un}$
+- $\tilde{f} = \eta_{40}^{r_{un}}(||f_u - f_n||)$ indicates the 40th percentile of the distances between the rater (user) and note latent factors over all observable ratings $r_{un}$
 - $\mathbb{1}_ {a_{un}}$ is 1 if rater $u$ assigned tag $a$ to note $n$ and 0 otherwise.
 
 We define the total weight of a tag $a$ on note $n$ as:
@@ -133,13 +133,13 @@ Depending on the strength of the signal, a note may be blocked from Currently Ra
 
 After the first round matrix factorization described above, we run another matrix factorization that's similar to the first, but with some changes:
 - Instead of using helpful/not-helpful ratings as the labels, we use the harassment and abuse tag as the positive, and helpful ratings as negatives.
-- Because the positive rate is quite low, we use a sigmoid activation and binary cross entropy loss, as well as upweighting the rare positive class examples, instead of unweighted MSE loss.
+- Because the positive rate is quite low, we use a sigmoid activation and binary cross-entropy loss, as well as upweighting the rare positive class examples, instead of unweighted MSE loss.
 
 Thus, having a high note intercept score in this model indicates that a diverse set of raters found the note to be harassment or abuse. If the score is above a high threshold (2.0), we penalize each rater who has rated the note helpful, even if they did so after it received its final status, by subtracting (5.0 * note_harassment_abuse_intercept) from the numerator of their rater helpfulness score as described in [Rater Helpfulness Score](./contributor-scores.md#rater-helpfulness-score).
 
 ## Note Diligence Score
 
-Community Notes strives for content that X users find broadly helpful, clear and accurate.
+Community Notes strives for content that X users find broadly helpful, clear, and accurate.
 Note Diligence scoring applies an approach similar to the Helpfulness matrix factorization with an explicit focus on note accuracy and sourcing.
 It looks at use of the rating tags “Sources not included or unreliable”, “Sources do not support note” and “Incorrect information” to identify notes that people from different viewpoints agree might have these issues.
 Notes that it scores above a certain threshold are not shown on X.
@@ -162,13 +162,13 @@ Similarly, if a note was impacted by tag outlier filter and required note interc
 
 Multi-Model ranking allows Community Notes to run multiple ranking algorithms before reconciling the results to assign final note status.
 We use this ability to test new models, refine current approaches and support expanding the Community Notes contributor base.
-We currently run several variations of the matrix facgtorizaiton approach.
+We currently run several variations of the matrix factorization approach.
 Each variation uses the same modeling logic and parameters, but applies the model to different slices of the ratings data.
 
 - The _Core_ model determines status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
 - The _Expansion_ model runs the same ranking algorithm with the same parameters as the Core model, with the difference that the Expansion model includes all notes with all ratings across Core and Expansion areas.
 - The _ExpansionPlus_ model functions similarity to the _Expansion_ model, extending the reach of Community Notes to additional areas.
-- The _Group_ models operate on smaller segments of the data to specifically improve note ranking in non-English speaking communities.  Users are assigned to modeling groups (e.g. based on region, country or language) and then we run a separate matrix factorization for each group.  The matrix factorization includes all ratings from users in the modeling group, but the scoring results only impact notes which were written by a member of the modeling group and have at least 80% of ratings from within the modeling group.  We initially launched with 12 Group models and plan to monitor and adjust as Community Notes continues to grow.
+- The _Group_ models operate on smaller segments of the data to specifically improve note ranking in non-English speaking communities.  Users are assigned to modeling groups (e.g. based on region, country, or language) and then we run a separate matrix factorization for each group.  The matrix factorization includes all ratings from users in the modeling group, but the scoring results only impact notes which were written by a member of the modeling group and have at least 80% of ratings from within the modeling group.  We initially launched with 12 Group models and plan to monitor and adjust as Community Notes continues to grow.
 
 In cases where a note is ranked by both the Core and Expansion models the Core model is always authoritative.
 This approach allows us to grow Community Notes as quickly as possible in experimental Expansion areas without the risk of compromising quality in Core areas where Community Notes is well established.
@@ -189,9 +189,9 @@ The Core, Expansion, ExpansionPlus and Group models described in Multi-Model Not
 Empirically, we have observed that some topics are better represented with narrower modeling that can learn viewpoint representations for a more specific topic.
 Improving the strength of modeling for a topic allows us to better identify notes that are helpful to people from different points of view on the given topic.
 
-[Our initial approach](https://github.com/twitter/communitynotes/blob/main/sourcecode/scoring/topic_model.py) to topic specific modeling contains two phases.
-In the first phase each post with one or more notes is assigned to a predefined set of topics where each topic is specified using a short list of associated seed terms (e.g. “Messi”, “Ronaldo”, etc.).
-If any of the notes on a post match a seed term, then the post and all associated notes are assigned to that topic.
+[Our initial approach](https://github.com/twitter/communitynotes/blob/main/sourcecode/scoring/topic_model.py) to topic-specific modeling contains two phases.
+In the first phase, each post with one or more notes is assigned to a predefined set of topics where each topic is specified using a short list of associated seed terms (e.g. “Messi”, “Ronaldo”, etc.).
+If any of the notes on a post-match a seed term, then the post and all associated notes are assigned to that topic.
 Posts without matches or with multiple matches are unassigned.
 After initial assignment, a multi-class logistic regression model trained on the data labeled with seed terms expands coverage for each topic by classifying unassigned posts.
 Posts that are not confidently labeled by the model remain unassigned and are not included in topic modeling.
@@ -219,14 +219,12 @@ $$ \hat{r}_{un} = \mu + i_u + i_n + f_u \cdot f_n $$
 During the first round, we minimize the loss shown below over the set of all observed ratings $r_{un}$.
 Note that this model uses a single-dimensional factor representation. 
 
-$$
-\sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_{iu} i_u^2 + \lambda_{in} i_n^2 + \lambda_{\mu} \mu^2 + \lambda_{fu} f_u^2 + \lambda_{fn} f_n^2 + \lambda_{if} i_n |f_n|
-$$
+$$ \sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_{iu} i_u^2 + \lambda_{in} i_n^2 + \lambda_{\mu} \mu^2 + \lambda_{fu} f_u^2 + \lambda_{fn} f_n^2 + \lambda_{if} i_n |f_n| $$
 
 Where $\lambda_{iu}=30\lambda$, $\lambda_{in}=5\lambda$, $\lambda_{\mu}=5\lambda$, $\lambda_{fu}=\dfrac{\lambda}{4}$, $\lambda_{fn}=\dfrac{\lambda}{3}$, $\lambda_{if}=25\lambda$ and $\lambda=0.03$.
 This modification appears to have several advantages:
 
-- Decreased regularization on user factors ($\lambda_{fu}$) and note factors ($\lambda_{fn}$) allows the model to learn potentially more accurate representations for users and notes.
+- Decreased regularization on user factors ($\lambda_{fu}$) and note factors ($\lambda_{fn}$) allow the model to learn potentially more accurate representations for users and notes.
 - Introduction of regularization on the product of note intercept and factor magnitudes ($\lambda_{if}$) pressures the model to decide whether the ratings on a note are most explained by universal appeal or appeal to raters of a particular factor.
 - Increased regularization on note intercepts ($\lambda_{in}$) encourages the model to hold a high standard when deciding that a note has universal appeal.
 
@@ -242,9 +240,7 @@ Notice that the weights $w^S_{un}$ function to balance the loss across ratings f
 
 Consequently, the loss optimized during the second round is:
 
-$$
-\sum_{r_{un}} w_{un} (r_{un} - \hat{r}_{un})^2 + \lambda_{iu} i_u^2 + \lambda_{in} i_n^2 + \lambda_{\mu} \mu^2 + \lambda_{fu} f_u^2 + \lambda_{fn} f_n^2 + \lambda_{if} i_n |f_n|
-$$
+$$ \sum_{r_{un}} w_{un} (r_{un} - \hat{r}_{un})^2 + \lambda_{iu} i_u^2 + \lambda_{in} i_n^2 + \lambda_{\mu} \mu^2 + \lambda_{fu} f_u^2 + \lambda_{fn} f_n^2 + \lambda_{if} i_n |f_n| $$
 
 Combined with the regularization adjustments from the first round, the added weighting functions to improve the learned user representation, ultimately allowing the model to recognize more instances of consensus among users that hold different perspectives.
 We have deployed the expanded consensus trial algorithm in Group Model 14 and plan to expand deployment as we evaluate performance in the initial trial.
@@ -257,7 +253,7 @@ As older data comprise an increasingly small fraction of the dataset, ranking re
 
 To maintain Helpful note quality as Community Notes continues to grow, we are adding logic which stabilizes the status of a note once the note is two weeks old.
 This approach allows us to continue optimizing the ranking algorithm with a focus on the impact on current data while persisting helpful community contributions on older topics.
-Before a note is two weeks old, the helpfulness status will continue to be updated each time time the ranking algorithm is run.
+Before a note is two weeks old, the helpfulness status will continue to be updated each time the ranking algorithm is run.
 After a note turns two weeks old we store the helpfulness status for that note and use the stored status in the future, including for displaying notes on X and calculating user contribution statistics.
 
 While a note may be scored by the Core, Expansion and Group models, we only finalize note status based on the Core model.
@@ -269,7 +265,7 @@ If at any point both models agree and the Core model scores the note as Helpful 
 
 When notes reach a status of Helpful or Not Helpful, they're displayed alongside the top two explanation tags that were given by raters to explain why they rated the note helpful or not.
 
-This is done by counting the number of times each explanation tag was given and filtering to explanation tags that match the final note status (e.g., if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status is reverted to “Needs More Ratings” (this is rare).
+This is done by counting the number of times each explanation tag was given and filtering to explanation tags that match the final note status (e.g. if the note status is Helpful we only count helpful explanation tags). Importantly, each explanation tag must be used by at least two different raters. If there aren’t two different tags that are each used by two different raters, then the note’s status is reverted to “Needs More Ratings” (this is rare).
 
 We break ties between multiple explanation tags by picking the less commonly used reasons, given in order below (#1 is the least commonly used and therefore wins all tiebreaks).
 
@@ -319,7 +315,7 @@ For not-helpful notes:
     - Fit the note diligence matrix factorization model.
     - Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
 3. Reconcile scoring results from each scorer to generate final status for each note.
-4. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and rating tags.  Stabilize helpfulness status for any notes older than two weeks.
+4. Update status labels for any notes written within the last two weeks based on the intercept terms (scores) and rating tags.  Stabilize helpfulness status for any notes older than two weeks.
 5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
@@ -340,7 +336,7 @@ For not-helpful notes:
 - Introduce expanded consensus trial algorithm with a single group model.
 
 **December 20, 2023**
-- Introduce note factor threshold for "Helpful" notes requiring $abs(f_n) < 0.50$.
+- Introduce note factor threshold for "Helpful" notes requiring $\text{abs}(f_n) < 0.50$.
 - Apply ML training optimizations to reduce note ranking runtime.
 
 **December 15, 2023**
@@ -353,7 +349,7 @@ For not-helpful notes:
 - Introduce note diligence scoring through a novel matrix factorization algorithm incorporating rater weights.
 
 **November 13, 2023**
-- Introduce tag-consensus harassment-abuse note scoring to decrease rater helpfulness for raters who have rated notes as Helpful where there is a consensus of harrassemnt or abuse.
+- Introduce tag-consensus harassment-abuse note scoring to decrease rater helpfulness for raters who have rated notes as Helpful where there is a consensus of harassment or abuse.
 
 **October 20, 2023**
 - Expand filtering applied to "Incorrect" tags to raise the standard for Helpfulness and reduce risk of potentially incorrect Helpful notes.
