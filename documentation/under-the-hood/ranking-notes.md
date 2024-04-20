@@ -183,6 +183,28 @@ It might list one of the following models:
 - GroupModelN (vX.X). The Nth instantiation of the _Group_ model described above.
 - ScoringDriftGuard. This is a scoring rule that locks note statuses after two weeks. See the [next section](#status-stabilization) for more details.
 
+## Topic Modeling
+
+The Core, Expansion, ExpansionPlus and Group models described in Multi-Model Note Ranking learn latent representations for notes and users that are generally effective at modeling viewpoints across a wide range of notes.
+Empirically, we have observed that some topics are better represented with narrower modeling that can learn viewpoint representations for a more specific topic.
+Improving the strength of modeling for a topic allows us to better identify notes that are helpful to people from different points of view on the given topic.
+
+[Our initial approach](https://github.com/twitter/communitynotes/blob/main/sourcecode/scoring/topic_model.py) to topic specific modeling contains two phases.
+In the first phase each post with one or more notes is assigned to a predefined set of topics where each topic is specified using a short list of associated seed terms (e.g. “Messi”, “Ronaldo”, etc.).
+If any of the notes on a post match a seed term, then the post and all associated notes are assigned to that topic.
+Posts without matches or with multiple matches are unassigned.
+After initial assignment, a multi-class logistic regression model trained on the data labeled with seed terms expands coverage for each topic by classifying unassigned posts.
+Posts that are not confidently labeled by the model remain unassigned and are not included in topic modeling.
+
+In the second phase, we train a _Topic Model_ over all of the notes and ratings which have been assigned to each topic.
+Topic Models share the same architecture and hyperparmeters as the Core Model, but differ in the rating selection process.
+Since the Core Model runs on a larger dataset spanning topics, the Core Model includes two matrix factorizations separated by a step which filters ratings to include raters who have a demonstrated pattern of identifying Helpful notes that bridge perspectives.
+Given that Topic Models are trained on less data, we find that Topic Models perform best without the rating filter, which tends to remove too many ratings for the model to make confident predictions.
+
+At present, the Topic Models function to uphold a high standard of helpfulness across viewpoints by preventing some notes from receiving Helpful status if the note is not found Helpful across the space of topic representations or if the note is too aligned with a single perspective.
+If topic modeling assigns an intercept below 0.24 or a factor magnitude greater than 0.51, then the note will only be eligible for Needs More Ratings or Not Helpful status.
+Note that to ensure Topic Model factors and intercepts reflect sufficient underlying signal, Topic Models only update note status if the note has 5 or more raters with both positive and negative factors in the Topic Model.
+
 ## Expanded Consensus Trial
 
 As of February 13, 2024 we are trialing a refinement to the matrix factorization approach above designed to improve and expand the detection of Helpful notes.
@@ -281,16 +303,35 @@ For not-helpful notes:
 
 ## Complete Algorithm Steps:
 
+# Prescoring
+
 1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence).
-2. Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.
-3. Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
-4. Re-fit the matrix factorization model on the ratings data that’s been filtered further in step 3.
-5. Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
-6. Reconcile scoring results from the Core, Expansion and Group models to generate final status for each note.
-7. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and rating tags.  Stabilize helpfulness status for any notes older than two weeks.
-8. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
+2. For each scorer (Core, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
+    - Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.
+    - Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
+    - Fit the harassment-abuse tag-consensus matrix factorization model on the helpfulness-score filtered ratings, then update Author and Rater Helpfulness scores using the output of the tag-consensus model.
+
+# Scoring
+
+1. Load the output of step 2 above from prescoring, but re-run step 1 on the newest available notes and ratings data.
+2. For each scorer (Core, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
+    - Re-fit the matrix factorization model on ratings data that’s been filtered by user helpfulness scores in step 3.
+    - Fit the note diligence matrix factorization model.
+    - Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
+3. Reconcile scoring results from each scorer to generate final status for each note.
+4. Update status labels for any notes written within the last two weeks based the intercept terms (scores) and rating tags.  Stabilize helpfulness status for any notes older than two weeks.
+5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**April 11, 2024**
+- Split the scorer into separate prescoring and final scoring phases.
+
+**March 29, 2024**
+- Modify Topic Models to remove rating filters when computing note intercepts and factors.
+
+**March 22, 2024**
+- Launch Topic Models, including topic assignment based on seed terms and logistic regression, with modeling mirroring the Core model architecture.
 
 **February 23, 2024**
 - Increase rater helpfulness score penalties for making helpful ratings on notes that have high tag-consensus harassment-abuse model intercepts by multiplying the previous penalty by the intercept score, and decrease the threshold at which raters are penalized for rating them helpful.

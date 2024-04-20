@@ -12,6 +12,16 @@ class Scorers(Enum):
   MFGroupScorer = auto()
   MFExpansionPlusScorer = auto()
   ReputationScorer = auto()
+  MFTopicScorer = auto()
+
+
+class Topics(Enum):
+  """Range of the note topic model."""
+
+  Unassigned = 0
+  UkraineConflict = 1
+  GazaConflict = 2
+  MessiRonaldo = 3
 
 
 def scorers_from_csv(csv: str) -> Set[Scorers]:

@@ -1,6 +1,8 @@
 from contextlib import contextmanager
+from dataclasses import dataclass
 import os
 import time
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -44,6 +46,7 @@ notHelpfulKey = "notHelpful"
 helpfulnessLevelKey = "helpfulnessLevel"
 createdAtMillisKey = "createdAtMillis"
 summaryKey = "summary"
+noteTopicKey = "noteTopic"
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 modelingPopulationKey = "modelingPopulation"
 modelingGroupKey = "modelingGroup"
@@ -101,6 +104,8 @@ internalRaterFactorKeyBase = "internalRaterFactor"
 internalRatingStatusKey = "internalRatingStatus"
 internalActiveRulesKey = "internalActiveRules"
 
+scorerNameKey = "scorerName"
+
 
 def note_factor_key(i):
   return internalNoteFactorKeyBase + str(i)
@@ -148,6 +153,11 @@ groupNoteInterceptMaxKey = "groupNoteInterceptMax"
 groupNoteInterceptMinKey = "groupNoteInterceptMin"
 groupRaterInterceptKey = "groupRaterIntercept"
 groupRaterFactor1Key = "groupRaterFactor1"
+# Topic Model
+topicNoteInterceptKey = "topicNoteIntercept"
+topicNoteFactor1Key = "topicNoteFactor1"
+topicRatingStatusKey = "topicRatingStatus"
+topicNoteConfidentKey = "topicNoteConfident"
 # Harassment/Abuse Tag
 harassmentNoteInterceptKey = "harassmentNoteIntercept"
 harassmentNoteFactor1Key = "harassmentNoteFactor1"
@@ -408,6 +418,9 @@ aggregateRatingReceivedTotal = "aggregateRatingReceivedTotal"
 core = "CORE"
 expansion = "EXPANSION"
 expansionPlus = "EXPANSION_PLUS"
+topWriterWritingImpact = 10
+topWriterHitRate = 0.04
+hasCrnhSinceEarnOut = "hasCrnhSinceEarnOut"
 
 userEnrollmentTSVColumnsAndTypes = [
   (participantIdKey, str),
@@ -422,11 +435,6 @@ userEnrollmentTSVColumnsAndTypes = [
 userEnrollmentTSVColumns = [col for (col, _) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypes = [dtype for (_, dtype) in userEnrollmentTSVColumnsAndTypes]
 userEnrollmentTSVTypeMapping = {col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes}
-# TODO: Remove the "old" user enrollment schemas below once numberOfTimesEarnedOut is in production
-userEnrollmentTSVColumnsOld = [col for (col, _) in userEnrollmentTSVColumnsAndTypes[:7]]
-userEnrollmentTSVTypeMappingOld = {
-  col: dtype for (col, dtype) in userEnrollmentTSVColumnsAndTypes[:7]
-}
 
 noteInterceptMaxKey = "internalNoteIntercept_max"
 noteInterceptMinKey = "internalNoteIntercept_min"
@@ -491,6 +499,19 @@ deprecatedNoteModelOutputColumns = frozenset(
   }
 )
 
+prescoringNoteModelOutputTSVColumnsAndTypes = [
+  (noteIdKey, np.int64),
+  (internalNoteInterceptKey, np.double),
+  (internalNoteFactor1Key, np.double),
+  (scorerNameKey, str),
+]
+prescoringNoteModelOutputTSVColumns = [
+  col for (col, dtype) in prescoringNoteModelOutputTSVColumnsAndTypes
+]
+prescoringNoteModelOutputTSVTypeMapping = {
+  col: dtype for (col, dtype) in prescoringNoteModelOutputTSVColumnsAndTypes
+}
+
 noteModelOutputTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
   (coreNoteInterceptKey, np.double),
@@ -532,6 +553,11 @@ noteModelOutputTSVColumnsAndTypes = [
   (expansionPlusNoteInterceptKey, np.double),
   (expansionPlusNoteFactor1Key, np.double),
   (expansionPlusRatingStatusKey, str),
+  (topicNoteInterceptKey, np.double),
+  (topicNoteFactor1Key, np.double),
+  (topicRatingStatusKey, str),
+  (noteTopicKey, str),
+  (topicNoteConfidentKey, str),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
@@ -540,6 +566,26 @@ deprecatedNoteModelOutputTSVColumnsAndTypes = [
   for (col, dtype) in noteModelOutputTSVColumnsAndTypes
   if col in deprecatedNoteModelOutputColumns
 ]
+
+prescoringRaterModelOutputTSVColumnsAndTypes = [
+  (raterParticipantIdKey, object),
+  (internalRaterInterceptKey, np.double),
+  (internalRaterFactor1Key, np.double),
+  (crhCrnhRatioDifferenceKey, np.double),
+  (meanNoteScoreKey, np.double),
+  (raterAgreeRatioKey, np.double),
+  (
+    aboveHelpfulnessThresholdKey,
+    "boolean",
+  ),  # nullable bool https://pandas.pydata.org/docs/user_guide/boolean.html
+  (scorerNameKey, str),
+]
+prescoringRaterModelOutputTSVColumns = [
+  col for (col, dtype) in prescoringRaterModelOutputTSVColumnsAndTypes
+]
+prescoringRaterModelOutputTSVTypeMapping = {
+  col: dtype for (col, dtype) in prescoringRaterModelOutputTSVColumnsAndTypes
+}
 
 raterModelOutputTSVColumnsAndTypes = [
   (raterParticipantIdKey, np.int64),
@@ -571,7 +617,7 @@ raterModelOutputTSVColumnsAndTypes = [
   (groupRaterFactor1Key, np.double),
   (modelingGroupKey, np.float64),
   (raterHelpfulnessReputationKey, np.double),
-  (numberOfTimesEarnedOutKey, np.int64),
+  (numberOfTimesEarnedOutKey, np.float64),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
@@ -585,3 +631,71 @@ def time_block(label):
   finally:
     end = time.time()
     print(f"{label} elapsed time: {end - start:.2f} secs ({((end-start)/60.0):.2f} mins)")
+
+
+@dataclass
+class SharedMemoryDataframeInfo:
+  sharedMemoryName: str
+  columns: list
+  dataShape: tuple
+  dtypesDict: dict
+  npDtype: str
+
+
+@dataclass
+class ScoringArgsSharedMemory:
+  noteTopics: SharedMemoryDataframeInfo
+  ratings: SharedMemoryDataframeInfo
+  noteStatusHistory: SharedMemoryDataframeInfo
+  userEnrollment: SharedMemoryDataframeInfo
+
+
+@dataclass
+class PrescoringArgsSharedMemory(ScoringArgsSharedMemory):
+  pass
+
+
+@dataclass
+class FinalScoringArgsSharedMemory(ScoringArgsSharedMemory):
+  prescoringNoteModelOutput: SharedMemoryDataframeInfo
+  prescoringRaterModelOutput: SharedMemoryDataframeInfo
+
+
+@dataclass
+class ScoringArgs:
+  noteTopics: pd.DataFrame
+  ratings: pd.DataFrame
+  noteStatusHistory: pd.DataFrame
+  userEnrollment: pd.DataFrame
+
+  def remove_large_args_for_multiprocessing(self):
+    self.noteTopics = None
+    self.ratings = None
+    self.noteStatusHistory = None
+    self.userEnrollment = None
+
+
+@dataclass
+class PrescoringArgs(ScoringArgs):
+  pass
+
+
+@dataclass
+class FinalScoringArgs(ScoringArgs):
+  prescoringNoteModelOutput: pd.DataFrame
+  prescoringRaterModelOutput: pd.DataFrame
+
+  def remove_large_args_for_multiprocessing(self):
+    self.ratings = None
+    self.noteStatusHistory = None
+    self.userEnrollment = None
+    self.prescoringNoteModelOutput = None
+    self.prescoringRaterModelOutput = None
+
+
+@dataclass
+class ModelResult:
+  scoredNotes: pd.DataFrame
+  helpfulnessScores: pd.DataFrame
+  auxiliaryNoteInfo: pd.DataFrame
+  scorerName: Optional[str]

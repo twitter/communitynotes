@@ -3,7 +3,7 @@ import os
 
 from . import constants as c
 from .enums import scorers_from_csv
-from .process_data import LocalDataLoader, write_tsv_local
+from .process_data import LocalDataLoader, write_prescoring_output, write_tsv_local
 from .run_scoring import run_scoring
 
 
@@ -77,6 +77,13 @@ def parse_args():
     dest="parallel",
   )
   parser.set_defaults(parallel=False)
+  parser.add_argument(
+    "--prescoring-delay-hours",
+    default=None,
+    type=int,
+    dest="prescoring_delay_hours",
+    help="Filter prescoring input to simulate delay in hours",
+  )
 
   return parser.parse_args()
 
@@ -89,11 +96,29 @@ def main():
     c.useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory = False
 
   # Load input dataframes.
-  dataLoader = LocalDataLoader(args.notes, args.ratings, args.status, args.enrollment, args.headers)
-  _, ratings, statusHistory, userEnrollment = dataLoader.get_data()
+  dataLoader = LocalDataLoader(
+    args.notes,
+    args.ratings,
+    args.status,
+    args.enrollment,
+    args.headers,
+    prescoringNoteModelOutputPath=os.path.join(args.outdir, "prescoring_scored_notes.tsv"),
+    prescoringRaterModelOutputPath=os.path.join(args.outdir, "prescoring_helpfulness_scores.tsv"),
+  )
+  notes, ratings, statusHistory, userEnrollment = dataLoader.get_data()
+
+  # Prepare callback to write first round scoring output
+  def prescoring_write_fn(notePath, raterPath):
+    return write_prescoring_output(
+      notePath,
+      raterPath,
+      os.path.join(args.outdir, "prescoring_scored_notes.tsv"),
+      os.path.join(args.outdir, "prescoring_helpfulness_scores.tsv"),
+    )
 
   # Invoke scoring and user contribution algorithms.
   scoredNotes, helpfulnessScores, newStatus, auxNoteInfo = run_scoring(
+    notes,
     ratings,
     statusHistory,
     userEnrollment,
@@ -103,6 +128,8 @@ def main():
     strictColumns=args.strict_columns,
     runParallel=args.parallel,
     dataLoader=dataLoader if args.parallel == True else None,
+    writePrescoringScoringOutputCallback=prescoring_write_fn,
+    filterPrescoringInputToSimulateDelayInHours=args.prescoring_delay_hours,
   )
 
   # Write outputs to local disk.

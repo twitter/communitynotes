@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Callable, List, Optional, Set, Tuple
 
 from . import constants as c, tag_filter
+from .enums import Topics
 from .explanation_tags import top_tags
 
 import numpy as np
@@ -53,6 +54,9 @@ class RuleID(Enum):
   GROUP_MODEL_14 = RuleAndVersion("GroupModel14", "1.1", False)
   INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
   SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
+  TOPIC_MODEL_1 = RuleAndVersion("TopicModel01", "1.0", False)
+  TOPIC_MODEL_2 = RuleAndVersion("TopicModel02", "1.0", False)
+  TOPIC_MODEL_3 = RuleAndVersion("TopicModel03", "1.0", False)
 
   def get_name(self) -> str:
     """Returns a string combining the name and version to uniquely name the logic of the ScoringRule."""
@@ -733,6 +737,50 @@ class ScoringDriftGuard(ScoringRule):
     unlockedStatus = mergedLabels[[c.noteIdKey, statusColumn]].copy()
     unlockedStatus = unlockedStatus.rename(columns={statusColumn: c.unlockedRatingStatusKey})
     return noteStatusUpdates, unlockedStatus
+
+
+class ApplyTopicModelResult(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    topic: Topics,
+    topicNMRInterceptThreshold: Optional[float] = 0.24,
+    topicNMRFactorThreshold: Optional[float] = 0.51,
+  ):
+    """Set any note scored by a topic model to NMR if the note is presently CRH and has low topic intercept.
+
+    Args:
+      rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
+      dependencies: Rules which must run before this rule can run.
+      topic: apply the rule to notes scored by a given topic model.
+    """
+    super().__init__(ruleID, dependencies)
+    self._topic = topic
+    self._topicNMRInterceptThreshold = topicNMRInterceptThreshold
+    self._topicNMRFactorThreshold = topicNMRFactorThreshold
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
+    """Flip notes from CRH to NMR based on the topic model results."""
+    # Identify notes which are currently CRH.
+    currentCRHNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][
+      [c.noteIdKey]
+    ]
+    # Identify notes which are below threshld from the applicable topic model.
+    topicLowNotes = noteStats[
+      (
+        (noteStats[c.topicNoteInterceptKey] < self._topicNMRInterceptThreshold)
+        | (noteStats[c.topicNoteFactor1Key].abs() > self._topicNMRFactorThreshold)
+      )
+      & (noteStats[c.topicNoteConfidentKey])
+      & (noteStats[c.noteTopicKey] == self._topic.name)
+    ][[c.noteIdKey]]
+    # Set note status for candidates and return
+    noteStatusUpdates = currentCRHNotes.merge(topicLowNotes, on=c.noteIdKey, how="inner")
+    noteStatusUpdates[statusColumn] = c.needsMoreRatings
+    return (noteStatusUpdates, None)
 
 
 def apply_scoring_rules(

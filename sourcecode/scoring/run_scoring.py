@@ -4,16 +4,17 @@ This file defines "run_scoring" which invokes all Community Notes scoring algori
 merges results and computes contribution statistics for users.  run_scoring should be
 intergrated into main files for execution in internal and external environments.
 """
-
-from collections import namedtuple
 import concurrent.futures
+import copy
 from itertools import chain
 import multiprocessing
+from multiprocessing import shared_memory  # type: ignore
 import time
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from . import constants as c, contributor_state, note_ratings, note_status_history, scoring_rules
-from .enums import Scorers
+from .constants import FinalScoringArgs, ModelResult, PrescoringArgs, ScoringArgs
+from .enums import Scorers, Topics
 from .matrix_factorization.normalized_loss import NormalizedLossHyperparameters
 from .mf_core_scorer import MFCoreScorer
 from .mf_expansion_plus_scorer import MFExpansionPlusScorer
@@ -24,16 +25,15 @@ from .mf_group_scorer import (
   groupScorerCount,
   trialScoringGroup,
 )
+from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
 from .process_data import CommunityNotesDataLoader
 from .reputation_scorer import ReputationScorer
 from .scorer import Scorer
 from .scoring_rules import RuleID
+from .topic_model import TopicModel
 
 import numpy as np
 import pandas as pd
-
-
-ModelResult = namedtuple("ModelResult", ["scoredNotes", "helpfulnessScores", "auxiliaryNoteInfo"])
 
 
 def _get_scorers(
@@ -109,6 +109,10 @@ def _get_scorers(
         tagConsensusHarassmentHelpfulRatingPenalty=10,
       )
     )
+  if enabledScorers is None or Scorers.MFTopicScorer in enabledScorers:
+    scorers[Scorers.MFTopicScorer] = [
+      MFTopicScorer(topicName=topic.name, seed=seed) for topic in Topics
+    ]
 
   return scorers
 
@@ -145,6 +149,7 @@ def _merge_results(
   scoredNotesSize = len(scoredNotes)
   scoredNotes = scoredNotes.merge(modelScoredNotes, on=c.noteIdKey, how="outer")
   assert len(scoredNotes) == scoredNotesSize, "scoredNotes should not expand"
+
   # Merge helpfulnessScores
   if modelHelpfulnessScores is not None:
     assert (set(modelHelpfulnessScores.columns) & set(helpfulnessScores.columns)) == {
@@ -153,6 +158,7 @@ def _merge_results(
     helpfulnessScores = helpfulnessScores.merge(
       modelHelpfulnessScores, on=c.raterParticipantIdKey, how="outer"
     )
+
   # Merge auxiliaryNoteInfo
   if modelauxiliaryNoteInfo is not None:
     assert (set(modelauxiliaryNoteInfo.columns) & set(auxiliaryNoteInfo.columns)) == {
@@ -161,38 +167,193 @@ def _merge_results(
     auxiliaryNoteInfoSize = len(auxiliaryNoteInfo)
     auxiliaryNoteInfo = auxiliaryNoteInfo.merge(modelauxiliaryNoteInfo, on=c.noteIdKey, how="outer")
     assert len(auxiliaryNoteInfo) == auxiliaryNoteInfoSize, "auxiliaryNoteInfo should not expand"
+
   return scoredNotes, helpfulnessScores, auxiliaryNoteInfo
+
+
+def _load_data_with_data_loader_parallelizable(
+  dataLoader: CommunityNotesDataLoader, scoringArgs: ScoringArgs
+) -> ScoringArgs:
+  """
+  Load data from the dataLoader into the scoringArgs object. This function is designed to be run
+  in a multiprocessing pool,
+
+  Deprecated: prefer _load_data_from_shared_memory_parallelizable.
+  """
+  _, ratings, noteStatusHistory, userEnrollment = dataLoader.get_data()
+
+  scoringArgs.ratings = ratings
+  scoringArgs.noteStatusHistory = noteStatusHistory
+  scoringArgs.userEnrollment = userEnrollment
+  if type(scoringArgs) == FinalScoringArgs:
+    prescoringNoteModelOutput, prescoringRaterParams = dataLoader.get_prescoring_model_output()
+    scoringArgs.prescoringNoteModelOutput = prescoringNoteModelOutput
+    scoringArgs.prescoringRaterModelOutput = prescoringRaterParams
+  return scoringArgs
+
+
+def _load_data_from_shared_memory_parallelizable(
+  scoringArgsSharedMemory: c.ScoringArgsSharedMemory, scoringArgs: ScoringArgs
+) -> ScoringArgs:
+  """
+  Load data from shared memory into the scoringArgs object. This function is designed to be run
+  in a multiprocessing pool.
+  """
+  scoringArgs.noteTopics = get_df_from_shared_memory(scoringArgsSharedMemory.noteTopics)
+  scoringArgs.ratings = get_df_from_shared_memory(scoringArgsSharedMemory.ratings)
+  scoringArgs.noteStatusHistory = get_df_from_shared_memory(
+    scoringArgsSharedMemory.noteStatusHistory
+  )
+  scoringArgs.userEnrollment = get_df_from_shared_memory(scoringArgsSharedMemory.userEnrollment)
+
+  if type(scoringArgs) == FinalScoringArgs:
+    assert type(scoringArgsSharedMemory) == c.FinalScoringArgsSharedMemory
+    scoringArgs.prescoringNoteModelOutput = get_df_from_shared_memory(
+      scoringArgsSharedMemory.prescoringNoteModelOutput
+    )
+    scoringArgs.prescoringRaterModelOutput = get_df_from_shared_memory(
+      scoringArgsSharedMemory.prescoringRaterModelOutput
+    )
+  return scoringArgs
 
 
 def _run_scorer_parallelizable(
   scorer: Scorer,
   runParallel: bool,
-  ratings: Optional[pd.DataFrame] = None,
-  noteStatusHistory: Optional[pd.DataFrame] = None,
-  userEnrollment: Optional[pd.DataFrame] = None,
+  scoringArgs: ScoringArgs,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
-):
-  if runParallel:
-    assert dataLoader is not None, "must provide a dataLoader to run parallel"
-    if dataLoader is not None:
-      _, ratings, noteStatusHistory, userEnrollment = dataLoader.get_data()
+  scoringArgsSharedMemory=None,
+) -> Tuple[ModelResult, float]:
+  """
+  Run scoring (either prescoring or final scoring) for a single scorer.
+  This function is designed to be run in a multiprocessing pool, so you can run this function
+  for each scorer in parallel.
 
+  We determine whether to run prescoring or final scoring based on the type of scoringArgs
+    (PrescoringArgs or FinalScoringArgs).
+
+  If runParallel is False, then we read input dataframes from scoringArgs.
+
+  If runParallel is True, then we ignore the dataframe attributes of scoringArgs, and read
+  the input dataframes from shared memory if scoringArgsSharedMemory is not None (preferred),
+  or from the dataLoader if scoringArgsSharedMemory is None. However, using the dataLoader to
+  re-read the dataframes from disk is much slower than using shared memory and is deprecated.
+  """
   scorerStartTime = time.perf_counter()
-  result = ModelResult(*scorer.score(ratings, noteStatusHistory, userEnrollment))
+
+  # Load data if multiprocessing
+  if runParallel:
+    with c.time_block(f"{scorer.get_name()} run_scorer_parallelizable: Loading data"):
+      scoringArgs.remove_large_args_for_multiprocessing()  # Should be redundant
+      scoringArgs = copy.deepcopy(scoringArgs)
+
+      if scoringArgsSharedMemory is not None:
+        print(
+          f"{scorer.get_name()} run_scorer_parallelizable just started in parallel: loading data from shared memory."
+        )
+        scoringArgs = _load_data_from_shared_memory_parallelizable(
+          scoringArgsSharedMemory, scoringArgs
+        )
+        print(f"{scorer.get_name()} run_scorer_parallelizable just finished loading data from shared memory.")
+      elif dataLoader is not None:
+        print(
+          f"{scorer.get_name()} run_scorer_parallelizable just started in parallel: loading data with dataLoader."
+        )
+        scoringArgs = _load_data_with_data_loader_parallelizable(dataLoader, scoringArgs)
+      else:
+        raise ValueError(
+          "Must provide either scoringArgsSharedMemory or dataLoader to run parallel"
+        )
+
+  # Run scoring
+  scorerStartTime = time.perf_counter()
+  if type(scoringArgs) == PrescoringArgs:
+    scoringResults = scorer.prescore(scoringArgs)
+  elif type(scoringArgs) == FinalScoringArgs:
+    scoringResults = scorer.score_final(scoringArgs)
+  else:
+    raise ValueError(f"Unknown scoringArgs type: {type(scoringArgs)}")
   scorerEndTime = time.perf_counter()
 
-  return result, (scorerEndTime - scorerStartTime)
+  return scoringResults, (scorerEndTime - scorerStartTime)
+
+
+def save_df_to_shared_memory(df: pd.DataFrame, shms: List) -> c.SharedMemoryDataframeInfo:
+  """
+  Intended to be called before beginning multiprocessing: saves the df to shared memory
+  and returns the info needed to access it, as well as appends it to the list of shared memory objects
+  so it's not garbage collected and can be closed later.
+  """
+  cols = df.columns
+  data = df.to_numpy()
+  df_dtypes_dict = dict(list(zip(df.columns, df.dtypes)))
+  shm = shared_memory.SharedMemory(create=True, size=data.nbytes)
+  np_array = np.ndarray(data.shape, dtype=data.dtype, buffer=shm.buf)
+  np_array[:] = data[:]
+  shms.append(shm)  # save the shared memory object so we can close it later
+  return c.SharedMemoryDataframeInfo(
+    sharedMemoryName=shm.name,
+    columns=cols,
+    dataShape=data.shape,
+    dtypesDict=df_dtypes_dict,
+    npDtype=np_array.dtype,
+  )
+
+
+def get_df_from_shared_memory(sharedMemoryDfInfo: c.SharedMemoryDataframeInfo) -> pd.DataFrame:
+  """
+  Intended to be called from a process within a multiprocessing pool in parallel.
+  Read a dataframe from shared memory and return it.
+  """
+  existing_shm = shared_memory.SharedMemory(name=sharedMemoryDfInfo.sharedMemoryName)
+  np_array = np.ndarray(
+    sharedMemoryDfInfo.dataShape, buffer=existing_shm.buf, dtype=sharedMemoryDfInfo.npDtype
+  )
+  df = pd.DataFrame(np_array, columns=sharedMemoryDfInfo.columns)
+  df = df.astype(sharedMemoryDfInfo.dtypesDict)
+  return df
+
+
+def _save_dfs_to_shared_memory(
+  scoringArgs: ScoringArgs,
+) -> Tuple[List[shared_memory.SharedMemory], c.ScoringArgsSharedMemory]:
+  """
+  Save large dfs to shared memory. Called before beginning multiprocessing.
+  """
+  shms: List[shared_memory.SharedMemory] = []
+  noteTopics = save_df_to_shared_memory(scoringArgs.noteTopics, shms)
+  ratings = save_df_to_shared_memory(scoringArgs.ratings, shms)
+  noteStatusHistory = save_df_to_shared_memory(scoringArgs.noteStatusHistory, shms)
+  userEnrollment = save_df_to_shared_memory(scoringArgs.userEnrollment, shms)
+
+  if type(scoringArgs) == FinalScoringArgs:
+    prescoringNoteModelOutput = save_df_to_shared_memory(
+      scoringArgs.prescoringNoteModelOutput, shms
+    )
+    prescoringRaterModelOutput = save_df_to_shared_memory(
+      scoringArgs.prescoringRaterModelOutput, shms
+    )
+    return shms, c.FinalScoringArgsSharedMemory(
+      noteTopics,
+      ratings,
+      noteStatusHistory,
+      userEnrollment,
+      prescoringNoteModelOutput,
+      prescoringRaterModelOutput,
+    )
+  else:
+    return shms, c.PrescoringArgsSharedMemory(
+      noteTopics, ratings, noteStatusHistory, userEnrollment
+    )
 
 
 def _run_scorers(
   scorers: List[Scorer],
-  ratings: pd.DataFrame,
-  noteStatusHistory: pd.DataFrame,
-  userEnrollment: pd.DataFrame,
+  scoringArgs: ScoringArgs,
   runParallel: bool = True,
   maxWorkers: Optional[int] = None,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> List[ModelResult]:
   """Applies all Community Notes models to user ratings and returns merged result.
 
   Each model must return a scoredNotes DF and may return helpfulnessScores and auxiliaryNoteInfo.
@@ -202,46 +363,54 @@ def _run_scorers(
 
   Args:
     scorers (List[Scorer]): Instantiated Scorer objects for note ranking.
+    noteTopics: DF pairing notes with topics
     ratings (pd.DataFrame): Complete DF containing all ratings after preprocessing.
     noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
     userEnrollment (pd.DataFrame): The enrollment state for each contributor
 
   Returns:
-    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-      scoredNotes pd.DataFrame: one row per note contained note scores and parameters.
-      helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
-      auxiliaryNoteInfo pd.DataFrame: one row per note containing supplemental values used in scoring.
+    List[ModelResult]
   """
   # Apply scoring algorithms
   overallStartTime = time.perf_counter()
   if runParallel:
+    shms, scoringArgsSharedMemory = _save_dfs_to_shared_memory(scoringArgs)
+
     with concurrent.futures.ProcessPoolExecutor(
-      mp_context=multiprocessing.get_context("spawn"), max_workers=maxWorkers
+      mp_context=multiprocessing.get_context("fork"),
+      max_workers=maxWorkers,
     ) as executor:
       print(f"Starting parallel scorer execution with {len(scorers)} scorers.")
+      # Pass mostly-empty scoringArgs: the data is too large to be copied in-memory to
+      # each process, so must be re-loaded from disk by every scorer's dataLoader.
+      scoringArgs.remove_large_args_for_multiprocessing()
       futures = [
         executor.submit(
           _run_scorer_parallelizable,
           scorer=scorer,
           runParallel=True,
+          scoringArgs=copy.deepcopy(scoringArgs),
           dataLoader=dataLoader,
+          scoringArgsSharedMemory=copy.deepcopy(scoringArgsSharedMemory),
         )
         for scorer in scorers
       ]
       modelResultsAndTimes = [f.result() for f in futures]
+
+      for shm in shms:
+        shm.close()
+        shm.unlink()  # free the shared memory
   else:
     modelResultsAndTimes = [
       _run_scorer_parallelizable(
         scorer=scorer,
         runParallel=False,
-        ratings=ratings,
-        noteStatusHistory=noteStatusHistory,
-        userEnrollment=userEnrollment,
+        scoringArgs=scoringArgs,
       )
       for scorer in scorers
     ]
 
-  modelResults, scorerTimes = zip(*modelResultsAndTimes)
+  modelResultsTuple, scorerTimesTuple = zip(*modelResultsAndTimes)
 
   overallTime = time.perf_counter() - overallStartTime
   print(
@@ -249,18 +418,52 @@ def _run_scorers(
     Completed individual scorers. Ran in parallel: {runParallel}.  Succeeded in {overallTime:.2f} seconds. 
     Individual scorers: (name, runtime): {list(zip(
       [scorer.get_name() for scorer in scorers],
-      ['{:.2f}'.format(t/60.0) + " mins" for t in scorerTimes]
+      ['{:.2f}'.format(t/60.0) + " mins" for t in scorerTimesTuple]
     ))}
     ----"""
   )
+  return list(modelResultsTuple)
 
+
+def combine_prescorer_scorer_results(modelResults: List[ModelResult]):
+  """
+  Returns dfs with original columns plus an extra scorer name column.
+  """
+  assert isinstance(modelResults[0], ModelResult)
+
+  prescoringNoteModelOutputList = []
+  raterParamsUnfilteredMultiScorersList = []
+  for modelResult in modelResults:
+    if modelResult.scoredNotes is not None:
+      modelResult.scoredNotes[c.scorerNameKey] = modelResult.scorerName
+      prescoringNoteModelOutputList.append(modelResult.scoredNotes)
+    if modelResult.helpfulnessScores is not None:
+      modelResult.helpfulnessScores[c.scorerNameKey] = modelResult.scorerName
+      raterParamsUnfilteredMultiScorersList.append(modelResult.helpfulnessScores)
+
+  prescoringNoteModelOutput = pd.concat(prescoringNoteModelOutputList)
+  raterParamsUnfilteredMultiScorers = pd.concat(raterParamsUnfilteredMultiScorersList)
+  return prescoringNoteModelOutput, raterParamsUnfilteredMultiScorers
+
+
+def combine_final_scorer_results(
+  modelResultsFromEachScorer: List[ModelResult],
+  noteStatusHistory: pd.DataFrame,
+):
+  """
+  Returns:
+    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+      scoredNotes pd.DataFrame: one row per note contained note scores and parameters.
+      helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
+      auxiliaryNoteInfo pd.DataFrame: one row per note containing supplemental values used in scoring.
+  """
   # Initialize return data frames.
   scoredNotes = noteStatusHistory[[c.noteIdKey]].drop_duplicates()
   auxiliaryNoteInfo = noteStatusHistory[[c.noteIdKey]].drop_duplicates()
   helpfulnessScores = pd.DataFrame({c.raterParticipantIdKey: []})
 
   # Merge the results
-  for modelResult in modelResults:
+  for modelResult in modelResultsFromEachScorer:
     scoredNotes, helpfulnessScores, auxiliaryNoteInfo = _merge_results(
       scoredNotes,
       helpfulnessScores,
@@ -270,7 +473,7 @@ def _run_scorers(
       modelResult.auxiliaryNoteInfo,
     )
   scoredNotes, helpfulnessScores = coalesce_group_models(scoredNotes, helpfulnessScores)
-
+  scoredNotes = coalesce_topic_models(scoredNotes)
   return scoredNotes, helpfulnessScores, auxiliaryNoteInfo
 
 
@@ -366,7 +569,17 @@ def meta_score(
               minSafeguardThreshold=None,
             )
           )
-
+    if enabledScorers is None or Scorers.MFTopicScorer in enabledScorers:
+      for topic in Topics:
+        if topic == Topics.Unassigned:
+          continue
+        rules.append(
+          scoring_rules.ApplyTopicModelResult(
+            RuleID[f"TOPIC_MODEL_{topic.value}"],
+            {RuleID.EXPANSION_PLUS_MODEL, RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+            topic,
+          )
+        )
     rules.extend(
       [
         scoring_rules.ScoringDriftGuard(
@@ -490,7 +703,7 @@ def _compute_helpfulness_scores(
       helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
   """
   with c.time_block("Meta Helpfulness Scorers: Setup"):
-    # Generate a uunified view of note scoring information for computing contributor stats
+    # Generate a unified view of note scoring information for computing contributor stats
     assert len(scoredNotes) == len(auxiliaryNoteInfo), "notes in both note inputs must match"
     scoredNotesWithStats = scoredNotes.merge(
       # noteId and timestamp are the only common fields, and should always be equal.
@@ -521,7 +734,7 @@ def _compute_helpfulness_scores(
       noteStatusHistory,
     )
   with c.time_block("Meta Helpfulness Scorers: Contributor State"):
-    contributorState = contributor_state.get_contributor_state(
+    contributorState, prevState = contributor_state.get_contributor_state(
       scoredNotesWithStats,
       ratings,
       noteStatusHistory,
@@ -541,11 +754,15 @@ def _compute_helpfulness_scores(
           c.authorTopNotHelpfulTagValues,
           c.isEmergingWriterKey,
           c.numberOfTimesEarnedOutKey,
+          c.ratingImpact,
+          c.hasCrnhSinceEarnOut,
         ]
       ],
       on=c.raterParticipantIdKey,
       how="outer",
     )
+    contributorScores = contributor_state.single_trigger_earn_out(contributorScores)
+    contributorScores = contributor_state.calculate_ri_to_earn_in(contributorScores)
 
     # Consolidates all information on raters / authors.
     helpfulnessScores = helpfulnessScores.merge(
@@ -553,14 +770,20 @@ def _compute_helpfulness_scores(
       on=c.raterParticipantIdKey,
       how="outer",
     )
-
     # Pass timestampOfLastEarnOut through to raterModelOutput.
     helpfulnessScores = helpfulnessScores.merge(
-      userEnrollment[[c.participantIdKey, c.timestampOfLastEarnOut]],
+      prevState,
       left_on=c.raterParticipantIdKey,
       right_on=c.participantIdKey,
       how="left",
     ).drop(c.participantIdKey, axis=1)
+
+    # For users who did not earn a new enrollmentState, carry over the previous one
+    helpfulnessScores[c.enrollmentState] = helpfulnessScores[c.enrollmentState].fillna(
+      helpfulnessScores[c.enrollmentState + "_prev"]
+    )
+    helpfulnessScores.drop(columns=[c.enrollmentState + "_prev"], inplace=True)
+
     # If field is not set by userEvent or by update script, ok to default to 1
     helpfulnessScores[c.timestampOfLastEarnOut].fillna(1, inplace=True)
 
@@ -623,7 +846,54 @@ def _validate(
   return (scoredNotes, helpfulnessScores, noteStatusHistory, auxiliaryNoteInfo)
 
 
-def run_scoring(
+def run_prescoring(
+  notes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+  userEnrollment: pd.DataFrame,
+  seed: Optional[int] = None,
+  enabledScorers: Optional[Set[Scorers]] = None,
+  runParallel: bool = True,
+  dataLoader: Optional[CommunityNotesDataLoader] = None,
+  useStableInitialization: bool = True,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  with c.time_block("Note Topic Assignment"):
+    topicModel = TopicModel()
+    noteTopics = topicModel.get_note_topics(notes)
+
+  scorers = _get_scorers(
+    seed=seed,
+    pseudoraters=False,
+    enabledScorers=enabledScorers,
+    useStableInitialization=useStableInitialization,
+  )
+
+  prescoringModelResultsFromAllScorers = _run_scorers(
+    scorers=list(chain(*scorers.values())),
+    scoringArgs=PrescoringArgs(
+      noteTopics=noteTopics,
+      ratings=ratings,
+      noteStatusHistory=noteStatusHistory,
+      userEnrollment=userEnrollment,
+    ),
+    runParallel=runParallel,
+    dataLoader=dataLoader,
+    # Restrict parallelism to 6 processes.  Memory usage scales linearly with the number of
+    # processes and 6 is enough that the limiting factor continues to be the longest running
+    # scorer (i.e. we would not finish faster with >6 worker processes.)
+    maxWorkers=6,
+  )
+
+  (
+    prescoringNoteModelOutput,
+    prescoringRaterModelOutput,
+  ) = combine_prescorer_scorer_results(prescoringModelResultsFromAllScorers)
+
+  return prescoringNoteModelOutput, prescoringRaterModelOutput
+
+
+def run_final_scoring(
+  notes: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
@@ -633,47 +903,67 @@ def run_scoring(
   strictColumns: bool = True,
   runParallel: bool = True,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
-  maxReruns: int = 5,
   useStableInitialization: bool = True,
+  prescoringNoteModelOutput: Optional[pd.DataFrame] = None,
+  prescoringRaterModelOutput: Optional[pd.DataFrame] = None,
 ):
-  """Invokes note scoring algorithms, merges results and computes user stats.
+  with c.time_block("Note Topic Assignment"):
+    topicModel = TopicModel()
+    noteTopics = topicModel.get_note_topics(notes)
 
-  Args:
-    ratings (pd.DataFrame): preprocessed ratings
-    noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
-    userEnrollment (pd.DataFrame): The enrollment state for each contributor
-    seed (int, optional): if not None, base distinct seeds for the first and second MF rounds on this value
-    pseudoraters (bool, optional): if True, compute optional pseudorater confidence intervals
-    enabledScorers (Set[Scorers], optional): Scorers which should be instantiated
-    strictColumns (bool, optional): if True, validate which columns are present
-    runParallel (bool, optional): if True, run algorithms in parallel
-    dataLoader (CommunityNotesDataLoader, optional): dataLoader provided to parallel execution
-
-  Returns:
-    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-      scoredNotes pd.DataFrame: one row per note contained note scores and parameters.
-      helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
-      noteStatusHistory pd.DataFrame: one row per note containing when they got their most recent statuses.
-      auxiliaryNoteInfo: one row per note containing adjusted and ratio tag values
-  """
-  # Apply individual scoring models and obtained merged result.
-  currentTimeMillis = c.epochMillis
   scorers = _get_scorers(
     seed, pseudoraters, enabledScorers, useStableInitialization=useStableInitialization
   )
-  scoredNotes, helpfulnessScores, auxiliaryNoteInfo = _run_scorers(
+
+  modelResults = _run_scorers(
     scorers=list(chain(*scorers.values())),
-    ratings=ratings,
-    noteStatusHistory=noteStatusHistory,
-    userEnrollment=userEnrollment,
+    scoringArgs=FinalScoringArgs(
+      noteTopics,
+      ratings,
+      noteStatusHistory,
+      userEnrollment,
+      prescoringNoteModelOutput=prescoringNoteModelOutput,
+      prescoringRaterModelOutput=prescoringRaterModelOutput,
+    ),
     runParallel=runParallel,
     dataLoader=dataLoader,
     # Restrict parallelism to 6 processes.  Memory usage scales linearly with the number of
     # processes and 6 is enough that the limiting factor continues to be the longest running
-    # scorer (i.e. we would not finish faster with >4 worker processes.)
+    # scorer (i.e. we would not finish faster with >6 worker processes.)
     maxWorkers=6,
   )
 
+  scoredNotes, helpfulnessScores, auxiliaryNoteInfo = combine_final_scorer_results(
+    modelResults, noteStatusHistory
+  )
+
+  return post_scoring(
+    scorers,
+    scoredNotes,
+    helpfulnessScores,
+    auxiliaryNoteInfo,
+    ratings,
+    noteStatusHistory,
+    userEnrollment,
+    enabledScorers,
+    strictColumns,
+  )
+
+
+def post_scoring(
+  scorers: Dict[Scorers, List[Scorer]],
+  scoredNotes: pd.DataFrame,
+  helpfulnessScores: pd.DataFrame,
+  auxiliaryNoteInfo: pd.DataFrame,
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+  userEnrollment: pd.DataFrame,
+  enabledScorers: Optional[Set[Scorers]] = None,
+  strictColumns: bool = True,
+):
+  """
+  Apply individual scoring models and obtained merged result.
+  """
   postScoringStartTime = time.time()
   # Augment scoredNotes and auxiliaryNoteInfo with additional attributes for each note
   # which are computed over the corpus of notes / ratings as a whole and are independent
@@ -696,7 +986,7 @@ def run_scoring(
 
   with c.time_block("Post-scorers: Join scored notes"):
     scoredNotes = scoredNotes.merge(scoredNotesCols, on=c.noteIdKey)
-    scoredNotes[c.timestampMillisOfNoteCurrentLabelKey] = currentTimeMillis
+    scoredNotes[c.timestampMillisOfNoteCurrentLabelKey] = c.epochMillis
     auxiliaryNoteInfo = auxiliaryNoteInfo.merge(auxiliaryNoteInfoCols, on=c.noteIdKey)
 
     # Validate that no notes were dropped or duplicated.
@@ -732,3 +1022,106 @@ def run_scoring(
 
   print(f"Meta scoring elapsed time: {((time.time() - postScoringStartTime)/60.0):.2f} minutes.")
   return scoredNotes, helpfulnessScores, newNoteStatusHistory, auxiliaryNoteInfo
+
+
+def run_scoring(
+  notes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+  userEnrollment: pd.DataFrame,
+  seed: Optional[int] = None,
+  pseudoraters: Optional[bool] = True,
+  enabledScorers: Optional[Set[Scorers]] = None,
+  strictColumns: bool = True,
+  runParallel: bool = True,
+  dataLoader: Optional[CommunityNotesDataLoader] = None,
+  useStableInitialization: bool = True,
+  writePrescoringScoringOutputCallback: Optional[
+    Callable[[pd.DataFrame, pd.DataFrame], None]
+  ] = None,
+  filterPrescoringInputToSimulateDelayInHours: Optional[int] = None,
+):
+  """Runs both phases of scoring consecutively. Only for adhoc/testing use.
+  In prod, we run each phase as a separate binary.
+
+  Wrapper around run_prescoring and run_final_scoring.
+
+  Invokes note scoring algorithms, merges results and computes user stats.
+
+  Args:
+    ratings (pd.DataFrame): preprocessed ratings
+    noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
+    userEnrollment (pd.DataFrame): The enrollment state for each contributor
+    seed (int, optional): if not None, base distinct seeds for the first and second MF rounds on this value
+    pseudoraters (bool, optional): if True, compute optional pseudorater confidence intervals
+    enabledScorers (Set[Scorers], optional): Scorers which should be instantiated
+    strictColumns (bool, optional): if True, validate which columns are present
+    runParallel (bool, optional): if True, run algorithms in parallel
+    dataLoader (CommunityNotesDataLoader, optional): dataLoader provided to parallel execution
+    useStableInitialization
+    writePrescoringScoringOutputCallback
+    filterPrescoringInputToSimulateDelayInHours
+
+  Returns:
+    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+      scoredNotes pd.DataFrame: one row per note contained note scores and parameters.
+      helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
+      noteStatusHistory pd.DataFrame: one row per note containing when they got their most recent statuses.
+      auxiliaryNoteInfo: one row per note containing adjusted and ratio tag values
+  """
+
+  # Filter input data for prescoring to simulate running prescoring earlier than final scoring
+  if filterPrescoringInputToSimulateDelayInHours is not None:
+    latestRatingMillis = ratings[c.createdAtMillisKey].max()
+    cutoffMillis = latestRatingMillis - (
+      filterPrescoringInputToSimulateDelayInHours * 60 * 60 * 1000
+    )
+    print(
+      f"""
+      Filtering input data for prescoring to simulate running prescoring earlier than final scoring.
+      Latest rating timestamp: {pd.to_datetime(latestRatingMillis, unit='ms')}
+      Cutoff timestamp: {pd.to_datetime(cutoffMillis, unit='ms')} ({filterPrescoringInputToSimulateDelayInHours} hours before)
+    """
+    )
+    prescoringNotesInput = notes[notes[c.createdAtMillisKey] < cutoffMillis].copy()
+    prescoringRatingsInput = ratings[ratings[c.createdAtMillisKey] < cutoffMillis].copy()
+  else:
+    prescoringNotesInput = notes
+    prescoringRatingsInput = ratings
+
+  (
+    prescoringNoteModelOutput,
+    prescoringRaterModelOutput,
+  ) = run_prescoring(
+    notes=prescoringNotesInput,
+    ratings=prescoringRatingsInput,
+    noteStatusHistory=noteStatusHistory,
+    userEnrollment=userEnrollment,
+    seed=seed,
+    enabledScorers=enabledScorers,
+    runParallel=runParallel,
+    dataLoader=dataLoader,
+    useStableInitialization=useStableInitialization,
+  )
+
+  print("We invoked run_scoring and are now in between prescoring and scoring.")
+  if writePrescoringScoringOutputCallback is not None:
+    with c.time_block("Writing prescoring output."):
+      writePrescoringScoringOutputCallback(prescoringNoteModelOutput, prescoringRaterModelOutput)
+  print("Starting final scoring")
+
+  return run_final_scoring(
+    notes=notes,
+    ratings=ratings,
+    noteStatusHistory=noteStatusHistory,
+    userEnrollment=userEnrollment,
+    seed=seed,
+    pseudoraters=pseudoraters,
+    enabledScorers=enabledScorers,
+    strictColumns=strictColumns,
+    runParallel=runParallel,
+    dataLoader=dataLoader,
+    useStableInitialization=useStableInitialization,
+    prescoringNoteModelOutput=prescoringNoteModelOutput,
+    prescoringRaterModelOutput=prescoringRaterModelOutput,
+  )

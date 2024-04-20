@@ -190,7 +190,7 @@ def filter_ratings_by_helpfulness_scores(
       filtered_ratings pandas.DataFrame: same schema as input ratings, but filtered.
   """
   includedUsers = helpfulnessScores.loc[
-    helpfulnessScores[c.aboveHelpfulnessThresholdKey], [c.raterParticipantIdKey]
+    helpfulnessScores[c.aboveHelpfulnessThresholdKey].fillna(False), [c.raterParticipantIdKey]
   ]
   ratingsHelpfulnessScoreFiltered = includedUsers.merge(
     ratingsForTraining, on=c.raterParticipantIdKey
