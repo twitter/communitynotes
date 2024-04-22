@@ -31,10 +31,12 @@ As there are important nuances in each market, we’ll expand the contributor ba
 Thank you for your interest in contributing to Community Notes! Currently, we will consider pull requests that contribute to the following areas:
 * Downstream analyses of scoring model output
 * Alternate scoring algorithm ideas (outside the core algorithm)
-* Documentation
+* Documentation (although we are unlikely to merge small cleanups)
 * Open issues
 
 Note that we aren’t currently accepting changes that alter existing APIs, as there is other utility and production infrastructure code at X that depends on these APIs remaining stable.
+
+Also note that we are unlikely to merge any minor documentation/typo/comment cleanup pull requests due to our heavyweight deployment process (this code is developed in a separate internal repo and exported to Github whenever we deploy an update to the scorer).
 
 We are also exploring ways to make it easier for people to contribute directly to the core algorithm. For example, by making available testing and evaluation frameworks that would allow open source contributors to evaluate the impact of their PRs on note quality.
 
