@@ -303,7 +303,7 @@ For not-helpful notes:
 
 ## Complete Algorithm Steps:
 
-# Prescoring
+### Prescoring
 
 1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence).
 2. For each scorer (Core, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
@@ -311,7 +311,7 @@ For not-helpful notes:
     - Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
     - Fit the harassment-abuse tag-consensus matrix factorization model on the helpfulness-score filtered ratings, then update Author and Rater Helpfulness scores using the output of the tag-consensus model.
 
-# Scoring
+### Scoring
 
 1. Load the output of step 2 above from prescoring, but re-run step 1 on the newest available notes and ratings data.
 2. For each scorer (Core, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
