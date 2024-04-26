@@ -38,20 +38,20 @@ class RuleID(Enum):
   EXPANSION_PLUS_MODEL = RuleAndVersion("ExpansionPlusModel", "1.1", False)
   CORE_MODEL = RuleAndVersion("CoreModel", "1.1", True)
   COVERAGE_MODEL = RuleAndVersion("CoverageModel", "1.1", False)
-  GROUP_MODEL_1 = RuleAndVersion("GroupModel01", "1.1", False)
-  GROUP_MODEL_2 = RuleAndVersion("GroupModel02", "1.1", False)
-  GROUP_MODEL_3 = RuleAndVersion("GroupModel03", "1.1", False)
+  GROUP_MODEL_1 = RuleAndVersion("GroupModel01", "1.1", True)
+  GROUP_MODEL_2 = RuleAndVersion("GroupModel02", "1.1", True)
+  GROUP_MODEL_3 = RuleAndVersion("GroupModel03", "1.1", True)
   GROUP_MODEL_4 = RuleAndVersion("GroupModel04", "1.1", False)
   GROUP_MODEL_5 = RuleAndVersion("GroupModel05", "1.1", False)
-  GROUP_MODEL_6 = RuleAndVersion("GroupModel06", "1.1", False)
+  GROUP_MODEL_6 = RuleAndVersion("GroupModel06", "1.1", True)
   GROUP_MODEL_7 = RuleAndVersion("GroupModel07", "1.1", False)
-  GROUP_MODEL_8 = RuleAndVersion("GroupModel08", "1.1", False)
-  GROUP_MODEL_9 = RuleAndVersion("GroupModel09", "1.1", False)
-  GROUP_MODEL_10 = RuleAndVersion("GroupModel10", "1.1", False)
-  GROUP_MODEL_11 = RuleAndVersion("GroupModel11", "1.1", False)
+  GROUP_MODEL_8 = RuleAndVersion("GroupModel08", "1.1", True)
+  GROUP_MODEL_9 = RuleAndVersion("GroupModel09", "1.1", True)
+  GROUP_MODEL_10 = RuleAndVersion("GroupModel10", "1.1", True)
+  GROUP_MODEL_11 = RuleAndVersion("GroupModel11", "1.1", True)
   GROUP_MODEL_12 = RuleAndVersion("GroupModel12", "1.1", False)
-  GROUP_MODEL_13 = RuleAndVersion("GroupModel13", "1.1", False)
-  GROUP_MODEL_14 = RuleAndVersion("GroupModel14", "1.1", False)
+  GROUP_MODEL_13 = RuleAndVersion("GroupModel13", "1.1", True)
+  GROUP_MODEL_14 = RuleAndVersion("GroupModel14", "1.1", True)
   INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
   SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
   TOPIC_MODEL_1 = RuleAndVersion("TopicModel01", "1.0", False)
@@ -184,7 +184,7 @@ class ApplyModelResult(ScoringRule):
     Args:
       rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
       dependencies: Rules which must run before this rule can run.
-      sourceColumn: column containing note status (CRH, CRNH, NMR) to propagate to output
+      sourceColumn: column containing note status (CRH, CRNH, NMR) to propagate to output,
     """
     super().__init__(ruleID, dependencies)
     self._sourceColumn = sourceColumn
@@ -517,6 +517,7 @@ class ApplyGroupModelResult(ScoringRule):
 
     # Set note status and return
     noteStatusUpdates[statusColumn] = c.currentlyRatedHelpful
+
     return (noteStatusUpdates, None)
 
 
@@ -780,6 +781,7 @@ class ApplyTopicModelResult(ScoringRule):
     # Set note status for candidates and return
     noteStatusUpdates = currentCRHNotes.merge(topicLowNotes, on=c.noteIdKey, how="inner")
     noteStatusUpdates[statusColumn] = c.needsMoreRatings
+
     return (noteStatusUpdates, None)
 
 
@@ -816,6 +818,7 @@ def apply_scoring_rules(
     {c.noteIdKey: np.int64}
   )
   noteColumns = pd.DataFrame.from_dict({c.noteIdKey: []}).astype({c.noteIdKey: np.int64})
+
   # Establish state to enforce rule dependencies.
   ruleIDs: Set[RuleID] = set()
 
@@ -839,8 +842,8 @@ def apply_scoring_rules(
         ),
       ]
     )
-    # Merge any additional columns into current set of new columns
     if additionalColumns is not None:
+      # Merge any additional columns into current set of new columns
       assert {c.noteIdKey} == (set(noteColumns.columns) & set(additionalColumns.columns))
       noteColumns = noteColumns.merge(additionalColumns, on=c.noteIdKey, how="outer")
 
@@ -858,6 +861,7 @@ def apply_scoring_rules(
   scoredNotes = noteStats.merge(noteLabels, on=c.noteIdKey, how="inner")
   scoredNotes = scoredNotes.merge(noteRules, on=c.noteIdKey, how="inner")
   scoredNotes = scoredNotes.merge(noteColumns, on=c.noteIdKey, how="left")
+  # Add all of the individual model rules to the active rules column
   assert len(scoredNotes) == len(noteStats)
   # Set boolean columns indicating scoring outcomes
   scoredNotes[c.currentlyRatedHelpfulBoolKey] = scoredNotes[statusColumn] == c.currentlyRatedHelpful

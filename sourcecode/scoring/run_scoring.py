@@ -254,7 +254,9 @@ def _run_scorer_parallelizable(
         scoringArgs = _load_data_from_shared_memory_parallelizable(
           scoringArgsSharedMemory, scoringArgs
         )
-        print(f"{scorer.get_name()} run_scorer_parallelizable just finished loading data from shared memory.")
+        print(
+          f"{scorer.get_name()} run_scorer_parallelizable just finished loading data from shared memory."
+        )
       elif dataLoader is not None:
         print(
           f"{scorer.get_name()} run_scorer_parallelizable just started in parallel: loading data with dataLoader."
@@ -522,19 +524,25 @@ def meta_score(
       # MFExpansionPlusScorer will have the lowest priority.
       rules.append(
         scoring_rules.ApplyModelResult(
-          RuleID.EXPANSION_PLUS_MODEL, {RuleID.META_INITIAL_NMR}, c.expansionPlusRatingStatusKey
+          RuleID.EXPANSION_PLUS_MODEL,
+          {RuleID.META_INITIAL_NMR},
+          c.expansionPlusRatingStatusKey,
         )
       )
     if enabledScorers is None or Scorers.MFExpansionScorer in enabledScorers:
       rules.append(
         scoring_rules.ApplyModelResult(
-          RuleID.EXPANSION_MODEL, {RuleID.META_INITIAL_NMR}, c.expansionRatingStatusKey
+          RuleID.EXPANSION_MODEL,
+          {RuleID.META_INITIAL_NMR},
+          c.expansionRatingStatusKey,
         )
       )
     if enabledScorers is None or Scorers.MFCoreScorer in enabledScorers:
       rules.append(
         scoring_rules.ApplyModelResult(
-          RuleID.CORE_MODEL, {RuleID.META_INITIAL_NMR}, c.coreRatingStatusKey
+          RuleID.CORE_MODEL,
+          {RuleID.META_INITIAL_NMR},
+          c.coreRatingStatusKey,
         )
       )
     if enabledScorers is None or Scorers.MFGroupScorer in enabledScorers:

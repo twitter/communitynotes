@@ -421,13 +421,27 @@ def write_tsv_local(df: pd.DataFrame, path: str) -> None:
   Args:
     df: pd.DataFrame to write to disk.
     path: location of file on disk.
-
-  Returns:
-    None, because path is always None.
   """
 
   assert path is not None
   assert df.to_csv(path, index=False, header=True, sep="\t") is None
+
+
+def write_parquet_local(
+  df: pd.DataFrame, path: str, compression: str = "snappy", engine: str = "pyarrow"
+) -> None:
+  """Write DF as a parquet file stored to local disk. Compress with snappy
+  and use pyarrow engine.
+
+  Args:
+    df: pd.DataFrame to write to disk.
+    path: location of file on disk.
+    compression: compression algorithm to use. Defaults to 'snappy'.
+    engine: engine to use. Defaults to 'pyarrow'.
+  """
+
+  assert path is not None
+  df.to_parquet(path, compression=compression, engine=engine)
 
 
 class CommunityNotesDataLoader(ABC):

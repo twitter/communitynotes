@@ -3,7 +3,12 @@ import os
 
 from . import constants as c
 from .enums import scorers_from_csv
-from .process_data import LocalDataLoader, write_prescoring_output, write_tsv_local
+from .process_data import (
+  LocalDataLoader,
+  write_parquet_local,
+  write_prescoring_output,
+  write_tsv_local,
+)
 from .run_scoring import run_scoring
 
 
@@ -84,6 +89,13 @@ def parse_args():
     dest="prescoring_delay_hours",
     help="Filter prescoring input to simulate delay in hours",
   )
+  parser.add_argument(
+    "--no-parquet",
+    help="Disable writing parquet files.",
+    default=False,
+    action="store_true",
+    dest="no_parquet",
+  )
 
   return parser.parse_args()
 
@@ -137,6 +149,12 @@ def main():
   write_tsv_local(helpfulnessScores, os.path.join(args.outdir, "helpfulness_scores.tsv"))
   write_tsv_local(newStatus, os.path.join(args.outdir, "note_status_history.tsv"))
   write_tsv_local(auxNoteInfo, os.path.join(args.outdir, "aux_note_info.tsv"))
+
+  if not args.no_parquet:
+    write_parquet_local(scoredNotes, os.path.join(args.outdir, "scored_notes.parquet"))
+    write_parquet_local(helpfulnessScores, os.path.join(args.outdir, "helpfulness_scores.parquet"))
+    write_parquet_local(newStatus, os.path.join(args.outdir, "note_status_history.parquet"))
+    write_parquet_local(auxNoteInfo, os.path.join(args.outdir, "aux_note_info.parquet"))
 
 
 if __name__ == "__main__":

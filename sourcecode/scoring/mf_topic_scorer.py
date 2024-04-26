@@ -26,6 +26,7 @@ def coalesce_topic_models(scoredNotes: pd.DataFrame) -> pd.DataFrame:
     c.topicRatingStatusKey,
     c.topicNoteConfidentKey,
     c.noteTopicKey,
+    c.topicInternalActiveRulesKey,
   ]:
     scoredNotes = coalesce_columns(scoredNotes, col)
 
@@ -106,6 +107,7 @@ class MFTopicScorer(MFBaseScorer):
     self._topicNoteInterceptKey = f"{c.topicNoteInterceptKey}_{self._topicName}"
     self._topicNoteFactor1Key = f"{c.topicNoteFactor1Key}_{self._topicName}"
     self._topicRatingStatusKey = f"{c.topicRatingStatusKey}_{self._topicName}"
+    self._topicInternalActiveRulesKey = f"{c.topicInternalActiveRulesKey}_{self._topicName}"
     self._noteTopicKey = f"{c.noteTopicKey}_{self._topicName}"
     self._noteTopicConfidentKey = f"{c.topicNoteConfidentKey}_{self._topicName}"
 
@@ -118,6 +120,7 @@ class MFTopicScorer(MFBaseScorer):
       c.internalNoteInterceptKey: self._topicNoteInterceptKey,
       c.internalNoteFactor1Key: self._topicNoteFactor1Key,
       c.internalRatingStatusKey: self._topicRatingStatusKey,
+      c.internalActiveRulesKey: self._topicInternalActiveRulesKey,
     }
 
   def get_scored_notes_cols(self) -> List[str]:
@@ -129,6 +132,7 @@ class MFTopicScorer(MFBaseScorer):
       self._topicRatingStatusKey,
       self._noteTopicKey,
       self._noteTopicConfidentKey,
+      self._topicInternalActiveRulesKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
@@ -143,7 +147,6 @@ class MFTopicScorer(MFBaseScorer):
     """Returns a list of columns which should be excluded from scoredNotes and auxiliaryNoteInfo."""
     return super()._get_dropped_note_cols() + (
       [
-        c.internalActiveRulesKey,
         c.activeFilterTagsKey,
         c.ratingWeightKey,
         c.noteInterceptMinKey,

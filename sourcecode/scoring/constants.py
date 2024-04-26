@@ -134,10 +134,12 @@ expansionNoteFactor1Key = "expansionNoteFactor1"
 expansionRatingStatusKey = "expansionRatingStatus"
 expansionNoteInterceptMaxKey = "expansionNoteInterceptMax"
 expansionNoteInterceptMinKey = "expansionNoteInterceptMin"
+expansionInternalActiveRulesKey = "expansionActiveRules"
 # ExpansionPlus Model
 expansionPlusNoteInterceptKey = "expansionPlusNoteIntercept"
 expansionPlusNoteFactor1Key = "expansionPlusNoteFactor1"
 expansionPlusRatingStatusKey = "expansionPlusRatingStatus"
+expansionPlusInternalActiveRulesKey = "expansionPlusActiveRules"
 # Coverage / Helpfulness Reputation Model
 coverageNoteInterceptKey = "coverageNoteIntercept"
 coverageNoteFactor1Key = "coverageNoteFactor1"
@@ -153,11 +155,13 @@ groupNoteInterceptMaxKey = "groupNoteInterceptMax"
 groupNoteInterceptMinKey = "groupNoteInterceptMin"
 groupRaterInterceptKey = "groupRaterIntercept"
 groupRaterFactor1Key = "groupRaterFactor1"
+groupInternalActiveRulesKey = "groupActiveRules"
 # Topic Model
 topicNoteInterceptKey = "topicNoteIntercept"
 topicNoteFactor1Key = "topicNoteFactor1"
 topicRatingStatusKey = "topicRatingStatus"
 topicNoteConfidentKey = "topicNoteConfident"
+topicInternalActiveRulesKey = "topicActiveRules"
 # Harassment/Abuse Tag
 harassmentNoteInterceptKey = "harassmentNoteIntercept"
 harassmentNoteFactor1Key = "harassmentNoteFactor1"
@@ -558,6 +562,10 @@ noteModelOutputTSVColumnsAndTypes = [
   (topicRatingStatusKey, str),
   (noteTopicKey, str),
   (topicNoteConfidentKey, str),
+  (expansionInternalActiveRulesKey, str),
+  (expansionPlusInternalActiveRulesKey, str),
+  (groupInternalActiveRulesKey, str),
+  (topicInternalActiveRulesKey, str),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
