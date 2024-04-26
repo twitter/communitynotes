@@ -443,6 +443,7 @@ class MatrixFactorization:
     globalInterceptInit: Optional[float] = None,
     specificNoteId: Optional[int] = None,
     validatePercent: Optional[float] = None,
+    freezeRaterParameters: bool = False,
   ):
     """Train matrix factorization model.
 
@@ -466,6 +467,8 @@ class MatrixFactorization:
     self._create_mf_model(noteInit, userInit, globalInterceptInit)
     assert self.mf_model is not None
 
+    if freezeRaterParameters:
+      self.mf_model._freeze_parameters(set({"user"}))
     if specificNoteId is not None:
       self.mf_model.freeze_rater_and_global_parameters()
     self.prepare_features_and_labels(specificNoteId)

@@ -37,6 +37,7 @@ class MFExpansionPlusScorer(MFBaseScorer):
       c.internalNoteInterceptKey: c.expansionPlusNoteInterceptKey,
       c.internalNoteFactor1Key: c.expansionPlusNoteFactor1Key,
       c.internalRatingStatusKey: c.expansionPlusRatingStatusKey,
+      c.internalActiveRulesKey: c.expansionPlusInternalActiveRulesKey,
     }
 
   def get_scored_notes_cols(self) -> List[str]:
@@ -46,6 +47,7 @@ class MFExpansionPlusScorer(MFBaseScorer):
       c.expansionPlusNoteInterceptKey,
       c.expansionPlusNoteFactor1Key,
       c.expansionPlusRatingStatusKey,
+      c.expansionPlusInternalActiveRulesKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
@@ -60,7 +62,6 @@ class MFExpansionPlusScorer(MFBaseScorer):
     """Returns a list of columns which should be excluded from scoredNotes and auxiliaryNoteInfo."""
     return super()._get_dropped_note_cols() + (
       [
-        c.internalActiveRulesKey,
         c.activeFilterTagsKey,
         c.ratingWeightKey,
         c.noteInterceptMinKey,

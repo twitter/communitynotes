@@ -44,6 +44,7 @@ def coalesce_group_models(
     c.groupNoteInterceptMaxKey,
     c.groupNoteInterceptMinKey,
     c.modelingGroupKey,
+    c.groupInternalActiveRulesKey,
   ]:
     scoredNotes = coalesce_columns(scoredNotes, col)
 
@@ -135,6 +136,7 @@ class MFGroupScorer(MFBaseScorer):
     self._groupRatingStatusKey = f"{c.groupRatingStatusKey}_{self._groupNumber}"
     self._groupNoteInterceptMaxKey = f"{c.groupNoteInterceptMaxKey}_{self._groupNumber}"
     self._groupNoteInterceptMinKey = f"{c.groupNoteInterceptMinKey}_{self._groupNumber}"
+    self._groupInternalActiveRulesKey = f"{c.groupInternalActiveRulesKey}_{self._groupNumber}"
     self._groupRaterInterceptKey = f"{c.groupRaterInterceptKey}_{self._groupNumber}"
     self._groupRaterFactor1Key = f"{c.groupRaterFactor1Key}_{self._groupNumber}"
     self._modelingGroupKey = f"{c.modelingGroupKey}_{self._groupNumber}"
@@ -151,6 +153,7 @@ class MFGroupScorer(MFBaseScorer):
       c.internalRatingStatusKey: self._groupRatingStatusKey,
       c.noteInterceptMinKey: self._groupNoteInterceptMinKey,
       c.noteInterceptMaxKey: self._groupNoteInterceptMaxKey,
+      c.internalActiveRulesKey: self._groupInternalActiveRulesKey,
     }
 
   def _get_user_col_mapping(self) -> Dict[str, str]:
@@ -169,6 +172,7 @@ class MFGroupScorer(MFBaseScorer):
       self._groupRatingStatusKey,
       self._groupNoteInterceptMaxKey,
       self._groupNoteInterceptMinKey,
+      self._groupInternalActiveRulesKey,
       self._modelingGroupKey,
     ]
 
@@ -189,7 +193,6 @@ class MFGroupScorer(MFBaseScorer):
     """Returns a list of columns which should be excluded from scoredNotes and auxiliaryNoteInfo."""
     return super()._get_dropped_note_cols() + (
       [
-        c.internalActiveRulesKey,
         c.activeFilterTagsKey,
         c.ratingWeightKey,
       ]

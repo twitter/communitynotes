@@ -570,6 +570,18 @@ class MFBaseScorer(Scorer):
       if self._saveIntermediateState:
         self.helpfulnessScores = helpfulnessScores
 
+      ## One extra final round!
+      # Filter ratings based on prev helpfulness scores
+      finalRoundRatings = helpfulness_scores.filter_ratings_by_helpfulness_scores(
+        ratingsForTraining, helpfulnessScores
+      )
+      # Run MF
+      noteParamsUnfiltered, raterParamsUnfiltered, globalBias = self._mfRanker.run_mf(
+        ratings=finalRoundRatings,
+        noteInit=noteParamsUnfiltered,
+        userInit=raterParamsUnfiltered,
+      )
+
     raterModelOutput = raterParamsUnfiltered.merge(
       helpfulnessScores[
         [
@@ -644,6 +656,8 @@ class MFBaseScorer(Scorer):
         ratings=finalRoundRatings,
         noteInit=prescoringNoteModelOutput,
         userInit=prescoringRaterModelOutput,
+        globalInterceptInit=0.17,
+        freezeRaterParameters=True,
       )
 
     if self._saveIntermediateState:
