@@ -324,6 +324,9 @@ For not-helpful notes:
 
 ## What’s New?
 
+**May 1, 2024**
+- Modify scoring thresholds for the Expanded Consensus trial to raise the note intercept threshold for Helpful notes, increase tag filtering and require a minimum Core or Expansion intercept for Helpful notes.
+
 **April 11, 2024**
 - Split the scorer into separate prescoring and final scoring phases.
 
