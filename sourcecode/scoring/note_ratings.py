@@ -359,8 +359,10 @@ def compute_scored_notes(
   crnhThresholdNoteFactorMultiplier: float,
   crnhThresholdNMIntercept: float,
   crnhThresholdUCBIntercept: float,
-  crhSuperThreshold: float,
+  crhSuperThreshold: Optional[float],
   inertiaDelta: float,
+  tagFilterPercentile: int,
+  incorrectFilterThreshold: float,
   finalRound: bool = False,
   # TODO: We might want to consider inputing only the series here, instead of the whole callable
   is_crh_function: Callable[..., pd.Series] = is_crh,
@@ -476,31 +478,39 @@ def compute_scored_notes(
           RuleID.TAG_OUTLIER,
           {RuleID.GENERAL_CRH},
           c.needsMoreRatings,
-          crhSuperThreshold,
+          tagRatioPercentile=tagFilterPercentile,
         ),
-        scoring_rules.RuleFromFunction(
-          RuleID.ELEVATED_CRH,
-          {RuleID.INITIAL_NMR},
-          c.currentlyRatedHelpful,
-          lambda noteStats: is_crh_function(noteStats, minRatingsNeeded, crhSuperThreshold),
-          onlyApplyToNotesThatSayTweetIsMisleading=True,
-        ),
-        scoring_rules.AddCRHInertia(
-          RuleID.ELEVATED_CRH_INERTIA,
-          {RuleID.TAG_OUTLIER},
-          c.currentlyRatedHelpful,
-          crhSuperThreshold - inertiaDelta,
-          crhSuperThreshold,
-          minRatingsNeeded,
-        ),
+      ]
+    )
+    if crhSuperThreshold is not None:
+      rules.extend(
+        [
+          scoring_rules.RuleFromFunction(
+            RuleID.ELEVATED_CRH,
+            {RuleID.INITIAL_NMR},
+            c.currentlyRatedHelpful,
+            lambda noteStats: is_crh_function(noteStats, minRatingsNeeded, crhSuperThreshold),
+            onlyApplyToNotesThatSayTweetIsMisleading=True,
+          ),
+          scoring_rules.AddCRHInertia(
+            RuleID.ELEVATED_CRH_INERTIA,
+            {RuleID.TAG_OUTLIER},
+            c.currentlyRatedHelpful,
+            crhSuperThreshold - inertiaDelta,
+            crhSuperThreshold,
+            minRatingsNeeded,
+          ),
+        ]
+      )
+    rules.extend(
+      [
         scoring_rules.FilterIncorrect(
           RuleID.INCORRECT_OUTLIER,
           {RuleID.TAG_OUTLIER},
           c.needsMoreRatings,
           tagThreshold=2,
           voteThreshold=3,
-          weightedTotalVotes=2.5,
-          superThreshold=None,
+          weightedTotalVotes=incorrectFilterThreshold,
         ),
         scoring_rules.FilterLowDiligence(
           RuleID.LOW_DILIGENCE,

@@ -97,8 +97,8 @@ def _get_scorers(
         requireInternalAuthor=False,
         groupThreshold=0.4,
         minMeanNoteScore=-0.01,
-        crhThreshold=0.09,
-        crhSuperThreshold=0.2,
+        crhThreshold=0.15,
+        crhSuperThreshold=None,
         crnhThresholdIntercept=-0.01,
         crnhThresholdNoteFactorMultiplier=0,
         crnhThresholdNMIntercept=-0.02,
@@ -107,6 +107,8 @@ def _get_scorers(
         multiplyPenaltyByHarassmentScore=False,
         minimumHarassmentScoreToPenalize=2.5,
         tagConsensusHarassmentHelpfulRatingPenalty=10,
+        tagFilterPercentile=90,
+        incorrectFilterThreshold=1.5,
       )
     )
   if enabledScorers is None or Scorers.MFTopicScorer in enabledScorers:
@@ -574,7 +576,7 @@ def meta_score(
               i,
               None,
               None,
-              minSafeguardThreshold=None,
+              minSafeguardThreshold=0.25,
             )
           )
     if enabledScorers is None or Scorers.MFTopicScorer in enabledScorers:

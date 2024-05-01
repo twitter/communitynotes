@@ -142,7 +142,7 @@ class MFBaseScorer(Scorer):
     crnhThresholdNoteFactorMultiplier: float = -0.8,
     crnhThresholdNMIntercept: float = -0.15,
     crnhThresholdUCBIntercept: float = -0.04,
-    crhSuperThreshold: float = 0.5,
+    crhSuperThreshold: Optional[float] = 0.5,
     lowDiligenceThreshold: float = 0.263,
     factorThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
@@ -162,6 +162,8 @@ class MFBaseScorer(Scorer):
     minimumHarassmentScoreToPenalize: float = 2.0,
     tagConsensusHarassmentHelpfulRatingPenalty: int = 10,
     useReputation: bool = True,
+    tagFilterPercentile: int = 95,
+    incorrectFilterThreshold: float = 2.5,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -223,6 +225,8 @@ class MFBaseScorer(Scorer):
     self.minimumHarassmentScoreToPenalize = minimumHarassmentScoreToPenalize
     self.tagConsensusHarassmentHelpfulRatingPenalty = tagConsensusHarassmentHelpfulRatingPenalty
     self._useReputation = useReputation
+    self._tagFilterPercentile = tagFilterPercentile
+    self._incorrectFilterThreshold = incorrectFilterThreshold
     mfArgs = dict(
       [
         pair
@@ -476,6 +480,8 @@ class MFBaseScorer(Scorer):
           crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
           crhSuperThreshold=self._crhSuperThreshold,
           inertiaDelta=self._inertiaDelta,
+          tagFilterPercentile=self._tagFilterPercentile,
+          incorrectFilterThreshold=self._incorrectFilterThreshold,
           lowDiligenceThreshold=self._lowDiligenceThreshold,
         )
       if self._saveIntermediateState:
@@ -707,6 +713,8 @@ class MFBaseScorer(Scorer):
         crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
         crhSuperThreshold=self._crhSuperThreshold,
         inertiaDelta=self._inertiaDelta,
+        tagFilterPercentile=self._tagFilterPercentile,
+        incorrectFilterThreshold=self._incorrectFilterThreshold,
         lowDiligenceThreshold=self._lowDiligenceThreshold,
         finalRound=True,
         factorThreshold=self._factorThreshold,
