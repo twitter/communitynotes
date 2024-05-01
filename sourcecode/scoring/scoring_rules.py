@@ -211,7 +211,6 @@ class FilterTagOutliers(ScoringRule):
     ruleID: RuleID,
     dependencies: Set[RuleID],
     status: str,
-    crhSuperThreshold: float,
     minAdjustedTotal: float = 2.5,
     tagRatioPercentile: int = 95,
   ):
@@ -221,8 +220,6 @@ class FilterTagOutliers(ScoringRule):
       rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
       dependencies: Rules which must run before this rule can run.
       status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
-      crhSuperThreshold: If the note intercept exceeds the crhSuperThreshold, then the
-        tag filter is disabled.
       tagRatioPercentile: For a filter to trigger, the adjusted ratio value for a
         tag must exceed Nth percentile for notes currently rated as CRH.
       minAdjustedTotal: For a filter to trigger, the adjusted total of a tag must
@@ -232,7 +229,6 @@ class FilterTagOutliers(ScoringRule):
     self._status = status
     self._tagRatioPercentile = tagRatioPercentile
     self._minAdjustedTotal = minAdjustedTotal
-    self._crhSuperThreshold = crhSuperThreshold
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
@@ -242,9 +238,6 @@ class FilterTagOutliers(ScoringRule):
     crhNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][[c.noteIdKey]]
     crhStats = noteStats.merge(crhNotes, on=c.noteIdKey, how="inner")
     print(f"CRH notes prior to tag filtering: {len(crhStats)}")
-    print(
-      f"CRH notes above crhSuperThreshold: {sum(crhStats[c.internalNoteInterceptKey] > self._crhSuperThreshold)}"
-    )
     # Identify impacted notes.
     thresholds = tag_filter.get_tag_thresholds(crhStats, self._tagRatioPercentile)
     impactedNotes = pd.DataFrame.from_dict({c.noteIdKey: [], c.activeFilterTagsKey: []}).astype(
@@ -289,7 +282,6 @@ class FilterIncorrect(ScoringRule):
     tagThreshold: int,
     voteThreshold: int,
     weightedTotalVotes: float,
-    superThreshold: Optional[float],
   ):
     """Filter CRH notes for outliers with high levels of incorrect tag from similar factor raters.
 
@@ -301,15 +293,12 @@ class FilterIncorrect(ScoringRule):
       voteThreshold: threshold for number of included raters (raters must have issued a NH tag to be inclueed)
       weightedTotalVotes: For the filter to trigger, the sum of weighted incorrect votes must
         exceed the minAdjustedTotal.
-      superThreshold: if set, allow notes with an intercept above threshold to bypass the filter.
-      colSuffix: string suffix to apply to lookup columns
     """
     super().__init__(ruleID, dependencies)
     self._status = status
     self._tagThreshold = tagThreshold
     self._voteThreshold = voteThreshold
     self._weightedTotalVotes = weightedTotalVotes
-    self._superThreshold = superThreshold
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
@@ -324,11 +313,6 @@ class FilterIncorrect(ScoringRule):
       (crhStats["notHelpfulIncorrect_interval"] >= self._tagThreshold)
       & (crhStats["num_voters_interval"] >= self._voteThreshold)
       & (crhStats["tf_idf_incorrect_interval"] >= self._weightedTotalVotes)
-      & (
-        True
-        if self._superThreshold is None
-        else crhStats[c.internalNoteInterceptKey] < self._superThreshold
-      )
     ][[c.noteIdKey]]
 
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
@@ -429,7 +413,7 @@ class ApplyGroupModelResult(ScoringRule):
     groupNumber: int,
     coreCrhThreshold: Optional[float],
     expansionCrhThreshold: Optional[float],
-    minSafeguardThreshold: Optional[float] = 0.3,
+    minSafeguardThreshold: float = 0.3,
   ):
     """Set CRH status based on a modeling group result.
 
@@ -457,12 +441,7 @@ class ApplyGroupModelResult(ScoringRule):
     self._minSafeguardThreshold = minSafeguardThreshold
     self._coreCrhThreshold = coreCrhThreshold
     self._expansionCrhThreshold = expansionCrhThreshold
-    if self._minSafeguardThreshold is None:
-      assert self._coreCrhThreshold is None
-      assert self._expansionCrhThreshold is None
-    else:
-      assert self._coreCrhThreshold is not None
-      assert self._expansionCrhThreshold is not None
+    assert self._minSafeguardThreshold is not None
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
@@ -480,40 +459,41 @@ class ApplyGroupModelResult(ScoringRule):
     # Identify candidate note status updates
     noteStatusUpdates = probationaryCRHNotes.merge(currentNMRNotes, on=c.noteIdKey, how="inner")
     # If necessary, identify notes which pass score bound checks for expansion and core models.
-    if self._minSafeguardThreshold is not None:
-      # Apply min and max threhsolds to core and expansion intercepts
-      noteStats = noteStats[
-        [c.noteIdKey, c.coreNoteInterceptKey, c.expansionNoteInterceptKey]
-      ].copy()
-      noteStats["core"] = (noteStats[c.coreNoteInterceptKey] < self._coreCrhThreshold) & (
-        noteStats[c.coreNoteInterceptKey] > self._minSafeguardThreshold
+    # Apply min and max threhsolds to core and expansion intercepts
+    noteStats = noteStats[[c.noteIdKey, c.coreNoteInterceptKey, c.expansionNoteInterceptKey]].copy()
+    noteStats["core"] = noteStats[c.coreNoteInterceptKey] > self._minSafeguardThreshold
+    if self._coreCrhThreshold is not None:
+      noteStats["core"] = noteStats["core"] & (
+        noteStats[c.coreNoteInterceptKey] < self._coreCrhThreshold
       )
-      noteStats.loc[noteStats[c.coreNoteInterceptKey].isna(), "core"] = np.nan
-      noteStats["expansion"] = (
+    noteStats.loc[noteStats[c.coreNoteInterceptKey].isna(), "core"] = np.nan
+    noteStats["expansion"] = noteStats[c.expansionNoteInterceptKey] > self._minSafeguardThreshold
+    if self._expansionCrhThreshold is not None:
+      noteStats["expansion"] = noteStats["expansion"] & (
         noteStats[c.expansionNoteInterceptKey] < self._expansionCrhThreshold
-      ) & (noteStats[c.expansionNoteInterceptKey] > self._minSafeguardThreshold)
-      noteStats.loc[noteStats[c.expansionNoteInterceptKey].isna(), "expansion"] = np.nan
+      )
+    noteStats.loc[noteStats[c.expansionNoteInterceptKey].isna(), "expansion"] = np.nan
 
-      # Prioritize core over expansion intercepts when available
-      def _get_value(row):
-        idx = row.first_valid_index()
-        # If either core or expansion had an intercept then return whether it was in the valid
-        # range.  If neither had an intercept, return False.  Preference is given to core due
-        # to the ordering when selecting columns from noteStats below.
-        if idx is None:
-          return False
-        elif row[idx] == 1.0:
-          return True
-        elif row[idx] == 0.0:
-          return False
-        else:
-          assert False, f"unexpected value: {row[idx]}"
+    # Prioritize core over expansion intercepts when available
+    def _get_value(row):
+      idx = row.first_valid_index()
+      # If either core or expansion had an intercept then return whether it was in the valid
+      # range.  If neither had an intercept, return False.  Preference is given to core due
+      # to the ordering when selecting columns from noteStats below.
+      if idx is None:
+        return False
+      elif row[idx] == 1.0:
+        return True
+      elif row[idx] == 0.0:
+        return False
+      else:
+        assert False, f"unexpected value: {row[idx]}"
 
-      noteStats["actionable"] = noteStats[["core", "expansion"]].apply(_get_value, axis=1)
+    noteStats["actionable"] = noteStats[["core", "expansion"]].apply(_get_value, axis=1)
 
-      # Filter set of note status updates to only include actionable notes
-      actionableNotes = noteStats[noteStats["actionable"]][[c.noteIdKey]]
-      noteStatusUpdates = noteStatusUpdates.merge(actionableNotes, on=c.noteIdKey, how="inner")
+    # Filter set of note status updates to only include actionable notes
+    actionableNotes = noteStats[noteStats["actionable"]][[c.noteIdKey]]
+    noteStatusUpdates = noteStatusUpdates.merge(actionableNotes, on=c.noteIdKey, how="inner")
 
     # Set note status and return
     noteStatusUpdates[statusColumn] = c.currentlyRatedHelpful
