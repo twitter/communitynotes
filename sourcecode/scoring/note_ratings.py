@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional
 
 from . import constants as c, incorrect_filter, scoring_rules, tag_filter
 from .scoring_rules import RuleID
@@ -361,7 +361,7 @@ def compute_scored_notes(
   crnhThresholdUCBIntercept: float,
   crhSuperThreshold: Optional[float],
   inertiaDelta: float,
-  tagFilterPercentile: int,
+  tagFilterThresholds: Optional[Dict[str, float]],
   incorrectFilterThreshold: float,
   finalRound: bool = False,
   # TODO: We might want to consider inputing only the series here, instead of the whole callable
@@ -416,7 +416,7 @@ def compute_scored_notes(
   # Merge with noteParams as necessary
   noteParamsColsToKeep = [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
   if finalRound:
-    noteParamsColsToKeep += [c.lowDiligenceInterceptKey]
+    noteParamsColsToKeep += [c.lowDiligenceNoteInterceptKey]
   for col in c.noteParameterUncertaintyTSVColumns:
     if col in noteParams.columns:
       noteParamsColsToKeep.append(col)
@@ -454,14 +454,17 @@ def compute_scored_notes(
     ),
   ]
   if finalRound:
-    # Compute tag aggregates only if they are required for tag filtering.
-    tagAggregates = tag_filter.get_note_tag_aggregates(ratings, noteParams, raterParams)
-    assert len(tagAggregates) == len(noteParams), "there should be one aggregate per scored note"
-    noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer")
-    incorrectAggregates = incorrect_filter.get_incorrect_aggregates(
-      ratings, noteParams, raterParams
-    )
-    noteStats = noteStats.merge(incorrectAggregates, on=c.noteIdKey, how="outer")
+    with c.time_block("compute_scored_notes: compute tag aggregates"):
+      # Compute tag aggregates only if they are required for tag filtering.
+      tagAggregates = tag_filter.get_note_tag_aggregates(ratings, noteParams, raterParams)
+      assert len(tagAggregates) == len(noteParams), "there should be one aggregate per scored note"
+      noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer")
+    with c.time_block("compute_scored_notes: compute incorrect aggregates"):
+      incorrectAggregates = incorrect_filter.get_incorrect_aggregates(
+        ratings, noteParams, raterParams
+      )
+      noteStats = noteStats.merge(incorrectAggregates, on=c.noteIdKey, how="outer")
+    assert tagFilterThresholds is not None
 
     # Add tag filtering and sticky scoring logic.
     rules.extend(
@@ -478,7 +481,7 @@ def compute_scored_notes(
           RuleID.TAG_OUTLIER,
           {RuleID.GENERAL_CRH},
           c.needsMoreRatings,
-          tagRatioPercentile=tagFilterPercentile,
+          tagFilterThresholds=tagFilterThresholds,
         ),
       ]
     )

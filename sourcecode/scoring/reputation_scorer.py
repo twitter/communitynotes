@@ -3,9 +3,12 @@ from typing import List, Optional, Tuple
 from . import constants as c
 from .matrix_factorization.matrix_factorization import MatrixFactorization
 from .mf_base_scorer import get_ratings_for_stable_init
-from .mf_core_scorer import filter_core_input
+from .mf_core_scorer import filter_core_input, filter_core_output
 from .process_data import filter_ratings
-from .reputation_matrix_factorization.helpfulness_model import get_helpfulness_reputation_results
+from .reputation_matrix_factorization.helpfulness_model import (
+  get_helpfulness_reputation_results_final,
+  get_helpfulness_reputation_results_prescoring,
+)
 from .scorer import Scorer
 
 import pandas as pd
@@ -63,16 +66,15 @@ class ReputationScorer(Scorer):
 
   def get_helpfulness_scores_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the helpfulnessScores output."""
-    return [
-      c.raterParticipantIdKey,
-      c.raterHelpfulnessReputationKey,
-    ]
+    return [c.raterParticipantIdKey, c.raterHelpfulnessReputationKey]
 
   def get_internal_helpfulness_scores_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the helpfulnessScores output."""
     return [
       c.raterParticipantIdKey,
-      c.raterHelpfulnessReputationKey,
+      c.internalRaterInterceptKey,
+      c.internalRaterFactor1Key,
+      c.internalRaterReputationKey,
     ]
 
   def get_auxiliary_note_info_cols(self) -> List[str]:
@@ -100,20 +102,42 @@ class ReputationScorer(Scorer):
 
   def _prescore_notes_and_users(
     self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  ) -> Tuple[pd.DataFrame, pd.DataFrame, c.PrescoringMetaScorerOutput]:
     if self._seed is not None:
       print(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
     # Calculate initialization factors if necessary
-    noteParamsInit = pd.DataFrame()
-    raterParamsInit = pd.DataFrame()
+    noteParamsInit = None
+    raterParamsInit = None
     if self._modelingGroupToInitializeForStability:
       ratingsForStableInitialization = get_ratings_for_stable_init(
         ratings, userEnrollmentRaw, self._modelingGroupToInitializeForStability
       )
       mfRanker = MatrixFactorization()
       noteParamsInit, raterParamsInit, _ = mfRanker.run_mf(ratingsForStableInitialization)
-    return noteParamsInit, raterParamsInit
+
+      # We only want to use factors to initialize, not intercepts
+      noteParamsInit = noteParamsInit[[c.noteIdKey, c.internalNoteFactor1Key]]
+      raterParamsInit = raterParamsInit[[c.raterParticipantIdKey, c.internalRaterFactor1Key]]
+
+    # Fit multi-phase prescoring for reputation model
+    noteStats, raterStats, globalIntercept = get_helpfulness_reputation_results_prescoring(
+      ratings, noteInitState=noteParamsInit, raterInitState=raterParamsInit
+    )
+    # Fill in NaN values for any missing notes
+    noteStats = noteStats.merge(noteStatusHistory[[c.noteIdKey]].drop_duplicates(), how="outer")
+    assert len(noteStats) == len(noteStatusHistory)
+    print(
+      f"""Reputation prescoring: returning these columns:
+          noteStats: {noteStats.columns}
+          raterStats: {raterStats.columns}
+          """
+    )
+
+    metaScorerOutput = c.PrescoringMetaScorerOutput(
+      globalIntercept=None, lowDiligenceGlobalIntercept=globalIntercept, tagFilteringThresholds=None
+    )
+    return noteStats, raterStats, metaScorerOutput
 
   def _score_notes_and_users(
     self,
@@ -121,15 +145,23 @@ class ReputationScorer(Scorer):
     noteStatusHistory: pd.DataFrame,
     prescoringNoteModelOutput: pd.DataFrame,
     prescoringRaterModelOutput: pd.DataFrame,
-    usePreviouslySavedStateIfExists: bool = True,
+    prescoringMetaScorerOutput: c.PrescoringMetaScorerOutput,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     if self._seed is not None:
       print(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
 
     # Apply model
-    noteStats, raterStats = get_helpfulness_reputation_results(
-      ratings, noteInitState=prescoringNoteModelOutput, raterInitState=prescoringRaterModelOutput
+    # Note: we use the low diligence global intercept here as a temporary hack, since the prod scorer's
+    # globalIntercept field is a float and we need to store a c.ReputationGlobalIntercept.
+    assert (
+      prescoringMetaScorerOutput.lowDiligenceGlobalIntercept is not None
+    ), "Missing prescoring global intercept"
+    noteStats, raterStats = get_helpfulness_reputation_results_final(
+      ratings,
+      noteInitState=prescoringNoteModelOutput,
+      raterInitState=prescoringRaterModelOutput,
+      globalIntercept=prescoringMetaScorerOutput.lowDiligenceGlobalIntercept,
     )
     # Assign rating status
     noteStats[c.coverageRatingStatusKey] = c.needsMoreRatings
@@ -140,3 +172,13 @@ class ReputationScorer(Scorer):
     noteStats = noteStats.merge(noteStatusHistory[[c.noteIdKey]].drop_duplicates(), how="outer")
     assert len(noteStats) == len(noteStatusHistory)
     return noteStats, raterStats
+
+  def _postprocess_output(
+    self,
+    noteScores: pd.DataFrame,
+    userScores: pd.DataFrame,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    userEnrollment: pd.DataFrame,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    return filter_core_output(ratings, userEnrollment, noteScores), userScores

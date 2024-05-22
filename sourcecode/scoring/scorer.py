@@ -123,7 +123,7 @@ class Scorer(ABC):
 
   def _get_note_col_mapping(self) -> Dict[str, str]:
     """Returns a dict mapping default note column names to custom names for a specific model."""
-    return {}
+    return {c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey}
 
   def _get_user_col_mapping(self) -> Dict[str, str]:
     """Returns a dict mapping default user column names to custom names for a specific model."""
@@ -132,7 +132,7 @@ class Scorer(ABC):
   @abstractmethod
   def _prescore_notes_and_users(
     self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  ) -> Tuple[pd.DataFrame, pd.DataFrame, c.PrescoringMetaScorerOutput]:
     """
     Runs initial rounds of the matrix factorization scoring algorithm and returns intermediate
     output that can be used to initialize and reduce the runtime of final scoring.
@@ -155,6 +155,7 @@ class Scorer(ABC):
     noteStatusHistory: pd.DataFrame,
     prescoringNoteModelOutput: pd.DataFrame,
     prescoringRaterModelOutput: pd.DataFrame,
+    prescoringMetaScorerOutput: c.PrescoringMetaScorerOutput,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Run the matrix factorization scoring algorithm.
 
@@ -207,9 +208,10 @@ class Scorer(ABC):
             else None
           ),
           self.get_name(),
+          None,
         )
 
-    noteScores, userScores = self._prescore_notes_and_users(
+    noteScores, userScores, metaScores = self._prescore_notes_and_users(
       ratings, noteStatusHistory, scoringArgs.userEnrollment
     )
 
@@ -226,6 +228,7 @@ class Scorer(ABC):
         columns=self.get_auxiliary_note_info_cols(), fill_value=np.nan
       ),
       scorerName=self.get_name(),
+      metaScores=metaScores,
     )
 
   def _return_empty_final_scores(self) -> ModelResult:
@@ -242,6 +245,7 @@ class Scorer(ABC):
         else None
       ),
       scorerName=self.get_name(),
+      metaScores=None,
     )
 
   def score_final(self, scoringArgs: FinalScoringArgs) -> ModelResult:
@@ -263,11 +267,19 @@ class Scorer(ABC):
     prescoringNoteModelOutput = scoringArgs.prescoringNoteModelOutput[
       scoringArgs.prescoringNoteModelOutput[c.scorerNameKey] == self.get_name()
     ].drop(columns=c.scorerNameKey, inplace=False)
+
     if scoringArgs.prescoringRaterModelOutput is None:
       return self._return_empty_final_scores()
     prescoringRaterModelOutput = scoringArgs.prescoringRaterModelOutput[
       scoringArgs.prescoringRaterModelOutput[c.scorerNameKey] == self.get_name()
     ].drop(columns=c.scorerNameKey, inplace=False)
+
+    if self.get_name() not in scoringArgs.prescoringMetaOutput.metaScorerOutput:
+      print(
+        f"Scorer {self.get_name()} not found in prescoringMetaOutput; returning empty scores from final scoring."
+      )
+      return self._return_empty_final_scores()
+    prescoringMetaScorerOutput = scoringArgs.prescoringMetaOutput.metaScorerOutput[self.get_name()]
 
     # Filter raw input
     with self.time_block("Filter input"):
@@ -286,6 +298,7 @@ class Scorer(ABC):
       noteStatusHistory=noteStatusHistory,
       prescoringNoteModelOutput=prescoringNoteModelOutput,
       prescoringRaterModelOutput=prescoringRaterModelOutput,
+      prescoringMetaScorerOutput=prescoringMetaScorerOutput,
     )
 
     with self.time_block("Postprocess output"):
@@ -325,6 +338,7 @@ class Scorer(ABC):
       if self.get_auxiliary_note_info_cols()
       else None,
       scorerName=self.get_name(),
+      metaScores=None,
     )
 
   def score(
@@ -355,6 +369,14 @@ class Scorer(ABC):
       prescoringModelResult.scoredNotes[c.scorerNameKey] = prescoringModelResult.scorerName
     if prescoringModelResult.helpfulnessScores is not None:
       prescoringModelResult.helpfulnessScores[c.scorerNameKey] = prescoringModelResult.scorerName
+    if (
+      prescoringModelResult.metaScores is not None and prescoringModelResult.scorerName is not None
+    ):
+      prescoringMetaOutput = c.PrescoringMetaOutput(
+        metaScorerOutput={prescoringModelResult.scorerName: prescoringModelResult.metaScores}
+      )
+    else:
+      prescoringMetaOutput = c.PrescoringMetaOutput(metaScorerOutput={})
 
     finalScoringArgs = FinalScoringArgs(
       noteTopics=noteTopics,
@@ -363,6 +385,7 @@ class Scorer(ABC):
       userEnrollment=userEnrollment,
       prescoringNoteModelOutput=prescoringModelResult.scoredNotes,
       prescoringRaterModelOutput=prescoringModelResult.helpfulnessScores,
+      prescoringMetaOutput=prescoringMetaOutput,
     )
     finalModelResult = self.score_final(finalScoringArgs)
     return (

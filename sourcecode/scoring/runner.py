@@ -116,16 +116,26 @@ def main():
     args.headers,
     prescoringNoteModelOutputPath=os.path.join(args.outdir, "prescoring_scored_notes.tsv"),
     prescoringRaterModelOutputPath=os.path.join(args.outdir, "prescoring_helpfulness_scores.tsv"),
+    prescoringNoteTopicClassifierPath=os.path.join(
+      args.outdir, "prescoring_note_topic_classifier.joblib"
+    ),
+    prescoringMetaOutputPath=os.path.join(args.outdir, "prescoring_meta_output.joblib"),
   )
   notes, ratings, statusHistory, userEnrollment = dataLoader.get_data()
 
   # Prepare callback to write first round scoring output
-  def prescoring_write_fn(notePath, raterPath):
+  def prescoring_write_fn(
+    noteModelOutput, raterModelOutput, noteTopicClassifier, prescoringMetaOutput
+  ):
     return write_prescoring_output(
-      notePath,
-      raterPath,
+      noteModelOutput,
+      raterModelOutput,
+      noteTopicClassifier,
+      prescoringMetaOutput,
       os.path.join(args.outdir, "prescoring_scored_notes.tsv"),
       os.path.join(args.outdir, "prescoring_helpfulness_scores.tsv"),
+      os.path.join(args.outdir, "prescoring_note_topic_classifier.joblib"),
+      os.path.join(args.outdir, "prescoring_meta_output.joblib"),
     )
 
   # Invoke scoring and user contribution algorithms.

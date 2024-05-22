@@ -46,6 +46,7 @@ class ReputationModelHyperparameters:
   raterNormExpThirdRound: float
   reputationExp: float
   alpha: float
+  defaultReputation: float = 1.0
 
 
 # Define model with customizable loss, activation, regularization and dimensionality
@@ -62,8 +63,18 @@ class ReputationMFModel(nn.Module):
     l2RaterReputationMultiplier,
     noteInitState: Optional[pd.DataFrame] = None,
     raterInitState: Optional[pd.DataFrame] = None,
+    globalInterceptInit: Optional[float] = None,
     device=torch.device("cpu"),
+    defaultReputation=1.0,
   ):
+    """
+    noteInitState expects a df with columns:
+      noteId, internalNoteIntercept, internalRaterFactor1
+    raterInitState expects a df with columns:
+      raterParticipantIdKey, internalRaterIntercept, internalRaterFactor1, internalRaterReputation
+
+    For diligence model: may want to map these names back to internal before calling this function.
+    """
     super().__init__()
     # Save hyperparameters
     self.activation_fn = activation_fn
@@ -80,35 +91,104 @@ class ReputationMFModel(nn.Module):
     self.noteBias = nn.Embedding(dataset.notes.shape[0], 1, **self.format)
     self.raterBias = nn.Embedding(dataset.raters.shape[0], 1, **self.format)
     self.raterReputation = nn.Embedding(dataset.raters.shape[0], 1, **self.format)
-    self.globalBias = nn.Parameter(torch.tensor(0.0, **self.format))
-    # Initialize rater reputation to 1
     self.raterReputation.weight = nn.Parameter(
-      torch.ones(self.raterReputation.weight.shape[0], 1, **self.format)
+      torch.ones(self.raterReputation.weight.shape[0], 1, **self.format) * defaultReputation
     )
-    if raterInitState is not None:
-      mapping = dict(raterInitState[[c.raterParticipantIdKey, c.internalRaterFactor1Key]].values)
-      print("Initializing raters:")
-      print(f"  num raters: {dataset.raters.shape[0]}")
-      self.raterEmbedding.weight = nn.Parameter(
-        torch.tensor([mapping.get(rater, 0.0) for rater in dataset.raters])
+
+    self.init_global_bias(globalInterceptInit)
+    self.init_rater_factor(raterInitState, dataset, device, defaultValue=0.0)
+    self.init_rater_intercept(raterInitState, dataset, device, defaultValue=0.0)
+    self.init_rater_reputation(raterInitState, dataset, device, defaultValue=defaultReputation)
+    self.init_note_factor(noteInitState, dataset, device, defaultValue=0.0)
+    self.init_note_intercept(noteInitState, dataset, device, defaultValue=0.0)
+
+  def init_parameter(self, initDf, initCol, idKey, ratersOrNotes, device, defaultValue):
+    if initDf is not None and initCol in initDf.columns:
+      idToInitValue = dict(initDf[[idKey, initCol]].values)
+      print(f"Initializing {initCol}:")
+      print(
+        f"  num in dataset: {ratersOrNotes.shape[0]}, vs. num we are initializing: {len(initDf)}"
+      )
+      paramWeightToInit = nn.Parameter(
+        torch.tensor(
+          [idToInitValue.get(raterOrNoteId, defaultValue) for raterOrNoteId in ratersOrNotes]
+        )
         .to(torch.float32)
         .reshape(-1, 1)
         .to(device)
       )
-      print(f"  uninitialized raters: {(self.raterEmbedding.weight == 0).flatten().sum()}")
-      print(f"  initialized raters: {(self.raterEmbedding.weight != 0).flatten().sum()}")
-    if noteInitState is not None:
-      print("Initializing notes:")
-      print(f"  num notes: {dataset.notes.shape[0]}")
-      mapping = dict(noteInitState[[c.noteIdKey, c.internalNoteFactor1Key]].values)
-      self.noteEmbedding.weight = nn.Parameter(
-        torch.tensor([mapping.get(note, 0.0) for note in dataset.notes])
-        .reshape(-1, 1)
-        .to(torch.float32)
-        .to(device)
-      )
-      print(f"  uninitialized notes: {(self.noteEmbedding.weight == 0).flatten().sum()}")
-      print(f"  initialized notes: {(self.noteEmbedding.weight != 0).flatten().sum()}")
+      print(f"  uninitialized {initCol}s: {(paramWeightToInit == 0).flatten().sum()}")
+      print(f"  initialized {initCol}s: {(paramWeightToInit != 0).flatten().sum()}")
+      return paramWeightToInit
+    else:
+      print(f"Not initializing {initCol}")
+      return None
+
+  def init_note_factor(self, noteInitState, dataset, device, defaultValue=0):
+    initVal = self.init_parameter(
+      initDf=noteInitState,
+      initCol=c.internalNoteFactor1Key,
+      idKey=c.noteIdKey,
+      ratersOrNotes=dataset.notes,
+      device=device,
+      defaultValue=defaultValue,
+    )
+    if initVal is not None:
+      self.noteEmbedding.weight = initVal
+
+  def init_note_intercept(self, noteInitState, dataset, device, defaultValue=0):
+    initVal = self.init_parameter(
+      initDf=noteInitState,
+      initCol=c.internalNoteInterceptKey,
+      idKey=c.noteIdKey,
+      ratersOrNotes=dataset.notes,
+      device=device,
+      defaultValue=defaultValue,
+    )
+    if initVal is not None:
+      self.noteBias.weight = initVal
+
+  def init_rater_factor(self, raterInitState, dataset, device, defaultValue=0):
+    initVal = self.init_parameter(
+      initDf=raterInitState,
+      initCol=c.internalRaterFactor1Key,
+      idKey=c.raterParticipantIdKey,
+      ratersOrNotes=dataset.raters,
+      device=device,
+      defaultValue=defaultValue,
+    )
+    if initVal is not None:
+      self.raterEmbedding.weight = initVal
+
+  def init_rater_reputation(self, raterInitState, dataset, device, defaultValue):
+    initVal = self.init_parameter(
+      initDf=raterInitState,
+      initCol=c.internalRaterReputationKey,
+      idKey=c.raterParticipantIdKey,
+      ratersOrNotes=dataset.raters,
+      device=device,
+      defaultValue=defaultValue,
+    )
+    if initVal is not None:
+      self.raterReputation.weight = initVal
+
+  def init_rater_intercept(self, raterInitState, dataset, device, defaultValue=0):
+    initVal = self.init_parameter(
+      initDf=raterInitState,
+      initCol=c.internalRaterInterceptKey,
+      idKey=c.raterParticipantIdKey,
+      ratersOrNotes=dataset.raters,
+      device=device,
+      defaultValue=defaultValue,
+    )
+    if initVal is not None:
+      self.raterBias.weight = initVal
+
+  def init_global_bias(self, globalInterceptInit):
+    if globalInterceptInit is not None:
+      self.globalBias = nn.Parameter(torch.tensor(globalInterceptInit, **self.format))
+    else:
+      self.globalBias = nn.Parameter(torch.tensor(0.0, **self.format))
 
   def forward(self, notes, raters):
     pred = (self.noteEmbedding(notes) * self.raterEmbedding(raters)).sum(
@@ -149,11 +229,11 @@ def _train_one_round(model, loss_fn, dataset, hParams):
     loss = loss_fn(pred.flatten())
     loss += model.get_regularization_loss()
     if hParams.logRate and epoch % hParams.logRate == 0:
-      print(f"epoch={epoch:03d} | loss={loss.item():7.4f} | time={time.time() - start:.1f}s")
+      print(f"epoch={epoch:03d} | loss={loss.item():7.6f} | time={time.time() - start:.1f}s")
     if hParams.convergence > 0 and epoch % hParams.stablePeriod == 0:
       if priorLoss is not None and (priorLoss - loss).abs() < hParams.convergence:
         if hParams.logRate:
-          print(f"epoch={epoch:03d} | loss={loss.item():7.4f} | time={time.time() - start:.1f}s")
+          print(f"epoch={epoch:03d} | loss={loss.item():7.6f} | time={time.time() - start:.1f}s")
         break
       priorLoss = loss
     # Perform backward pass
@@ -170,19 +250,13 @@ def _sigmoid_range(low, high):
   return lambda tensor: sigmoid_fn(tensor) * (high - low) + low
 
 
-# TODO: replace string constants with enums
-def train_model(
-  hParams,
-  dataset,
-  noteInitState: Optional[pd.DataFrame] = None,
-  raterInitState: Optional[pd.DataFrame] = None,
-  device=torch.device("cpu"),
+def _setup_model(
+  dataset,  # MatrixFactorizationDataset,
+  hParams: ReputationModelHyperparameters,
+  noteInitState: pd.DataFrame,
+  raterInitState: pd.DataFrame,
+  globalInterceptInit: Optional[float] = None,
 ):
-  # Unpack dataset
-  notes = dataset.noteTensor
-  raters = dataset.raterTensor
-  targets = dataset.targetTensor
-
   # Define model
   activation_fn = None
   if hParams.activationFunction == "SIGMOID":
@@ -199,6 +273,7 @@ def train_model(
     assert hParams.lossFunction == "BCEWithLogitsLoss"
     loss_fn = nn.BCEWithLogitsLoss(reduction="none")
 
+  print(f"Setup model: noteInitState: \n{noteInitState},\n raterInitState: \n{raterInitState}")
   model = ReputationMFModel(
     dataset,
     activation_fn=activation_fn,
@@ -210,16 +285,29 @@ def train_model(
     l2RaterReputationMultiplier=hParams.l2RaterReputationMultiplier,
     noteInitState=noteInitState,
     raterInitState=raterInitState,
+    globalInterceptInit=globalInterceptInit,
+    defaultReputation=hParams.defaultReputation,
   )
+  return model, loss_fn
 
-  # train round 1
-  print("Reputation Matrix Factorization:")
+
+# TODO: replace string constants with enums
+def train_model_prescoring(
+  hParams,
+  dataset,
+  noteInitState: Optional[pd.DataFrame] = None,
+  raterInitState: Optional[pd.DataFrame] = None,
+  device=torch.device("cpu"),
+):
+  model, loss_fn = _setup_model(dataset, hParams, noteInitState, raterInitState)
+
+  print("Reputation Matrix Factorization: rater reputation frozen")
   print("Round 1:")
   loss_fn_1 = WeightedLoss(
     loss_fn,
-    notes,
-    raters,
-    targets,
+    dataset.noteTensor,
+    dataset.raterTensor,
+    dataset.targetTensor,
     posWeight=hParams.posWeight,
     noteNormExp=hParams.noteNormExpFirstRound,
     raterNormExp=hParams.raterNormExpFirstRound,
@@ -227,14 +315,15 @@ def train_model(
   )
   model.raterReputation.requires_grad_(False)
   loss1 = _train_one_round(model, loss_fn_1, dataset, hParams)
+  print(f"After round 1, global bias: {model.globalBias}")
+  globalInt1 = model.globalBias.data.cpu().detach().numpy().item()
 
-  # train round 2
-  print("\nRound 2:")
+  print("\nRound 2: learn rater rep (and everything else), freeze note intercept")
   loss_fn_2 = WeightedLoss(
     loss_fn,
-    notes,
-    raters,
-    targets,
+    dataset.noteTensor,
+    dataset.raterTensor,
+    dataset.targetTensor,
     posWeight=hParams.posWeight * hParams.posWeightSecondRoundMultiplier,
     noteNormExp=hParams.noteNormExpSecondRound,
     raterNormExp=hParams.raterNormExpSecondRound,
@@ -242,22 +331,26 @@ def train_model(
   )
   model.raterReputation.requires_grad_(True)
   model.noteBias.requires_grad_(False)
-  loss2 = _train_one_round(model, loss_fn_2, dataset, hParams)
 
-  # train round 3
-  print("\nRound 3:")
+  loss2 = _train_one_round(model, loss_fn_2, dataset, hParams)
+  globalInt2 = model.globalBias.data.cpu().detach().numpy().item()
+  noteIntercept2 = model.noteBias.weight.cpu().flatten().detach().numpy().copy()
+  raterIntercept2 = model.raterBias.weight.cpu().flatten().detach().numpy().copy()
+
+  print("\nRound 3: fit intercepts and global intercept with everything else frozen")
   model.l2Lambda = hParams.l2Lambda * hParams.l2LambdaThirdRoundMultiplier
   model.l2NoteBiasMultiplier = hParams.l2NoteBiasMultiplier * hParams.l2NoteBiasThirdRoundMultiplier
   model.noteBias.requires_grad_(True)
   model.noteEmbedding.requires_grad_(False)
   model.raterEmbedding.requires_grad_(False)
   model.raterReputation.requires_grad_(False)
+
   raterReputation = model.raterReputation.weight.detach().clone().clip(min=0)
   loss_fn_3 = WeightedLoss(
     loss_fn,
-    notes,
-    raters,
-    targets,
+    dataset.noteTensor,
+    dataset.raterTensor,
+    dataset.targetTensor,
     posWeight=hParams.posWeight * hParams.posWeightThirdRoundMultiplier,
     raterReputation=raterReputation,
     reputationExp=hParams.reputationExp,
@@ -266,6 +359,102 @@ def train_model(
     raterNormExp=hParams.raterNormExpThirdRound,
     device=device,
   )
+
   loss3 = _train_one_round(model, loss_fn_3, dataset, hParams)
 
-  return model, loss1, loss2, loss3
+  print(f"After round 3, global bias: {model.globalBias}")
+  globalInt3 = model.globalBias.data.cpu().detach().numpy().item()
+  globalIntercept = c.ReputationGlobalIntercept(
+    firstRound=globalInt1, secondRound=globalInt2, finalRound=globalInt3
+  )
+
+  return model, loss1, loss2, loss3, globalIntercept, noteIntercept2, raterIntercept2
+
+
+def train_model_final(
+  hParams,
+  dataset,
+  noteInitState: pd.DataFrame,
+  raterInitState: pd.DataFrame,
+  globalInterceptInit: c.ReputationGlobalIntercept,
+  device=torch.device("cpu"),
+):
+  """
+  Args:
+    hParams (ReputationModelHyperparameters)
+    dataset (ReputationDataset)
+    noteInitState (Optional[pd.DataFrame]): expects internal column names e.g. internalNoteIntercept
+    raterInitState (Optional[pd.DataFrame]): expects internal column names e.g. internalRaterIntercept
+  """
+  hParams.defaultReputation = 0.0  # 0 reputation for raters missing from init.
+
+  # setup_model initializes uses the internal intercepts, but we want to initialize with round 2 intercepts,
+  #  and save the final rater intercepts for later initialization.
+  noteInitState[c.internalNoteInterceptKey] = noteInitState[c.internalNoteInterceptRound2Key]
+
+  savedFinalRoundPrescoringRaterIntercept = raterInitState[c.internalRaterInterceptKey].copy()
+  raterInitState[c.internalRaterInterceptKey] = raterInitState[c.internalRaterInterceptRound2Key]
+
+  model, loss_fn = _setup_model(
+    dataset, hParams, noteInitState, raterInitState, globalInterceptInit.secondRound
+  )
+
+  print(
+    "Final scoring, initial round fitting reputation MF (equivalent to Round 2 in Prescoring - learn note factor)"
+  )
+
+  model.noteBias.requires_grad_(False)
+  model.noteEmbedding.requires_grad_(True)
+  model.raterEmbedding.requires_grad_(False)
+  model.raterReputation.requires_grad_(False)
+  model.raterBias.requires_grad_(False)
+  model.globalBias.requires_grad_(False)
+
+  loss_fn_2 = WeightedLoss(
+    loss_fn,
+    dataset.noteTensor,
+    dataset.raterTensor,
+    dataset.targetTensor,
+    posWeight=hParams.posWeight * hParams.posWeightSecondRoundMultiplier,
+    noteNormExp=hParams.noteNormExpSecondRound,
+    raterNormExp=hParams.raterNormExpSecondRound,
+    device=device,
+  )
+  _train_one_round(model, loss_fn_2, dataset, hParams)
+
+  print("Final scoring, final round fitting reputation MF: learn just note intercept")
+
+  # Now set the global intercept to the value from the final round
+  model.globalBias.data = torch.tensor(globalInterceptInit.finalRound, **model.format)
+
+  # Set rater intercepts back to final round. We will learn note intercepts, so no need to set them back.
+  raterInitState[c.internalRaterInterceptKey] = savedFinalRoundPrescoringRaterIntercept
+  model.init_rater_intercept(raterInitState, dataset, device)
+
+  model.l2Lambda = hParams.l2Lambda * hParams.l2LambdaThirdRoundMultiplier
+  model.l2NoteBiasMultiplier = hParams.l2NoteBiasMultiplier * hParams.l2NoteBiasThirdRoundMultiplier
+
+  model.noteBias.requires_grad_(True)
+  model.noteEmbedding.requires_grad_(False)
+  model.raterEmbedding.requires_grad_(False)
+  model.raterBias.requires_grad_(False)
+  model.raterReputation.requires_grad_(False)
+  model.globalBias.requires_grad_(False)
+
+  raterReputation = model.raterReputation.weight.detach().clone().clip(min=0)
+  loss_fn_final = WeightedLoss(
+    loss_fn,
+    dataset.noteTensor,
+    dataset.raterTensor,
+    dataset.targetTensor,
+    posWeight=hParams.posWeight * hParams.posWeightThirdRoundMultiplier,
+    raterReputation=raterReputation,
+    reputationExp=hParams.reputationExp,
+    alpha=hParams.alpha,
+    noteNormExp=hParams.noteNormExpThirdRound,
+    raterNormExp=hParams.raterNormExpThirdRound,
+    device=device,
+  )
+
+  loss_final = _train_one_round(model, loss_fn_final, dataset, hParams)
+  return model, loss_final

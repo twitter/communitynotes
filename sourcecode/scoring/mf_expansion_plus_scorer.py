@@ -1,9 +1,7 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from . import constants as c
 from .mf_base_scorer import MFBaseScorer
-
-import pandas as pd
 
 
 class MFExpansionPlusScorer(MFBaseScorer):
@@ -38,6 +36,15 @@ class MFExpansionPlusScorer(MFBaseScorer):
       c.internalNoteFactor1Key: c.expansionPlusNoteFactor1Key,
       c.internalRatingStatusKey: c.expansionPlusRatingStatusKey,
       c.internalActiveRulesKey: c.expansionPlusInternalActiveRulesKey,
+      c.numFinalRoundRatingsKey: c.expansionPlusNumFinalRoundRatingsKey,
+      c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey,
+    }
+
+  def _get_user_col_mapping(self) -> Dict[str, str]:
+    """Returns a dict mapping default user column names to custom names for a specific model."""
+    return {
+      c.internalRaterInterceptKey: c.expansionPlusRaterInterceptKey,
+      c.internalRaterFactor1Key: c.expansionPlusRaterFactor1Key,
     }
 
   def get_scored_notes_cols(self) -> List[str]:
@@ -48,11 +55,16 @@ class MFExpansionPlusScorer(MFBaseScorer):
       c.expansionPlusNoteFactor1Key,
       c.expansionPlusRatingStatusKey,
       c.expansionPlusInternalActiveRulesKey,
+      c.expansionPlusNumFinalRoundRatingsKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the helpfulnessScores output."""
-    return []
+    return [
+      c.raterParticipantIdKey,
+      c.expansionPlusRaterInterceptKey,
+      c.expansionPlusRaterFactor1Key,
+    ]
 
   def get_auxiliary_note_info_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the auxiliaryNoteInfo output."""
@@ -76,45 +88,8 @@ class MFExpansionPlusScorer(MFBaseScorer):
   def _get_dropped_user_cols(self) -> List[str]:
     """Returns a list of columns which should be excluded from helpfulnessScores output."""
     return super()._get_dropped_user_cols() + [
-      c.raterParticipantIdKey,
-      c.internalRaterInterceptKey,
-      c.internalRaterFactor1Key,
       c.crhCrnhRatioDifferenceKey,
       c.meanNoteScoreKey,
       c.raterAgreeRatioKey,
       c.aboveHelpfulnessThresholdKey,
     ]
-
-  def _postprocess_output(
-    self,
-    noteScores: pd.DataFrame,
-    userScores: pd.DataFrame,
-    ratings: pd.DataFrame,
-    noteStatusHistory: pd.DataFrame,
-    userEnrollment: pd.DataFrame,
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Filter noteScores to only include notes authored by EXPANSION_PLUS users.
-
-    Args:
-      noteScores: note outputs from scoring
-      userScores: user outputs from scoring
-      ratings (pd.DataFrame): preprocessed ratings
-      noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
-      userEnrollment (pd.DataFrame): one row per user specifying enrollment properties
-
-    Returns:
-      Tuple[pd.DataFrame, pd.DataFrame]:
-        noteScores: filtered and updated note scoring output
-        userScores: unaltered
-    """
-    # Identify EXPANSION_PLUS users.
-    expansionPlusAuthors = userEnrollment[
-      userEnrollment[c.modelingPopulationKey] == c.expansionPlus
-    ][[c.participantIdKey]].rename(columns={c.participantIdKey: c.noteAuthorParticipantIdKey})
-    # Identify note written by EXPANSION_PLUS users.
-    expnasionPlusNotes = noteStatusHistory.merge(
-      expansionPlusAuthors, on=c.noteAuthorParticipantIdKey
-    )[[c.noteIdKey]]
-    # Prune to EXPANSION_PLUS users and return.
-    noteScores = noteScores.merge(expnasionPlusNotes, on=c.noteIdKey)
-    return noteScores, userScores

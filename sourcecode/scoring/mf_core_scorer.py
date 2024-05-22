@@ -16,7 +16,6 @@ def filter_core_input(
   ratingsOrig: pd.DataFrame,
   noteStatusHistoryOrig: pd.DataFrame,
   userEnrollment: pd.DataFrame,
-  coreThreshold: float = 0.5,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
   """Prune the contents of ratings and noteStatusHistory to scope model behavior.
 
@@ -63,7 +62,7 @@ def filter_core_input(
   ratings = ratingsOrig[~ratingsOrig[c.raterParticipantIdKey].isin(expansionPlusUsers)]
   ratings = ratings[~ratings[c.noteIdKey].isin(expansionPlusNotes)]
   print(f"  ratings length after EXPANSION_PLUS filter: {len(ratings)}")
-  # Separate CORE and EXPANSION notes.
+  # Prune ratings that aren't defined as core
   userEnrollment[_CORE_BOOL] = userEnrollment[c.modelingPopulationKey] == c.core
   userGroups = userEnrollment[[c.participantIdKey, _CORE_BOOL]].copy()
   ratings = ratings.merge(
@@ -72,6 +71,38 @@ def filter_core_input(
     how="left",
   )
   print(f"  Ratings from user without modelingPopulation: {pd.isna(ratings[_CORE_BOOL]).sum()}")
+  ratings = ratings.fillna({_CORE_BOOL: True})
+  ratings[_CORE_BOOL] = ratings[_CORE_BOOL].astype(np.bool_)
+  ratings = ratings[ratings[_CORE_BOOL]]
+  ratings = ratings.drop(columns=_CORE_BOOL)
+  print(f"  Core ratings: {len(ratings)}")
+  return ratings, noteStatusHistory
+
+
+def filter_core_output(
+  ratingsOrig: pd.DataFrame,
+  userEnrollment: pd.DataFrame,
+  noteScores: pd.DataFrame,
+  coreThreshold: float = 0.5,
+) -> pd.DataFrame:
+  # Drop ExpansionPlus ratings before determining ratios
+  print("Filtering Core Output")
+  expansionPlusUsers = set(
+    userEnrollment[userEnrollment[c.modelingPopulationKey] == c.expansionPlus][
+      c.participantIdKey
+    ].values
+  )
+  print(f"  Original ratings length: {len(ratingsOrig)}")
+  ratings = ratingsOrig[~ratingsOrig[c.raterParticipantIdKey].isin(expansionPlusUsers)]
+  print(f"  Ratings length after EXPANSION_PLUS filter: {len(ratings)}")
+  # Separate CORE and EXPANSION notes.
+  userEnrollment[_CORE_BOOL] = userEnrollment[c.modelingPopulationKey] == c.core
+  userGroups = userEnrollment[[c.participantIdKey, _CORE_BOOL]].copy()
+  ratings = ratings.merge(
+    userGroups.rename(columns={c.participantIdKey: c.raterParticipantIdKey}),
+    on=c.raterParticipantIdKey,
+    how="left",
+  )
   ratings = ratings.fillna({_CORE_BOOL: True})
   ratings[_CORE_BOOL] = ratings[_CORE_BOOL].astype(np.bool8)
   counts = ratings[[c.noteIdKey, _CORE_BOOL]].copy()
@@ -85,19 +116,13 @@ def filter_core_input(
   # case we leave the note as CORE so that the note will be eligble for locking.  In effect,
   # this approach biases us towards locking note status at 2 weeks and only avoiding locking
   # when a note is scored by the EXPANSION model.
-  print(f"  Total notes: {len(noteStatusHistory)}")
-  print(f"  Total notes with ratings: {len(counts)}")
+  print(f"  Original noteScores length: {len(noteScores)}")
   expansionNotes = set(counts[counts[_RATIO] <= coreThreshold][c.noteIdKey])
-  coreNotes = set(noteStatusHistory[c.noteIdKey]) - expansionNotes
-  print(f"  Total core notes: {len(coreNotes)}")
   print(f"  Total expansion notes: {len(expansionNotes)}")
   # Prune notes and ratings to ratings from CORE users on CORE notes.
-  ratings = ratings[ratings[_CORE_BOOL]]
-  ratings = ratings.drop(columns=_CORE_BOOL)
-  ratings = ratings[ratings[c.noteIdKey].isin(coreNotes)]
-  noteStatusHistory = noteStatusHistory[noteStatusHistory[c.noteIdKey].isin(coreNotes)]
-  print(f"  Core ratings: {len(ratings)}")
-  return ratings, noteStatusHistory
+  noteScores = noteScores[~noteScores[c.noteIdKey].isin(expansionNotes)]
+  print(f"  Final noteScores length: {len(noteScores)}")
+  return noteScores
 
 
 class MFCoreScorer(MFBaseScorer):
@@ -136,6 +161,8 @@ class MFCoreScorer(MFBaseScorer):
       c.internalActiveRulesKey: c.coreActiveRulesKey,
       c.noteInterceptMinKey: c.coreNoteInterceptMinKey,
       c.noteInterceptMaxKey: c.coreNoteInterceptMaxKey,
+      c.numFinalRoundRatingsKey: c.coreNumFinalRoundRatingsKey,
+      c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey,
     }
 
   def _get_user_col_mapping(self) -> Dict[str, str]:
@@ -156,6 +183,7 @@ class MFCoreScorer(MFBaseScorer):
       c.activeFilterTagsKey,
       c.coreNoteInterceptMinKey,
       c.coreNoteInterceptMaxKey,
+      c.coreNumFinalRoundRatingsKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
@@ -179,3 +207,13 @@ class MFCoreScorer(MFBaseScorer):
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Prune the contents of ratings and noteStatusHistory to scope model behavior."""
     return filter_core_input(ratingsOrig, noteStatusHistoryOrig, userEnrollment)
+
+  def _postprocess_output(
+    self,
+    noteScores: pd.DataFrame,
+    userScores: pd.DataFrame,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    userEnrollment: pd.DataFrame,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    return filter_core_output(ratings, userEnrollment, noteScores), userScores
