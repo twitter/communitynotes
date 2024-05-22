@@ -27,6 +27,7 @@ def coalesce_topic_models(scoredNotes: pd.DataFrame) -> pd.DataFrame:
     c.topicNoteConfidentKey,
     c.noteTopicKey,
     c.topicInternalActiveRulesKey,
+    c.topicNumFinalRoundRatingsKey,
   ]:
     scoredNotes = coalesce_columns(scoredNotes, col)
 
@@ -108,6 +109,7 @@ class MFTopicScorer(MFBaseScorer):
     self._topicNoteFactor1Key = f"{c.topicNoteFactor1Key}_{self._topicName}"
     self._topicRatingStatusKey = f"{c.topicRatingStatusKey}_{self._topicName}"
     self._topicInternalActiveRulesKey = f"{c.topicInternalActiveRulesKey}_{self._topicName}"
+    self._topicNumFinalRoundRatingsKey = f"{c.topicNumFinalRoundRatingsKey}_{self._topicName}"
     self._noteTopicKey = f"{c.noteTopicKey}_{self._topicName}"
     self._noteTopicConfidentKey = f"{c.topicNoteConfidentKey}_{self._topicName}"
 
@@ -121,6 +123,8 @@ class MFTopicScorer(MFBaseScorer):
       c.internalNoteFactor1Key: self._topicNoteFactor1Key,
       c.internalRatingStatusKey: self._topicRatingStatusKey,
       c.internalActiveRulesKey: self._topicInternalActiveRulesKey,
+      c.numFinalRoundRatingsKey: self._topicNumFinalRoundRatingsKey,
+      c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey,
     }
 
   def get_scored_notes_cols(self) -> List[str]:
@@ -133,6 +137,7 @@ class MFTopicScorer(MFBaseScorer):
       self._noteTopicKey,
       self._noteTopicConfidentKey,
       self._topicInternalActiveRulesKey,
+      self._topicNumFinalRoundRatingsKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:

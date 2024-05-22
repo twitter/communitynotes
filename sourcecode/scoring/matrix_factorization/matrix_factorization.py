@@ -494,9 +494,9 @@ class MatrixFactorization:
 
     globalIntercept = None
     if self._useGlobalIntercept:
-      globalIntercept = self.mf_model.global_intercept
+      globalIntercept = self.mf_model.global_intercept.item()
       if self._logging:
-        print("Global Intercept: ", globalIntercept.item())
+        print("Global Intercept: ", globalIntercept)
 
     fitNoteParams, fitRaterParams = self._get_parameters_from_trained_model()
 

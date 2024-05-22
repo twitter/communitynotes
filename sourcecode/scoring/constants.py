@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 import os
 import time
-from typing import Optional
+from typing import Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -103,6 +103,7 @@ internalNoteFactorKeyBase = "internalNoteFactor"
 internalRaterFactorKeyBase = "internalRaterFactor"
 internalRatingStatusKey = "internalRatingStatus"
 internalActiveRulesKey = "internalActiveRules"
+internalRaterReputationKey = "internalRaterReputation"
 
 scorerNameKey = "scorerName"
 
@@ -128,6 +129,7 @@ coreRatingStatusKey = "coreRatingStatus"
 coreActiveRulesKey = "coreActiveRules"
 coreNoteInterceptMaxKey = "coreNoteInterceptMax"
 coreNoteInterceptMinKey = "coreNoteInterceptMin"
+coreNumFinalRoundRatingsKey = "coreNumFinalRoundRatings"
 # Expansion Model
 expansionNoteInterceptKey = "expansionNoteIntercept"
 expansionNoteFactor1Key = "expansionNoteFactor1"
@@ -135,11 +137,17 @@ expansionRatingStatusKey = "expansionRatingStatus"
 expansionNoteInterceptMaxKey = "expansionNoteInterceptMax"
 expansionNoteInterceptMinKey = "expansionNoteInterceptMin"
 expansionInternalActiveRulesKey = "expansionActiveRules"
+expansionNumFinalRoundRatingsKey = "expansionNumFinalRoundRatings"
+expansionRaterFactor1Key = "expansionRaterFactor1"
+expansionRaterInterceptKey = "expansionRaterIntercept"
 # ExpansionPlus Model
 expansionPlusNoteInterceptKey = "expansionPlusNoteIntercept"
 expansionPlusNoteFactor1Key = "expansionPlusNoteFactor1"
 expansionPlusRatingStatusKey = "expansionPlusRatingStatus"
 expansionPlusInternalActiveRulesKey = "expansionPlusActiveRules"
+expansionPlusNumFinalRoundRatingsKey = "expansionPlusNumFinalRoundRatings"
+expansionPlusRaterFactor1Key = "expansionPlusRaterFactor1"
+expansionPlusRaterInterceptKey = "expansionPlusRaterIntercept"
 # Coverage / Helpfulness Reputation Model
 coverageNoteInterceptKey = "coverageNoteIntercept"
 coverageNoteFactor1Key = "coverageNoteFactor1"
@@ -156,12 +164,14 @@ groupNoteInterceptMinKey = "groupNoteInterceptMin"
 groupRaterInterceptKey = "groupRaterIntercept"
 groupRaterFactor1Key = "groupRaterFactor1"
 groupInternalActiveRulesKey = "groupActiveRules"
+groupNumFinalRoundRatingsKey = "groupNumFinalRoundRatings"
 # Topic Model
 topicNoteInterceptKey = "topicNoteIntercept"
 topicNoteFactor1Key = "topicNoteFactor1"
 topicRatingStatusKey = "topicRatingStatus"
 topicNoteConfidentKey = "topicNoteConfident"
 topicInternalActiveRulesKey = "topicActiveRules"
+topicNumFinalRoundRatingsKey = "topicNumFinalRoundRatings"
 # Harassment/Abuse Tag
 harassmentNoteInterceptKey = "harassmentNoteIntercept"
 harassmentNoteFactor1Key = "harassmentNoteFactor1"
@@ -183,6 +193,7 @@ numRatingsKey = "numRatings"
 numRatingsLast28DaysKey = "numRatingsLast28"
 ratingFromInitialModelingGroupKey = "ratingFromInitialModelingGroup"
 percentFromInitialModelingGroupKey = "percentFromInitialModelingGroup"
+numFinalRoundRatingsKey = "numFinalRoundRatings"
 
 # Helpfulness Score Keys
 crhRatioKey = "CRHRatio"
@@ -275,13 +286,24 @@ notHelpfulTagsAdjustedRatioColumns = [
 ]
 ratingWeightKey = "ratingWeight"
 
-lowDiligenceInterceptKey = "lowDiligenceIntercept"
+lowDiligenceRaterFactor1Key = "lowDiligenceRaterFactor1"
+lowDiligenceRaterInterceptKey = "lowDiligenceRaterIntercept"
+lowDiligenceRaterReputationKey = "lowDiligenceRaterReputation"
+lowDiligenceNoteFactor1Key = "lowDiligenceNoteFactor1"
+lowDiligenceNoteInterceptKey = "lowDiligenceNoteIntercept"
+lowDiligenceLegacyNoteInterceptKey = "lowDiligenceIntercept"
+lowDiligenceNoteInterceptRound2Key = "lowDiligenceNoteInterceptRound2"
+internalNoteInterceptRound2Key = "internalNoteInterceptRound2"
+lowDiligenceRaterInterceptRound2Key = "lowDiligenceRaterInterceptRound2"
+internalRaterInterceptRound2Key = "internalRaterInterceptRound2"
+
+
 incorrectFilterColumns = [
   "notHelpfulIncorrect_interval",
   "p_incorrect_user_interval",
   "num_voters_interval",
   "tf_idf_incorrect_interval",
-  lowDiligenceInterceptKey,
+  lowDiligenceLegacyNoteInterceptKey,
 ]
 
 misleadingTags = [
@@ -508,6 +530,9 @@ prescoringNoteModelOutputTSVColumnsAndTypes = [
   (internalNoteInterceptKey, np.double),
   (internalNoteFactor1Key, np.double),
   (scorerNameKey, str),
+  (lowDiligenceNoteInterceptKey, np.double),
+  (lowDiligenceNoteFactor1Key, np.double),
+  (lowDiligenceNoteInterceptRound2Key, np.double),
 ]
 prescoringNoteModelOutputTSVColumns = [
   col for (col, dtype) in prescoringNoteModelOutputTSVColumnsAndTypes
@@ -566,6 +591,11 @@ noteModelOutputTSVColumnsAndTypes = [
   (expansionPlusInternalActiveRulesKey, str),
   (groupInternalActiveRulesKey, str),
   (topicInternalActiveRulesKey, str),
+  (coreNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (expansionNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (expansionPlusNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (groupNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (topicNumFinalRoundRatingsKey, np.double),  # double because nullable.
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
@@ -587,6 +617,11 @@ prescoringRaterModelOutputTSVColumnsAndTypes = [
     "boolean",
   ),  # nullable bool https://pandas.pydata.org/docs/user_guide/boolean.html
   (scorerNameKey, str),
+  (internalRaterReputationKey, np.double),
+  (lowDiligenceRaterInterceptKey, np.double),
+  (lowDiligenceRaterFactor1Key, np.double),
+  (lowDiligenceRaterReputationKey, np.double),
+  (lowDiligenceRaterInterceptRound2Key, np.double),
 ]
 prescoringRaterModelOutputTSVColumns = [
   col for (col, dtype) in prescoringRaterModelOutputTSVColumnsAndTypes
@@ -626,6 +661,10 @@ raterModelOutputTSVColumnsAndTypes = [
   (modelingGroupKey, np.float64),
   (raterHelpfulnessReputationKey, np.double),
   (numberOfTimesEarnedOutKey, np.float64),
+  (expansionRaterInterceptKey, np.double),
+  (expansionRaterFactor1Key, np.double),
+  (expansionPlusRaterInterceptKey, np.double),
+  (expansionPlusRaterFactor1Key, np.double),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
@@ -639,6 +678,26 @@ def time_block(label):
   finally:
     end = time.time()
     print(f"{label} elapsed time: {end - start:.2f} secs ({((end-start)/60.0):.2f} mins)")
+
+
+### TODO: weave through second round intercept.
+@dataclass
+class ReputationGlobalIntercept:
+  firstRound: float
+  secondRound: float
+  finalRound: float
+
+
+@dataclass
+class PrescoringMetaScorerOutput:
+  globalIntercept: Optional[float]
+  lowDiligenceGlobalIntercept: Optional[ReputationGlobalIntercept]
+  tagFilteringThresholds: Optional[Dict[str, float]]  # tag => threshold
+
+
+@dataclass
+class PrescoringMetaOutput:
+  metaScorerOutput: Dict[str, PrescoringMetaScorerOutput]  # scorerName => output
 
 
 @dataclass
@@ -692,6 +751,7 @@ class PrescoringArgs(ScoringArgs):
 class FinalScoringArgs(ScoringArgs):
   prescoringNoteModelOutput: pd.DataFrame
   prescoringRaterModelOutput: pd.DataFrame
+  prescoringMetaOutput: PrescoringMetaOutput
 
   def remove_large_args_for_multiprocessing(self):
     self.ratings = None
@@ -707,3 +767,4 @@ class ModelResult:
   helpfulnessScores: pd.DataFrame
   auxiliaryNoteInfo: pd.DataFrame
   scorerName: Optional[str]
+  metaScores: Optional[PrescoringMetaScorerOutput]

@@ -1,9 +1,19 @@
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from . import constants as c, helpfulness_scores, note_ratings, process_data, tag_consensus
+from . import (
+  constants as c,
+  helpfulness_scores,
+  note_ratings,
+  process_data,
+  tag_consensus,
+  tag_filter,
+)
 from .matrix_factorization.matrix_factorization import MatrixFactorization
 from .matrix_factorization.pseudo_raters import PseudoRatersRunner
-from .reputation_matrix_factorization.diligence_model import get_low_diligence_intercepts
+from .reputation_matrix_factorization.diligence_model import (
+  fit_low_diligence_model_final,
+  fit_low_diligence_model_prescoring,
+)
 from .scorer import Scorer
 
 import numpy as np
@@ -272,7 +282,17 @@ class MFBaseScorer(Scorer):
 
   def get_scored_notes_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the scoredNotes output."""
-    return self.get_internal_scored_notes_cols()
+    return [
+      c.noteIdKey,
+      c.internalNoteInterceptKey,
+      c.internalNoteFactor1Key,
+      c.internalRatingStatusKey,
+      c.internalActiveRulesKey,
+      c.activeFilterTagsKey,
+      c.noteInterceptMaxKey,
+      c.noteInterceptMinKey,
+      c.numFinalRoundRatingsKey,
+    ]
 
   def get_internal_scored_notes_cols(self) -> List[str]:
     """Returns a list of internal columns which should be present in the scoredNotes output."""
@@ -285,11 +305,22 @@ class MFBaseScorer(Scorer):
       c.activeFilterTagsKey,
       c.noteInterceptMaxKey,
       c.noteInterceptMinKey,
+      c.numFinalRoundRatingsKey,
+      c.lowDiligenceNoteInterceptKey,
+      c.lowDiligenceNoteFactor1Key,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the helpfulnessScores output."""
-    return self.get_internal_helpfulness_scores_cols()
+    return [
+      c.raterParticipantIdKey,
+      c.internalRaterInterceptKey,
+      c.internalRaterFactor1Key,
+      c.crhCrnhRatioDifferenceKey,
+      c.meanNoteScoreKey,
+      c.raterAgreeRatioKey,
+      c.aboveHelpfulnessThresholdKey,
+    ]
 
   def get_internal_helpfulness_scores_cols(self) -> List[str]:
     """Returns a list of internal columns which should be present in the helpfulnessScores output."""
@@ -301,6 +332,9 @@ class MFBaseScorer(Scorer):
       c.meanNoteScoreKey,
       c.raterAgreeRatioKey,
       c.aboveHelpfulnessThresholdKey,
+      c.lowDiligenceRaterInterceptKey,
+      c.lowDiligenceRaterFactor1Key,
+      c.lowDiligenceRaterReputationKey,
     ]
 
   def get_auxiliary_note_info_cols(self) -> List[str]:
@@ -401,9 +435,26 @@ class MFBaseScorer(Scorer):
       )
     return modelResult
 
+  def compute_tag_thresholds_for_percentile(
+    self, scoredNotes, raterParams, ratings
+  ) -> Dict[str, float]:
+    with c.time_block(f"{self.get_name()}: Compute tag thresholds for percentiles"):
+      # Compute tag aggregates (in the same way as is done in final scoring in note_ratings.compute_scored_notes)
+      tagAggregates = tag_filter.get_note_tag_aggregates(ratings, scoredNotes, raterParams)
+      assert len(tagAggregates) == len(
+        scoredNotes
+      ), "There should be one aggregate per scored note."
+      scoredNotes = tagAggregates.merge(scoredNotes, on=c.noteIdKey, how="outer")
+
+      # Compute percentile thresholds for each tag
+      crhNotes = scoredNotes[scoredNotes[c.currentlyRatedHelpfulBoolKey]][[c.noteIdKey]]
+      crhStats = scoredNotes.merge(crhNotes, on=c.noteIdKey, how="inner")
+      thresholds = tag_filter.get_tag_thresholds(crhStats, self._tagFilterPercentile)
+    return thresholds
+
   def _prescore_notes_and_users(
     self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  ) -> Tuple[pd.DataFrame, pd.DataFrame, c.PrescoringMetaScorerOutput]:
     """
     Fit initial matrix factorization model(s) on the ratings data in order to generate
     initial note and rater parameters (and rater helpfulness scores) that are passed to
@@ -462,6 +513,11 @@ class MFBaseScorer(Scorer):
           c.aboveHelpfulnessThresholdKey,
         ]
       ] = np.nan
+      noteParams = noteParamsUnfiltered
+      raterParams = raterParamsUnfiltered
+      # TODO: delete after we run prescoring diligence properly
+      # diligenceGlobalIntercept = None
+      finalRoundRatings = ratingsForTraining
     else:
       assert "Topic" not in self.get_name(), f"Unexpected scorer: {self.get_name()}"
       print(f"Performing rep-filtering for {self.get_name()}")
@@ -480,9 +536,9 @@ class MFBaseScorer(Scorer):
           crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
           crhSuperThreshold=self._crhSuperThreshold,
           inertiaDelta=self._inertiaDelta,
-          tagFilterPercentile=self._tagFilterPercentile,
           incorrectFilterThreshold=self._incorrectFilterThreshold,
-          lowDiligenceThreshold=self._lowDiligenceThreshold,
+          tagFilterThresholds=None,
+          finalRound=False,
         )
       if self._saveIntermediateState:
         self.prescoringScoredNotes = scoredNotes
@@ -578,17 +634,67 @@ class MFBaseScorer(Scorer):
 
       ## One extra final round!
       # Filter ratings based on prev helpfulness scores
-      finalRoundRatings = helpfulness_scores.filter_ratings_by_helpfulness_scores(
-        ratingsForTraining, helpfulnessScores
-      )
-      # Run MF
-      noteParamsUnfiltered, raterParamsUnfiltered, globalBias = self._mfRanker.run_mf(
-        ratings=finalRoundRatings,
-        noteInit=noteParamsUnfiltered,
-        userInit=raterParamsUnfiltered,
-      )
+      with c.time_block("Final round MF"):
+        finalRoundRatings = helpfulness_scores.filter_ratings_by_helpfulness_scores(
+          ratingsForTraining, helpfulnessScores
+        )
+        noteParams, raterParams, globalBias = self._mfRanker.run_mf(
+          ratings=finalRoundRatings,
+          noteInit=noteParamsUnfiltered,
+          userInit=raterParamsUnfiltered,
+        )
 
-    raterModelOutput = raterParamsUnfiltered.merge(
+    # Run Diligence MF Prescoring, based on the final MF
+    with self.time_block("Low Diligence MF"):
+      # Initialize diligence rater factors with final round helpful MF rater factor
+      raterParamsDiligenceInit = raterParams[
+        [c.raterParticipantIdKey, c.internalRaterFactor1Key]
+      ].rename({c.internalRaterFactor1Key: c.lowDiligenceRaterFactor1Key}, axis=1)
+      print(
+        f"In {self.get_name()} prescoring, about to call diligence with {len(finalRoundRatings)} final round ratings."
+      )
+      (
+        diligenceNoteParams,
+        diligenceRaterParams,
+        diligenceGlobalIntercept,
+      ) = fit_low_diligence_model_prescoring(
+        finalRoundRatings, raterInitStateDiligence=raterParamsDiligenceInit
+      )
+      noteParams = noteParams.merge(diligenceNoteParams, on=c.noteIdKey)
+      raterParams = raterParams.merge(diligenceRaterParams, on=c.raterParticipantIdKey)
+
+    # Compute scored notes -- currently not returned; only used for downstream computation.
+    scoredNotes = note_ratings.compute_scored_notes(
+      ratings,
+      noteParams,
+      raterParams,
+      noteStatusHistory,
+      minRatingsNeeded=self._minRatingsNeeded,
+      crhThreshold=self._crhThreshold,
+      crnhThresholdIntercept=self._crnhThresholdIntercept,
+      crnhThresholdNoteFactorMultiplier=self._crnhThresholdNoteFactorMultiplier,
+      crnhThresholdNMIntercept=self._crnhThresholdNMIntercept,
+      crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
+      crhSuperThreshold=self._crhSuperThreshold,
+      inertiaDelta=self._inertiaDelta,
+      tagFilterThresholds=None,
+      incorrectFilterThreshold=self._incorrectFilterThreshold,
+      finalRound=False,
+      factorThreshold=self._factorThreshold,
+    )
+
+    # Compute meta output
+    metaOutput = c.PrescoringMetaScorerOutput(
+      globalIntercept=globalBias,
+      lowDiligenceGlobalIntercept=diligenceGlobalIntercept,
+      tagFilteringThresholds=self.compute_tag_thresholds_for_percentile(
+        scoredNotes=noteParams.merge(scoredNotes, on=c.noteIdKey, suffixes=("", "_dup")),
+        raterParams=raterParams,
+        ratings=ratings,
+      ),
+    )
+
+    raterModelOutput = raterParams.merge(
       helpfulnessScores[
         [
           c.raterParticipantIdKey,
@@ -601,9 +707,9 @@ class MFBaseScorer(Scorer):
       on=c.raterParticipantIdKey,
       how="outer",
     )
-    noteModelOutput = noteParamsUnfiltered
+    noteModelOutput = noteParams
 
-    return noteModelOutput, raterModelOutput
+    return noteModelOutput, raterModelOutput, metaOutput
 
   def _score_notes_and_users(
     self,
@@ -611,6 +717,7 @@ class MFBaseScorer(Scorer):
     noteStatusHistory: pd.DataFrame,
     prescoringNoteModelOutput: pd.DataFrame,
     prescoringRaterModelOutput: pd.DataFrame,
+    prescoringMetaScorerOutput: c.PrescoringMetaScorerOutput,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Run the "final" matrix factorization scoring algorithm.
     Accepts prescoring's output as its input, as well as the new ratings and note status history.
@@ -662,7 +769,7 @@ class MFBaseScorer(Scorer):
         ratings=finalRoundRatings,
         noteInit=prescoringNoteModelOutput,
         userInit=prescoringRaterModelOutput,
-        globalInterceptInit=0.17,
+        globalInterceptInit=prescoringMetaScorerOutput.globalIntercept,
         freezeRaterParameters=True,
       )
 
@@ -689,8 +796,21 @@ class MFBaseScorer(Scorer):
 
     # Add low diligence intercepts.
     with self.time_block("Low Diligence Reputation Model"):
-      diligenceParams = get_low_diligence_intercepts(finalRoundRatings, raterInitState=raterParams)
-      noteParams = noteParams.merge(diligenceParams, on=c.noteIdKey)
+      print(
+        f"In {self.get_name()} final scoring, about to call diligence with {len(finalRoundRatings)} final round ratings."
+      )
+      assert (
+        prescoringMetaScorerOutput.lowDiligenceGlobalIntercept is not None
+      ), "Missing low diligence global intercept"
+      diligenceNoteParams, diligenceRaterParams = fit_low_diligence_model_final(
+        finalRoundRatings,
+        noteInitStateDiligence=prescoringNoteModelOutput,
+        raterInitStateDiligence=prescoringRaterModelOutput,
+        globalInterceptDiligence=prescoringMetaScorerOutput.lowDiligenceGlobalIntercept,
+      )
+      print(f"diligenceNP cols: {diligenceNoteParams.columns}")
+      noteParams = noteParams.merge(diligenceNoteParams, on=c.noteIdKey)
+      print(f"np cols: {noteParams.columns}")
 
     if self._saveIntermediateState:
       self.noteParams = noteParams
@@ -700,6 +820,7 @@ class MFBaseScorer(Scorer):
     # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
     # and ML output.
     with self.time_block("Final compute scored notes"):
+      print(f"About to call compute_scored_notes with {self.get_name()}")
       scoredNotes = note_ratings.compute_scored_notes(
         ratings,
         noteParams,
@@ -713,12 +834,13 @@ class MFBaseScorer(Scorer):
         crnhThresholdUCBIntercept=self._crnhThresholdUCBIntercept,
         crhSuperThreshold=self._crhSuperThreshold,
         inertiaDelta=self._inertiaDelta,
-        tagFilterPercentile=self._tagFilterPercentile,
+        tagFilterThresholds=prescoringMetaScorerOutput.tagFilteringThresholds,
         incorrectFilterThreshold=self._incorrectFilterThreshold,
         lowDiligenceThreshold=self._lowDiligenceThreshold,
         finalRound=True,
         factorThreshold=self._factorThreshold,
       )
+      print(f"sn cols: {scoredNotes.columns}")
 
       # Takes raterParams from the MF run, but use the pre-computed
       # helpfulness scores from prescoringRaterModelOutput.
@@ -741,3 +863,107 @@ class MFBaseScorer(Scorer):
       self.helpfulnessScores = helpfulnessScores
 
     return scoredNotes, helpfulnessScores
+
+  def score_final(self, scoringArgs: c.FinalScoringArgs) -> c.ModelResult:
+    """
+    Process ratings to assign status to notes and optionally compute rater properties.
+
+    Accepts prescoringNoteModelOutput and prescoringRaterModelOutput as args (fields on scoringArgs)
+    which are the outputs of the prescore() function.  These are used to initialize the final scoring.
+    It filters the prescoring output to only include the rows relevant to this scorer, based on the
+    c.scorerNameKey field of those dataframes.
+    """
+    torch.set_num_threads(self._threads)
+    print(
+      f"score_final: Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}"
+    )
+
+    # Filter unfiltered params to just params for this scorer (with copy).
+    # Avoid editing the dataframe in FinalScoringArgs, which is shared across scorers.
+    prescoringNoteModelOutput = scoringArgs.prescoringNoteModelOutput[
+      scoringArgs.prescoringNoteModelOutput[c.scorerNameKey] == self.get_name()
+    ].drop(columns=c.scorerNameKey, inplace=False)
+
+    if scoringArgs.prescoringRaterModelOutput is None:
+      return self._return_empty_final_scores()
+    prescoringRaterModelOutput = scoringArgs.prescoringRaterModelOutput[
+      scoringArgs.prescoringRaterModelOutput[c.scorerNameKey] == self.get_name()
+    ].drop(columns=c.scorerNameKey, inplace=False)
+
+    if self.get_name() not in scoringArgs.prescoringMetaOutput.metaScorerOutput:
+      print(
+        f"Scorer {self.get_name()} not found in prescoringMetaOutput; returning empty scores from final scoring."
+      )
+      return self._return_empty_final_scores()
+    prescoringMetaScorerOutput = scoringArgs.prescoringMetaOutput.metaScorerOutput[self.get_name()]
+
+    # Filter raw input
+    with self.time_block("Filter input"):
+      ratings, noteStatusHistory = self._filter_input(
+        scoringArgs.noteTopics,
+        scoringArgs.ratings,
+        scoringArgs.noteStatusHistory,
+        scoringArgs.userEnrollment,
+      )
+      # If there are no ratings left after filtering, then return empty dataframes.
+      if len(ratings) == 0:
+        return self._return_empty_final_scores()
+
+    noteScores, userScores = self._score_notes_and_users(
+      ratings=ratings,
+      noteStatusHistory=noteStatusHistory,
+      prescoringNoteModelOutput=prescoringNoteModelOutput,
+      prescoringRaterModelOutput=prescoringRaterModelOutput,
+      prescoringMetaScorerOutput=prescoringMetaScorerOutput,
+    )
+
+    with self.time_block("Postprocess output"):
+      # Only some subclasses do any postprocessing.
+      # E.g. topic models add confidence bit, group models prune according to authorship filter.
+      noteScores, userScores = self._postprocess_output(
+        noteScores,
+        userScores,
+        scoringArgs.ratings,
+        scoringArgs.noteStatusHistory,
+        scoringArgs.userEnrollment,
+      )
+
+      ## TODO: refactor this logic to compute 2nd round ratings out so score_final doesn't need to be overridden and duplicated.
+      scoredNoteFinalRoundRatings = (
+        ratings[[c.raterParticipantIdKey, c.noteIdKey]]
+        .merge(userScores[[c.raterParticipantIdKey]], on=c.raterParticipantIdKey)
+        .groupby(c.noteIdKey)
+        .agg("count")
+        .reset_index()
+        .rename(columns={c.raterParticipantIdKey: c.numFinalRoundRatingsKey})
+      )
+      noteScores = noteScores.merge(scoredNoteFinalRoundRatings, on=c.noteIdKey, how="left")
+      noteScores = noteScores.rename(columns=self._get_note_col_mapping())
+      userScores = userScores.rename(columns=self._get_user_col_mapping())
+
+      # Process noteScores
+      noteScores = noteScores.drop(columns=self._get_dropped_note_cols())
+      assert set(noteScores.columns) == set(
+        self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols()
+      ), f"""all columns must be either dropped or explicitly defined in an output. 
+      Extra columns that were in noteScores: {set(noteScores.columns) - set(self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols())}
+      Missing expected columns that should've been in noteScores: {set(self.get_scored_notes_cols() + self.get_auxiliary_note_info_cols()) - set(noteScores.columns)}"""
+
+      # Process userScores
+      userScores = userScores.drop(columns=self._get_dropped_user_cols())
+      assert set(userScores.columns) == set(self.get_helpfulness_scores_cols()), f"""all columns must be either dropped or explicitly defined in an output. 
+      Extra columns that were in userScores: {set(userScores.columns) - set(self.get_helpfulness_scores_cols())}
+      Missing expected columns that should've been in userScores: {set(self.get_helpfulness_scores_cols()) - set(userScores.columns)}"""
+
+    # Return dataframes with specified columns in specified order
+    return c.ModelResult(
+      scoredNotes=noteScores[self.get_scored_notes_cols()],
+      helpfulnessScores=userScores[self.get_helpfulness_scores_cols()]
+      if self.get_helpfulness_scores_cols()
+      else None,
+      auxiliaryNoteInfo=noteScores[self.get_auxiliary_note_info_cols()]
+      if self.get_auxiliary_note_info_cols()
+      else None,
+      scorerName=self.get_name(),
+      metaScores=None,
+    )

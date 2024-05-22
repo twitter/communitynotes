@@ -45,6 +45,7 @@ def coalesce_group_models(
     c.groupNoteInterceptMinKey,
     c.modelingGroupKey,
     c.groupInternalActiveRulesKey,
+    c.groupNumFinalRoundRatingsKey,
   ]:
     scoredNotes = coalesce_columns(scoredNotes, col)
 
@@ -71,7 +72,6 @@ class MFGroupScorer(MFBaseScorer):
     normalizedLossHyperparameters=None,
     maxFirstMFTrainError: float = 0.16,
     maxFinalMFTrainError: float = 0.09,
-    requireInternalAuthor: bool = True,
     minMeanNoteScore: float = 0.05,
     crhThreshold: float = 0.40,
     crnhThresholdIntercept: float = -0.05,
@@ -141,10 +141,10 @@ class MFGroupScorer(MFBaseScorer):
     self._groupNoteInterceptMaxKey = f"{c.groupNoteInterceptMaxKey}_{self._groupNumber}"
     self._groupNoteInterceptMinKey = f"{c.groupNoteInterceptMinKey}_{self._groupNumber}"
     self._groupInternalActiveRulesKey = f"{c.groupInternalActiveRulesKey}_{self._groupNumber}"
+    self._groupNumFinalRoundRatingsKey = f"{c.groupNumFinalRoundRatingsKey}_{self._groupNumber}"
     self._groupRaterInterceptKey = f"{c.groupRaterInterceptKey}_{self._groupNumber}"
     self._groupRaterFactor1Key = f"{c.groupRaterFactor1Key}_{self._groupNumber}"
     self._modelingGroupKey = f"{c.modelingGroupKey}_{self._groupNumber}"
-    self._requireInternalAuthor = requireInternalAuthor
 
   def get_name(self):
     return f"MFGroupScorer_{self._groupNumber}"
@@ -158,6 +158,8 @@ class MFGroupScorer(MFBaseScorer):
       c.noteInterceptMinKey: self._groupNoteInterceptMinKey,
       c.noteInterceptMaxKey: self._groupNoteInterceptMaxKey,
       c.internalActiveRulesKey: self._groupInternalActiveRulesKey,
+      c.numFinalRoundRatingsKey: self._groupNumFinalRoundRatingsKey,
+      c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey,
     }
 
   def _get_user_col_mapping(self) -> Dict[str, str]:
@@ -178,6 +180,7 @@ class MFGroupScorer(MFBaseScorer):
       self._groupNoteInterceptMinKey,
       self._groupInternalActiveRulesKey,
       self._modelingGroupKey,
+      self._groupNumFinalRoundRatingsKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
@@ -279,16 +282,6 @@ class MFGroupScorer(MFBaseScorer):
         noteScores: filtered and updated note scoring output
         userScores: filtered and updated user scoring output
     """
-    # Prune notes according to authorship filter.
-    if self._requireInternalAuthor:
-      noteScores = noteScores.merge(
-        userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(
-          columns={c.participantIdKey: c.noteAuthorParticipantIdKey}
-        ),
-        how="left",
-      )
-      noteScores = noteScores[noteScores[c.modelingGroupKey] == self._groupNumber]
-      noteScores = noteScores.drop(columns=c.modelingGroupKey)
     # Identify notes with enough ratings from within the modeling group.
     ratings = ratings.merge(
       userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(

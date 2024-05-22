@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from enum import Enum
-from typing import Callable, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
-from . import constants as c, tag_filter
+from . import constants as c
 from .enums import Topics
-from .explanation_tags import top_tags
+from .explanation_tags import get_top_two_tags_for_note
 
 import numpy as np
 import pandas as pd
@@ -211,8 +211,8 @@ class FilterTagOutliers(ScoringRule):
     ruleID: RuleID,
     dependencies: Set[RuleID],
     status: str,
+    tagFilterThresholds: Dict[str, float],
     minAdjustedTotal: float = 2.5,
-    tagRatioPercentile: int = 95,
   ):
     """Filter CRH notes for outliers with high levels of any particular tag.
 
@@ -220,15 +220,16 @@ class FilterTagOutliers(ScoringRule):
       rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
       dependencies: Rules which must run before this rule can run.
       status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
-      tagRatioPercentile: For a filter to trigger, the adjusted ratio value for a
-        tag must exceed Nth percentile for notes currently rated as CRH.
       minAdjustedTotal: For a filter to trigger, the adjusted total of a tag must
         exceed the minAdjustedTotal.
+      tagFilterThresholds: For a filter to trigger, the adjusted ratio value for a
+        tag must exceed the given value (computed in prescoring as the Nth percentile
+        for notes currently rated as CRH).
     """
     super().__init__(ruleID, dependencies)
     self._status = status
-    self._tagRatioPercentile = tagRatioPercentile
     self._minAdjustedTotal = minAdjustedTotal
+    self._tagFilterThresholds = tagFilterThresholds
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
@@ -238,8 +239,8 @@ class FilterTagOutliers(ScoringRule):
     crhNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][[c.noteIdKey]]
     crhStats = noteStats.merge(crhNotes, on=c.noteIdKey, how="inner")
     print(f"CRH notes prior to tag filtering: {len(crhStats)}")
+
     # Identify impacted notes.
-    thresholds = tag_filter.get_tag_thresholds(crhStats, self._tagRatioPercentile)
     impactedNotes = pd.DataFrame.from_dict({c.noteIdKey: [], c.activeFilterTagsKey: []}).astype(
       {c.noteIdKey: np.int64}
     )
@@ -248,7 +249,6 @@ class FilterTagOutliers(ScoringRule):
       adjustedColumn = f"{tag}{c.adjustedSuffix}"
       adjustedRatioColumn = f"{adjustedColumn}{c.ratioSuffix}"
       print(tag)
-      print(f"  ratio threshold: {thresholds[adjustedRatioColumn]}")
       if tag == c.notHelpfulHardToUnderstandKey:
         print(f"outlier filtering disabled for tag: {tag}")
         continue
@@ -256,7 +256,7 @@ class FilterTagOutliers(ScoringRule):
         # Adjusted total must pass minimum threhsold set across all tags.
         (crhStats[adjustedColumn] > self._minAdjustedTotal)
         # Adjusted ratio must exceed percentile based total for this specific tag.
-        & (crhStats[adjustedRatioColumn] > thresholds[adjustedRatioColumn])
+        & (crhStats[adjustedRatioColumn] > self._tagFilterThresholds[adjustedRatioColumn])
       ][c.noteIdKey]
       impactedNotes = pd.concat(
         [impactedNotes, pd.DataFrame({c.noteIdKey: tagFilteredNotes, c.activeFilterTagsKey: tag})]
@@ -353,7 +353,7 @@ class FilterLowDiligence(ScoringRule):
 
     # Identify impacted notes.
     noteStatusUpdates = crhStats.loc[
-      crhStats[c.lowDiligenceInterceptKey] > self._interceptThreshold
+      crhStats[c.lowDiligenceNoteInterceptKey] > self._interceptThreshold
     ][[c.noteIdKey]]
 
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
@@ -489,7 +489,8 @@ class ApplyGroupModelResult(ScoringRule):
       else:
         assert False, f"unexpected value: {row[idx]}"
 
-    noteStats["actionable"] = noteStats[["core", "expansion"]].apply(_get_value, axis=1)
+    with c.time_block("Get value apply for group model"):
+      noteStats["actionable"] = noteStats[["core", "expansion"]].apply(_get_value, axis=1)
 
     # Filter set of note status updates to only include actionable notes
     actionableNotes = noteStats[noteStats["actionable"]][[c.noteIdKey]]
@@ -520,7 +521,6 @@ class InsufficientExplanation(ScoringRule):
       status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
       minRatingsToGetTag: min number occurrences to assign a tag to a note.
       minTagsNeededForStatus: min tags assigned before a note can be CRH/CRNH
-      tagsConsidered: set of tags to consider for *all* notes.
     """
     super().__init__(ruleID, dependencies)
     self._status = status
@@ -531,36 +531,53 @@ class InsufficientExplanation(ScoringRule):
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Sets Top Tags, returns notes on track for CRH / CRNH with insufficient to receive NMR status."""
+    """Sets Top Tags inplace on noteStats,
+    returns notes on track for CRH / CRNH with insufficient to receive NMR status."""
+    noteStats[c.noteIdKey] = noteStats[c.noteIdKey].astype(np.int64)
+    noteStats[c.firstTagKey] = noteStats[c.firstTagKey].astype(object)
+    noteStats[c.secondTagKey] = noteStats[c.secondTagKey].astype(object)
 
     if self._tagsConsidered is None:
-      # Set Top Tags
+      # Set Top CRH Tags
       crh_idx = noteStats[c.noteIdKey].isin(
         currentLabels.loc[currentLabels[statusColumn] == c.currentlyRatedHelpful, c.noteIdKey]
       )
-      noteStats.loc[crh_idx, :] = noteStats.loc[crh_idx, :].apply(
-        lambda row: top_tags(
-          row, self._minRatingsToGetTag, self._minTagsNeededForStatus, c.helpfulTagsTiebreakOrder
-        ),
-        axis=1,
+      topCrhTags = get_top_two_tags_for_note(
+        noteStats.loc[crh_idx, :],
+        self._minTagsNeededForStatus,
+        self._minRatingsToGetTag,
+        c.helpfulTagsTiebreakOrder,
       )
+      noteStats.set_index(c.noteIdKey, inplace=True)
+      noteStats.loc[topCrhTags[c.noteIdKey], c.firstTagKey] = topCrhTags[c.firstTagKey]
+      noteStats.loc[topCrhTags[c.noteIdKey], c.secondTagKey] = topCrhTags[c.secondTagKey]
+      noteStats.reset_index(inplace=True)
+
+      # Set Top CRNH Tags
       crnh_idx = noteStats[c.noteIdKey].isin(
         currentLabels.loc[currentLabels[statusColumn] == c.currentlyRatedNotHelpful, c.noteIdKey]
       )
-      noteStats.loc[crnh_idx, :] = noteStats.loc[crnh_idx, :].apply(
-        lambda row: top_tags(
-          row, self._minRatingsToGetTag, self._minTagsNeededForStatus, c.notHelpfulTagsTiebreakOrder
-        ),
-        axis=1,
+      topCrnhTags = get_top_two_tags_for_note(
+        noteStats.loc[crnh_idx, :],
+        self._minRatingsToGetTag,
+        self._minTagsNeededForStatus,
+        c.notHelpfulTagsTiebreakOrder,
       )
+      noteStats.set_index(c.noteIdKey, inplace=True)
+      noteStats.loc[topCrnhTags[c.noteIdKey], c.firstTagKey] = topCrnhTags[c.firstTagKey]
+      noteStats.loc[topCrnhTags[c.noteIdKey], c.secondTagKey] = topCrnhTags[c.secondTagKey]
+      noteStats.reset_index(inplace=True)
     else:
-      noteStats = noteStats.apply(
-        lambda row: top_tags(
-          row, self._minRatingsToGetTag, self._minTagsNeededForStatus, self._tagsConsidered
-        ),
-        axis=1,
+      topTags = get_top_two_tags_for_note(
+        noteStats,
+        self._minRatingsToGetTag,
+        self._minTagsNeededForStatus,
+        self._tagsConsidered,
       )
-    # For unclear reasons, the "apply" above converts the noteId column to a float.  This cast
+      noteStats.loc[:, c.firstTagKey] = topTags[c.firstTagKey]
+      noteStats.loc[:, c.secondTagKey] = topTags[c.secondTagKey]
+
+    # The "apply" above converts the noteId column to a float.  This cast
     # guarantees that the type of the noteId column remains int64.  Note that the cast will fail
     # if the noteId column includes nan values.
     #
@@ -568,24 +585,28 @@ class InsufficientExplanation(ScoringRule):
     # https://stackoverflow.com/questions/40251948/stop-pandas-from-converting-int-to-float-due-to-an-insertion-in-another-column
     # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.convert_dtypes.html
     noteStats[c.noteIdKey] = noteStats[c.noteIdKey].astype(np.int64)
+    noteStats[c.firstTagKey] = noteStats[c.firstTagKey].astype(object)
+    noteStats[c.secondTagKey] = noteStats[c.secondTagKey].astype(object)
 
-    # Prune noteStats to only include CRH / CRNH notes.
-    crNotes = currentLabels[
-      (currentLabels[statusColumn] == c.currentlyRatedHelpful)
-      | (currentLabels[statusColumn] == c.currentlyRatedNotHelpful)
-    ][[c.noteIdKey]]
-    crStats = noteStats.merge(crNotes, on=c.noteIdKey, how="inner")
-    print(f"CRH / CRNH notes prior to filtering for insufficient explanation: {len(crStats)}")
+    with c.time_block("Insufficient explanation: post-processing"):
+      # Prune noteStats to only include CRH / CRNH notes.
+      crNotes = currentLabels[
+        (currentLabels[statusColumn] == c.currentlyRatedHelpful)
+        | (currentLabels[statusColumn] == c.currentlyRatedNotHelpful)
+      ][[c.noteIdKey]]
+      crStats = noteStats.merge(crNotes, on=c.noteIdKey, how="inner")
+      print(f"CRH / CRNH notes prior to filtering for insufficient explanation: {len(crStats)}")
 
-    # Identify impacted notes.
-    noteStatusUpdates = crStats.loc[
-      (~crStats[[c.firstTagKey, c.secondTagKey]].isna()).sum(axis=1) < self._minTagsNeededForStatus
-    ][[c.noteIdKey]]
+      # Identify impacted notes.
+      noteStatusUpdates = crStats.loc[
+        (~crStats[[c.firstTagKey, c.secondTagKey]].isna()).sum(axis=1)
+        < self._minTagsNeededForStatus
+      ][[c.noteIdKey]]
 
-    pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
+      pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
 
-    print(f"Total notes impacted by explanation filtering: {len(noteStatusUpdates)}")
-    noteStatusUpdates[statusColumn] = self._status
+      print(f"Total notes impacted by explanation filtering: {len(noteStatusUpdates)}")
+      noteStatusUpdates[statusColumn] = self._status
 
     return (noteStatusUpdates, None)
 
@@ -804,51 +825,56 @@ def apply_scoring_rules(
 
   # Successively apply each rule
   for rule in rules:
-    print(f"Applying scoring rule: {rule.get_name()}")
-    rule.check_dependencies(ruleIDs)
-    assert rule.get_rule_id() not in ruleIDs, f"repeat ruleID: {rule.get_name()}"
-    ruleIDs.add(rule.get_rule_id())
-    noteStatusUpdates, additionalColumns = rule.score_notes(noteStats, noteLabels, statusColumn)
-    if additionalColumns is not None:
-      assert set(noteStatusUpdates[c.noteIdKey]) == set(additionalColumns[c.noteIdKey])
-    # Update noteLabels, which will always hold at most one label per note.
-    noteLabels = pd.concat([noteLabels, noteStatusUpdates]).groupby(c.noteIdKey).tail(1)
-    # Update note rules to have one row per rule which was active for a note
-    noteRules = pd.concat(
-      [
-        noteRules,
-        pd.DataFrame.from_dict(
-          {c.noteIdKey: noteStatusUpdates[c.noteIdKey], ruleColumn: rule.get_name()}
-        ),
-      ]
-    )
-    if additionalColumns is not None:
-      # Merge any additional columns into current set of new columns
-      assert {c.noteIdKey} == (set(noteColumns.columns) & set(additionalColumns.columns))
-      noteColumns = noteColumns.merge(additionalColumns, on=c.noteIdKey, how="outer")
+    with c.time_block(f"Applying scoring rule: {rule.get_name()}"):
+      print(f"Applying scoring rule: {rule.get_name()}")
+      rule.check_dependencies(ruleIDs)
+      assert rule.get_rule_id() not in ruleIDs, f"repeat ruleID: {rule.get_name()}"
+      ruleIDs.add(rule.get_rule_id())
+      with c.time_block(f"Calling score_notes: {rule.get_name()}"):
+        noteStatusUpdates, additionalColumns = rule.score_notes(noteStats, noteLabels, statusColumn)
+      if additionalColumns is not None:
+        assert set(noteStatusUpdates[c.noteIdKey]) == set(additionalColumns[c.noteIdKey])
+      # Update noteLabels, which will always hold at most one label per note.
+      noteLabels = pd.concat([noteLabels, noteStatusUpdates]).groupby(c.noteIdKey).tail(1)
+      # Update note rules to have one row per rule which was active for a note
+      noteRules = pd.concat(
+        [
+          noteRules,
+          pd.DataFrame.from_dict(
+            {c.noteIdKey: noteStatusUpdates[c.noteIdKey], ruleColumn: rule.get_name()}
+          ),
+        ]
+      )
+      if additionalColumns is not None:
+        # Merge any additional columns into current set of new columns
+        assert {c.noteIdKey} == (set(noteColumns.columns) & set(additionalColumns.columns))
+        noteColumns = noteColumns.merge(additionalColumns, on=c.noteIdKey, how="outer")
 
-  # Having applied all scoring rules, condense noteRules to have one row per note representing
-  # all of the ScoringRuless which were active for the note.
-  noteRules = noteRules.groupby(c.noteIdKey).aggregate(list).reset_index()
-  if decidedByColumn:
-    noteRules[decidedByColumn] = [rules[-1] for rules in noteRules[ruleColumn]]
-  noteRules[ruleColumn] = [",".join(activeRules) for activeRules in noteRules[ruleColumn]]
-  # Validate that there are labels and assigned rules for each note
-  assert set(noteStats[c.noteIdKey]) == set(noteLabels[c.noteIdKey])
-  assert set(noteStats[c.noteIdKey]) == set(noteRules[c.noteIdKey])
-  assert len(set(noteColumns[c.noteIdKey]) - set(noteStats[c.noteIdKey])) == 0
-  # Merge note labels, active rules and new columns into noteStats to form scoredNotes
-  scoredNotes = noteStats.merge(noteLabels, on=c.noteIdKey, how="inner")
-  scoredNotes = scoredNotes.merge(noteRules, on=c.noteIdKey, how="inner")
-  scoredNotes = scoredNotes.merge(noteColumns, on=c.noteIdKey, how="left")
-  # Add all of the individual model rules to the active rules column
-  assert len(scoredNotes) == len(noteStats)
-  # Set boolean columns indicating scoring outcomes
-  scoredNotes[c.currentlyRatedHelpfulBoolKey] = scoredNotes[statusColumn] == c.currentlyRatedHelpful
-  scoredNotes[c.currentlyRatedNotHelpfulBoolKey] = (
-    scoredNotes[statusColumn] == c.currentlyRatedNotHelpful
-  )
-  scoredNotes[c.awaitingMoreRatingsBoolKey] = scoredNotes[statusColumn] == c.needsMoreRatings
+  with c.time_block("Condense noteRules after applying all scoring rules"):
+    # Having applied all scoring rules, condense noteRules to have one row per note representing
+    # all of the ScoringRuless which were active for the note.
+    noteRules = noteRules.groupby(c.noteIdKey).aggregate(list).reset_index()
+    if decidedByColumn:
+      noteRules[decidedByColumn] = [rules[-1] for rules in noteRules[ruleColumn]]
+    noteRules[ruleColumn] = [",".join(activeRules) for activeRules in noteRules[ruleColumn]]
+    # Validate that there are labels and assigned rules for each note
+    assert set(noteStats[c.noteIdKey]) == set(noteLabels[c.noteIdKey])
+    assert set(noteStats[c.noteIdKey]) == set(noteRules[c.noteIdKey])
+    assert len(set(noteColumns[c.noteIdKey]) - set(noteStats[c.noteIdKey])) == 0
+    # Merge note labels, active rules and new columns into noteStats to form scoredNotes
+    scoredNotes = noteStats.merge(noteLabels, on=c.noteIdKey, how="inner")
+    scoredNotes = scoredNotes.merge(noteRules, on=c.noteIdKey, how="inner")
+    scoredNotes = scoredNotes.merge(noteColumns, on=c.noteIdKey, how="left")
+    # Add all of the individual model rules to the active rules column
+    assert len(scoredNotes) == len(noteStats)
+    # Set boolean columns indicating scoring outcomes
+    scoredNotes[c.currentlyRatedHelpfulBoolKey] = (
+      scoredNotes[statusColumn] == c.currentlyRatedHelpful
+    )
+    scoredNotes[c.currentlyRatedNotHelpfulBoolKey] = (
+      scoredNotes[statusColumn] == c.currentlyRatedNotHelpful
+    )
+    scoredNotes[c.awaitingMoreRatingsBoolKey] = scoredNotes[statusColumn] == c.needsMoreRatings
 
   # Return completed DF including original noteStats signals merged wtih scoring results
   return scoredNotes

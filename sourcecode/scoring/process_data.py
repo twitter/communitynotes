@@ -5,8 +5,10 @@ from typing import Dict, List, Optional, Tuple
 
 from . import constants as c, note_status_history
 
+import joblib
 import numpy as np
 import pandas as pd
+from sklearn.pipeline import Pipeline
 
 
 def read_from_strings(
@@ -77,7 +79,7 @@ def tsv_reader_single(path: str, mapping, columns, header=False, parser=tsv_pars
     return tsv_parser(handle.read(), mapping, columns, header)
 
 
-def tsv_reader(path: str, mapping, columns, header=False, parser=tsv_parser):
+def tsv_reader(path: str, mapping, columns, header=False, parser=tsv_parser) -> pd.DataFrame:
   """Read a single TSV file or a directory of TSV files."""
   if os.path.isdir(path):
     dfs = [
@@ -400,8 +402,12 @@ def filter_ratings(
 def write_prescoring_output(
   prescoringNoteModelOutput: pd.DataFrame,
   prescoringRaterModelOutput: pd.DataFrame,
+  noteTopicClassifier: Pipeline,
+  prescoringMetaOutput: c.PrescoringMetaOutput,
   noteModelOutputPath: str,
   raterModelOutputPath: str,
+  noteTopicClassifierPath: str,
+  prescoringMetaOutputPath: str,
 ):
   prescoringNoteModelOutput = prescoringNoteModelOutput[c.prescoringNoteModelOutputTSVColumns]
   assert all(prescoringNoteModelOutput.columns == c.prescoringNoteModelOutputTSVColumns)
@@ -410,6 +416,9 @@ def write_prescoring_output(
   prescoringRaterModelOutput = prescoringRaterModelOutput[c.prescoringRaterModelOutputTSVColumns]
   assert all(prescoringRaterModelOutput.columns == c.prescoringRaterModelOutputTSVColumns)
   write_tsv_local(prescoringRaterModelOutput, raterModelOutputPath)
+
+  joblib.dump(noteTopicClassifier, noteTopicClassifierPath)
+  joblib.dump(prescoringMetaOutput, prescoringMetaOutputPath)
 
 
 def write_tsv_local(df: pd.DataFrame, path: str) -> None:
@@ -479,6 +488,8 @@ class LocalDataLoader(CommunityNotesDataLoader):
     logging: bool = True,
     prescoringNoteModelOutputPath: Optional[str] = None,
     prescoringRaterModelOutputPath: Optional[str] = None,
+    prescoringNoteTopicClassifierPath: Optional[str] = None,
+    prescoringMetaOutputPath: Optional[str] = None,
   ) -> None:
     """
     Args:
@@ -496,6 +507,8 @@ class LocalDataLoader(CommunityNotesDataLoader):
     self.userEnrollmentPath = userEnrollmentPath
     self.prescoringNoteModelOutputPath = prescoringNoteModelOutputPath
     self.prescoringRaterModelOutputPath = prescoringRaterModelOutputPath
+    self.prescoringNoteTopicClassifierPath = prescoringNoteTopicClassifierPath
+    self.prescoringMetaOutputPath = prescoringMetaOutputPath
     self.headers = headers
     self.shouldFilterNotMisleadingNotes = shouldFilterNotMisleadingNotes
     self.logging = logging
@@ -519,9 +532,11 @@ class LocalDataLoader(CommunityNotesDataLoader):
     )
     return notes, ratings, noteStatusHistory, userEnrollment
 
-  def get_prescoring_model_output(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  def get_prescoring_model_output(
+    self,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame, Pipeline, c.PrescoringMetaOutput]:
     print(
-      f"Attempting to read prescoring model output from {self.prescoringNoteModelOutputPath} and {self.prescoringRaterModelOutputPath}"
+      f"Attempting to read prescoring model output from {self.prescoringNoteModelOutputPath}, {self.prescoringRaterModelOutputPath}, {self.prescoringNoteTopicClassifierPath}, {self.prescoringMetaOutputPath}"
     )
     if self.prescoringRaterModelOutputPath is None:
       prescoringRaterModelOutput = None
@@ -555,4 +570,21 @@ class LocalDataLoader(CommunityNotesDataLoader):
         + f"\n{[col for col in c.prescoringNoteModelOutputTSVColumns if not col in prescoringNoteModelOutput.columns]} are missing."
       )  # ensure constants file is up to date.
 
-    return prescoringNoteModelOutput, prescoringRaterModelOutput
+    if self.prescoringNoteTopicClassifierPath is None:
+      prescoringNoteTopicClassifier = None
+    else:
+      prescoringNoteTopicClassifier = joblib.load(self.prescoringNoteTopicClassifierPath)
+    assert type(prescoringNoteTopicClassifier) == Pipeline
+
+    if self.prescoringMetaOutputPath is None:
+      prescoringMetaOutput = None
+    else:
+      prescoringMetaOutput = joblib.load(self.prescoringMetaOutputPath)
+    assert type(prescoringMetaOutput) == c.PrescoringMetaOutput
+
+    return (
+      prescoringNoteModelOutput,
+      prescoringRaterModelOutput,
+      prescoringNoteTopicClassifier,
+      prescoringMetaOutput,
+    )

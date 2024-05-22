@@ -34,6 +34,7 @@ from .topic_model import TopicModel
 
 import numpy as np
 import pandas as pd
+import sklearn
 
 
 def _get_scorers(
@@ -94,7 +95,6 @@ def _get_scorers(
           globalSignNorm=True, noteSignAlpha=None, noteNormExp=0, raterNormExp=-0.25
         ),
         maxFinalMFTrainError=0.16,
-        requireInternalAuthor=False,
         groupThreshold=0.4,
         minMeanNoteScore=-0.01,
         crhThreshold=0.15,
@@ -429,7 +429,9 @@ def _run_scorers(
   return list(modelResultsTuple)
 
 
-def combine_prescorer_scorer_results(modelResults: List[ModelResult]):
+def combine_prescorer_scorer_results(
+  modelResults: List[ModelResult],
+) -> Tuple[pd.DataFrame, pd.DataFrame, c.PrescoringMetaOutput]:
   """
   Returns dfs with original columns plus an extra scorer name column.
   """
@@ -437,17 +439,27 @@ def combine_prescorer_scorer_results(modelResults: List[ModelResult]):
 
   prescoringNoteModelOutputList = []
   raterParamsUnfilteredMultiScorersList = []
+  prescoringMetaOutput = c.PrescoringMetaOutput(metaScorerOutput={})
+
   for modelResult in modelResults:
     if modelResult.scoredNotes is not None:
       modelResult.scoredNotes[c.scorerNameKey] = modelResult.scorerName
       prescoringNoteModelOutputList.append(modelResult.scoredNotes)
+
     if modelResult.helpfulnessScores is not None:
       modelResult.helpfulnessScores[c.scorerNameKey] = modelResult.scorerName
       raterParamsUnfilteredMultiScorersList.append(modelResult.helpfulnessScores)
 
+    if modelResult.metaScores is not None and modelResult.scorerName is not None:
+      prescoringMetaOutput.metaScorerOutput[modelResult.scorerName] = modelResult.metaScores
+
   prescoringNoteModelOutput = pd.concat(prescoringNoteModelOutputList)
   raterParamsUnfilteredMultiScorers = pd.concat(raterParamsUnfilteredMultiScorersList)
-  return prescoringNoteModelOutput, raterParamsUnfilteredMultiScorers
+  return (
+    prescoringNoteModelOutput[c.prescoringNoteModelOutputTSVColumns],
+    raterParamsUnfilteredMultiScorers[c.prescoringRaterModelOutputTSVColumns],
+    prescoringMetaOutput,
+  )
 
 
 def combine_final_scorer_results(
@@ -866,10 +878,15 @@ def run_prescoring(
   runParallel: bool = True,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
   useStableInitialization: bool = True,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, sklearn.pipeline.Pipeline, c.PrescoringMetaOutput]:
   with c.time_block("Note Topic Assignment"):
     topicModel = TopicModel()
-    noteTopics = topicModel.get_note_topics(notes)
+    noteTopicClassifierPipe, seedLabels, conflictedTexts = topicModel.train_note_topic_classifier(
+      notes
+    )
+    noteTopics = topicModel.get_note_topics(
+      notes, noteTopicClassifierPipe, seedLabels, conflictedTextsForAccuracyEval=conflictedTexts
+    )
 
   scorers = _get_scorers(
     seed=seed,
@@ -897,9 +914,15 @@ def run_prescoring(
   (
     prescoringNoteModelOutput,
     prescoringRaterModelOutput,
+    prescoringMetaOutput,
   ) = combine_prescorer_scorer_results(prescoringModelResultsFromAllScorers)
 
-  return prescoringNoteModelOutput, prescoringRaterModelOutput
+  return (
+    prescoringNoteModelOutput,
+    prescoringRaterModelOutput,
+    noteTopicClassifierPipe,
+    prescoringMetaOutput,
+  )
 
 
 def run_final_scoring(
@@ -916,10 +939,14 @@ def run_final_scoring(
   useStableInitialization: bool = True,
   prescoringNoteModelOutput: Optional[pd.DataFrame] = None,
   prescoringRaterModelOutput: Optional[pd.DataFrame] = None,
+  noteTopicClassifier: sklearn.pipeline.Pipeline = None,
+  prescoringMetaOutput: Optional[c.PrescoringMetaOutput] = None,
 ):
+  assert noteTopicClassifier is not None
+  assert prescoringMetaOutput is not None
   with c.time_block("Note Topic Assignment"):
     topicModel = TopicModel()
-    noteTopics = topicModel.get_note_topics(notes)
+    noteTopics = topicModel.get_note_topics(notes, noteTopicClassifier)
 
   scorers = _get_scorers(
     seed, pseudoraters, enabledScorers, useStableInitialization=useStableInitialization
@@ -934,6 +961,7 @@ def run_final_scoring(
       userEnrollment,
       prescoringNoteModelOutput=prescoringNoteModelOutput,
       prescoringRaterModelOutput=prescoringRaterModelOutput,
+      prescoringMetaOutput=prescoringMetaOutput,
     ),
     runParallel=runParallel,
     dataLoader=dataLoader,
@@ -1047,7 +1075,7 @@ def run_scoring(
   dataLoader: Optional[CommunityNotesDataLoader] = None,
   useStableInitialization: bool = True,
   writePrescoringScoringOutputCallback: Optional[
-    Callable[[pd.DataFrame, pd.DataFrame], None]
+    Callable[[pd.DataFrame, pd.DataFrame, sklearn.pipeline.Pipeline, c.PrescoringMetaOutput], None]
   ] = None,
   filterPrescoringInputToSimulateDelayInHours: Optional[int] = None,
 ):
@@ -1102,6 +1130,8 @@ def run_scoring(
   (
     prescoringNoteModelOutput,
     prescoringRaterModelOutput,
+    prescoringNoteTopicClassifier,
+    prescoringMetaOutput,
   ) = run_prescoring(
     notes=prescoringNotesInput,
     ratings=prescoringRatingsInput,
@@ -1117,7 +1147,12 @@ def run_scoring(
   print("We invoked run_scoring and are now in between prescoring and scoring.")
   if writePrescoringScoringOutputCallback is not None:
     with c.time_block("Writing prescoring output."):
-      writePrescoringScoringOutputCallback(prescoringNoteModelOutput, prescoringRaterModelOutput)
+      writePrescoringScoringOutputCallback(
+        prescoringNoteModelOutput,
+        prescoringRaterModelOutput,
+        prescoringNoteTopicClassifier,
+        prescoringMetaOutput,
+      )
   print("Starting final scoring")
 
   return run_final_scoring(
@@ -1134,4 +1169,6 @@ def run_scoring(
     useStableInitialization=useStableInitialization,
     prescoringNoteModelOutput=prescoringNoteModelOutput,
     prescoringRaterModelOutput=prescoringRaterModelOutput,
+    noteTopicClassifier=prescoringNoteTopicClassifier,
+    prescoringMetaOutput=prescoringMetaOutput,
   )

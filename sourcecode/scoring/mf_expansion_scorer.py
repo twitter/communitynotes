@@ -44,6 +44,15 @@ class MFExpansionScorer(MFBaseScorer):
       c.noteInterceptMinKey: c.expansionNoteInterceptMinKey,
       c.noteInterceptMaxKey: c.expansionNoteInterceptMaxKey,
       c.internalActiveRulesKey: c.expansionInternalActiveRulesKey,
+      c.numFinalRoundRatingsKey: c.expansionNumFinalRoundRatingsKey,
+      c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey,
+    }
+
+  def _get_user_col_mapping(self) -> Dict[str, str]:
+    """Returns a dict mapping default user column names to custom names for a specific model."""
+    return {
+      c.internalRaterInterceptKey: c.expansionRaterInterceptKey,
+      c.internalRaterFactor1Key: c.expansionRaterFactor1Key,
     }
 
   def get_scored_notes_cols(self) -> List[str]:
@@ -56,11 +65,16 @@ class MFExpansionScorer(MFBaseScorer):
       c.expansionNoteInterceptMinKey,
       c.expansionNoteInterceptMaxKey,
       c.expansionInternalActiveRulesKey,
+      c.expansionNumFinalRoundRatingsKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the helpfulnessScores output."""
-    return []
+    return [
+      c.raterParticipantIdKey,
+      c.expansionRaterInterceptKey,
+      c.expansionRaterFactor1Key,
+    ]
 
   def get_auxiliary_note_info_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the auxiliaryNoteInfo output."""
@@ -82,9 +96,6 @@ class MFExpansionScorer(MFBaseScorer):
   def _get_dropped_user_cols(self) -> List[str]:
     """Returns a list of columns which should be excluded from helpfulnessScores output."""
     return super()._get_dropped_user_cols() + [
-      c.raterParticipantIdKey,
-      c.internalRaterInterceptKey,
-      c.internalRaterFactor1Key,
       c.crhCrnhRatioDifferenceKey,
       c.meanNoteScoreKey,
       c.raterAgreeRatioKey,
@@ -131,7 +142,7 @@ class MFExpansionScorer(MFBaseScorer):
     )
     noteStatusHistory = noteStatusHistory.fillna({_EXPANSION_PLUS_BOOL: False})
     noteStatusHistory[_EXPANSION_PLUS_BOOL] = noteStatusHistory[_EXPANSION_PLUS_BOOL].astype(
-      np.bool8
+      np.bool_
     )
     noteStatusHistory = noteStatusHistory[~noteStatusHistory[_EXPANSION_PLUS_BOOL]]
     print(f"  Total CORE and EXPANSION notes: {len(noteStatusHistory)}")
@@ -146,7 +157,7 @@ class MFExpansionScorer(MFBaseScorer):
       f"  Ratings from user without modelingPopulation: {pd.isna(ratings[_EXPANSION_PLUS_BOOL]).sum()}"
     )
     ratings = ratings.fillna({_EXPANSION_PLUS_BOOL: False})
-    ratings[_EXPANSION_PLUS_BOOL] = ratings[_EXPANSION_PLUS_BOOL].astype(np.bool8)
+    ratings[_EXPANSION_PLUS_BOOL] = ratings[_EXPANSION_PLUS_BOOL].astype(np.bool_)
     ratings = ratings[~ratings[_EXPANSION_PLUS_BOOL]]
     print(f"  Ratings after EXPANSION_PLUS filter: {len(ratings)}")
     # prune ratings on dropped notes
