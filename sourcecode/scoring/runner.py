@@ -3,12 +3,7 @@ import os
 
 from . import constants as c
 from .enums import scorers_from_csv
-from .process_data import (
-  LocalDataLoader,
-  write_parquet_local,
-  write_prescoring_output,
-  write_tsv_local,
-)
+from .process_data import LocalDataLoader, write_parquet_local, write_tsv_local
 from .run_scoring import run_scoring
 
 
@@ -123,43 +118,28 @@ def parse_args():
   return parser.parse_args()
 
 
-def main():
+def main(
+  args=None,
+  dataLoader=None,
+  extraScoringArgs={},
+):
   # Parse arguments and fix timestamp, if applicable.
-  args = parse_args()
+  if args is None:
+    args = parse_args()
   if args.epoch_millis:
     c.epochMillis = args.epoch_millis
     c.useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory = False
 
   # Load input dataframes.
-  dataLoader = LocalDataLoader(
-    args.notes,
-    args.ratings,
-    args.status,
-    args.enrollment,
-    args.headers,
-    prescoringNoteModelOutputPath=os.path.join(args.outdir, "prescoring_scored_notes.tsv"),
-    prescoringRaterModelOutputPath=os.path.join(args.outdir, "prescoring_helpfulness_scores.tsv"),
-    prescoringNoteTopicClassifierPath=os.path.join(
-      args.outdir, "prescoring_note_topic_classifier.joblib"
-    ),
-    prescoringMetaOutputPath=os.path.join(args.outdir, "prescoring_meta_output.joblib"),
-  )
-  notes, ratings, statusHistory, userEnrollment = dataLoader.get_data()
-
-  # Prepare callback to write first round scoring output
-  def prescoring_write_fn(
-    noteModelOutput, raterModelOutput, noteTopicClassifier, prescoringMetaOutput
-  ):
-    return write_prescoring_output(
-      noteModelOutput,
-      raterModelOutput,
-      noteTopicClassifier,
-      prescoringMetaOutput,
-      os.path.join(args.outdir, "prescoring_scored_notes.tsv"),
-      os.path.join(args.outdir, "prescoring_helpfulness_scores.tsv"),
-      os.path.join(args.outdir, "prescoring_note_topic_classifier.joblib"),
-      os.path.join(args.outdir, "prescoring_meta_output.joblib"),
+  if dataLoader is None:
+    dataLoader = LocalDataLoader(
+      args.notes,
+      args.ratings,
+      args.status,
+      args.enrollment,
+      args.headers,
     )
+  notes, ratings, statusHistory, userEnrollment = dataLoader.get_data()
 
   # Invoke scoring and user contribution algorithms.
   scoredNotes, helpfulnessScores, newStatus, auxNoteInfo = run_scoring(
@@ -173,11 +153,11 @@ def main():
     strictColumns=args.strict_columns,
     runParallel=args.parallel,
     dataLoader=dataLoader if args.parallel == True else None,
-    writePrescoringScoringOutputCallback=prescoring_write_fn,
     cutoffTimestampMillis=args.cutoffTimestampMillis,
     excludeRatingsAfterANoteGotFirstStatusPlusNHours=args.excludeRatingsAfterANoteGotFirstStatusPlusNHours,
     daysInPastToApplyPostFirstStatusFiltering=args.daysInPastToApplyPostFirstStatusFiltering,
     filterPrescoringInputToSimulateDelayInHours=args.prescoring_delay_hours,
+    **extraScoringArgs,
   )
 
   # Write outputs to local disk.
