@@ -460,7 +460,7 @@ def compute_scored_notes(
       assert len(tagAggregates) == len(noteParams), "there should be one aggregate per scored note"
       noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer")
     with c.time_block("compute_scored_notes: compute incorrect aggregates"):
-      incorrectAggregates = incorrect_filter.get_incorrect_aggregates(
+      incorrectAggregates = incorrect_filter.get_incorrect_aggregates_final_scoring(
         ratings, noteParams, raterParams
       )
       noteStats = noteStats.merge(incorrectAggregates, on=c.noteIdKey, how="outer")

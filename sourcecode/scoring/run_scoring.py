@@ -26,7 +26,11 @@ from .mf_group_scorer import (
   trialScoringGroup,
 )
 from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
-from .process_data import CommunityNotesDataLoader
+from .post_selection_similarity import (
+  PostSelectionSimilarity,
+  filter_ratings_by_post_selection_similarity,
+)
+from .process_data import CommunityNotesDataLoader, filter_input_data_for_testing
 from .reputation_scorer import ReputationScorer
 from .scorer import Scorer
 from .scoring_rules import RuleID
@@ -888,6 +892,14 @@ def run_prescoring(
       notes, noteTopicClassifierPipe, seedLabels, conflictedTextsForAccuracyEval=conflictedTexts
     )
 
+  with c.time_block("Compute Post Selection Similarity"):
+    pss = PostSelectionSimilarity(notes, ratings)
+    postSelectionSimilarityValues = pss.get_post_selection_similarity_values()
+    print(f"Post Selection Similarity Prescoring: begin with {len(ratings)} ratings.")
+    ratings = filter_ratings_by_post_selection_similarity(ratings, postSelectionSimilarityValues)
+    print(f"Post Selection Similarity Prescoring: {len(ratings)} ratings remaining.")
+    del pss
+
   scorers = _get_scorers(
     seed=seed,
     pseudoraters=False,
@@ -916,6 +928,9 @@ def run_prescoring(
     prescoringRaterModelOutput,
     prescoringMetaOutput,
   ) = combine_prescorer_scorer_results(prescoringModelResultsFromAllScorers)
+  prescoringRaterModelOutput = pd.concat(
+    [prescoringRaterModelOutput, postSelectionSimilarityValues]
+  )
 
   return (
     prescoringNoteModelOutput,
@@ -944,9 +959,22 @@ def run_final_scoring(
 ):
   assert noteTopicClassifier is not None
   assert prescoringMetaOutput is not None
+  assert prescoringNoteModelOutput is not None
+  assert prescoringRaterModelOutput is not None
+
   with c.time_block("Note Topic Assignment"):
     topicModel = TopicModel()
     noteTopics = topicModel.get_note_topics(notes, noteTopicClassifier)
+
+  with c.time_block("Post Selection Similarity: Final Scoring"):
+    print(f"Post Selection Similarity Final Scoring: begin with {len(ratings)} ratings.")
+    ratings = filter_ratings_by_post_selection_similarity(
+      ratings,
+      prescoringRaterModelOutput[prescoringRaterModelOutput[c.postSelectionValueKey] >= 1][
+        [c.raterParticipantIdKey]
+      ],
+    )
+    print(f"Post Selection Similarity Final Scoring: {len(ratings)} ratings remaining.")
 
   scorers = _get_scorers(
     seed, pseudoraters, enabledScorers, useStableInitialization=useStableInitialization
@@ -1077,6 +1105,9 @@ def run_scoring(
   writePrescoringScoringOutputCallback: Optional[
     Callable[[pd.DataFrame, pd.DataFrame, sklearn.pipeline.Pipeline, c.PrescoringMetaOutput], None]
   ] = None,
+  cutoffTimestampMillis: Optional[int] = None,
+  excludeRatingsAfterANoteGotFirstStatusPlusNHours: Optional[int] = None,
+  daysInPastToApplyPostFirstStatusFiltering: Optional[int] = 14,
   filterPrescoringInputToSimulateDelayInHours: Optional[int] = None,
 ):
   """Runs both phases of scoring consecutively. Only for adhoc/testing use.
@@ -1107,25 +1138,21 @@ def run_scoring(
       noteStatusHistory pd.DataFrame: one row per note containing when they got their most recent statuses.
       auxiliaryNoteInfo: one row per note containing adjusted and ratio tag values
   """
-
-  # Filter input data for prescoring to simulate running prescoring earlier than final scoring
-  if filterPrescoringInputToSimulateDelayInHours is not None:
-    latestRatingMillis = ratings[c.createdAtMillisKey].max()
-    cutoffMillis = latestRatingMillis - (
-      filterPrescoringInputToSimulateDelayInHours * 60 * 60 * 1000
-    )
-    print(
-      f"""
-      Filtering input data for prescoring to simulate running prescoring earlier than final scoring.
-      Latest rating timestamp: {pd.to_datetime(latestRatingMillis, unit='ms')}
-      Cutoff timestamp: {pd.to_datetime(cutoffMillis, unit='ms')} ({filterPrescoringInputToSimulateDelayInHours} hours before)
-    """
-    )
-    prescoringNotesInput = notes[notes[c.createdAtMillisKey] < cutoffMillis].copy()
-    prescoringRatingsInput = ratings[ratings[c.createdAtMillisKey] < cutoffMillis].copy()
-  else:
-    prescoringNotesInput = notes
-    prescoringRatingsInput = ratings
+  # Filter input data for testing if optional args present. Else, do nothing.
+  (
+    notes,
+    ratings,
+    prescoringNotesInput,
+    prescoringRatingsInput,
+  ) = filter_input_data_for_testing(
+    notes,
+    ratings,
+    noteStatusHistory,
+    cutoffTimestampMillis,
+    excludeRatingsAfterANoteGotFirstStatusPlusNHours,
+    daysInPastToApplyPostFirstStatusFiltering,
+    filterPrescoringInputToSimulateDelayInHours,
+  )
 
   (
     prescoringNoteModelOutput,

@@ -82,19 +82,42 @@ def parse_args():
     dest="parallel",
   )
   parser.set_defaults(parallel=False)
-  parser.add_argument(
-    "--prescoring-delay-hours",
-    default=None,
-    type=int,
-    dest="prescoring_delay_hours",
-    help="Filter prescoring input to simulate delay in hours",
-  )
+
   parser.add_argument(
     "--no-parquet",
     help="Disable writing parquet files.",
     default=False,
     action="store_true",
     dest="no_parquet",
+  )
+
+  parser.add_argument(
+    "--cutoff-timestamp-millis",
+    default=None,
+    type=int,
+    dest="cutoffTimestampMillis",
+    help="filter notes and ratings created after this time.",
+  )
+  parser.add_argument(
+    "--exclude-ratings-after-a-note-got-first-status-plus-n-hours",
+    default=None,
+    type=int,
+    dest="excludeRatingsAfterANoteGotFirstStatusPlusNHours",
+    help="Exclude ratings after a note got first status plus n hours",
+  )
+  parser.add_argument(
+    "--days-in-past-to-apply-post-first-status-filtering",
+    default=14,
+    type=int,
+    dest="daysInPastToApplyPostFirstStatusFiltering",
+    help="Days in past to apply post first status filtering",
+  )
+  parser.add_argument(
+    "--prescoring-delay-hours",
+    default=None,
+    type=int,
+    dest="prescoring_delay_hours",
+    help="Filter prescoring input to simulate delay in hours",
   )
 
   return parser.parse_args()
@@ -151,6 +174,9 @@ def main():
     runParallel=args.parallel,
     dataLoader=dataLoader if args.parallel == True else None,
     writePrescoringScoringOutputCallback=prescoring_write_fn,
+    cutoffTimestampMillis=args.cutoffTimestampMillis,
+    excludeRatingsAfterANoteGotFirstStatusPlusNHours=args.excludeRatingsAfterANoteGotFirstStatusPlusNHours,
+    daysInPastToApplyPostFirstStatusFiltering=args.daysInPastToApplyPostFirstStatusFiltering,
     filterPrescoringInputToSimulateDelayInHours=args.prescoring_delay_hours,
   )
 
