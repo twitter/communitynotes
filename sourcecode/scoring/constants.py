@@ -96,6 +96,14 @@ unlockedRatingStatusKey = "unlockedRatingStatus"
 metaScorerActiveRulesKey = "metaScorerActiveRules"
 decidedByKey = "decidedBy"
 
+# Note Status Changes Columns
+noteFinalStatusChange = "finalStatusChange"
+noteNewRatings = "newRatings"
+noteDecidedByChange = "decidedByChange"
+noteAllAddedRules = "allAddedRules"
+noteAllRemovedRules = "allRemovedRules"
+noteDecidedByInterceptChange = "decidedByInterceptChange"
+
 # Internal Scoring Columns.  These columns should be renamed before writing to disk.
 internalNoteInterceptKey = "internalNoteIntercept"
 internalRaterInterceptKey = "internalRaterIntercept"
@@ -177,7 +185,6 @@ harassmentNoteInterceptKey = "harassmentNoteIntercept"
 harassmentNoteFactor1Key = "harassmentNoteFactor1"
 harassmentRaterInterceptKey = "harassmentRaterIntercept"
 harassmentRaterFactor1Key = "harassmentRaterFactor1"
-
 
 # Ids and Indexes
 noteIdKey = "noteId"
@@ -286,6 +293,27 @@ notHelpfulTagsAdjustedRatioColumns = [
 ]
 ratingWeightKey = "ratingWeight"
 
+incorrectTagRatingsMadeByRaterKey = "incorrectTagRatingsMadeByRater"
+totalRatingsMadeByRaterKey = "totalRatingsMadeByRater"
+
+noteTfIdfIncorrectScoreKey = "tf_idf_incorrect"
+numVotersKey = "num_voters"  # num voters who rated a note
+incorrectTagRateByRaterKey = "p_incorrect_user"
+
+noteTfIdfIncorrectScoreIntervalKey = (
+  "tf_idf_incorrect_interval"  # note's tf-idf scores from within the interval
+)
+numVotersIntervalKey = "num_voters_interval"  # num voters (in the interval) who rated a note
+sumOfIncorrectTagRateByRaterIntervalKey = (
+  "p_incorrect_user_interval"
+)  # sum of p_incorrect_user for all raters who rated a note in the interval
+notHelpfulIncorrectIntervalKey = (
+  "notHelpfulIncorrect_interval"  # notHelpfulIncorrect ratings on the note in the interval
+)
+
+lowDiligenceInterceptKey = "lowDiligenceIntercept"
+
+
 lowDiligenceRaterFactor1Key = "lowDiligenceRaterFactor1"
 lowDiligenceRaterInterceptKey = "lowDiligenceRaterIntercept"
 lowDiligenceRaterReputationKey = "lowDiligenceRaterReputation"
@@ -297,12 +325,11 @@ internalNoteInterceptRound2Key = "internalNoteInterceptRound2"
 lowDiligenceRaterInterceptRound2Key = "lowDiligenceRaterInterceptRound2"
 internalRaterInterceptRound2Key = "internalRaterInterceptRound2"
 
-
 incorrectFilterColumns = [
-  "notHelpfulIncorrect_interval",
-  "p_incorrect_user_interval",
-  "num_voters_interval",
-  "tf_idf_incorrect_interval",
+  notHelpfulIncorrectIntervalKey,
+  sumOfIncorrectTagRateByRaterIntervalKey,
+  numVotersIntervalKey,
+  noteTfIdfIncorrectScoreIntervalKey,
   lowDiligenceLegacyNoteInterceptKey,
 ]
 
@@ -325,7 +352,6 @@ notMisleadingTags = [
   "notMisleadingPersonalOpinion",
 ]
 notMisleadingTagsAndTypes = [(tag, np.int64) for tag in notMisleadingTags]
-
 
 noteTSVColumnsAndTypes = (
   [
@@ -371,7 +397,6 @@ ratingTSVColumns = [col for (col, dtype) in ratingTSVColumnsAndTypes]
 ratingTSVTypes = [dtype for (col, dtype) in ratingTSVColumnsAndTypes]
 ratingTSVTypeMapping = {col: dtype for (col, dtype) in ratingTSVColumnsAndTypes}
 
-
 timestampMillisOfNoteFirstNonNMRLabelKey = "timestampMillisOfFirstNonNMRStatus"
 firstNonNMRLabelKey = "firstNonNMRStatus"
 timestampMillisOfNoteCurrentLabelKey = "timestampMillisOfCurrentStatus"
@@ -411,7 +436,6 @@ noteStatusHistoryTSVTypes = [dtype for (col, dtype) in noteStatusHistoryTSVColum
 noteStatusHistoryTSVTypeMapping = {
   col: dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes
 }
-
 
 # Earn In + Earn Out
 enrollmentState = "enrollmentState"
@@ -605,6 +629,8 @@ deprecatedNoteModelOutputTSVColumnsAndTypes = [
   if col in deprecatedNoteModelOutputColumns
 ]
 
+postSelectionValueKey = "postSelectionValue"
+
 prescoringRaterModelOutputTSVColumnsAndTypes = [
   (raterParticipantIdKey, object),
   (internalRaterInterceptKey, np.double),
@@ -622,6 +648,9 @@ prescoringRaterModelOutputTSVColumnsAndTypes = [
   (lowDiligenceRaterFactor1Key, np.double),
   (lowDiligenceRaterReputationKey, np.double),
   (lowDiligenceRaterInterceptRound2Key, np.double),
+  (incorrectTagRatingsMadeByRaterKey, pd.Int64Dtype()),
+  (totalRatingsMadeByRaterKey, pd.Int64Dtype()),
+  (postSelectionValueKey, pd.Int64Dtype()),
 ]
 prescoringRaterModelOutputTSVColumns = [
   col for (col, dtype) in prescoringRaterModelOutputTSVColumnsAndTypes
@@ -669,6 +698,39 @@ raterModelOutputTSVColumnsAndTypes = [
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
 
+noteStatusChangesPrev = "_prev"
+noteStatusChangesDerivedColumnsAndTypes = [
+  (noteIdKey, np.int64),
+  (noteFinalStatusChange, str),
+  (noteNewRatings, np.int64),
+  (noteDecidedByChange, str),
+  (noteAllAddedRules, str),
+  (noteAllRemovedRules, str),
+  (noteDecidedByInterceptChange, str),
+]
+noteStatusChangesRemovedCols = [
+  col
+  for col in noteModelOutputTSVColumns
+  if ("NoteInterceptMin" in col) or ("NoteInterceptMax" in col)
+]
+noteStatusChangesModelOutputColumnsAndTypes = [
+  (col, t)
+  for (col, t) in noteModelOutputTSVColumnsAndTypes
+  if col not in noteStatusChangesRemovedCols + [noteIdKey]
+]
+noteStatusChangesModelOutputWithPreviousColumnsAndTypes = (
+  noteStatusChangesModelOutputColumnsAndTypes
+  + [(col + noteStatusChangesPrev, t) for (col, t) in noteStatusChangesModelOutputColumnsAndTypes]
+)
+
+noteStatusChangeTSVColumnsAndTypes = noteStatusChangesDerivedColumnsAndTypes + sorted(
+  noteStatusChangesModelOutputWithPreviousColumnsAndTypes, key=lambda tup: tup[0]
+)
+noteStatusChangesTSVColumns = [col for (col, dtype) in noteStatusChangeTSVColumnsAndTypes]
+noteStatusChangesTSVTypeMapping = {
+  col: dtype for (col, dtype) in noteStatusChangeTSVColumnsAndTypes
+}
+
 
 @contextmanager
 def time_block(label):
@@ -677,7 +739,7 @@ def time_block(label):
     yield
   finally:
     end = time.time()
-    print(f"{label} elapsed time: {end - start:.2f} secs ({((end-start)/60.0):.2f} mins)")
+    print(f"{label} elapsed time: {end - start:.2f} secs ({((end - start) / 60.0):.2f} mins)")
 
 
 ### TODO: weave through second round intercept.

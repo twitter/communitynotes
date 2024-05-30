@@ -588,3 +588,141 @@ class LocalDataLoader(CommunityNotesDataLoader):
       prescoringNoteTopicClassifier,
       prescoringMetaOutput,
     )
+
+
+def filter_input_data_for_testing(
+  notes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+  cutoffTimestampMillis: Optional[int] = None,
+  excludeRatingsAfterANoteGotFirstStatusPlusNHours: Optional[int] = None,
+  daysInPastToApplyPostFirstStatusFiltering: Optional[int] = 14,
+  filterPrescoringInputToSimulateDelayInHours: Optional[int] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+  """
+  Args:
+    cutoffTimestampMillis: filter all notes and ratings after this time.
+
+    excludeRatingsAfterANoteGotFirstStatusPlusNHours: set to 0 to throw out all
+      ratings after a note was first CRH. Set to None to turn off.
+    daysInPastToApplyPostFirstStatusFiltering: only apply the previous
+      filter to notes created in the last this-many days.
+
+    filterPrescoringInputToSimulateDelayInHours: Optional[int]: for system tests,
+      simulate final scoring running this many hours after prescoring.
+
+  Returns: notes, ratings, prescoringNotesInput, prescoringRatingsInput
+  """
+  print(
+    f"""Called filter_input_data_for_testing.
+        Notes: {len(notes)}, Ratings: {len(ratings)}. Max note createdAt: {pd.to_datetime(notes[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(ratings[c.createdAtMillisKey].max(), unit='ms')}"""
+  )
+
+  notes, ratings = filter_notes_and_ratings_after_particular_timestamp_millis(
+    notes, ratings, cutoffTimestampMillis
+  )
+  print(
+    f"""After filtering notes and ratings after particular timestamp (={cutoffTimestampMillis}). 
+        Notes: {len(notes)}, Ratings: {len(ratings)}. Max note createdAt: {pd.to_datetime(notes[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(ratings[c.createdAtMillisKey].max(), unit='ms')}"""
+  )
+
+  ratings = filter_ratings_after_first_status_plus_n_hours(
+    ratings,
+    noteStatusHistory,
+    excludeRatingsAfterANoteGotFirstStatusPlusNHours,
+    daysInPastToApplyPostFirstStatusFiltering,
+  )
+  print(
+    f"""After filtering ratings after first status (plus {excludeRatingsAfterANoteGotFirstStatusPlusNHours} hours) for notes created in last {daysInPastToApplyPostFirstStatusFiltering} days. 
+        Notes: {len(notes)}, Ratings: {len(ratings)}. Max note createdAt: {pd.to_datetime(notes[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(ratings[c.createdAtMillisKey].max(), unit='ms')}"""
+  )
+
+  (
+    prescoringNotesInput,
+    prescoringRatingsInput,
+  ) = filter_prescoring_input_to_simulate_delay_in_hours(
+    notes, ratings, filterPrescoringInputToSimulateDelayInHours
+  )
+  print(
+    f"""After filtering prescoring notes and ratings to simulate a delay of {filterPrescoringInputToSimulateDelayInHours} hours: 
+        Notes: {len(prescoringNotesInput)}, Ratings: {len(prescoringRatingsInput)}. Max note createdAt: {pd.to_datetime(prescoringNotesInput[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(prescoringRatingsInput[c.createdAtMillisKey].max(), unit='ms')}"""
+  )
+
+  return notes, ratings, prescoringNotesInput, prescoringRatingsInput
+
+
+def filter_ratings_after_first_status_plus_n_hours(
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+  excludeRatingsAfterANoteGotFirstStatusPlusNHours: Optional[int] = None,
+  daysInPastToApplyPostFirstStatusFiltering: Optional[int] = 14,
+) -> pd.DataFrame:
+  if excludeRatingsAfterANoteGotFirstStatusPlusNHours is None:
+    return ratings
+
+  if daysInPastToApplyPostFirstStatusFiltering is None:
+    daysInPastToApplyPostFirstStatusFiltering = 14
+
+  ratingCutoffTimeMillisKey = "ratingCutoffTimeMillis"
+
+  # First: determine out which notes to apply this to (created in past
+  #   daysInPastToApplyPostFirstStatusFiltering days)
+  millisToLookBack = daysInPastToApplyPostFirstStatusFiltering * 24 * 60 * 60 * 1000
+  cutoffTimeMillis = noteStatusHistory[c.createdAtMillisKey].max() - millisToLookBack
+  nshToFilter = noteStatusHistory[noteStatusHistory[c.createdAtMillisKey] > cutoffTimeMillis]
+  print(
+    f"  Notes to apply the post-first-status filter for (from last {daysInPastToApplyPostFirstStatusFiltering} days): {len(nshToFilter)}"
+  )
+  nshToFilter[ratingCutoffTimeMillisKey] = nshToFilter[
+    c.timestampMillisOfNoteFirstNonNMRLabelKey
+  ] + (excludeRatingsAfterANoteGotFirstStatusPlusNHours * 60 * 60 * 1000)
+
+  # Next: join their firstStatusTime from NSH with their ratings
+  ratingsWithNSH = ratings.merge(
+    nshToFilter[[c.noteIdKey, ratingCutoffTimeMillisKey]], on=c.noteIdKey, how="left"
+  )
+  # And then filter out ratings made after that time. Don't filter any ratings for notes with
+  #   nan cutoff time.
+  ratingsWithNSH[ratingCutoffTimeMillisKey].fillna(
+    ratingsWithNSH[c.createdAtMillisKey].max() + 1, inplace=True
+  )
+  ratingsWithNSH = ratingsWithNSH[
+    ratingsWithNSH[c.createdAtMillisKey] < ratingsWithNSH[ratingCutoffTimeMillisKey]
+  ]
+  return ratingsWithNSH.drop(columns=[ratingCutoffTimeMillisKey])
+
+
+def filter_notes_and_ratings_after_particular_timestamp_millis(
+  notes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  cutoffTimestampMillis: Optional[int],
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  if cutoffTimestampMillis is not None:
+    notes = notes[notes[c.createdAtMillisKey] <= cutoffTimestampMillis].copy()
+    ratings = ratings[ratings[c.createdAtMillisKey] <= cutoffTimestampMillis].copy()
+  return notes, ratings
+
+
+def filter_prescoring_input_to_simulate_delay_in_hours(
+  notes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  filterPrescoringInputToSimulateDelayInHours: Optional[int],
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  if filterPrescoringInputToSimulateDelayInHours is not None:
+    latestRatingMillis = ratings[c.createdAtMillisKey].max()
+    cutoffMillis = latestRatingMillis - (
+      filterPrescoringInputToSimulateDelayInHours * 60 * 60 * 1000
+    )
+    print(
+      f"""
+      Filtering input data for prescoring to simulate running prescoring earlier than final scoring.
+      Latest rating timestamp: {pd.to_datetime(latestRatingMillis, unit='ms')}
+      Cutoff timestamp: {pd.to_datetime(cutoffMillis, unit='ms')} ({filterPrescoringInputToSimulateDelayInHours} hours before)
+    """
+    )
+    prescoringNotesInput = notes[notes[c.createdAtMillisKey] < cutoffMillis].copy()
+    prescoringRatingsInput = ratings[ratings[c.createdAtMillisKey] < cutoffMillis].copy()
+  else:
+    prescoringNotesInput = notes
+    prescoringRatingsInput = ratings
+  return prescoringNotesInput, prescoringRatingsInput

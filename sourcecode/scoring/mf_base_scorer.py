@@ -8,6 +8,7 @@ from . import (
   tag_consensus,
   tag_filter,
 )
+from .incorrect_filter import get_user_incorrect_ratio
 from .matrix_factorization.matrix_factorization import MatrixFactorization
 from .matrix_factorization.pseudo_raters import PseudoRatersRunner
 from .reputation_matrix_factorization.diligence_model import (
@@ -694,6 +695,9 @@ class MFBaseScorer(Scorer):
       ),
     )
 
+    # Compute user incorrect tag aggregates
+    userIncorrectTagUsageDf = get_user_incorrect_ratio(ratings)
+
     raterModelOutput = raterParams.merge(
       helpfulnessScores[
         [
@@ -706,7 +710,8 @@ class MFBaseScorer(Scorer):
       ],
       on=c.raterParticipantIdKey,
       how="outer",
-    )
+    ).merge(userIncorrectTagUsageDf, on=c.raterParticipantIdKey, how="left")
+
     noteModelOutput = noteParams
 
     return noteModelOutput, raterModelOutput, metaOutput
@@ -817,6 +822,13 @@ class MFBaseScorer(Scorer):
       self.raterParams = raterParams
       self.globalBias = globalBias
 
+    raterParamsWithRatingCounts = raterParams.merge(
+      prescoringRaterModelOutput[
+        [c.raterParticipantIdKey, c.incorrectTagRatingsMadeByRaterKey, c.totalRatingsMadeByRaterKey]
+      ],
+      on=c.raterParticipantIdKey,
+    )
+
     # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
     # and ML output.
     with self.time_block("Final compute scored notes"):
@@ -824,7 +836,7 @@ class MFBaseScorer(Scorer):
       scoredNotes = note_ratings.compute_scored_notes(
         ratings,
         noteParams,
-        raterParams,
+        raterParamsWithRatingCounts,
         noteStatusHistory,
         minRatingsNeeded=self._minRatingsNeeded,
         crhThreshold=self._crhThreshold,

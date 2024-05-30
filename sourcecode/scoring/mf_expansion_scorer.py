@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 
-_EXPANSION_PLUS_BOOL = "expansionPlusBool"
+_EXPANSION_BOOL = "expansionBool"
 
 
 class MFExpansionScorer(MFBaseScorer):
@@ -31,6 +31,7 @@ class MFExpansionScorer(MFBaseScorer):
       saveIntermediateState=saveIntermediateState,
       threads=threads,
     )
+    self._expansionThreshold = 0.5
 
   def get_name(self):
     return "MFExpansionScorer"
@@ -124,48 +125,54 @@ class MFExpansionScorer(MFBaseScorer):
         ratingsOrig: ratings filtered to only contain rows of interest
         noteStatusHistoryOrig: noteStatusHistory filtered to only contain rows of interest
     """
-    # Prepare userEnrollment for join with ratings.
-    userEnrollment[_EXPANSION_PLUS_BOOL] = (
-      userEnrollment[c.modelingPopulationKey] == c.expansionPlus
-    )
-    userEnrollment = userEnrollment[[c.participantIdKey, _EXPANSION_PLUS_BOOL]].copy()
     print("Identifying expansion notes and ratings")
-    # Prune notes authored by EXPANSION_PLUS users.
-    print(f"  Total notes: {len(noteStatusHistoryOrig)}")
-    noteStatusHistory = noteStatusHistoryOrig.merge(
-      userEnrollment.rename(columns={c.participantIdKey: c.noteAuthorParticipantIdKey}),
-      on=c.noteAuthorParticipantIdKey,
-      how="left",
-    )
-    print(
-      f"  Notes from user without modelingPopulation: {pd.isna(noteStatusHistory[_EXPANSION_PLUS_BOOL]).sum()}"
-    )
-    noteStatusHistory = noteStatusHistory.fillna({_EXPANSION_PLUS_BOOL: False})
-    noteStatusHistory[_EXPANSION_PLUS_BOOL] = noteStatusHistory[_EXPANSION_PLUS_BOOL].astype(
-      np.bool_
-    )
-    noteStatusHistory = noteStatusHistory[~noteStatusHistory[_EXPANSION_PLUS_BOOL]]
-    print(f"  Total CORE and EXPANSION notes: {len(noteStatusHistory)}")
-    # Prune ratings from EXPANSION_PLUS users.
+    # Prune ratings to CORE and EXPANSION users.
     print(f"  Total ratings: {len(ratingsOrig)}")
     ratings = ratingsOrig.merge(
-      userEnrollment.rename(columns={c.participantIdKey: c.raterParticipantIdKey}),
+      userEnrollment[[c.participantIdKey, c.modelingPopulationKey]].rename(
+        columns={c.participantIdKey: c.raterParticipantIdKey}
+      ),
       on=c.raterParticipantIdKey,
       how="left",
     )
     print(
-      f"  Ratings from user without modelingPopulation: {pd.isna(ratings[_EXPANSION_PLUS_BOOL]).sum()}"
+      f"  Ratings from user without modelingPopulation: {pd.isna(ratings[c.modelingPopulationKey]).sum()}"
     )
-    ratings = ratings.fillna({_EXPANSION_PLUS_BOOL: False})
-    ratings[_EXPANSION_PLUS_BOOL] = ratings[_EXPANSION_PLUS_BOOL].astype(np.bool_)
-    ratings = ratings[~ratings[_EXPANSION_PLUS_BOOL]]
+    ratings = ratings.fillna({c.modelingPopulationKey: c.expansion})
+    ratings = ratings[ratings[c.modelingPopulationKey] != c.expansionPlus]
     print(f"  Ratings after EXPANSION_PLUS filter: {len(ratings)}")
-    # prune ratings on dropped notes
-    ratings = ratings.merge(
-      noteStatusHistory[[c.noteIdKey]].drop_duplicates(), on=c.noteIdKey, how="inner"
-    )
-    print(f"  Ratings after EXPANSION_PLUS notes filter: {len(ratings)}")
 
-    return ratings.drop(columns=_EXPANSION_PLUS_BOOL), noteStatusHistory.drop(
-      columns=_EXPANSION_PLUS_BOOL
+    return ratings.drop(columns=c.modelingPopulationKey), noteStatusHistoryOrig
+
+  def _postprocess_output(
+    self,
+    noteScores: pd.DataFrame,
+    userScores: pd.DataFrame,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    userEnrollment: pd.DataFrame,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    print("Filtering Expansion Output")
+    print(f"  Original ratings length: {len(ratings)}")
+    # Separate CORE and EXPANSION notes from EXPANSION_PLUS.
+    userEnrollment[_EXPANSION_BOOL] = userEnrollment[c.modelingPopulationKey].isin(
+      {c.core, c.expansion}
     )
+    userGroups = userEnrollment[[c.participantIdKey, _EXPANSION_BOOL]].copy()
+    ratings = ratings.merge(
+      userGroups.rename(columns={c.participantIdKey: c.raterParticipantIdKey}),
+      on=c.raterParticipantIdKey,
+      how="left",
+    )
+    print(f"  Final ratings length: {len(ratings)}")
+    ratings = ratings.fillna({_EXPANSION_BOOL: True})
+    ratings[_EXPANSION_BOOL] = ratings[_EXPANSION_BOOL].astype(np.bool8)
+    ratios = ratings[[c.noteIdKey, _EXPANSION_BOOL]].groupby(c.noteIdKey).mean().reset_index()
+    # Identify EXPANSION notes.  We define a EXPANSION note to be any note which (1) has ratings, and
+    # (2) half or more of the ratings are from EXPANSION/CORE users.
+    print(f"  Original noteScores length: {len(noteScores)}")
+    noteScores = noteScores.merge(
+      ratios[ratios[_EXPANSION_BOOL] >= self._expansionThreshold][[c.noteIdKey]]
+    )
+    print(f"  Final noteScores length: {len(noteScores)}")
+    return noteScores, userScores
