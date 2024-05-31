@@ -896,7 +896,9 @@ def run_prescoring(
     pss = PostSelectionSimilarity(notes, ratings)
     postSelectionSimilarityValues = pss.get_post_selection_similarity_values()
     print(f"Post Selection Similarity Prescoring: begin with {len(ratings)} ratings.")
-    ratings = filter_ratings_by_post_selection_similarity(ratings, postSelectionSimilarityValues)
+    ratings = filter_ratings_by_post_selection_similarity(
+      notes, ratings, postSelectionSimilarityValues
+    )
     print(f"Post Selection Similarity Prescoring: {len(ratings)} ratings remaining.")
     del pss
 
@@ -969,9 +971,10 @@ def run_final_scoring(
   with c.time_block("Post Selection Similarity: Final Scoring"):
     print(f"Post Selection Similarity Final Scoring: begin with {len(ratings)} ratings.")
     ratings = filter_ratings_by_post_selection_similarity(
+      notes,
       ratings,
       prescoringRaterModelOutput[prescoringRaterModelOutput[c.postSelectionValueKey] >= 1][
-        [c.raterParticipantIdKey]
+        [c.raterParticipantIdKey, c.postSelectionValueKey]
       ],
     )
     print(f"Post Selection Similarity Final Scoring: {len(ratings)} ratings remaining.")

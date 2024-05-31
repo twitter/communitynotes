@@ -58,9 +58,53 @@ class PostSelectionSimilarity:
     return cliquesDf
 
 
-def filter_ratings_by_post_selection_similarity(ratings, highPostSelectionSimilarityRaters):
+def filter_ratings_by_post_selection_similarity(notes, ratings, postSelectionSimilarityValues):
   """
-  Filters out ratings from raters who have high post selection similarity.
+  Filters out ratings after the first on each note from raters who have high post selection similarity,
+  or filters all if the note is authored by a user with the same post selection similarity value.
+  """
+  ratingsWithPostSelectionSimilarity = (
+    ratings.merge(
+      postSelectionSimilarityValues,
+      on=c.raterParticipantIdKey,
+      how="left",
+    )
+    .merge(notes[[c.noteIdKey, c.noteAuthorParticipantIdKey]], on=c.noteIdKey, how="left")
+    .merge(
+      postSelectionSimilarityValues,
+      left_on=c.noteAuthorParticipantIdKey,
+      right_on=c.raterParticipantIdKey,
+      how="left",
+      suffixes=("", "_note_author"),
+    )
+  )
+  ratingsWithNoPostSelectionSimilarityValue = ratingsWithPostSelectionSimilarity[
+    pd.isna(ratingsWithPostSelectionSimilarity[c.postSelectionValueKey])
+  ]
+  ratingsWithPostSelectionSimilarityValue = ratingsWithPostSelectionSimilarity[
+    (~pd.isna(ratingsWithPostSelectionSimilarity[c.postSelectionValueKey]))
+    & (
+      ratingsWithPostSelectionSimilarity[c.postSelectionValueKey]
+      != ratingsWithPostSelectionSimilarity[c.postSelectionValueKey + "_note_author"]
+    )
+  ]
+  ratingsWithPostSelectionSimilarityValue.sort_values(
+    by=[c.noteIdKey, c.createdAtMillisKey], ascending=True, inplace=True
+  )
+  ratingsWithPostSelectionSimilarityValue.drop_duplicates(
+    subset=[c.noteIdKey, c.postSelectionValueKey], keep="first", inplace=True
+  )
+
+  ratings = pd.concat(
+    [ratingsWithPostSelectionSimilarityValue, ratingsWithNoPostSelectionSimilarityValue], axis=0
+  )
+  return ratings
+
+
+def filter_all_ratings_by_post_selection_similarity(ratings, highPostSelectionSimilarityRaters):
+  """
+  Deprecated.
+  Filters out all ratings from raters who have high post selection similarity.
   """
   ratings = ratings.merge(
     highPostSelectionSimilarityRaters, on=c.raterParticipantIdKey, how="left", indicator=True
