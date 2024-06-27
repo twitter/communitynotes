@@ -86,6 +86,20 @@ def _get_incorrect_tfidf_ratio(
     / ratings_w_user_totals[c.totalRatingsMadeByRaterKey]
   )
 
+  # Setup columns to be aggregated so they are not dropped during aggregation
+  ratings_w_user_totals[c.incorrectTagRateByRaterKey].fillna(0, inplace=True)
+  ratings_w_user_totals[c.incorrectTagRateByRaterKey] = ratings_w_user_totals[
+    c.incorrectTagRateByRaterKey
+  ].astype(np.double)
+  ratings_w_user_totals[c.incorrectTagRatingsMadeByRaterKey].fillna(0, inplace=True)
+  ratings_w_user_totals[c.incorrectTagRatingsMadeByRaterKey] = ratings_w_user_totals[
+    c.incorrectTagRatingsMadeByRaterKey
+  ].astype(np.double)
+  ratings_w_user_totals[c.totalRatingsMadeByRaterKey].fillna(0, inplace=True)
+  ratings_w_user_totals[c.totalRatingsMadeByRaterKey] = ratings_w_user_totals[
+    c.totalRatingsMadeByRaterKey
+  ].astype(np.double)
+
   rating_aggs = ratings_w_user_totals.groupby(c.noteIdKey).agg("sum").reset_index()
   rating_aggs_w_cnt = rating_aggs.merge(note_nh_count, on=c.noteIdKey)
 

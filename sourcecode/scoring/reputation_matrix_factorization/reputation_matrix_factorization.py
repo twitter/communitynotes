@@ -49,6 +49,15 @@ class ReputationModelHyperparameters:
   defaultReputation: float = 1.0
 
 
+def get_or_default_if_nan(lookupDict, key, default):
+  if key not in lookupDict:
+    return default
+  val = lookupDict.get(key, default)
+  if np.isnan(val):
+    return default
+  return val
+
+
 # Define model with customizable loss, activation, regularization and dimensionality
 class ReputationMFModel(nn.Module):
   def __init__(
@@ -111,7 +120,10 @@ class ReputationMFModel(nn.Module):
       )
       paramWeightToInit = nn.Parameter(
         torch.tensor(
-          [idToInitValue.get(raterOrNoteId, defaultValue) for raterOrNoteId in ratersOrNotes]
+          [
+            get_or_default_if_nan(lookupDict=idToInitValue, key=raterOrNoteId, default=defaultValue)
+            for raterOrNoteId in ratersOrNotes
+          ]
         )
         .to(torch.float32)
         .reshape(-1, 1)
@@ -135,6 +147,7 @@ class ReputationMFModel(nn.Module):
     )
     if initVal is not None:
       self.noteEmbedding.weight = initVal
+    assert not torch.isnan(self.noteEmbedding.weight).any()
 
   def init_note_intercept(self, noteInitState, dataset, device, defaultValue=0):
     initVal = self.init_parameter(
@@ -147,6 +160,7 @@ class ReputationMFModel(nn.Module):
     )
     if initVal is not None:
       self.noteBias.weight = initVal
+    assert not torch.isnan(self.noteBias.weight).any()
 
   def init_rater_factor(self, raterInitState, dataset, device, defaultValue=0):
     initVal = self.init_parameter(
@@ -159,6 +173,7 @@ class ReputationMFModel(nn.Module):
     )
     if initVal is not None:
       self.raterEmbedding.weight = initVal
+    assert not torch.isnan(self.raterEmbedding.weight).any()
 
   def init_rater_reputation(self, raterInitState, dataset, device, defaultValue):
     initVal = self.init_parameter(
@@ -171,6 +186,7 @@ class ReputationMFModel(nn.Module):
     )
     if initVal is not None:
       self.raterReputation.weight = initVal
+    assert not torch.isnan(self.raterReputation.weight).any()
 
   def init_rater_intercept(self, raterInitState, dataset, device, defaultValue=0):
     initVal = self.init_parameter(
@@ -183,12 +199,14 @@ class ReputationMFModel(nn.Module):
     )
     if initVal is not None:
       self.raterBias.weight = initVal
+    assert not torch.isnan(self.raterBias.weight).any()
 
   def init_global_bias(self, globalInterceptInit):
     if globalInterceptInit is not None:
       self.globalBias = nn.Parameter(torch.tensor(globalInterceptInit, **self.format))
     else:
       self.globalBias = nn.Parameter(torch.tensor(0.0, **self.format))
+    assert not torch.isnan(self.globalBias).any()
 
   def forward(self, notes, raters):
     pred = (self.noteEmbedding(notes) * self.raterEmbedding(raters)).sum(
@@ -228,6 +246,7 @@ def _train_one_round(model, loss_fn, dataset, hParams):
     # Compute loss
     loss = loss_fn(pred.flatten())
     loss += model.get_regularization_loss()
+    assert not torch.isnan(loss).any()
     if hParams.logRate and epoch % hParams.logRate == 0:
       print(f"epoch={epoch:03d} | loss={loss.item():7.6f} | time={time.time() - start:.1f}s")
     if hParams.convergence > 0 and epoch % hParams.stablePeriod == 0:

@@ -65,7 +65,7 @@ $ cd sourcecode
 $ python main.py
 ```
 
-Most versions of Python3 should work, but we have tested the code with Python 3.8.
+Multiple versions of Python3 should work, but we have tested the code with Python 3.10.
 
 ### Community Notes data
 

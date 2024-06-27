@@ -41,7 +41,11 @@ def read_from_strings(
 
 
 def tsv_parser(
-  rawTSV: str, mapping: Dict[str, type], columns: List[str], header: bool
+  rawTSV: str,
+  mapping: Dict[str, type],
+  columns: List[str],
+  header: bool,
+  convertNAToNone: bool = True,
 ) -> pd.DataFrame:
   """Parse a TSV input and raise an Exception if the input is not formatted as expected.
 
@@ -68,28 +72,44 @@ def tsv_parser(
       header=0 if header else None,
       index_col=[],
     )
+    if convertNAToNone:
+      # float types will be nan if missing; newer nullable types like "StringDtype" or "Int64Dtype" will by default
+      # be pandas._libs.missing.NAType if missing. Set those to None and change the dtype back to object.
+      for colname, coltype in mapping.items():
+        # check if coltype is pd.BooleanDtype
+        if coltype in set(
+          [pd.StringDtype(), pd.BooleanDtype(), pd.Int64Dtype(), pd.Int32Dtype(), "boolean"]
+        ):
+          data[colname] = data[colname].astype(object)
+          data.loc[pd.isna(data[colname]), colname] = None
     return data
   except (ValueError, IndexError) as e:
     raise ValueError(f"Invalid input: {e}")
 
 
-def tsv_reader_single(path: str, mapping, columns, header=False, parser=tsv_parser):
+def tsv_reader_single(
+  path: str, mapping, columns, header=False, parser=tsv_parser, convertNAToNone=True
+):
   """Read a single TSV file."""
   with open(path, "r", encoding="utf-8") as handle:
-    return tsv_parser(handle.read(), mapping, columns, header)
+    return tsv_parser(handle.read(), mapping, columns, header, convertNAToNone)
 
 
-def tsv_reader(path: str, mapping, columns, header=False, parser=tsv_parser) -> pd.DataFrame:
+def tsv_reader(
+  path: str, mapping, columns, header=False, parser=tsv_parser, convertNAToNone=True
+) -> pd.DataFrame:
   """Read a single TSV file or a directory of TSV files."""
   if os.path.isdir(path):
     dfs = [
-      tsv_reader_single(os.path.join(path, filename), mapping, columns, header, parser)
+      tsv_reader_single(
+        os.path.join(path, filename), mapping, columns, header, parser, convertNAToNone
+      )
       for filename in os.listdir(path)
       if filename.endswith(".tsv")
     ]
     return pd.concat(dfs, ignore_index=True)
   else:
-    return tsv_reader_single(path, mapping, columns, header, parser)
+    return tsv_reader_single(path, mapping, columns, header, parser, convertNAToNone)
 
 
 def read_from_tsv(
@@ -113,7 +133,9 @@ def read_from_tsv(
   if notesPath is None:
     notes = None
   else:
-    notes = tsv_reader(notesPath, c.noteTSVTypeMapping, c.noteTSVColumns, header=headers)
+    notes = tsv_reader(
+      notesPath, c.noteTSVTypeMapping, c.noteTSVColumns, header=headers, convertNAToNone=False
+    )
     assert len(notes.columns) == len(c.noteTSVColumns) and all(notes.columns == c.noteTSVColumns), (
       f"note columns don't match: \n{[col for col in notes.columns if not col in c.noteTSVColumns]} are extra columns, "
       + f"\n{[col for col in c.noteTSVColumns if not col in notes.columns]} are missing."
@@ -122,7 +144,9 @@ def read_from_tsv(
   if ratingsPath is None:
     ratings = None
   else:
-    ratings = tsv_reader(ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns, header=headers)
+    ratings = tsv_reader(
+      ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns, header=headers, convertNAToNone=False
+    )
     assert len(ratings.columns.values) == len(c.ratingTSVColumns) and all(
       ratings.columns == c.ratingTSVColumns
     ), (
@@ -138,6 +162,7 @@ def read_from_tsv(
       c.noteStatusHistoryTSVTypeMapping,
       c.noteStatusHistoryTSVColumns,
       header=headers,
+      convertNAToNone=False,
     )
     assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
       noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
@@ -154,6 +179,7 @@ def read_from_tsv(
       c.userEnrollmentTSVTypeMapping,
       c.userEnrollmentTSVColumns,
       header=headers,
+      convertNAToNone=False,
     )
     assert len(userEnrollment.columns.values) == len(c.userEnrollmentTSVColumns) and all(
       userEnrollment.columns == c.userEnrollmentTSVColumns
@@ -192,6 +218,7 @@ def _filter_misleading_notes(
     on=c.noteIdKey,
     how="left",
     suffixes=("", "_nsh"),
+    unsafeAllowed=c.createdAtMillisKey,
   )
 
   deletedNoteKey = "deletedNote"
@@ -322,6 +349,7 @@ def preprocess_data(
       "Timestamp of latest note in data: ",
       pd.to_datetime(notes[c.createdAtMillisKey], unit="ms").max(),
     )
+
   ratings = remove_duplicate_ratings(ratings)
   notes = remove_duplicate_notes(notes)
 
@@ -408,20 +436,21 @@ def write_prescoring_output(
   raterModelOutputPath: str,
   noteTopicClassifierPath: str,
   prescoringMetaOutputPath: str,
+  headers: bool = True,
 ):
   prescoringNoteModelOutput = prescoringNoteModelOutput[c.prescoringNoteModelOutputTSVColumns]
   assert all(prescoringNoteModelOutput.columns == c.prescoringNoteModelOutputTSVColumns)
-  write_tsv_local(prescoringNoteModelOutput, noteModelOutputPath)
+  write_tsv_local(prescoringNoteModelOutput, noteModelOutputPath, headers=headers)
 
   prescoringRaterModelOutput = prescoringRaterModelOutput[c.prescoringRaterModelOutputTSVColumns]
   assert all(prescoringRaterModelOutput.columns == c.prescoringRaterModelOutputTSVColumns)
-  write_tsv_local(prescoringRaterModelOutput, raterModelOutputPath)
+  write_tsv_local(prescoringRaterModelOutput, raterModelOutputPath, headers=headers)
 
   joblib.dump(noteTopicClassifier, noteTopicClassifierPath)
   joblib.dump(prescoringMetaOutput, prescoringMetaOutputPath)
 
 
-def write_tsv_local(df: pd.DataFrame, path: str) -> None:
+def write_tsv_local(df: pd.DataFrame, path: str, headers: bool = True) -> None:
   """Write DF as a TSV stored to local disk.
 
   Note that index=False (so the index column will not be written to disk), and header=True
@@ -433,7 +462,7 @@ def write_tsv_local(df: pd.DataFrame, path: str) -> None:
   """
 
   assert path is not None
-  assert df.to_csv(path, index=False, header=True, sep="\t") is None
+  assert df.to_csv(path, index=False, header=headers, sep="\t") is None
 
 
 def write_parquet_local(
@@ -545,7 +574,7 @@ class LocalDataLoader(CommunityNotesDataLoader):
         self.prescoringRaterModelOutputPath,
         c.prescoringRaterModelOutputTSVTypeMapping,
         c.prescoringRaterModelOutputTSVColumns,
-        header=True,
+        header=self.headers,
       )
       assert len(prescoringRaterModelOutput.columns) == len(
         c.prescoringRaterModelOutputTSVColumns
@@ -561,7 +590,7 @@ class LocalDataLoader(CommunityNotesDataLoader):
         self.prescoringNoteModelOutputPath,
         c.prescoringNoteModelOutputTSVTypeMapping,
         c.prescoringNoteModelOutputTSVColumns,
-        header=True,
+        header=self.headers,
       )
       assert len(prescoringNoteModelOutput.columns) == len(
         c.prescoringNoteModelOutputTSVColumns

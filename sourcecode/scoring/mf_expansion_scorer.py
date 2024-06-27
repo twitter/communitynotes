@@ -163,6 +163,7 @@ class MFExpansionScorer(MFBaseScorer):
       userGroups.rename(columns={c.participantIdKey: c.raterParticipantIdKey}),
       on=c.raterParticipantIdKey,
       how="left",
+      unsafeAllowed=_EXPANSION_BOOL,
     )
     print(f"  Final ratings length: {len(ratings)}")
     ratings = ratings.fillna({_EXPANSION_BOOL: True})

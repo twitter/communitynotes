@@ -172,7 +172,12 @@ class MatrixFactorization:
     if noteInit is not None:
       if self._logging:
         print("initializing notes")
-      noteInit = self.noteIdMap.merge(noteInit, on=c.noteIdKey, how="left")
+      noteInit = self.noteIdMap.merge(
+        noteInit,
+        on=c.noteIdKey,
+        how="left",
+        unsafeAllowed={c.noteIdKey, "noteIndex_y"},
+      )
 
       noteInit[c.internalNoteInterceptKey].fillna(0.0, inplace=True)
       self.mf_model.note_intercepts.weight.data = torch.tensor(
@@ -349,7 +354,9 @@ class MatrixFactorization:
       assert self.trainModelData is not None
       loss = self.criterion(y_pred, self.trainModelData.rating_labels).mean()
     regularizationLoss = self._get_reg_loss()
-    return loss + regularizationLoss
+    loss += regularizationLoss
+    assert not torch.isnan(loss).any()
+    return loss
 
   def _get_reg_loss(self):
     l2_reg_loss = torch.tensor(0.0).to(self.mf_model.device)

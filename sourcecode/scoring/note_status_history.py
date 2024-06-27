@@ -32,6 +32,7 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
     # use outer so we don't drop deleted notes from "oldNoteStatusHistory" or new notes from "notes"
     how="outer",
     suffixes=("", noteSuffix),
+    unsafeAllowed={c.createdAtMillisKey, c.createdAtMillisKey + noteSuffix},
   )
   newNotes = pd.isna(newNoteStatusHistory[c.createdAtMillisKey])
   print(f"total notes added to noteStatusHistory: {sum(newNotes)}")
@@ -55,6 +56,7 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
       notes[[c.noteIdKey, c.createdAtMillisKey]],
       on=[c.noteIdKey, c.createdAtMillisKey],
       how="inner",
+      unsafeAllowed=c.createdAtMillisKey,
     )
   ), "timestamps from notes and noteStatusHistory must match"
   assert len(notes) == len(
@@ -155,7 +157,7 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   return mergedNote
 
 
-def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn=0.25) -> None:
+def check_flips(mergedStatuses: pd.DataFrame, noteSubset: c.NoteSubset) -> None:
   """Validate that number of CRH notes remains within an accepted bound.
 
   Assert fails and scoring exits with error if maximum allowable churn is exceeded.
@@ -167,8 +169,20 @@ def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn=0.25) -> None:
   Returns:
     None
   """
-  # Prune to unlocked notes.
-  mergedStatuses = mergedStatuses[mergedStatuses[c.timestampMillisOfStatusLockKey].isna()]
+  if len(mergedStatuses) > c.minNumNotesForProdData:
+    # Prune notes to unlocked notes.
+    mergedStatuses = mergedStatuses[mergedStatuses[c.timestampMillisOfStatusLockKey].isna()]
+    # Prune to note subset
+    print(
+      f"Checking Flip Rate for note subset: {noteSubset.description} (unlocked only), with max churn: {noteSubset.maxCrhChurnRate}"
+    )
+    if noteSubset.noteSet is not None:
+      mergedStatuses = mergedStatuses[mergedStatuses[c.noteIdKey].isin(noteSubset.noteSet)]
+
+    _check_flips(mergedStatuses, noteSubset.maxCrhChurnRate)
+
+
+def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn: float) -> None:
   # Identify new and old CRH notes.
   oldCrhNotes = frozenset(
     mergedStatuses[mergedStatuses[c.currentLabelKey] == c.currentlyRatedHelpful][c.noteIdKey]
@@ -176,35 +190,22 @@ def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn=0.25) -> None:
   newCrhNotes = frozenset(
     mergedStatuses[mergedStatuses[c.finalRatingStatusKey] == c.currentlyRatedHelpful][c.noteIdKey]
   )
-  # Validate that changes are within allowable bounds.
-  assert (
-    (len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
-  ), f"Too many new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
-  assert (
-    (len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
-  ), f"Too few new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
+  if len(oldCrhNotes) > 0 and len(newCrhNotes) > 0:
+    # Validate that changes are within allowable bounds.
+    print(f"new note ratio: {(len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes))}")
+    assert (
+      (len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
+    ), f"Too many new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
+    print(f"old note ratio: {len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)}")
+    assert (
+      (len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
+    ), f"Too few new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
 
 
-def update_note_status_history(
+def merge_old_and_new_note_statuses(
   oldNoteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
-) -> pd.DataFrame:
-  """Generate new noteStatusHistory by merging in new note labels.
-
-  Args:
-      oldNoteStatusHistory (pd.DataFrame)
-      scoredNotes (pd.DataFrame)
-
-  Returns:
-      pd.DataFrame: noteStatusHistory
-  """
-  if c.useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory:
-    # When running in prod, we use the latest time possible, so as to include as many valid ratings
-    # as possible, and be closest to the time the new note statuses are user-visible.
-    currentTimeMillis = 1000 * time.time()
-  else:
-    # When running in test, we use the overridable epochMillis constant.
-    currentTimeMillis = c.epochMillis
+):
   newScoredNotesSuffix = "_sn"
   mergedStatuses = oldNoteStatusHistory.merge(
     scoredNotes[
@@ -230,8 +231,21 @@ def update_note_status_history(
   assert len(mergedStatuses) == len(
     oldNoteStatusHistory
   ), "scoredNotes and oldNoteStatusHistory should both contain all notes"
-  if len(mergedStatuses) > c.minNumNotesForProdData:
-    _check_flips(mergedStatuses)
+  return mergedStatuses
+
+
+def update_note_status_history(
+  mergedStatuses: pd.DataFrame,
+  newScoredNotesSuffix: str = "_sn",
+) -> pd.DataFrame:
+  """Generate new noteStatusHistory by merging in new note labels."""
+  if c.useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory:
+    # When running in prod, we use the latest time possible, so as to include as many valid ratings
+    # as possible, and be closest to the time the new note statuses are user-visible.
+    currentTimeMillis = 1000 * time.time()
+  else:
+    # When running in test, we use the overridable epochMillis constant.
+    currentTimeMillis = c.epochMillis
 
   def apply_update(mergedNote):
     return _update_single_note_status_history(

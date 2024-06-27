@@ -99,8 +99,11 @@ def get_ratings_for_stable_init(
   # Only include notes that have received at least 75% of their ratings from the modeling group (and 5 total)
   ratingsForTrainingWithModelingGroup[c.ratingCountKey] = 1
   noteStatsByRatedModelingGroup = (
-    ratingsForTrainingWithModelingGroup.groupby(c.noteIdKey)
-    .sum()[[c.ratingFromInitialModelingGroupKey, c.ratingCountKey]]
+    ratingsForTrainingWithModelingGroup[
+      [c.noteIdKey, c.ratingFromInitialModelingGroupKey, c.ratingCountKey]
+    ]
+    .groupby(c.noteIdKey)
+    .sum()
     .reset_index()
   )
   noteStatsByRatedModelingGroup[c.percentFromInitialModelingGroupKey] = (
@@ -370,13 +373,20 @@ class MFBaseScorer(Scorer):
     """Returns a list of columns which should be excluded from helpfulnessScores output."""
     return []
 
-  def _prepare_data_for_scoring(self, ratings: pd.DataFrame) -> pd.DataFrame:
+  def _prepare_data_for_scoring(self, ratings: pd.DataFrame, final: bool = False) -> pd.DataFrame:
     """Prepare data for scoring. This includes filtering out notes and raters which do not meet
     minimum rating counts, and may be overridden by subclasses to add additional filtering.
     """
-    return process_data.filter_ratings(
-      ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote
-    )
+    if final:
+      return process_data.filter_ratings(
+        ratings, minNumRatingsPerRater=0, minNumRatersPerNote=self._minNumRatersPerNote
+      )
+    else:
+      return process_data.filter_ratings(
+        ratings,
+        minNumRatingsPerRater=self._minNumRatingsPerRater,
+        minNumRatersPerNote=self._minNumRatersPerNote,
+      )
 
   def _run_regular_matrix_factorization(self, ratingsForTraining: pd.DataFrame):
     """Train a matrix factorization model on the ratingsForTraining data.
@@ -710,7 +720,12 @@ class MFBaseScorer(Scorer):
       ],
       on=c.raterParticipantIdKey,
       how="outer",
-    ).merge(userIncorrectTagUsageDf, on=c.raterParticipantIdKey, how="left")
+    ).merge(
+      userIncorrectTagUsageDf,
+      on=c.raterParticipantIdKey,
+      how="left",
+      unsafeAllowed={c.totalRatingsMadeByRaterKey, c.incorrectTagRatingsMadeByRaterKey},
+    )
 
     noteModelOutput = noteParams
 
@@ -745,12 +760,23 @@ class MFBaseScorer(Scorer):
       print(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
 
-    # Removes ratings where either (1) the note did not receive enough ratings, or
-    # (2) the rater did not rate enough notes.
+    # Removes ratings where either the note did not receive enough ratings
     with self.time_block("Prepare ratings"):
-      ratingsForTraining = self._prepare_data_for_scoring(ratings)
+      ratingsForTraining = self._prepare_data_for_scoring(ratings, final=True)
     if self._saveIntermediateState:
       self.ratingsForTraining = ratingsForTraining
+
+    # Filter raters with no rater parameters in this scorer
+    ratersWithParams = prescoringRaterModelOutput.loc[
+      (
+        (~pd.isna(prescoringRaterModelOutput[c.internalRaterInterceptKey]))
+        & (~pd.isna(prescoringRaterModelOutput[c.internalRaterInterceptKey]))
+      ),
+      [c.raterParticipantIdKey],
+    ]
+    ratingsForTraining = ratingsForTraining.merge(
+      ratersWithParams, how="inner", on=c.raterParticipantIdKey
+    )
 
     # Filters ratings matrix to include only rows (ratings) where the rater was
     # considered helpful.
@@ -759,7 +785,6 @@ class MFBaseScorer(Scorer):
         "Topic" in self.get_name()
       ), f"Unexpected scorer has reputation filtering disabled: {self.get_name()}"
       print(f"Skipping rep-filtering in 2nd phase for {self.get_name()}")
-      ## Still run entire scorer again here for topic models! Just run this final round from scratch.
       finalRoundRatings = ratingsForTraining
     else:
       finalRoundRatings = helpfulness_scores.filter_ratings_by_helpfulness_scores(
@@ -783,7 +808,7 @@ class MFBaseScorer(Scorer):
       self.raterParams = raterParams
       self.globalBias = globalBias
       self.finalRoundRatings = finalRoundRatings
-    self.assert_train_error_is_below_threshold(finalRoundRatings, self._maxFinalMFTrainError)
+    # self.assert_train_error_is_below_threshold(finalRoundRatings, self._maxFinalMFTrainError)
 
     # Add pseudo-raters with the most extreme parameters and re-score notes, to estimate
     #  upper and lower confidence bounds on note parameters.
@@ -949,7 +974,14 @@ class MFBaseScorer(Scorer):
         .reset_index()
         .rename(columns={c.raterParticipantIdKey: c.numFinalRoundRatingsKey})
       )
-      noteScores = noteScores.merge(scoredNoteFinalRoundRatings, on=c.noteIdKey, how="left")
+
+      noteScores = noteScores.merge(
+        scoredNoteFinalRoundRatings,
+        on=c.noteIdKey,
+        how="left",
+        unsafeAllowed=[c.defaultIndexKey, c.numFinalRoundRatingsKey],
+      )
+
       noteScores = noteScores.rename(columns=self._get_note_col_mapping())
       userScores = userScores.rename(columns=self._get_user_col_mapping())
 

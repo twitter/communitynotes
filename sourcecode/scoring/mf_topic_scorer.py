@@ -255,6 +255,8 @@ class MFTopicScorer(MFBaseScorer):
     negFactorCounts = negFactorCounts[negFactorCounts["negRatingTotal"] > 4][[c.noteIdKey]]
     confidentNotes = posFactorCounts.merge(negFactorCounts)
     confidentNotes[self._noteTopicConfidentKey] = True
-    noteScores = noteScores.merge(confidentNotes, how="left")
+    noteScores = noteScores.merge(
+      confidentNotes, how="left", unsafeAllowed=[self._noteTopicConfidentKey, c.defaultIndexKey]
+    )
     noteScores = noteScores.fillna({self._noteTopicConfidentKey: False})
     return noteScores, userScores

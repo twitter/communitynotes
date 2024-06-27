@@ -20,22 +20,13 @@ _groupScorerParalleism = {
 }
 
 
-def coalesce_group_models(
-  scoredNotes: pd.DataFrame, helpfulnessScores: pd.DataFrame
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-  """Coalesce all group modeling columns across note and user scoring.
+def coalesce_group_model_scored_notes(scoredNotes: pd.DataFrame) -> pd.DataFrame:
+  """Coalesce all group modeling columns across note scoring.
 
   Since each Scorer must have distinct output columns, we use coalescing to run
   multiple instances of MFGroupScorer objects and then condense the results into
   a single set of columns.  This approach works because each note will be scored
   by at most one MFGroupScorer instance.
-
-  Args:
-    scoredNotes: scoring output for notes.
-    helpfulnessScores: scoring output for users.
-
-  Returns:
-    tuple containing coalesced scoring results for notes and users.
   """
   for col in [
     c.groupNoteInterceptKey,
@@ -49,10 +40,20 @@ def coalesce_group_models(
   ]:
     scoredNotes = coalesce_columns(scoredNotes, col)
 
+  return scoredNotes
+
+
+def coalesce_group_model_helpfulness_scores(helpfulnessScores: pd.DataFrame) -> pd.DataFrame:
+  """Coalesce all group modeling columns across user scoring.
+
+  Since each Scorer must have distinct output columns, we use coalescing to run
+  multiple instances of MFGroupScorer objects and then condense the results into
+  a single set of columns.  This approach works because each note will be scored
+  by at most one MFGroupScorer instance.
+  """
   for col in [c.groupRaterInterceptKey, c.groupRaterFactor1Key, c.modelingGroupKey]:
     helpfulnessScores = coalesce_columns(helpfulnessScores, col)
-
-  return scoredNotes, helpfulnessScores
+  return helpfulnessScores
 
 
 class MFGroupScorer(MFBaseScorer):

@@ -68,6 +68,7 @@ def filter_ratings_by_post_selection_similarity(notes, ratings, postSelectionSim
       postSelectionSimilarityValues,
       on=c.raterParticipantIdKey,
       how="left",
+      unsafeAllowed=c.postSelectionValueKey,
     )
     .merge(notes[[c.noteIdKey, c.noteAuthorParticipantIdKey]], on=c.noteIdKey, how="left")
     .merge(
@@ -76,6 +77,7 @@ def filter_ratings_by_post_selection_similarity(notes, ratings, postSelectionSim
       right_on=c.raterParticipantIdKey,
       how="left",
       suffixes=("", "_note_author"),
+      unsafeAllowed={c.postSelectionValueKey, c.postSelectionValueKey + "_note_author"},
     )
   )
   ratingsWithNoPostSelectionSimilarityValue = ratingsWithPostSelectionSimilarity[

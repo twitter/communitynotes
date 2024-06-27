@@ -136,7 +136,8 @@ class PseudoRatersRunner:
                 mf_c.raterIndexKey: [raterDict[mf_c.raterIndexKey]],
               }
             ),
-          ]
+          ],
+          unsafeAllowed=c.raterParticipantIdKey,
         )
 
       if not (
@@ -152,7 +153,12 @@ class PseudoRatersRunner:
                 c.internalRaterFactor1Key: [raterDict[c.internalRaterFactor1Key]],
               }
             ),
-          ]
+          ],
+          unsafeAllowed={
+            c.raterParticipantIdKey,
+            c.internalRaterInterceptKey,
+            c.internalRaterFactor1Key,
+          },
         )
 
   def _create_new_model_with_extreme_raters_from_original_params(
@@ -264,7 +270,14 @@ class PseudoRatersRunner:
     return noteParamsList
 
   def _aggregate_note_params(self, noteParamsList, joinOrig=False):
-    rawRescoredNotesWithEachExtraRater = pd.concat(noteParamsList)
+    rawRescoredNotesWithEachExtraRater = pd.concat(
+      noteParamsList,
+      unsafeAllowed={
+        Constants.extraRaterInterceptKey,
+        Constants.extraRaterFactor1Key,
+        Constants.extraRatingHelpfulNumKey,
+      },
+    )
     rawRescoredNotesWithEachExtraRater.drop(mf_c.noteIndexKey, axis=1, inplace=True)
     rawRescoredNotesWithEachExtraRater = rawRescoredNotesWithEachExtraRater.sort_values(
       by=[c.noteIdKey, Constants.extraRaterInterceptKey]
