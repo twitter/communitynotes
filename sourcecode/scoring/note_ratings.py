@@ -69,6 +69,7 @@ def get_ratings_before_note_status_and_public_tsv(
     on=c.noteIdKey,
     how="left",
     suffixes=("", right_suffix),
+    unsafeAllowed={c.createdAtMillisKey},
   )
   # Note that the column types for c.createdAtMillisKey and
   # c.timestampMillisOfNoteMostRecentNonNMRLabelKey are determined at runtime and cannot be statically
@@ -137,7 +138,10 @@ def get_ratings_before_note_status_and_public_tsv(
     )
   ]
 
-  combinedRatingsBeforeStatus = pd.concat([ratingsBeforeStatusNewNotes, first5RatingsOldNotes])
+  combinedRatingsBeforeStatus = pd.concat(
+    [ratingsBeforeStatusNewNotes, first5RatingsOldNotes],
+    unsafeAllowed=c.defaultIndexKey,
+  )
 
   if logging:
     print(
@@ -326,6 +330,14 @@ def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -
     ],
     on=c.noteIdKey,
     how="outer",
+    unsafeAllowed=set(
+      [
+        c.numRatingsKey,
+        c.numRatingsLast28DaysKey,
+      ]
+      + c.helpfulTagsTSVOrder
+      + c.notHelpfulTagsTSVOrder
+    ),
   )
 
   # Fill in nan values resulting from the outer merge with zero since these values were not
@@ -420,7 +432,12 @@ def compute_scored_notes(
   for col in c.noteParameterUncertaintyTSVColumns:
     if col in noteParams.columns:
       noteParamsColsToKeep.append(col)
-  noteStats = noteStats.merge(noteParams[noteParamsColsToKeep], on=c.noteIdKey, how="left")
+  noteStats = noteStats.merge(
+    noteParams[noteParamsColsToKeep],
+    on=c.noteIdKey,
+    how="left",
+    unsafeAllowed={"ratingCount_all", "ratingCount_neg_fac", "ratingCount_pos_fac"},
+  )
 
   rules = [
     scoring_rules.DefaultRule(RuleID.INITIAL_NMR, set(), c.needsMoreRatings),
@@ -457,13 +474,34 @@ def compute_scored_notes(
     with c.time_block("compute_scored_notes: compute tag aggregates"):
       # Compute tag aggregates only if they are required for tag filtering.
       tagAggregates = tag_filter.get_note_tag_aggregates(ratings, noteParams, raterParams)
-      assert len(tagAggregates) == len(noteParams), "there should be one aggregate per scored note"
+
+      # set pandas option to display all columns
+      pd.set_option("display.max_columns", None)
+      assert len(tagAggregates) == len(noteParams), f"""there should be one aggregate per scored note
+      len(noteParams) == {len(noteParams)}; len(np.unique(noteParams[c.noteIdKey])) == {len(np.unique(noteParams[c.noteIdKey]))}
+      len(tagAggregates) == {len(tagAggregates)}; len(np.unique(tagAggregates[c.noteIdKey])) == {len(np.unique(tagAggregates[c.noteIdKey]))}
+
+      The first 30 notes that appear in noteParams but not in tagAggregates are:
+      {noteParams[~noteParams[c.noteIdKey].isin(tagAggregates[c.noteIdKey])].head(30)}
+
+      The first 30 notes that appear in tagAggregates but not in noteParams are:
+      {tagAggregates[~tagAggregates[c.noteIdKey].isin(noteParams[c.noteIdKey])].head(30)}
+      """
+
       noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer")
     with c.time_block("compute_scored_notes: compute incorrect aggregates"):
       incorrectAggregates = incorrect_filter.get_incorrect_aggregates_final_scoring(
         ratings, noteParams, raterParams
       )
-      noteStats = noteStats.merge(incorrectAggregates, on=c.noteIdKey, how="outer")
+      noteStats = noteStats.merge(
+        incorrectAggregates,
+        on=c.noteIdKey,
+        how="outer",
+        unsafeAllowed={
+          c.notHelpfulIncorrectIntervalKey,
+          c.numVotersIntervalKey,
+        },
+      )
     assert tagFilterThresholds is not None
 
     # Add tag filtering and sticky scoring logic.

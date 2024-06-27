@@ -21,7 +21,8 @@ from .mf_expansion_plus_scorer import MFExpansionPlusScorer
 from .mf_expansion_scorer import MFExpansionScorer
 from .mf_group_scorer import (
   MFGroupScorer,
-  coalesce_group_models,
+  coalesce_group_model_helpfulness_scores,
+  coalesce_group_model_scored_notes,
   groupScorerCount,
   trialScoringGroup,
 )
@@ -30,7 +31,7 @@ from .post_selection_similarity import (
   PostSelectionSimilarity,
   filter_ratings_by_post_selection_similarity,
 )
-from .process_data import CommunityNotesDataLoader, filter_input_data_for_testing
+from .process_data import CommunityNotesDataLoader, filter_input_data_for_testing, preprocess_data
 from .reputation_scorer import ReputationScorer
 from .scorer import Scorer
 from .scoring_rules import RuleID
@@ -125,12 +126,10 @@ def _get_scorers(
 
 def _merge_results(
   scoredNotes: pd.DataFrame,
-  helpfulnessScores: pd.DataFrame,
   auxiliaryNoteInfo: pd.DataFrame,
   modelScoredNotes: pd.DataFrame,
-  modelHelpfulnessScores: Optional[pd.DataFrame],
   modelauxiliaryNoteInfo: Optional[pd.DataFrame],
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
   """Merges results from a specific model with results from prior models.
 
   The DFs returned by each model will be (outer) merged and passed through directly to the
@@ -139,10 +138,8 @@ def _merge_results(
 
   Args:
     scoredNotes: pd.DataFrame containing key scoring results
-    helpfulnessScores: pd.DataFrame containing contributor specific scoring results
     auxiliaryNoteInfo: pd.DataFrame containing intermediate scoring state
     modelScoredNotes: pd.DataFrame containing scoredNotes result for a particular model
-    modelHelpfulnessScores: None or pd.DataFrame containing helpfulnessScores result for a particular model
     modelauxiliaryNoteInfo: None or pd.DataFrame containing auxiliaryNoteInfo result for a particular model
 
   Returns:
@@ -153,17 +150,22 @@ def _merge_results(
     c.noteIdKey
   }, "column names must be globally unique"
   scoredNotesSize = len(scoredNotes)
-  scoredNotes = scoredNotes.merge(modelScoredNotes, on=c.noteIdKey, how="outer")
+  unsafeAllowed = set(
+    [
+      c.noteIdKey,
+      c.defaultIndexKey,
+    ]
+    + [f"{c.modelingGroupKey}_{group}" for group in range(groupScorerCount, 0, -1)]
+    + [f"{c.topicNoteConfidentKey}_{topic.name}" for topic in Topics]
+    + [f"{c.groupNumFinalRoundRatingsKey}_{group}" for group in range(groupScorerCount, 0, -1)]
+  )
+  scoredNotes = scoredNotes.merge(
+    modelScoredNotes,
+    on=c.noteIdKey,
+    how="outer",
+    unsafeAllowed=unsafeAllowed,
+  )
   assert len(scoredNotes) == scoredNotesSize, "scoredNotes should not expand"
-
-  # Merge helpfulnessScores
-  if modelHelpfulnessScores is not None:
-    assert (set(modelHelpfulnessScores.columns) & set(helpfulnessScores.columns)) == {
-      c.raterParticipantIdKey
-    }, "column names must be globally unique"
-    helpfulnessScores = helpfulnessScores.merge(
-      modelHelpfulnessScores, on=c.raterParticipantIdKey, how="outer"
-    )
 
   # Merge auxiliaryNoteInfo
   if modelauxiliaryNoteInfo is not None:
@@ -174,7 +176,7 @@ def _merge_results(
     auxiliaryNoteInfo = auxiliaryNoteInfo.merge(modelauxiliaryNoteInfo, on=c.noteIdKey, how="outer")
     assert len(auxiliaryNoteInfo) == auxiliaryNoteInfoSize, "auxiliaryNoteInfo should not expand"
 
-  return scoredNotes, helpfulnessScores, auxiliaryNoteInfo
+  return scoredNotes, auxiliaryNoteInfo
 
 
 def _load_data_with_data_loader_parallelizable(
@@ -457,8 +459,33 @@ def combine_prescorer_scorer_results(
     if modelResult.metaScores is not None and modelResult.scorerName is not None:
       prescoringMetaOutput.metaScorerOutput[modelResult.scorerName] = modelResult.metaScores
 
-  prescoringNoteModelOutput = pd.concat(prescoringNoteModelOutputList)
-  raterParamsUnfilteredMultiScorers = pd.concat(raterParamsUnfilteredMultiScorersList)
+  prescoringNoteModelOutput = pd.concat(
+    prescoringNoteModelOutputList,
+    unsafeAllowed={
+      c.defaultIndexKey,
+      c.noteIdKey,
+      c.internalNoteInterceptKey,
+      c.internalNoteFactor1Key,
+      c.lowDiligenceNoteInterceptKey,
+      c.lowDiligenceNoteFactor1Key,
+    },
+  )
+  raterParamsUnfilteredMultiScorers = pd.concat(
+    raterParamsUnfilteredMultiScorersList,
+    unsafeAllowed={
+      c.defaultIndexKey,
+      c.internalRaterInterceptKey,
+      c.internalRaterFactor1Key,
+      c.crhCrnhRatioDifferenceKey,
+      c.meanNoteScoreKey,
+      c.raterAgreeRatioKey,
+      c.aboveHelpfulnessThresholdKey,
+      c.internalRaterReputationKey,
+      c.lowDiligenceRaterInterceptKey,
+      c.lowDiligenceRaterFactor1Key,
+      c.lowDiligenceRaterReputationKey,
+    },
+  )
   return (
     prescoringNoteModelOutput[c.prescoringNoteModelOutputTSVColumns],
     raterParamsUnfilteredMultiScorers[c.prescoringRaterModelOutputTSVColumns],
@@ -469,32 +496,87 @@ def combine_prescorer_scorer_results(
 def combine_final_scorer_results(
   modelResultsFromEachScorer: List[ModelResult],
   noteStatusHistory: pd.DataFrame,
-):
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
   """
   Returns:
-    Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    Tuple[pd.DataFrame, pd.DataFrame]:
       scoredNotes pd.DataFrame: one row per note contained note scores and parameters.
-      helpfulnessScores pd.DataFrame: one row per user containing a column for each helpfulness score.
       auxiliaryNoteInfo pd.DataFrame: one row per note containing supplemental values used in scoring.
   """
   # Initialize return data frames.
   scoredNotes = noteStatusHistory[[c.noteIdKey]].drop_duplicates()
   auxiliaryNoteInfo = noteStatusHistory[[c.noteIdKey]].drop_duplicates()
-  helpfulnessScores = pd.DataFrame({c.raterParticipantIdKey: []})
 
   # Merge the results
   for modelResult in modelResultsFromEachScorer:
-    scoredNotes, helpfulnessScores, auxiliaryNoteInfo = _merge_results(
+    scoredNotes, auxiliaryNoteInfo = _merge_results(
       scoredNotes,
-      helpfulnessScores,
       auxiliaryNoteInfo,
       modelResult.scoredNotes,
-      modelResult.helpfulnessScores,
       modelResult.auxiliaryNoteInfo,
     )
-  scoredNotes, helpfulnessScores = coalesce_group_models(scoredNotes, helpfulnessScores)
+  scoredNotes = coalesce_group_model_scored_notes(scoredNotes)
   scoredNotes = coalesce_topic_models(scoredNotes)
-  return scoredNotes, helpfulnessScores, auxiliaryNoteInfo
+  return scoredNotes, auxiliaryNoteInfo
+
+
+def convert_prescoring_rater_model_output_to_coalesced_helpfulness_scores(
+  prescoringRaterModelOutput: pd.DataFrame,
+  userEnrollment: pd.DataFrame,
+):
+  # Join modeling groups from enrollment
+  prescoringRaterModelOutput = prescoringRaterModelOutput.merge(
+    userEnrollment[[c.participantIdKey, c.modelingGroupKey]],
+    left_on=c.raterParticipantIdKey,
+    right_on=c.participantIdKey,
+    how="left",
+  )
+
+  helpfulnessScores = prescoringRaterModelOutput[
+    [
+      c.raterParticipantIdKey,
+    ]
+  ].drop_duplicates()
+
+  scorersEnumDict = _get_scorers(seed=None, pseudoraters=None, enabledScorers=None)
+  scorers = chain(*scorersEnumDict.values())
+  uniqueScorerNames = prescoringRaterModelOutput[c.scorerNameKey].unique()
+  for scorer in scorers:
+    scorerName = scorer.get_name()
+    if scorerName not in uniqueScorerNames:
+      continue
+
+    scorerOutputInternalNames = prescoringRaterModelOutput[
+      (prescoringRaterModelOutput[c.scorerNameKey] == scorerName)
+    ]
+    scorerOutputExternalNames = scorerOutputInternalNames.rename(
+      columns=scorer._get_user_col_mapping()
+    )
+    if isinstance(scorer, MFGroupScorer):
+      scorerOutputExternalNames[scorer._modelingGroupKey] = scorer._groupNumber
+      # Raters may appear in multiple groups due to authorship -- filter out rows not from this group
+      scorerOutputExternalNames = scorerOutputExternalNames[
+        scorerOutputExternalNames[c.modelingGroupKey] == scorer._groupNumber
+      ]
+
+    finalCols = scorer.get_helpfulness_scores_cols()
+    if c.raterParticipantIdKey not in finalCols:
+      finalCols.append(c.raterParticipantIdKey)
+    scorerOutputExternalNames = scorerOutputExternalNames[finalCols]
+
+    if isinstance(scorer, MFGroupScorer):
+      helpfulnessScores = helpfulnessScores.merge(
+        scorerOutputExternalNames,
+        on=c.raterParticipantIdKey,
+        how="outer",
+        unsafeAllowed=scorer._modelingGroupKey,
+      )
+    else:
+      helpfulnessScores = helpfulnessScores.merge(
+        scorerOutputExternalNames, on=c.raterParticipantIdKey, how="outer"
+      )
+
+  return helpfulnessScores
 
 
 def meta_score(
@@ -731,6 +813,7 @@ def _compute_helpfulness_scores(
   with c.time_block("Meta Helpfulness Scorers: Setup"):
     # Generate a unified view of note scoring information for computing contributor stats
     assert len(scoredNotes) == len(auxiliaryNoteInfo), "notes in both note inputs must match"
+
     scoredNotesWithStats = scoredNotes.merge(
       # noteId and timestamp are the only common fields, and should always be equal.
       auxiliaryNoteInfo,
@@ -786,6 +869,7 @@ def _compute_helpfulness_scores(
       ],
       on=c.raterParticipantIdKey,
       how="outer",
+      unsafeAllowed={c.enrollmentState, c.isEmergingWriterKey},
     )
     contributorScores = contributor_state.single_trigger_earn_out(contributorScores)
     contributorScores = contributor_state.calculate_ri_to_earn_in(contributorScores)
@@ -802,6 +886,7 @@ def _compute_helpfulness_scores(
       left_on=c.raterParticipantIdKey,
       right_on=c.participantIdKey,
       how="left",
+      unsafeAllowed=(c.enrollmentState + "_prev"),
     ).drop(c.participantIdKey, axis=1)
 
     # For users who did not earn a new enrollmentState, carry over the previous one
@@ -836,17 +921,15 @@ def _add_deprecated_columns(scoredNotes: pd.DataFrame) -> pd.DataFrame:
   return scoredNotes
 
 
-def _validate(
+def _validate_note_scoring_output(
   scoredNotes: pd.DataFrame,
-  helpfulnessScores: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   auxiliaryNoteInfo: pd.DataFrame,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Guarantee that each dataframe has the expected columns in the correct order.
 
   Args:
     scoredNotes (pd.DataFrame): notes with scores returned by MF scoring algorithm
-    helpfulnessScores (pd.DataFrame): BasicReputation scores for all raters
     noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
     auxiliaryNoteInfo (pd.DataFrame): additional fields generated during note scoring
 
@@ -857,10 +940,6 @@ def _validate(
     c.noteModelOutputTSVColumns
   ), f"Got {sorted(scoredNotes.columns)}, expected {sorted(c.noteModelOutputTSVColumns)}"
   scoredNotes = scoredNotes[c.noteModelOutputTSVColumns]
-  assert set(helpfulnessScores.columns) == set(
-    c.raterModelOutputTSVColumns
-  ), f"Got {sorted(helpfulnessScores.columns)}, expected {sorted(c.raterModelOutputTSVColumns)}"
-  helpfulnessScores = helpfulnessScores[c.raterModelOutputTSVColumns]
   assert set(noteStatusHistory.columns) == set(
     c.noteStatusHistoryTSVColumns
   ), f"Got {sorted(noteStatusHistory.columns)}, expected {sorted(c.noteStatusHistoryTSVColumns)}"
@@ -869,7 +948,51 @@ def _validate(
     c.auxiliaryScoredNotesTSVColumns
   ), f"Got {sorted(auxiliaryNoteInfo.columns)}, expected {sorted(c.auxiliaryScoredNotesTSVColumns)}"
   auxiliaryNoteInfo = auxiliaryNoteInfo[c.auxiliaryScoredNotesTSVColumns]
-  return (scoredNotes, helpfulnessScores, noteStatusHistory, auxiliaryNoteInfo)
+  return (scoredNotes, noteStatusHistory, auxiliaryNoteInfo)
+
+
+def _validate_contributor_scoring_output(helpfulnessScores: pd.DataFrame) -> pd.DataFrame:
+  assert set(helpfulnessScores.columns) == set(
+    c.raterModelOutputTSVColumns
+  ), f"Got {sorted(helpfulnessScores.columns)}, expected {sorted(c.raterModelOutputTSVColumns)}"
+  helpfulnessScores = helpfulnessScores[c.raterModelOutputTSVColumns]
+  return helpfulnessScores
+
+
+def _log_df_info(
+  notes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+  userEnrollment: pd.DataFrame,
+  prescoringNoteModelOutput: Optional[pd.DataFrame] = None,
+  prescoringRaterModelOutput: Optional[pd.DataFrame] = None,
+) -> None:
+  """Log dtype and RAM usage stats for each input DataFrame."""
+  pairs = [
+    ("notes", notes),
+    ("ratings", ratings),
+    ("noteStatusHistory", noteStatusHistory),
+    ("userEnrollment", userEnrollment),
+    ("prescoringNoteModelOutput", prescoringNoteModelOutput),
+    ("prescoringRaterModelOutput", prescoringRaterModelOutput),
+  ]
+  for name, df in pairs:
+    if df is None:
+      continue
+    stats = (
+      df.dtypes.to_frame().reset_index(drop=False).rename(columns={"index": "column", 0: "dtype"})
+    ).merge(
+      # deep=True shows memory usage for the entire contained object (e.g. if the type
+      # of a column is "object", then deep=True shows the size of the objects instead
+      # of the size of the pointers.
+      df.memory_usage(index=True, deep=True)
+      .to_frame()
+      .reset_index(drop=False)
+      .rename(columns={"index": "column", 0: "RAM"})
+    )
+    print(f"""{name} total RAM: {stats["RAM"].sum()}""")
+    print(stats)
+    print()
 
 
 def run_prescoring(
@@ -883,6 +1006,8 @@ def run_prescoring(
   dataLoader: Optional[CommunityNotesDataLoader] = None,
   useStableInitialization: bool = True,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, sklearn.pipeline.Pipeline, c.PrescoringMetaOutput]:
+  with c.time_block("Logging RAM usage"):
+    _log_df_info(notes, ratings, noteStatusHistory, userEnrollment)
   with c.time_block("Note Topic Assignment"):
     topicModel = TopicModel()
     noteTopicClassifierPipe, seedLabels, conflictedTexts = topicModel.train_note_topic_classifier(
@@ -931,7 +1056,10 @@ def run_prescoring(
     prescoringMetaOutput,
   ) = combine_prescorer_scorer_results(prescoringModelResultsFromAllScorers)
   prescoringRaterModelOutput = pd.concat(
-    [prescoringRaterModelOutput, postSelectionSimilarityValues]
+    [prescoringRaterModelOutput, postSelectionSimilarityValues],
+    unsafeAllowed={
+      c.postSelectionValueKey,
+    },
   )
 
   return (
@@ -942,11 +1070,111 @@ def run_prescoring(
   )
 
 
-def run_final_scoring(
+def run_contributor_scoring(
+  ratings: pd.DataFrame,
+  scoredNotes: pd.DataFrame,
+  auxiliaryNoteInfo: pd.DataFrame,
+  prescoringRaterModelOutput: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+  userEnrollment: pd.DataFrame,
+  strictColumns: bool = True,
+) -> pd.DataFrame:
+  helpfulnessScores = convert_prescoring_rater_model_output_to_coalesced_helpfulness_scores(
+    prescoringRaterModelOutput, userEnrollment
+  )
+  helpfulnessScores = coalesce_group_model_helpfulness_scores(helpfulnessScores)
+
+  # Compute contribution statistics and enrollment state for users.
+  with c.time_block("Post-scorers: Compute helpfulness scores"):
+    helpfulnessScores = _compute_helpfulness_scores(
+      ratings,
+      scoredNotes,
+      auxiliaryNoteInfo,
+      helpfulnessScores,
+      noteStatusHistory,
+      userEnrollment,
+    )
+    if strictColumns:
+      helpfulnessScores = _validate_contributor_scoring_output(helpfulnessScores)
+  return helpfulnessScores
+
+
+def determine_which_notes_to_rescore(
+  notes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+  previousRatingCutoffTimestampMillis: Optional[int] = None,
+  scoreRecentNotesMinimumFrequencyMillis: Optional[int] = 1000 * 60 * 60 * 24,  # 1 day
+  recentNotesAgeCutoffMillis: Optional[int] = 1000 * 60 * 60 * 24 * 14,  # 14 days
+) -> Tuple[Optional[List[c.NoteSubset]], set]:
+  # 1. Rescore all notes with a new rating since last scoring run.
+  if previousRatingCutoffTimestampMillis is not None:
+    notesWithNewRatings = set(
+      ratings.loc[ratings[c.createdAtMillisKey] > previousRatingCutoffTimestampMillis, c.noteIdKey]
+    )
+  else:
+    notesWithNewRatings = set()
+
+  currentMillis = int(time.time() * 1000)
+
+  # 2. Rescore all recently created notes if not rescored at the minimum frequency.
+  if recentNotesAgeCutoffMillis is not None and scoreRecentNotesMinimumFrequencyMillis is not None:
+    noteCreatedRecently = (
+      noteStatusHistory[c.createdAtMillisKey] > currentMillis - recentNotesAgeCutoffMillis
+    )
+    noteNotRescoredRecently = (
+      noteStatusHistory[c.timestampMillisOfNoteCurrentLabelKey]
+      < currentMillis - scoreRecentNotesMinimumFrequencyMillis
+    )
+    newNotesNotRescoredRecentlyEnough = set(
+      noteStatusHistory.loc[noteCreatedRecently & noteNotRescoredRecently, c.noteIdKey]
+    )
+    # Remove notes with new ratings from this set.
+    newNotesNotRescoredRecentlyEnough = newNotesNotRescoredRecentlyEnough.difference(
+      notesWithNewRatings
+    )
+  else:
+    newNotesNotRescoredRecentlyEnough = set()
+
+  # TODO: 3. Recently-flipped notes.
+
+  noteSubsets = [
+    c.NoteSubset(
+      noteSet=notesWithNewRatings,
+      maxCrhChurnRate=c.finalNotesWithNewRatingsMaxCrhChurn,
+      description="notesWithNewRatings",
+    ),
+    c.NoteSubset(
+      noteSet=newNotesNotRescoredRecentlyEnough,
+      maxCrhChurnRate=c.finalUnlockedNotesWithNoNewRatingsMaxCrhChurn,
+      description="newNotesNotRescoredRecentlyEnough",
+    ),
+  ]
+
+  notesToRescoreSet = set()
+  for noteSubset in noteSubsets:
+    if noteSubset.noteSet is not None:
+      notesToRescoreSet.update(noteSubset.noteSet)
+
+  print(
+    f"""Notes to rescore:
+        {len(notesWithNewRatings)} notes with new ratings since last scoring run.
+        {len(newNotesNotRescoredRecentlyEnough)} notes created recently and not rescored recently enough.
+        Total: {len(notesToRescoreSet)} notes to rescore, out of {len(notes)} total."""
+  )
+
+  return noteSubsets, notesToRescoreSet
+
+
+def run_final_note_scoring(
   notes: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
+  prescoringNoteModelOutput: pd.DataFrame,
+  prescoringRaterModelOutput: pd.DataFrame,
+  noteTopicClassifier: sklearn.pipeline.Pipeline,
+  prescoringMetaOutput: c.PrescoringMetaOutput,
   seed: Optional[int] = None,
   pseudoraters: Optional[bool] = True,
   enabledScorers: Optional[Set[Scorers]] = None,
@@ -954,15 +1182,71 @@ def run_final_scoring(
   runParallel: bool = True,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
   useStableInitialization: bool = True,
-  prescoringNoteModelOutput: Optional[pd.DataFrame] = None,
-  prescoringRaterModelOutput: Optional[pd.DataFrame] = None,
-  noteTopicClassifier: sklearn.pipeline.Pipeline = None,
-  prescoringMetaOutput: Optional[c.PrescoringMetaOutput] = None,
+  checkFlips: bool = True,
+  previousScoredNotes: Optional[pd.DataFrame] = None,
+  previousAuxiliaryNoteInfo: Optional[pd.DataFrame] = None,
+  previousRatingCutoffTimestampMillis: Optional[int] = 0,
 ):
-  assert noteTopicClassifier is not None
-  assert prescoringMetaOutput is not None
-  assert prescoringNoteModelOutput is not None
-  assert prescoringRaterModelOutput is not None
+  with c.time_block("Logging RAM usage"):
+    _log_df_info(
+      notes,
+      ratings,
+      noteStatusHistory,
+      userEnrollment,
+      prescoringNoteModelOutput,
+      prescoringRaterModelOutput,
+    )
+
+  with c.time_block("Determine which notes to score."):
+    if previousScoredNotes is None:
+      print("No previous scored notes passed; scoring all notes.")
+      notesToRescoreSet: Set[int] = set()
+      scoredNotesPassthrough = None
+      noteSubsets: Optional[List[c.NoteSubset]] = [
+        c.NoteSubset(
+          noteSet=None,
+          maxCrhChurnRate=c.prescoringAllUnlockedNotesMaxCrhChurn,
+          description="allNotes",
+        )
+      ]
+    else:
+      assert previousAuxiliaryNoteInfo is not None
+      assert previousRatingCutoffTimestampMillis is not None
+      print("Previous scored notes passed; determining which notes to rescore.")
+      # Filter all datasets to smaller versions which only contain notes which need to be scored.
+      noteSubsets, notesToRescoreSet = determine_which_notes_to_rescore(
+        notes, ratings, noteStatusHistory, previousRatingCutoffTimestampMillis
+      )
+
+      for item in notesToRescoreSet:
+        print(f"notesToRescoreSet: {item}, {type(item)}, len: {len(notesToRescoreSet)}")
+        break
+      scoredNotesPassthrough = previousScoredNotes[
+        ~previousScoredNotes[c.noteIdKey].isin(notesToRescoreSet)
+      ]
+      auxiliaryNoteInfoPassthrough = previousAuxiliaryNoteInfo[
+        ~previousAuxiliaryNoteInfo[c.noteIdKey].isin(notesToRescoreSet)
+      ]
+      noteStatusHistoryPassthrough = noteStatusHistory[
+        ~noteStatusHistory[c.noteIdKey].isin(notesToRescoreSet)
+      ]
+
+      print(
+        f"Rescoring {len(notesToRescoreSet)} notes, out of {len(notes)} total. Original number of ratings: {len(ratings)}"
+      )
+
+      # Filter all datasets to only contain notes which need to be scored.
+      notes = notes[notes[c.noteIdKey].isin(notesToRescoreSet)]
+      ratings = ratings[ratings[c.noteIdKey].isin(notesToRescoreSet)]
+      noteStatusHistory = noteStatusHistory[noteStatusHistory[c.noteIdKey].isin(notesToRescoreSet)]
+      prescoringNoteModelOutput = prescoringNoteModelOutput[
+        prescoringNoteModelOutput[c.noteIdKey].isin(notesToRescoreSet)
+      ]
+
+      print(f"Ratings on notes to rescore: {len(ratings)}")
+
+  with c.time_block("Preprocess smaller dataset since we skipped preprocessing at read time"):
+    notes, ratings, noteStatusHistory = preprocess_data(notes, ratings, noteStatusHistory)
 
   with c.time_block("Note Topic Assignment"):
     topicModel = TopicModel()
@@ -1002,33 +1286,59 @@ def run_final_scoring(
     maxWorkers=6,
   )
 
-  scoredNotes, helpfulnessScores, auxiliaryNoteInfo = combine_final_scorer_results(
-    modelResults, noteStatusHistory
-  )
+  scoredNotes, auxiliaryNoteInfo = combine_final_scorer_results(modelResults, noteStatusHistory)
 
-  return post_scoring(
+  if not checkFlips:
+    noteSubsets = None
+
+  scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo = post_note_scoring(
     scorers,
     scoredNotes,
-    helpfulnessScores,
     auxiliaryNoteInfo,
     ratings,
     noteStatusHistory,
-    userEnrollment,
     enabledScorers,
     strictColumns,
+    noteSubsets,
   )
 
+  # Concat final scoring results for newly-scored notes with the results for old notes not scores.
+  if scoredNotesPassthrough is not None:
+    # Convert scoredNotes dtypes to match scoredNotesPassthrough
+    for column, targetDtype in c.noteModelOutputTSVTypeMapping.items():
+      if column in scoredNotes.columns:
+        if targetDtype == pd.BooleanDtype():
+          # Due to current Python version in prod, we cannot interpret pd.BooleanDtype() as a datatype yet.
+          continue
+        if scoredNotes[column].dtype != targetDtype:
+          scoredNotes[column] = scoredNotes[column].astype(targetDtype)
+    scoredNotes = pd.concat(
+      [scoredNotes, scoredNotesPassthrough],
+    )
 
-def post_scoring(
+    # Convert auxiliaryNoteInfo dtypes to match auxiliaryNoteInfoPassthrough
+    for column, targetDtype in c.auxiliaryScoredNotesTSVTypeMapping.items():
+      if column in auxiliaryNoteInfo.columns:
+        if auxiliaryNoteInfo[column].dtype != targetDtype:
+          auxiliaryNoteInfo[column] = auxiliaryNoteInfo[column].astype(targetDtype)
+    auxiliaryNoteInfo = pd.concat(
+      [auxiliaryNoteInfo, auxiliaryNoteInfoPassthrough],
+    )
+
+    newNoteStatusHistory = pd.concat([newNoteStatusHistory, noteStatusHistoryPassthrough])
+
+  return scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo
+
+
+def post_note_scoring(
   scorers: Dict[Scorers, List[Scorer]],
   scoredNotes: pd.DataFrame,
-  helpfulnessScores: pd.DataFrame,
   auxiliaryNoteInfo: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
-  userEnrollment: pd.DataFrame,
   enabledScorers: Optional[Set[Scorers]] = None,
   strictColumns: bool = True,
+  noteSubsetsAndMaxFlipRates: Optional[List[c.NoteSubset]] = None,
 ):
   """
   Apply individual scoring models and obtained merged result.
@@ -1066,17 +1376,16 @@ def post_scoring(
       noteStatusHistory
     ), "noteStatusHistory should be complete, and all notes should be scored."
 
-  # Compute contribution statistics and enrollment state for users.
-  with c.time_block("Post-scorers: Compute helpfulness scores"):
-    helpfulnessScores = _compute_helpfulness_scores(
-      ratings, scoredNotes, auxiliaryNoteInfo, helpfulnessScores, noteStatusHistory, userEnrollment
-    )
-
   # Merge scoring results into noteStatusHistory.
   with c.time_block("Post-scorers: Update note status history"):
-    newNoteStatusHistory = note_status_history.update_note_status_history(
+    mergedNoteStatuses = note_status_history.merge_old_and_new_note_statuses(
       noteStatusHistory, scoredNotes
     )
+    if noteSubsetsAndMaxFlipRates is not None:
+      for noteSubset in noteSubsetsAndMaxFlipRates:
+        note_status_history.check_flips(mergedNoteStatuses, noteSubset=noteSubset)
+
+    newNoteStatusHistory = note_status_history.update_note_status_history(mergedNoteStatuses)
     assert len(newNoteStatusHistory) == len(
       noteStatusHistory
     ), "noteStatusHistory should contain all notes after preprocessing"
@@ -1085,12 +1394,12 @@ def post_scoring(
   with c.time_block("Post-scorers: finalize output columns"):
     scoredNotes = _add_deprecated_columns(scoredNotes)
     if strictColumns:
-      scoredNotes, helpfulnessScores, newNoteStatusHistory, auxiliaryNoteInfo = _validate(
-        scoredNotes, helpfulnessScores, newNoteStatusHistory, auxiliaryNoteInfo
+      (scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo) = _validate_note_scoring_output(
+        scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo
       )
 
   print(f"Meta scoring elapsed time: {((time.time() - postScoringStartTime)/60.0):.2f} minutes.")
-  return scoredNotes, helpfulnessScores, newNoteStatusHistory, auxiliaryNoteInfo
+  return scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo
 
 
 def run_scoring(
@@ -1112,11 +1421,15 @@ def run_scoring(
   excludeRatingsAfterANoteGotFirstStatusPlusNHours: Optional[int] = None,
   daysInPastToApplyPostFirstStatusFiltering: Optional[int] = 14,
   filterPrescoringInputToSimulateDelayInHours: Optional[int] = None,
+  checkFlips: bool = True,
+  previousScoredNotes: Optional[pd.DataFrame] = None,
+  previousAuxiliaryNoteInfo: Optional[pd.DataFrame] = None,
+  previousRatingCutoffTimestampMillis: Optional[int] = 0,
 ):
   """Runs both phases of scoring consecutively. Only for adhoc/testing use.
   In prod, we run each phase as a separate binary.
 
-  Wrapper around run_prescoring and run_final_scoring.
+  Wrapper around run_prescoring, run_final_note_scoring, and run_contributor_scoring.
 
   Invokes note scoring algorithms, merges results and computes user stats.
 
@@ -1185,7 +1498,7 @@ def run_scoring(
       )
   print("Starting final scoring")
 
-  return run_final_scoring(
+  scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo = run_final_note_scoring(
     notes=notes,
     ratings=ratings,
     noteStatusHistory=noteStatusHistory,
@@ -1201,4 +1514,22 @@ def run_scoring(
     prescoringRaterModelOutput=prescoringRaterModelOutput,
     noteTopicClassifier=prescoringNoteTopicClassifier,
     prescoringMetaOutput=prescoringMetaOutput,
+    checkFlips=checkFlips,
+    previousScoredNotes=previousScoredNotes,
+    previousAuxiliaryNoteInfo=previousAuxiliaryNoteInfo,
+    previousRatingCutoffTimestampMillis=previousRatingCutoffTimestampMillis,
   )
+
+  print("Starting contributor scoring")
+
+  helpfulnessScores = run_contributor_scoring(
+    ratings=ratings,
+    scoredNotes=scoredNotes,
+    auxiliaryNoteInfo=auxiliaryNoteInfo,
+    prescoringRaterModelOutput=prescoringRaterModelOutput,
+    noteStatusHistory=newNoteStatusHistory,
+    userEnrollment=userEnrollment,
+    strictColumns=strictColumns,
+  )
+
+  return scoredNotes, helpfulnessScores, newNoteStatusHistory, auxiliaryNoteInfo

@@ -17,7 +17,8 @@ def should_earn_in(contributorScoresWithEnrollment: pd.DataFrame):
     authorEnrollmentCounts (pd.DataFrame): Scored Notes + User Enrollment status
   """
   return (
-    (contributorScoresWithEnrollment[c.enrollmentState] != c.earnedIn)
+    (contributorScoresWithEnrollment[c.enrollmentState] != c.removed)
+    & (contributorScoresWithEnrollment[c.enrollmentState] != c.earnedIn)
     & (contributorScoresWithEnrollment[c.enrollmentState] != c.atRisk)
     & (
       contributorScoresWithEnrollment[c.ratingImpact]
@@ -36,7 +37,8 @@ def newly_at_risk(authorEnrollmentCounts: pd.DataFrame):
     authorEnrollmentCounts (pd.DataFrame): Scored Notes + User Enrollment status
   """
   return (
-    (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
+    (authorEnrollmentCounts[c.enrollmentState] != c.removed)
+    & (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutNoAcknowledge)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
     & (authorEnrollmentCounts[c.enrollmentState] != c.atRisk)
@@ -55,7 +57,8 @@ def is_earned_out(authorEnrollmentCounts: pd.DataFrame):
     authorEnrollmentCounts (pd.DataFrame): Scored Notes + User Enrollment status
   """
   return (
-    (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
+    (authorEnrollmentCounts[c.enrollmentState] != c.removed)
+    & (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
     & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] > c.isAtRiskCRNHCount)
   )
@@ -71,7 +74,8 @@ def newly_earned_in(authorEnrollmentCounts):
     authorEnrollmentCounts (pd.DataFrame): Scored Notes + User Enrollment status
   """
   return (
-    (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
+    (authorEnrollmentCounts[c.enrollmentState] != c.removed)
+    & (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutNoAcknowledge)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedIn)
@@ -165,17 +169,25 @@ def _get_visible_rating_counts(
   ratingCounts = validRatings.groupby(c.raterParticipantIdKey).sum()[ratingCountRows]
 
   ratingsWithScores = get_ratings_with_scores(ratings, noteStatusHistory, scoredNotes)
+
   historyCounts = ratingsWithScores.groupby(c.raterParticipantIdKey).sum()[
     [c.awaitingMoreRatingsBoolKey]
   ]
   historyCounts[c.ratingsAwaitingMoreRatings] = historyCounts[c.awaitingMoreRatingsBoolKey]
   ratedAfterDecision = _get_rated_after_decision(ratings, noteStatusHistory)
-  historyCounts = historyCounts.merge(ratedAfterDecision, on=c.raterParticipantIdKey, how="left")
+  historyCounts = historyCounts.merge(
+    ratedAfterDecision,
+    on=c.raterParticipantIdKey,
+    how="left",
+    unsafeAllowed=c.ratedAfterDecision,
+  )
   # Fill in zero for any rater who didn't rate any notes after status was assigned and consequently
   # doesn't appear in the dataframe.
   historyCounts = historyCounts.fillna({c.ratedAfterDecision: 0})
 
-  ratingCounts = ratingCounts.merge(historyCounts, on=c.raterParticipantIdKey, how="outer")
+  ratingCounts = ratingCounts.merge(
+    historyCounts, on=c.raterParticipantIdKey, how="outer", unsafeAllowed=set(ratingCountRows)
+  )
   for rowName in ratingCountRows:
     ratingCounts[rowName] = ratingCounts[rowName].fillna(0)
   return ratingCounts
@@ -310,7 +322,7 @@ def is_emerging_writer(scoredNotes: pd.DataFrame):
   """
   authorCounts = author_helpfulness(scoredNotes, c.coreNoteInterceptKey)
   raterCounts = scoredNotes.groupby(c.noteAuthorParticipantIdKey).sum(numeric_only=True)[
-    c.numRatingsLast28DaysKey
+    [c.numRatingsLast28DaysKey]
   ]
   emergingWriter = (
     authorCounts.join(raterCounts, how="outer", lsuffix="_author", rsuffix="_rater")
@@ -349,6 +361,7 @@ def single_trigger_earn_out(contributorScoresWithEnrollment: pd.DataFrame) -> pd
       != c.enrollmentStateToThrift[c.earnedOutAcknowledged]
     )
     & (contributorScoresWithEnrollment[c.enrollmentState] != c.enrollmentStateToThrift[c.newUser])
+    & (contributorScoresWithEnrollment[c.enrollmentState] != c.enrollmentStateToThrift[c.removed])
   )
 
   contributorScoresWithEnrollment.loc[earnedOutUsers, c.numberOfTimesEarnedOutKey] = (
@@ -412,8 +425,8 @@ def get_contributor_state(
 ) -> pd.DataFrame:
   """
   Given scored notes, ratings, note status history, the current user enrollment state, this
-  uses the contributor counts over ratings and notes and transitions the user between the different
-  enrollment states.
+  uses the contributor counts over ratings and notes and transitions the user between the
+  different enrollment states. If current user enrollment state is removed, do not change.
 
   Args:
       scoredNotes (pd.DataFrame): scored notes
@@ -434,7 +447,11 @@ def get_contributor_state(
     # We need to consider only the last 5 notes for enrollment state. The ratings are aggregated historically.
     # For users who have earned out, we should only consider notes written since the earn out event
     scoredNotesWithLastEarnOut = scoredNotes.merge(
-      userEnrollment, left_on=c.noteAuthorParticipantIdKey, right_on=c.participantIdKey, how="left"
+      userEnrollment[[c.participantIdKey, c.timestampOfLastEarnOut]],
+      left_on=c.noteAuthorParticipantIdKey,
+      right_on=c.participantIdKey,
+      how="left",
+      unsafeAllowed=c.timestampOfLastEarnOut,
     )
     # For users who don't appear in the userEnrollment file, set their timeStampOfLastEarnOut to default
     scoredNotesWithLastEarnOut[c.timestampOfLastEarnOut].fillna(1, inplace=True)
@@ -462,6 +479,7 @@ def get_contributor_state(
       left_on=c.raterParticipantIdKey,
       right_on=c.noteAuthorParticipantIdKey,
       how="outer",
+      unsafeAllowed=c.hasCrnhSinceEarnOut,
     ).drop(columns=[c.noteAuthorParticipantIdKey])
 
   with c.time_block("Contributor State: Emerging Writers"):
@@ -472,12 +490,23 @@ def get_contributor_state(
       left_on=c.raterParticipantIdKey,
       right_on=c.noteAuthorParticipantIdKey,
       how="outer",
+      unsafeAllowed=c.isEmergingWriterKey,
     ).drop(columns=[c.noteAuthorParticipantIdKey])
 
   with c.time_block("Contributor State: Combining"):
     # We merge the current enrollment state
     contributorScoresWithEnrollment = contributorScores.merge(
-      userEnrollment, left_on=c.raterParticipantIdKey, right_on=c.participantIdKey, how="outer"
+      userEnrollment,
+      left_on=c.raterParticipantIdKey,
+      right_on=c.participantIdKey,
+      how="outer",
+      unsafeAllowed={
+        c.successfulRatingNeededToEarnIn,
+        c.timestampOfLastStateChange,
+        c.numberOfTimesEarnedOutKey,
+        "coreBool",
+        "expansionBool",
+      },
     )
 
     # We set the new contributor state.
@@ -608,7 +637,25 @@ def get_contributor_scores(
     scoredNotes, lastNNotes, countNMRNotesLast, sinceLastEarnOut
   )
   contributorCounts = (
-    visibleRatingCounts.join(visibleNoteCounts, lsuffix="note", rsuffix="rater", how="outer")
+    visibleRatingCounts.join(
+      visibleNoteCounts,
+      lsuffix="note",
+      rsuffix="rater",
+      how="outer",
+      unsafeAllowed={
+        c.defaultIndexKey,
+        c.awaitingMoreRatingsBoolKey + "note",
+        c.ratingsAwaitingMoreRatings,
+        c.currentlyRatedHelpfulBoolKey,
+        c.currentlyRatedNotHelpfulBoolKey,
+        c.awaitingMoreRatingsBoolKey + "rater",
+        c.notesCurrentlyRatedHelpful,
+        c.notesCurrentlyRatedNotHelpful,
+        c.notesAwaitingMoreRatings,
+        c.numRatingsKey,
+        c.aggregateRatingReceivedTotal,
+      },
+    )
     .reset_index()
     .rename({"index": c.raterParticipantIdKey}, axis=1)[
       [

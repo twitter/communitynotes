@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from . import constants as c
 from .matrix_factorization.matrix_factorization import MatrixFactorization
@@ -88,6 +88,12 @@ class ReputationScorer(Scorer):
   def _get_dropped_user_cols(self) -> List[str]:
     """Returns a list of columns which should be excluded from helpfulnessScores output."""
     return []
+
+  def _get_user_col_mapping(self) -> Dict[str, str]:
+    """Returns a dict mapping default user column names to custom names for a specific model."""
+    return {
+      c.internalRaterReputationKey: c.raterHelpfulnessReputationKey,
+    }
 
   def _filter_input(
     self,

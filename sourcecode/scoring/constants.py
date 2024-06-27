@@ -32,6 +32,11 @@ minTagsNeededForStatus = 2
 tagPercentileForNormalization = 40
 intervalHalfWidth = 0.3
 
+# Max flip rates
+prescoringAllUnlockedNotesMaxCrhChurn = 0.04
+finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.03
+finalNotesWithNewRatingsMaxCrhChurn = 0.40
+
 # Data Filenames
 scoredNotesOutputPath = "scoredNotes.tsv"
 enrollmentInputPath = "userEnrollment-00000.tsv"
@@ -51,6 +56,7 @@ authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 modelingPopulationKey = "modelingPopulation"
 modelingGroupKey = "modelingGroup"
 numberOfTimesEarnedOutKey = "numberOfTimesEarnedOut"
+defaultIndexKey = "index"
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
@@ -237,7 +243,7 @@ helpfulTagsAndTieBreakOrder = [
   (1, "helpfulUnbiasedLanguage"),
 ]
 helpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in helpfulTagsAndTieBreakOrder]
-helpfulTagsAndTypesTSVOrder = [(tag, np.int64) for tag in helpfulTagsTSVOrder]
+helpfulTagsAndTypesTSVOrder = [(tag, np.int8) for tag in helpfulTagsTSVOrder]
 helpfulTagsTiebreakOrder = [tag for (tiebreakOrder, tag) in sorted(helpfulTagsAndTieBreakOrder)]
 
 # NOTE: Always add new tags to the end of this list, and *never* change the order of
@@ -275,7 +281,7 @@ notHelpfulTagsAndTieBreakOrder = [
   (6, notHelpfulNoteNotNeededKey),
 ]
 notHelpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in notHelpfulTagsAndTieBreakOrder]
-notHelpfulTagsAndTypesTSVOrder = [(tag, np.int64) for tag in notHelpfulTagsTSVOrder]
+notHelpfulTagsAndTypesTSVOrder = [(tag, np.int8) for tag in notHelpfulTagsTSVOrder]
 notHelpfulTagsTiebreakOrder = [
   tag for (tiebreakOrder, tag) in sorted(notHelpfulTagsAndTieBreakOrder)
 ]
@@ -287,9 +293,15 @@ notHelpfulTagsEnumMapping = {
 }
 adjustedSuffix = "Adjusted"
 notHelpfulTagsAdjustedColumns = [f"{column}{adjustedSuffix}" for column in notHelpfulTagsTSVOrder]
+notHelpfulTagsAdjustedTSVColumnsAndTypes = [
+  (tag, np.double) for tag in notHelpfulTagsAdjustedColumns
+]
 ratioSuffix = "Ratio"
 notHelpfulTagsAdjustedRatioColumns = [
   f"{column}{ratioSuffix}" for column in notHelpfulTagsAdjustedColumns
+]
+notHelpfulTagsAdjustedRatioTSVColumnsAndTypes = [
+  (tag, np.double) for tag in notHelpfulTagsAdjustedRatioColumns
 ]
 ratingWeightKey = "ratingWeight"
 
@@ -325,13 +337,14 @@ internalNoteInterceptRound2Key = "internalNoteInterceptRound2"
 lowDiligenceRaterInterceptRound2Key = "lowDiligenceRaterInterceptRound2"
 internalRaterInterceptRound2Key = "internalRaterInterceptRound2"
 
-incorrectFilterColumns = [
-  notHelpfulIncorrectIntervalKey,
-  sumOfIncorrectTagRateByRaterIntervalKey,
-  numVotersIntervalKey,
-  noteTfIdfIncorrectScoreIntervalKey,
-  lowDiligenceLegacyNoteInterceptKey,
+incorrectFilterColumnsAndTypes = [
+  (notHelpfulIncorrectIntervalKey, np.double),
+  (sumOfIncorrectTagRateByRaterIntervalKey, np.double),
+  (numVotersIntervalKey, np.double),
+  (noteTfIdfIncorrectScoreIntervalKey, np.double),
+  (lowDiligenceLegacyNoteInterceptKey, np.double),
 ]
+incorrectFilterColumns = [col for (col, _) in incorrectFilterColumnsAndTypes]
 
 misleadingTags = [
   "misleadingOther",
@@ -386,7 +399,7 @@ ratingTSVColumnsAndTypes = (
     (disagreeKey, np.int64),
     (helpfulKey, np.int64),
     (notHelpfulKey, np.int64),
-    (helpfulnessLevelKey, object),
+    (helpfulnessLevelKey, "category"),
   ]
   + helpfulTagsAndTypesTSVOrder
   + notHelpfulTagsAndTypesTSVOrder
@@ -429,7 +442,7 @@ noteStatusHistoryTSVColumnsAndTypes = [
   (currentExpansionStatusKey, object),
   (currentGroupStatusKey, object),
   (currentDecidedByKey, object),
-  (currentModelingGroupKey, object),
+  (currentModelingGroupKey, np.double),  # TODO: int
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypes = [dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
@@ -450,6 +463,7 @@ atRisk = "atRisk"
 earnedOutNoAcknowledge = "earnedOutNoAcknowledge"
 earnedOutAcknowledged = "earnedOutAcknowledged"
 newUser = "newUser"
+removed = "removed"
 isAtRiskCRNHCount = 2
 ratingImpactForEarnIn = 5
 ratingImpact = "ratingImpact"
@@ -459,6 +473,7 @@ enrollmentStateToThrift = {
   earnedOutNoAcknowledge: 2,
   earnedOutAcknowledged: 3,
   newUser: 4,
+  removed: 5,
 }
 emergingWriterDays = 28
 isEmergingWriterKey = "isEmergingWriter"
@@ -522,25 +537,29 @@ noteParameterUncertaintyTSVTypeMapping = {
   col: dtype for (col, dtype) in noteParameterUncertaintyTSVColumnsAndTypes
 }
 
-auxiliaryScoredNotesTSVColumns = (
+auxiliaryScoredNotesTSVColumnsAndTypes = (
   [
-    noteIdKey,
-    ratingWeightKey,
-    createdAtMillisKey,
-    noteAuthorParticipantIdKey,
-    awaitingMoreRatingsBoolKey,
-    numRatingsLast28DaysKey,
-    currentLabelKey,
-    currentlyRatedHelpfulBoolKey,
-    currentlyRatedNotHelpfulBoolKey,
-    unlockedRatingStatusKey,
+    (noteIdKey, np.int64),
+    (ratingWeightKey, np.double),
+    (createdAtMillisKey, np.int64),
+    (noteAuthorParticipantIdKey, object),
+    (awaitingMoreRatingsBoolKey, np.int8),
+    (numRatingsLast28DaysKey, np.int64),
+    (currentLabelKey, str),
+    (currentlyRatedHelpfulBoolKey, np.int8),
+    (currentlyRatedNotHelpfulBoolKey, np.int8),
+    (unlockedRatingStatusKey, str),
   ]
-  + helpfulTagsTSVOrder
-  + notHelpfulTagsTSVOrder
-  + notHelpfulTagsAdjustedColumns
-  + notHelpfulTagsAdjustedRatioColumns
-  + incorrectFilterColumns
+  + helpfulTagsAndTypesTSVOrder
+  + notHelpfulTagsAndTypesTSVOrder
+  + notHelpfulTagsAdjustedTSVColumnsAndTypes
+  + notHelpfulTagsAdjustedRatioTSVColumnsAndTypes
+  + incorrectFilterColumnsAndTypes
 )
+auxiliaryScoredNotesTSVColumns = [col for (col, dtype) in auxiliaryScoredNotesTSVColumnsAndTypes]
+auxiliaryScoredNotesTSVTypeMapping = {
+  col: dtype for (col, dtype) in auxiliaryScoredNotesTSVColumnsAndTypes
+}
 
 deprecatedNoteModelOutputColumns = frozenset(
   {
@@ -610,7 +629,7 @@ noteModelOutputTSVColumnsAndTypes = [
   (topicNoteFactor1Key, np.double),
   (topicRatingStatusKey, str),
   (noteTopicKey, str),
-  (topicNoteConfidentKey, str),
+  (topicNoteConfidentKey, pd.BooleanDtype()),
   (expansionInternalActiveRulesKey, str),
   (expansionPlusInternalActiveRulesKey, str),
   (groupInternalActiveRulesKey, str),
@@ -638,10 +657,7 @@ prescoringRaterModelOutputTSVColumnsAndTypes = [
   (crhCrnhRatioDifferenceKey, np.double),
   (meanNoteScoreKey, np.double),
   (raterAgreeRatioKey, np.double),
-  (
-    aboveHelpfulnessThresholdKey,
-    "boolean",
-  ),  # nullable bool https://pandas.pydata.org/docs/user_guide/boolean.html
+  (aboveHelpfulnessThresholdKey, pd.BooleanDtype()),
   (scorerNameKey, str),
   (internalRaterReputationKey, np.double),
   (lowDiligenceRaterInterceptKey, np.double),
@@ -681,7 +697,7 @@ raterModelOutputTSVColumnsAndTypes = [
   (successfulRatingNeededToEarnIn, pd.Int64Dtype()),
   (authorTopNotHelpfulTagValues, str),
   (timestampOfLastStateChange, np.double),
-  (aboveHelpfulnessThresholdKey, np.float64),  # nullable bool
+  (aboveHelpfulnessThresholdKey, np.float64),  # nullable bool.
   (isEmergingWriterKey, pd.BooleanDtype()),
   (aggregateRatingReceivedTotal, pd.Int64Dtype()),
   (timestampOfLastEarnOut, np.double),
@@ -730,6 +746,17 @@ noteStatusChangesTSVColumns = [col for (col, dtype) in noteStatusChangeTSVColumn
 noteStatusChangesTSVTypeMapping = {
   col: dtype for (col, dtype) in noteStatusChangeTSVColumnsAndTypes
 }
+
+datasetKeyKey = "datasetKey"
+partitionToReadKey = "partitionToRead"
+fileNameToReadKey = "fileNameToRead"
+inputPathsTSVColumnsAndTypes = [
+  (datasetKeyKey, str),
+  (partitionToReadKey, str),
+  (fileNameToReadKey, str),
+]
+inputPathsTSVColumns = [col for (col, _) in inputPathsTSVColumnsAndTypes]
+inputPathsTSVTypeMapping = {col: dtype for (col, dtype) in inputPathsTSVColumnsAndTypes}
 
 
 @contextmanager
@@ -830,3 +857,10 @@ class ModelResult:
   auxiliaryNoteInfo: pd.DataFrame
   scorerName: Optional[str]
   metaScores: Optional[PrescoringMetaScorerOutput]
+
+
+@dataclass
+class NoteSubset:
+  noteSet: Optional[set]
+  maxCrhChurnRate: float
+  description: str

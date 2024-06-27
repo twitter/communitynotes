@@ -65,6 +65,7 @@ def filter_core_output(
     userGroups.rename(columns={c.participantIdKey: c.raterParticipantIdKey}),
     on=c.raterParticipantIdKey,
     how="left",
+    unsafeAllowed=_CORE_BOOL,
   )
   print(f"  Final ratings length: {len(ratings)}")
   ratings = ratings.fillna({_CORE_BOOL: True})

@@ -259,7 +259,8 @@ class FilterTagOutliers(ScoringRule):
         & (crhStats[adjustedRatioColumn] > self._tagFilterThresholds[adjustedRatioColumn])
       ][c.noteIdKey]
       impactedNotes = pd.concat(
-        [impactedNotes, pd.DataFrame({c.noteIdKey: tagFilteredNotes, c.activeFilterTagsKey: tag})]
+        [impactedNotes, pd.DataFrame({c.noteIdKey: tagFilteredNotes, c.activeFilterTagsKey: tag})],
+        unsafeAllowed=[c.defaultIndexKey, c.activeFilterTagsKey],
       )
     # log and consolidate imapcted notes
     print(f"Total {{note, tag}} pairs where tag filter logic triggered: {len(impactedNotes)}")
@@ -494,7 +495,9 @@ class ApplyGroupModelResult(ScoringRule):
 
     # Filter set of note status updates to only include actionable notes
     actionableNotes = noteStats[noteStats["actionable"]][[c.noteIdKey]]
-    noteStatusUpdates = noteStatusUpdates.merge(actionableNotes, on=c.noteIdKey, how="inner")
+    noteStatusUpdates = noteStatusUpdates.merge(
+      actionableNotes, on=c.noteIdKey, how="inner", unsafeAllowed=c.defaultIndexKey
+    )
 
     # Set note status and return
     noteStatusUpdates[statusColumn] = c.currentlyRatedHelpful
@@ -696,9 +699,9 @@ class AddCRHInertia(ScoringRule):
       how="inner",
     )
     # Validate that all note scores were within the expected range
-    noteIntercepts = noteStats.merge(noteIds, on=c.noteIdKey, how="inner")[
-      c.internalNoteInterceptKey
-    ]
+    noteIntercepts = noteStats.merge(
+      noteIds, on=c.noteIdKey, how="inner", unsafeAllowed=c.defaultIndexKey
+    )[c.internalNoteInterceptKey]
 
     assert sum(noteIntercepts > self._expectedMax) == 0, f"""{sum(noteIntercepts > self._expectedMax)} notes (out of {len(noteIntercepts)}) had intercepts above expected maximum of {self._expectedMax}. 
       The highest was {max(noteIntercepts)}."""
@@ -835,7 +838,12 @@ def apply_scoring_rules(
       if additionalColumns is not None:
         assert set(noteStatusUpdates[c.noteIdKey]) == set(additionalColumns[c.noteIdKey])
       # Update noteLabels, which will always hold at most one label per note.
-      noteLabels = pd.concat([noteLabels, noteStatusUpdates]).groupby(c.noteIdKey).tail(1)
+      unsafeAllowed = {c.internalRatingStatusKey, c.finalRatingStatusKey, c.defaultIndexKey}
+      noteLabels = (
+        pd.concat([noteLabels, noteStatusUpdates], unsafeAllowed=unsafeAllowed)
+        .groupby(c.noteIdKey)
+        .tail(1)
+      )
       # Update note rules to have one row per rule which was active for a note
       noteRules = pd.concat(
         [
@@ -843,7 +851,8 @@ def apply_scoring_rules(
           pd.DataFrame.from_dict(
             {c.noteIdKey: noteStatusUpdates[c.noteIdKey], ruleColumn: rule.get_name()}
           ),
-        ]
+        ],
+        unsafeAllowed={c.internalActiveRulesKey, c.defaultIndexKey, c.metaScorerActiveRulesKey},
       )
       if additionalColumns is not None:
         # Merge any additional columns into current set of new columns
@@ -864,7 +873,9 @@ def apply_scoring_rules(
     # Merge note labels, active rules and new columns into noteStats to form scoredNotes
     scoredNotes = noteStats.merge(noteLabels, on=c.noteIdKey, how="inner")
     scoredNotes = scoredNotes.merge(noteRules, on=c.noteIdKey, how="inner")
-    scoredNotes = scoredNotes.merge(noteColumns, on=c.noteIdKey, how="left")
+    scoredNotes = scoredNotes.merge(
+      noteColumns, on=c.noteIdKey, how="left", unsafeAllowed=c.defaultIndexKey
+    )
     # Add all of the individual model rules to the active rules column
     assert len(scoredNotes) == len(noteStats)
     # Set boolean columns indicating scoring outcomes
