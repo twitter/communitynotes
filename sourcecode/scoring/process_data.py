@@ -432,10 +432,12 @@ def write_prescoring_output(
   prescoringRaterModelOutput: pd.DataFrame,
   noteTopicClassifier: Pipeline,
   prescoringMetaOutput: c.PrescoringMetaOutput,
+  prescoringScoredNotesOutput: Optional[pd.DataFrame],
   noteModelOutputPath: str,
   raterModelOutputPath: str,
   noteTopicClassifierPath: str,
   prescoringMetaOutputPath: str,
+  prescoringScoredNotesOutputPath: Optional[str],
   headers: bool = True,
 ):
   prescoringNoteModelOutput = prescoringNoteModelOutput[c.prescoringNoteModelOutputTSVColumns]
@@ -445,6 +447,9 @@ def write_prescoring_output(
   prescoringRaterModelOutput = prescoringRaterModelOutput[c.prescoringRaterModelOutputTSVColumns]
   assert all(prescoringRaterModelOutput.columns == c.prescoringRaterModelOutputTSVColumns)
   write_tsv_local(prescoringRaterModelOutput, raterModelOutputPath, headers=headers)
+
+  if prescoringScoredNotesOutput is not None and prescoringScoredNotesOutputPath is not None:
+    write_tsv_local(prescoringScoredNotesOutput, prescoringScoredNotesOutputPath, headers=headers)
 
   joblib.dump(noteTopicClassifier, noteTopicClassifierPath)
   joblib.dump(prescoringMetaOutput, prescoringMetaOutputPath)

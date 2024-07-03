@@ -138,10 +138,7 @@ def get_ratings_before_note_status_and_public_tsv(
     )
   ]
 
-  combinedRatingsBeforeStatus = pd.concat(
-    [ratingsBeforeStatusNewNotes, first5RatingsOldNotes],
-    unsafeAllowed=c.defaultIndexKey,
-  )
+  combinedRatingsBeforeStatus = pd.concat([ratingsBeforeStatusNewNotes, first5RatingsOldNotes])
 
   if logging:
     print(

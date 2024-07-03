@@ -132,5 +132,11 @@ def get_tag_thresholds(ratings: pd.DataFrame, percentile: int) -> Dict[str, floa
   """
   thresholds = {}
   for column in c.notHelpfulTagsAdjustedRatioColumns:
-    thresholds[column] = np.quantile(ratings[column], np.arange(0, 1, 0.01))[percentile]
+    if len(ratings[column]) == 0:
+      print(
+        f"Warning: No ratings for column {column} in get_tag_thresholds. Setting threshold to 0.0 arbitrarily."
+      )
+      thresholds[column] = 0.0
+    else:
+      thresholds[column] = np.quantile(ratings[column], np.arange(0, 1, 0.01))[percentile]
   return thresholds

@@ -100,6 +100,11 @@ def filter_ratings_by_post_selection_similarity(notes, ratings, postSelectionSim
   ratings = pd.concat(
     [ratingsWithPostSelectionSimilarityValue, ratingsWithNoPostSelectionSimilarityValue], axis=0
   )
+  ratings.drop(
+    columns={c.noteAuthorParticipantIdKey, c.raterParticipantIdKey + "_note_author"},
+    errors="ignore",
+    inplace=True,
+  )
   return ratings
 
 
