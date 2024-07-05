@@ -424,6 +424,7 @@ currentExpansionStatusKey = "currentExpansionStatus"
 currentGroupStatusKey = "currentGroupStatus"
 currentDecidedByKey = "currentDecidedBy"
 currentModelingGroupKey = "currentModelingGroup"
+timestampMillisOfMostRecentStatusChangeKey = "timestampMillisOfMostRecentStatusChange"
 
 noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
@@ -443,6 +444,7 @@ noteStatusHistoryTSVColumnsAndTypes = [
   (currentGroupStatusKey, object),
   (currentDecidedByKey, object),
   (currentModelingGroupKey, np.double),  # TODO: int
+  (timestampMillisOfMostRecentStatusChangeKey, np.double),  # double because nullable.
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypes = [dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]

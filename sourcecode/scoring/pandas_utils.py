@@ -275,28 +275,6 @@ def safe_merge(fail: bool, counter: TypeErrorCounter) -> Callable:
   return _safe_merge
 
 
-def _get_multiindex_types(df: pd.DataFrame):
-  """Create a dictionary mapping index columns to dtypes.
-
-  Note that this approach may mis-type columns under rare circumstances.  See example below:
-  # left = pd.DataFrame({"idx0": [1, 2], "idx1": [11, 12], "val1": [4, 5]}).set_index(["idx0", "idx1"])
-  # right = pd.DataFrame({"idx0": [1, 2, 3], "idx2": [21, 22, 23], "val2": [7, 8, 9]}).set_index(["idx0", "idx2"])
-  # print(dict(left.join(right, how="outer").index.dtypes))
-  # print(dict(left.join(right, how="outer").reset_index(drop=False).dtypes))
-  # $> {'idx0': dtype('int64'), 'idx1': dtype('int64'), 'idx2': dtype('int64')}
-  # $> {'idx0': dtype('int64'), 'idx1': dtype('float64'), 'idx2': dtype('int64'), 'val1': dtype('float64'), 'val2': dtype('int64')}
-
-  Unfortunatley, Pandas 1.1.5 seem to treat the type of multi-level indexes as "object"
-  as the "dtypes" property is not defined for MultiIndex and df.index.dtype and
-  df.index.values.dtype both return dtype('O').  At some point bewteen Pandas 1.1.5
-  and 2.2.2, the dtypes attribute was defined for MultiIndex and dict(df.index.dtypes)
-  yields a mapping from index columns to their actual datatype.
-  """
-  dfTypes = dict(df.reset_index(drop=False).dtypes)
-  indexCols = set(df.index.names)
-  return {col: dtype for (col, dtype) in dfTypes.items() if col in indexCols}
-
-
 def safe_join(fail: bool, counter: TypeErrorCounter) -> Callable:
   """Return a modified merge function that checks type stability.
 
@@ -334,12 +312,12 @@ def safe_join(fail: bool, counter: TypeErrorCounter) -> Callable:
     if len(leftFrame.index.names) == 1 and len(rightFrame.index.names) == 1:
       match = leftFrame.index.dtype == rightFrame.index.dtype
     elif len(leftFrame.index.names) == 1 and len(rightFrame.index.names) > 1:
-      indexTypes = _get_multiindex_types(rightFrame)
+      indexTypes = dict(rightFrame.index.dtypes)
       name = leftFrame.index.names[0]
       assert name in indexTypes, f"{name} not found in {indexTypes}"
       match = indexTypes[name] == leftFrame.index.dtype
     elif len(leftFrame.index.names) > 1 and len(rightFrame.index.names) == 1:
-      indexTypes = _get_multiindex_types(leftFrame)
+      indexTypes = dict(leftFrame.index.dtypes)
       name = rightFrame.index.names[0]
       assert name in indexTypes, f"{name} not found in {indexTypes}"
       match = indexTypes[name] == rightFrame.index.dtype
@@ -350,8 +328,8 @@ def safe_join(fail: bool, counter: TypeErrorCounter) -> Callable:
       assert (
         len(rightFrame.index.names) > 1
       ), f"unexpected right: {type(rightFrame.index)}, {rightFrame.index}"
-      leftIndexTypes = _get_multiindex_types(leftFrame)
-      rightIndexTypes = _get_multiindex_types(rightFrame)
+      leftIndexTypes = dict(leftFrame.index.dtypes)
+      rightIndexTypes = dict(rightFrame.index.dtypes)
       match = True
       for col in set(leftIndexTypes) & set(rightIndexTypes):
         match = match & (leftIndexTypes[col] == rightIndexTypes[col])
@@ -391,11 +369,11 @@ def safe_join(fail: bool, counter: TypeErrorCounter) -> Callable:
     leftIndexCols = set(leftFrame.index.names)
     rightIndexCols = set(rightFrame.index.names)
     if len(leftIndexCols) > 1:
-      leftDtypes = _get_multiindex_types(leftFrame)
+      leftDtypes = dict(leftFrame.index.dtypes)
     else:
       leftDtypes = {leftFrame.index.name: leftFrame.index.dtype}
     if len(rightIndexCols) > 1:
-      rightDtypes = _get_multiindex_types(rightFrame)
+      rightDtypes = dict(rightFrame.index.dtypes)
     else:
       rightDtypes = {rightFrame.index.name: rightFrame.index.dtype}
     for col in leftIndexCols & rightIndexCols:

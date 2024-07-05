@@ -168,7 +168,7 @@ def _merge_results(
   assert len(scoredNotes) == scoredNotesSize, "scoredNotes should not expand"
 
   # Merge auxiliaryNoteInfo
-  if modelauxiliaryNoteInfo is not None:
+  if modelauxiliaryNoteInfo is not None and len(modelauxiliaryNoteInfo.columns) > 0:
     assert (set(modelauxiliaryNoteInfo.columns) & set(auxiliaryNoteInfo.columns)) == {
       c.noteIdKey
     }, "column names must be globally unique"
@@ -1005,7 +1005,11 @@ def run_prescoring(
   runParallel: bool = True,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
   useStableInitialization: bool = True,
-) -> Tuple[pd.DataFrame, pd.DataFrame, sklearn.pipeline.Pipeline, c.PrescoringMetaOutput]:
+  pseudoraters: bool = True,
+  checkFlips: bool = True,
+) -> Tuple[
+  pd.DataFrame, pd.DataFrame, sklearn.pipeline.Pipeline, c.PrescoringMetaOutput, pd.DataFrame
+]:
   with c.time_block("Logging RAM usage"):
     _log_df_info(notes, ratings, noteStatusHistory, userEnrollment)
   with c.time_block("Note Topic Assignment"):
@@ -1061,12 +1065,41 @@ def run_prescoring(
       c.postSelectionValueKey,
     },
   )
+  del prescoringModelResultsFromAllScorers
+  del scorers
+
+  # Prescoring itself is now done. We will not run final_note_scoring to check note status flips.
+  if checkFlips:
+    # Rescore all notes. TODO: in the future, consider only rescoring a subset, e.g. unlocked notes.
+    ratingsToRescore = ratings
+    notesToRescore = notes
+    noteStatusHistoryToRescore = noteStatusHistory
+
+    scoredNotes, _, _ = run_final_note_scoring(
+      notes=notesToRescore,
+      ratings=ratingsToRescore,
+      noteStatusHistory=noteStatusHistoryToRescore,
+      userEnrollment=userEnrollment,
+      seed=seed,
+      pseudoraters=pseudoraters,
+      enabledScorers=None,
+      runParallel=runParallel,
+      useStableInitialization=useStableInitialization,
+      prescoringNoteModelOutput=prescoringNoteModelOutput,
+      prescoringRaterModelOutput=prescoringRaterModelOutput,
+      noteTopicClassifier=noteTopicClassifierPipe,
+      prescoringMetaOutput=prescoringMetaOutput,
+      checkFlips=checkFlips,
+    )
+  else:
+    scoredNotes = None
 
   return (
     prescoringNoteModelOutput,
     prescoringRaterModelOutput,
     noteTopicClassifierPipe,
     prescoringMetaOutput,
+    scoredNotes,
   )
 
 
@@ -1415,7 +1448,16 @@ def run_scoring(
   dataLoader: Optional[CommunityNotesDataLoader] = None,
   useStableInitialization: bool = True,
   writePrescoringScoringOutputCallback: Optional[
-    Callable[[pd.DataFrame, pd.DataFrame, sklearn.pipeline.Pipeline, c.PrescoringMetaOutput], None]
+    Callable[
+      [
+        pd.DataFrame,
+        pd.DataFrame,
+        sklearn.pipeline.Pipeline,
+        c.PrescoringMetaOutput,
+        Optional[pd.DataFrame],
+      ],
+      None,
+    ]
   ] = None,
   cutoffTimestampMillis: Optional[int] = None,
   excludeRatingsAfterANoteGotFirstStatusPlusNHours: Optional[int] = None,
@@ -1475,6 +1517,7 @@ def run_scoring(
     prescoringRaterModelOutput,
     prescoringNoteTopicClassifier,
     prescoringMetaOutput,
+    prescoringScoredNotes,
   ) = run_prescoring(
     notes=prescoringNotesInput,
     ratings=prescoringRatingsInput,
@@ -1485,6 +1528,7 @@ def run_scoring(
     runParallel=runParallel,
     dataLoader=dataLoader,
     useStableInitialization=useStableInitialization,
+    checkFlips=False,
   )
 
   print("We invoked run_scoring and are now in between prescoring and scoring.")
@@ -1495,6 +1539,7 @@ def run_scoring(
         prescoringRaterModelOutput,
         prescoringNoteTopicClassifier,
         prescoringMetaOutput,
+        prescoringScoredNotes,
       )
   print("Starting final scoring")
 

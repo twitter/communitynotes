@@ -495,9 +495,7 @@ class ApplyGroupModelResult(ScoringRule):
 
     # Filter set of note status updates to only include actionable notes
     actionableNotes = noteStats[noteStats["actionable"]][[c.noteIdKey]]
-    noteStatusUpdates = noteStatusUpdates.merge(
-      actionableNotes, on=c.noteIdKey, how="inner", unsafeAllowed=c.defaultIndexKey
-    )
+    noteStatusUpdates = noteStatusUpdates.merge(actionableNotes, on=c.noteIdKey, how="inner")
 
     # Set note status and return
     noteStatusUpdates[statusColumn] = c.currentlyRatedHelpful
@@ -699,9 +697,9 @@ class AddCRHInertia(ScoringRule):
       how="inner",
     )
     # Validate that all note scores were within the expected range
-    noteIntercepts = noteStats.merge(
-      noteIds, on=c.noteIdKey, how="inner", unsafeAllowed=c.defaultIndexKey
-    )[c.internalNoteInterceptKey]
+    noteIntercepts = noteStats.merge(noteIds, on=c.noteIdKey, how="inner")[
+      c.internalNoteInterceptKey
+    ]
 
     assert sum(noteIntercepts > self._expectedMax) == 0, f"""{sum(noteIntercepts > self._expectedMax)} notes (out of {len(noteIntercepts)}) had intercepts above expected maximum of {self._expectedMax}. 
       The highest was {max(noteIntercepts)}."""
@@ -857,7 +855,9 @@ def apply_scoring_rules(
       if additionalColumns is not None:
         # Merge any additional columns into current set of new columns
         assert {c.noteIdKey} == (set(noteColumns.columns) & set(additionalColumns.columns))
-        noteColumns = noteColumns.merge(additionalColumns, on=c.noteIdKey, how="outer")
+        noteColumns = noteColumns.merge(
+          additionalColumns, on=c.noteIdKey, how="outer", unsafeAllowed=c.defaultIndexKey
+        )
 
   with c.time_block("Condense noteRules after applying all scoring rules"):
     # Having applied all scoring rules, condense noteRules to have one row per note representing
@@ -873,9 +873,7 @@ def apply_scoring_rules(
     # Merge note labels, active rules and new columns into noteStats to form scoredNotes
     scoredNotes = noteStats.merge(noteLabels, on=c.noteIdKey, how="inner")
     scoredNotes = scoredNotes.merge(noteRules, on=c.noteIdKey, how="inner")
-    scoredNotes = scoredNotes.merge(
-      noteColumns, on=c.noteIdKey, how="left", unsafeAllowed=c.defaultIndexKey
-    )
+    scoredNotes = scoredNotes.merge(noteColumns, on=c.noteIdKey, how="left")
     # Add all of the individual model rules to the active rules column
     assert len(scoredNotes) == len(noteStats)
     # Set boolean columns indicating scoring outcomes

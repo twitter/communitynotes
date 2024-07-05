@@ -88,6 +88,18 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   Returns:
       row of pd.DataFrame
   """
+  if mergedNote[c.finalRatingStatusKey] != mergedNote[c.currentLabelKey]:
+    # Changed status vs. previous run:
+    mergedNote[c.timestampMillisOfMostRecentStatusChangeKey] = currentTimeMillis
+  else:
+    # No change in status vs. previous run
+    # If the note has not changed status (since the launch of this feature on 2024/07/02),
+    # then the timestamp of the most recent status change should be set to -1 by default.
+    if c.timestampMillisOfMostRecentStatusChangeKey not in mergedNote.index:
+      mergedNote[c.timestampMillisOfMostRecentStatusChangeKey] = -1
+    elif pd.isna(mergedNote[c.timestampMillisOfMostRecentStatusChangeKey]):
+      mergedNote[c.timestampMillisOfMostRecentStatusChangeKey] = -1
+
   # Update the current status in accordance with this scoring run.
   assert not pd.isna(mergedNote[c.finalRatingStatusKey])
   mergedNote[c.currentLabelKey] = mergedNote[c.finalRatingStatusKey]
@@ -192,11 +204,15 @@ def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn: float) -> None:
   )
   if len(oldCrhNotes) > 0 and len(newCrhNotes) > 0:
     # Validate that changes are within allowable bounds.
-    print(f"new note ratio: {(len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes))}")
+    print(
+      f"new note ratio: {(len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes))}. (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
+    )
     assert (
       (len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
     ), f"Too many new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
-    print(f"old note ratio: {len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)}")
+    print(
+      f"old note ratio: {len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)} (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
+    )
     assert (
       (len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
     ), f"Too few new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"

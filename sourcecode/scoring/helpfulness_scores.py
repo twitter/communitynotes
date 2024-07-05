@@ -155,7 +155,7 @@ def compute_general_helpfulness_scores(
 
     helpfulRatingsOnBadNotesCount = (
       helpfulRatingsOnBadNotes[[c.raterParticipantIdKey, c.totalHelpfulHarassmentRatingsPenaltyKey]]
-      .groupby(c.raterParticipantIdKey)
+      .groupby(c.raterParticipantIdKey)[[c.totalHelpfulHarassmentRatingsPenaltyKey]]
       .sum()
       .reset_index()
     )
