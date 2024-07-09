@@ -36,3 +36,5 @@ The default setting for all contributors is "Often", which means you'll start by
 ## Other notifications
 
 Contributors also receive notifications with status updates about the notes they've written and rated. At this time these are not configurable, but we plan to add more controls in the future.
+
+Authors of posts that are showing a note will also receive a notification about the note, once the note has been consistently showing for 6 hours without appearing or disappearing (indicating its status is relatively stable).
