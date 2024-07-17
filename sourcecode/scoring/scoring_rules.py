@@ -241,8 +241,11 @@ class FilterTagOutliers(ScoringRule):
     print(f"CRH notes prior to tag filtering: {len(crhStats)}")
 
     # Identify impacted notes.
-    impactedNotes = pd.DataFrame.from_dict({c.noteIdKey: [], c.activeFilterTagsKey: []}).astype(
-      {c.noteIdKey: np.int64}
+    impactedNotes = pd.DataFrame.from_dict(
+      {
+        c.noteIdKey: pd.Series([], dtype=np.int64),
+        c.activeFilterTagsKey: pd.Series([], dtype=object),
+      }
     )
     print("Checking note tags:")
     for tag in c.notHelpfulTagsTSVOrder:
@@ -534,7 +537,6 @@ class InsufficientExplanation(ScoringRule):
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Sets Top Tags inplace on noteStats,
     returns notes on track for CRH / CRNH with insufficient to receive NMR status."""
-    noteStats[c.noteIdKey] = noteStats[c.noteIdKey].astype(np.int64)
     noteStats[c.firstTagKey] = noteStats[c.firstTagKey].astype(object)
     noteStats[c.secondTagKey] = noteStats[c.secondTagKey].astype(object)
 
@@ -578,14 +580,6 @@ class InsufficientExplanation(ScoringRule):
       noteStats.loc[:, c.firstTagKey] = topTags[c.firstTagKey]
       noteStats.loc[:, c.secondTagKey] = topTags[c.secondTagKey]
 
-    # The "apply" above converts the noteId column to a float.  This cast
-    # guarantees that the type of the noteId column remains int64.  Note that the cast will fail
-    # if the noteId column includes nan values.
-    #
-    # See links below for more context:
-    # https://stackoverflow.com/questions/40251948/stop-pandas-from-converting-int-to-float-due-to-an-insertion-in-another-column
-    # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.convert_dtypes.html
-    noteStats[c.noteIdKey] = noteStats[c.noteIdKey].astype(np.int64)
     noteStats[c.firstTagKey] = noteStats[c.firstTagKey].astype(object)
     noteStats[c.secondTagKey] = noteStats[c.secondTagKey].astype(object)
 
@@ -813,13 +807,13 @@ def apply_scoring_rules(
   """
   # Initialize empty dataframes to store labels for each note and which rules impacted
   # scoring for each note.
-  noteLabels = pd.DataFrame.from_dict({c.noteIdKey: [], statusColumn: []}).astype(
-    {c.noteIdKey: np.int64}
+  noteLabels = pd.DataFrame.from_dict(
+    {c.noteIdKey: pd.Series([], dtype=np.int64), statusColumn: pd.Series([], dtype=object)}
   )
-  noteRules = pd.DataFrame.from_dict({c.noteIdKey: [], ruleColumn: []}).astype(
-    {c.noteIdKey: np.int64}
+  noteRules = pd.DataFrame.from_dict(
+    {c.noteIdKey: pd.Series([], dtype=np.int64), ruleColumn: pd.Series([], dtype=object)}
   )
-  noteColumns = pd.DataFrame.from_dict({c.noteIdKey: []}).astype({c.noteIdKey: np.int64})
+  noteColumns = pd.DataFrame.from_dict({c.noteIdKey: pd.Series([], dtype=np.int64)})
 
   # Establish state to enforce rule dependencies.
   ruleIDs: Set[RuleID] = set()

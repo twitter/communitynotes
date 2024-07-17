@@ -6,6 +6,8 @@ intergrated into main files for execution in internal and external environments.
 """
 import concurrent.futures
 import copy
+import gc
+import io
 from itertools import chain
 import multiprocessing
 from multiprocessing import shared_memory  # type: ignore
@@ -158,6 +160,7 @@ def _merge_results(
     + [f"{c.modelingGroupKey}_{group}" for group in range(groupScorerCount, 0, -1)]
     + [f"{c.topicNoteConfidentKey}_{topic.name}" for topic in Topics]
     + [f"{c.groupNumFinalRoundRatingsKey}_{group}" for group in range(groupScorerCount, 0, -1)]
+    + [f"{c.topicNumFinalRoundRatingsKey}_{topic.name}" for topic in Topics]
   )
   scoredNotes = scoredNotes.merge(
     modelScoredNotes,
@@ -278,7 +281,7 @@ def _run_scorer_parallelizable(
   # Run scoring
   scorerStartTime = time.perf_counter()
   if type(scoringArgs) == PrescoringArgs:
-    scoringResults = scorer.prescore(scoringArgs)
+    scoringResults = scorer.prescore(scoringArgs, preserveRatings=not runParallel)
   elif type(scoringArgs) == FinalScoringArgs:
     scoringResults = scorer.score_final(scoringArgs)
   else:
@@ -294,19 +297,15 @@ def save_df_to_shared_memory(df: pd.DataFrame, shms: List) -> c.SharedMemoryData
   and returns the info needed to access it, as well as appends it to the list of shared memory objects
   so it's not garbage collected and can be closed later.
   """
-  cols = df.columns
-  data = df.to_numpy()
-  df_dtypes_dict = dict(list(zip(df.columns, df.dtypes)))
-  shm = shared_memory.SharedMemory(create=True, size=data.nbytes)
-  np_array = np.ndarray(data.shape, dtype=data.dtype, buffer=shm.buf)
-  np_array[:] = data[:]
+  with io.BytesIO() as buf:
+    df.to_parquet(buf, compression="gzip", engine="pyarrow")
+    size = len(buf.getvalue())
+    shm = shared_memory.SharedMemory(create=True, size=size)
+    shm.buf[:size] = buf.getvalue()
   shms.append(shm)  # save the shared memory object so we can close it later
   return c.SharedMemoryDataframeInfo(
     sharedMemoryName=shm.name,
-    columns=cols,
-    dataShape=data.shape,
-    dtypesDict=df_dtypes_dict,
-    npDtype=np_array.dtype,
+    dataSize=size,
   )
 
 
@@ -316,12 +315,9 @@ def get_df_from_shared_memory(sharedMemoryDfInfo: c.SharedMemoryDataframeInfo) -
   Read a dataframe from shared memory and return it.
   """
   existing_shm = shared_memory.SharedMemory(name=sharedMemoryDfInfo.sharedMemoryName)
-  np_array = np.ndarray(
-    sharedMemoryDfInfo.dataShape, buffer=existing_shm.buf, dtype=sharedMemoryDfInfo.npDtype
-  )
-  df = pd.DataFrame(np_array, columns=sharedMemoryDfInfo.columns)
-  df = df.astype(sharedMemoryDfInfo.dtypesDict)
-  return df
+  size = sharedMemoryDfInfo.dataSize
+  with io.BytesIO(existing_shm.buf[:size]) as buf:
+    return pd.read_parquet(buf)
 
 
 def _save_dfs_to_shared_memory(
@@ -1030,6 +1026,7 @@ def run_prescoring(
     )
     print(f"Post Selection Similarity Prescoring: {len(ratings)} ratings remaining.")
     del pss
+    gc.collect()
 
   scorers = _get_scorers(
     seed=seed,
@@ -1067,13 +1064,19 @@ def run_prescoring(
   )
   del prescoringModelResultsFromAllScorers
   del scorers
+  gc.collect()
 
   # Prescoring itself is now done. We will not run final_note_scoring to check note status flips.
   if checkFlips:
-    # Rescore all notes. TODO: in the future, consider only rescoring a subset, e.g. unlocked notes.
-    ratingsToRescore = ratings
-    notesToRescore = notes
-    noteStatusHistoryToRescore = noteStatusHistory
+    # Rescore a smaller set of notes, since we are only using these note statuses to check for flips.
+    # Rescore a only unlocked notes. (In the future, we could randomly sample a subset of these)
+    noteStatusHistoryToRescore = noteStatusHistory[
+      noteStatusHistory[c.timestampMillisOfStatusLockKey].isna()
+    ]
+
+    notesToRescoreSet = set(noteStatusHistoryToRescore[c.noteIdKey])
+    ratingsToRescore = ratings[ratings["noteId"].isin(notesToRescoreSet)].copy()
+    notesToRescore = notes[notes["noteId"].isin(notesToRescoreSet)].copy()
 
     scoredNotes, _, _ = run_final_note_scoring(
       notes=notesToRescore,
@@ -1138,15 +1141,31 @@ def determine_which_notes_to_rescore(
   noteStatusHistory: pd.DataFrame,
   previousRatingCutoffTimestampMillis: Optional[int] = None,
   scoreRecentNotesMinimumFrequencyMillis: Optional[int] = 1000 * 60 * 60 * 24,  # 1 day
-  recentNotesAgeCutoffMillis: Optional[int] = 1000 * 60 * 60 * 24 * 14,  # 14 days
-) -> Tuple[Optional[List[c.NoteSubset]], set]:
+  recentNotesAgeCutoffMillis: Optional[int] = 1000 * 60 * 60 * 24 * 14,  # 14 days,
+  scoreRecentlyFlippedNotesMinimumFrequencyMillis: Optional[int] = 1000 * 60 * 60 * 1,  # 1 hour
+  recentlyFlippedNoteAgeCutoffMillis: Optional[int] = 1000 * 60 * 60 * 24,  # 1 day
+) -> Tuple[List[c.NoteSubset], set]:
+  notesToRescoreSet = set()
+  noteSubsets = []
+
   # 1. Rescore all notes with a new rating since last scoring run.
   if previousRatingCutoffTimestampMillis is not None:
     notesWithNewRatings = set(
       ratings.loc[ratings[c.createdAtMillisKey] > previousRatingCutoffTimestampMillis, c.noteIdKey]
     )
+    print(
+      f"1. Num notes with new ratings since last scoring run (ts: {previousRatingCutoffTimestampMillis}): {len(notesWithNewRatings)}"
+    )
+    notesToRescoreSet.update(notesWithNewRatings)
   else:
     notesWithNewRatings = set()
+  noteSubsets.append(
+    c.NoteSubset(
+      noteSet=notesWithNewRatings,
+      maxCrhChurnRate=c.finalNotesWithNewRatingsMaxCrhChurn,
+      description=c.RescoringRuleID.NOTES_WITH_NEW_RATINGS,
+    )
+  )
 
   currentMillis = int(time.time() * 1000)
 
@@ -1162,38 +1181,82 @@ def determine_which_notes_to_rescore(
     newNotesNotRescoredRecentlyEnough = set(
       noteStatusHistory.loc[noteCreatedRecently & noteNotRescoredRecently, c.noteIdKey]
     )
+    print("2. Rescore all recently created notes if not rescored at the minimum frequency.")
+    print("Num notes created recently:", noteCreatedRecently.sum())
     # Remove notes with new ratings from this set.
     newNotesNotRescoredRecentlyEnough = newNotesNotRescoredRecentlyEnough.difference(
       notesWithNewRatings
     )
+    notesToRescoreSet.update(newNotesNotRescoredRecentlyEnough)
   else:
     newNotesNotRescoredRecentlyEnough = set()
-
-  # TODO: 3. Recently-flipped notes.
-
-  noteSubsets = [
-    c.NoteSubset(
-      noteSet=notesWithNewRatings,
-      maxCrhChurnRate=c.finalNotesWithNewRatingsMaxCrhChurn,
-      description="notesWithNewRatings",
-    ),
+  noteSubsets.append(
     c.NoteSubset(
       noteSet=newNotesNotRescoredRecentlyEnough,
       maxCrhChurnRate=c.finalUnlockedNotesWithNoNewRatingsMaxCrhChurn,
-      description="newNotesNotRescoredRecentlyEnough",
-    ),
-  ]
+      description=c.RescoringRuleID.NEW_NOTES_NOT_RESCORED_RECENTLY_ENOUGH,
+    )
+  )
 
-  notesToRescoreSet = set()
-  for noteSubset in noteSubsets:
-    if noteSubset.noteSet is not None:
-      notesToRescoreSet.update(noteSubset.noteSet)
+  # 3. Rescore all notes that flipped status in the previous scoring run.
+  justFlippedNotes = set(
+    noteStatusHistory.loc[
+      (
+        noteStatusHistory[c.timestampMillisOfMostRecentStatusChangeKey]
+        == noteStatusHistory[c.timestampMillisOfNoteCurrentLabelKey]
+      ),
+      c.noteIdKey,
+    ]
+  ).difference(notesWithNewRatings)
+  print(
+    "3. Rescore all notes that flipped status in the previous scoring run.", len(justFlippedNotes)
+  )
+  notesToRescoreSet.update(justFlippedNotes)
+  noteSubsets.append(
+    c.NoteSubset(
+      noteSet=justFlippedNotes,
+      maxCrhChurnRate=c.finalNotesThatJustFlippedStatusMaxCrhChurn,
+      description=c.RescoringRuleID.NOTES_FLIPPED_PREVIOUS_RUN,
+    )
+  )
+
+  # 4. Rescore all recently-flipped notes if not rescored at the minimum frequency.
+  if (
+    recentlyFlippedNoteAgeCutoffMillis is not None
+    and scoreRecentlyFlippedNotesMinimumFrequencyMillis is not None
+  ):
+    noteFlippedRecently = (
+      noteStatusHistory[c.timestampMillisOfMostRecentStatusChangeKey]
+      > currentMillis - recentlyFlippedNoteAgeCutoffMillis
+    )
+    noteNotRescoredRecently = (
+      noteStatusHistory[c.timestampMillisOfNoteCurrentLabelKey]
+      < currentMillis - scoreRecentlyFlippedNotesMinimumFrequencyMillis
+    )
+    print("4. Rescore all recently-flipped notes if not rescored at the minimum frequency.")
+    print("Num notes flipped recently:", noteFlippedRecently.sum())
+    print("Num notes not rescored recently enough:", noteNotRescoredRecently.sum())
+    recentlyFlippedNotesNotRescoredRecentlyEnough = set(
+      noteStatusHistory.loc[noteFlippedRecently & noteNotRescoredRecently, c.noteIdKey]
+    )
+    notesToRescoreSet.update(recentlyFlippedNotesNotRescoredRecentlyEnough)
+  else:
+    recentlyFlippedNotesNotRescoredRecentlyEnough = set()
+  noteSubsets.append(
+    c.NoteSubset(
+      noteSet=recentlyFlippedNotesNotRescoredRecentlyEnough,
+      maxCrhChurnRate=c.finalNotesThatFlippedRecentlyMaxCrhChurn,
+      description=c.RescoringRuleID.RECENTLY_FLIPPED_NOTES_NOT_RESCORED_RECENTLY_ENOUGH,
+    )
+  )
 
   print(
-    f"""Notes to rescore:
-        {len(notesWithNewRatings)} notes with new ratings since last scoring run.
-        {len(newNotesNotRescoredRecentlyEnough)} notes created recently and not rescored recently enough.
-        Total: {len(notesToRescoreSet)} notes to rescore, out of {len(notes)} total."""
+    f"""----\nNotes to rescore:
+        * {len(notesWithNewRatings)} notes with new ratings since last scoring run.
+        * {len(newNotesNotRescoredRecentlyEnough)} notes created recently and not rescored recently enough.
+        * {len(justFlippedNotes)} notes that flipped status in the previous scoring run.
+        * {len(recentlyFlippedNotesNotRescoredRecentlyEnough)} notes that flipped status recently and not rescored recently enough.
+      Overall: {len(notesToRescoreSet)} notes to rescore, out of {len(notes)} total.\n----"""
   )
 
   return noteSubsets, notesToRescoreSet
@@ -1235,11 +1298,11 @@ def run_final_note_scoring(
       print("No previous scored notes passed; scoring all notes.")
       notesToRescoreSet: Set[int] = set()
       scoredNotesPassthrough = None
-      noteSubsets: Optional[List[c.NoteSubset]] = [
+      noteSubsets: List[c.NoteSubset] = [
         c.NoteSubset(
           noteSet=None,
           maxCrhChurnRate=c.prescoringAllUnlockedNotesMaxCrhChurn,
-          description="allNotes",
+          description=c.RescoringRuleID.ALL_NOTES,
         )
       ]
     else:
@@ -1251,9 +1314,6 @@ def run_final_note_scoring(
         notes, ratings, noteStatusHistory, previousRatingCutoffTimestampMillis
       )
 
-      for item in notesToRescoreSet:
-        print(f"notesToRescoreSet: {item}, {type(item)}, len: {len(notesToRescoreSet)}")
-        break
       scoredNotesPassthrough = previousScoredNotes[
         ~previousScoredNotes[c.noteIdKey].isin(notesToRescoreSet)
       ]
@@ -1321,18 +1381,16 @@ def run_final_note_scoring(
 
   scoredNotes, auxiliaryNoteInfo = combine_final_scorer_results(modelResults, noteStatusHistory)
 
-  if not checkFlips:
-    noteSubsets = None
-
   scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo = post_note_scoring(
     scorers,
     scoredNotes,
     auxiliaryNoteInfo,
     ratings,
     noteStatusHistory,
+    noteSubsets,
     enabledScorers,
     strictColumns,
-    noteSubsets,
+    checkFlips,
   )
 
   # Concat final scoring results for newly-scored notes with the results for old notes not scores.
@@ -1345,8 +1403,10 @@ def run_final_note_scoring(
           continue
         if scoredNotes[column].dtype != targetDtype:
           scoredNotes[column] = scoredNotes[column].astype(targetDtype)
+    scoredNotesPassthrough[c.rescoringActiveRulesKey] = ""
     scoredNotes = pd.concat(
       [scoredNotes, scoredNotesPassthrough],
+      unsafeAllowed=[c.topicNoteConfidentKey],  # concat 'O' with BooleanDtype
     )
 
     # Convert auxiliaryNoteInfo dtypes to match auxiliaryNoteInfoPassthrough
@@ -1369,9 +1429,10 @@ def post_note_scoring(
   auxiliaryNoteInfo: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
+  noteSubsetsAndMaxFlipRates: List[c.NoteSubset],
   enabledScorers: Optional[Set[Scorers]] = None,
   strictColumns: bool = True,
-  noteSubsetsAndMaxFlipRates: Optional[List[c.NoteSubset]] = None,
+  checkFlips: bool = True,
 ):
   """
   Apply individual scoring models and obtained merged result.
@@ -1409,14 +1470,27 @@ def post_note_scoring(
       noteStatusHistory
     ), "noteStatusHistory should be complete, and all notes should be scored."
 
-  # Merge scoring results into noteStatusHistory.
+  # Merge scoring results into noteStatusHistory, check flip rates, and set rescoringActiveRules.
   with c.time_block("Post-scorers: Update note status history"):
     mergedNoteStatuses = note_status_history.merge_old_and_new_note_statuses(
       noteStatusHistory, scoredNotes
     )
-    if noteSubsetsAndMaxFlipRates is not None:
-      for noteSubset in noteSubsetsAndMaxFlipRates:
+
+    scoredNotes[c.rescoringActiveRulesKey] = ""
+    for noteSubset in noteSubsetsAndMaxFlipRates:
+      if checkFlips:
         note_status_history.check_flips(mergedNoteStatuses, noteSubset=noteSubset)
+      if noteSubset.noteSet is not None:
+        noteInSetMask = scoredNotes[c.noteIdKey].isin(noteSubset.noteSet)
+      else:
+        noteInSetMask = scoredNotes[c.noteIdKey].notnull()  # All notes by default.
+      scoredNotes.loc[noteInSetMask, c.rescoringActiveRulesKey] = scoredNotes.loc[
+        noteInSetMask, c.rescoringActiveRulesKey
+      ].apply(
+        lambda rescoringActiveRules: rescoringActiveRules + noteSubset.description.name
+        if len(rescoringActiveRules) == 0
+        else f"{rescoringActiveRules},{noteSubset.description.name}"
+      )
 
     newNoteStatusHistory = note_status_history.update_note_status_history(mergedNoteStatuses)
     assert len(newNoteStatusHistory) == len(

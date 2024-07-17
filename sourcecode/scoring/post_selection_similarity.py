@@ -1,3 +1,4 @@
+import gc
 from typing import Dict
 
 from . import constants as c
@@ -188,6 +189,7 @@ def aggregate_into_cliques(graphDf):
               cliqueToUserMap[sourceDestClique].append(userId)
               userToCliqueMap[userId] = sourceDestClique
             del cliqueToUserMap[oldTargetCliqueToDel]
+            gc.collect()
 
         else:
           # source in map; target not. add target to source's clique

@@ -3,13 +3,12 @@ from typing import Dict, List, Optional, Tuple
 from . import constants as c
 from .matrix_factorization.matrix_factorization import MatrixFactorization
 from .mf_base_scorer import get_ratings_for_stable_init
-from .mf_core_scorer import filter_core_input, filter_core_output
 from .process_data import filter_ratings
 from .reputation_matrix_factorization.helpfulness_model import (
   get_helpfulness_reputation_results_final,
   get_helpfulness_reputation_results_prescoring,
 )
-from .scorer import Scorer
+from .scorer import EmptyRatingException, Scorer
 
 import pandas as pd
 import torch
@@ -37,7 +36,14 @@ class ReputationScorer(Scorer):
         in scoring.  Notes with fewer ratings are removed.
       threads: number of threads to use for intra-op parallelism in pytorch
     """
-    super().__init__(seed, threads)
+    super().__init__(
+      includedTopics=set(),
+      includedGroups=c.coreGroups,
+      includeUnassigned=True,
+      captureThreshold=0.5,
+      seed=seed,
+      threads=threads,
+    )
     self._minNumRatingsPerRater = minNumRatingsPerRater
     self._minNumRatersPerNote = minNumRatersPerNote
     self._crhThreshold = crhThreshold
@@ -95,23 +101,13 @@ class ReputationScorer(Scorer):
       c.internalRaterReputationKey: c.raterHelpfulnessReputationKey,
     }
 
-  def _filter_input(
-    self,
-    noteTopics: pd.DataFrame,
-    ratings: pd.DataFrame,
-    noteStatusHistory: pd.DataFrame,
-    userEnrollment: pd.DataFrame,
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    ratings, noteStatusHistory = filter_core_input(ratings, noteStatusHistory, userEnrollment)
-    ratings = filter_ratings(ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote)
-    return ratings, noteStatusHistory
-
   def _prescore_notes_and_users(
     self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
   ) -> Tuple[pd.DataFrame, pd.DataFrame, c.PrescoringMetaScorerOutput]:
     if self._seed is not None:
       print(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
+    ratings = filter_ratings(ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote)
     # Calculate initialization factors if necessary
     noteParamsInit = None
     raterParamsInit = None
@@ -156,6 +152,9 @@ class ReputationScorer(Scorer):
     if self._seed is not None:
       print(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
+    ratings = filter_ratings(ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote)
+    if len(ratings) == 0:
+      raise EmptyRatingException()
 
     # Apply model
     # Note: we use the low diligence global intercept here as a temporary hack, since the prod scorer's
@@ -178,13 +177,3 @@ class ReputationScorer(Scorer):
     noteStats = noteStats.merge(noteStatusHistory[[c.noteIdKey]].drop_duplicates(), how="outer")
     assert len(noteStats) == len(noteStatusHistory)
     return noteStats, raterStats
-
-  def _postprocess_output(
-    self,
-    noteScores: pd.DataFrame,
-    userScores: pd.DataFrame,
-    ratings: pd.DataFrame,
-    noteStatusHistory: pd.DataFrame,
-    userEnrollment: pd.DataFrame,
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    return filter_core_output(ratings, userEnrollment, noteScores), userScores

@@ -45,6 +45,8 @@ def tsv_parser(
   mapping: Dict[str, type],
   columns: List[str],
   header: bool,
+  useCols: Optional[List[str]] = None,
+  chunkSize: Optional[int] = None,
   convertNAToNone: bool = True,
 ) -> pd.DataFrame:
   """Parse a TSV input and raise an Exception if the input is not formatted as expected.
@@ -54,6 +56,8 @@ def tsv_parser(
     mapping: Dict mapping column names to types
     columns: List of column names
     header: bool indicating whether the input will have a header
+    useCols: Optional list of columns to return
+    chunkSize: Optional number of rows to read at a time when returning a subset of columns
 
   Returns:
     pd.DataFrame containing parsed data
@@ -64,14 +68,28 @@ def tsv_parser(
     if num_fields != len(columns):
       raise ValueError(f"Expected {len(columns)} columns, but got {num_fields}")
 
-    data = pd.read_csv(
-      StringIO(rawTSV),
-      sep="\t",
-      names=columns,
-      dtype=mapping,
-      header=0 if header else None,
-      index_col=[],
-    )
+    if useCols and chunkSize:
+      textParser = pd.read_csv(
+        StringIO(rawTSV),
+        sep="\t",
+        names=columns,
+        dtype=mapping,
+        header=0 if header else None,
+        index_col=[],
+        usecols=useCols,
+        chunksize=chunkSize,
+      )
+      data = pd.concat(textParser, ignore_index=True)
+    else:
+      data = pd.read_csv(
+        StringIO(rawTSV),
+        sep="\t",
+        names=columns,
+        dtype=mapping,
+        header=0 if header else None,
+        index_col=[],
+        usecols=useCols,
+      )
     if convertNAToNone:
       # float types will be nan if missing; newer nullable types like "StringDtype" or "Int64Dtype" will by default
       # be pandas._libs.missing.NAType if missing. Set those to None and change the dtype back to object.
@@ -92,7 +110,7 @@ def tsv_reader_single(
 ):
   """Read a single TSV file."""
   with open(path, "r", encoding="utf-8") as handle:
-    return tsv_parser(handle.read(), mapping, columns, header, convertNAToNone)
+    return tsv_parser(handle.read(), mapping, columns, header, convertNAToNone=convertNAToNone)
 
 
 def tsv_reader(
@@ -102,14 +120,21 @@ def tsv_reader(
   if os.path.isdir(path):
     dfs = [
       tsv_reader_single(
-        os.path.join(path, filename), mapping, columns, header, parser, convertNAToNone
+        os.path.join(path, filename),
+        mapping,
+        columns,
+        header,
+        parser,
+        convertNAToNone=convertNAToNone,
       )
       for filename in os.listdir(path)
       if filename.endswith(".tsv")
     ]
     return pd.concat(dfs, ignore_index=True)
   else:
-    return tsv_reader_single(path, mapping, columns, header, parser, convertNAToNone)
+    return tsv_reader_single(
+      path, mapping, columns, header, parser, convertNAToNone=convertNAToNone
+    )
 
 
 def read_from_tsv(
@@ -321,6 +346,7 @@ def preprocess_data(
   noteStatusHistory: pd.DataFrame,
   shouldFilterNotMisleadingNotes: bool = True,
   logging: bool = True,
+  ratingsOnly: bool = False,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Populate helpfulNumKey, a unified column that merges the helpfulness answers from
   the V1 and V2 rating forms together, as described in
@@ -334,6 +360,7 @@ def preprocess_data(
       noteStatusHistory (pd.DataFrame)
       shouldFilterNotMisleadingNotes (bool, optional): Defaults to True.
       logging (bool, optional): Defaults to True.
+      ratingsOnly (bool, optional): Defaults to False
 
   Returns:
       notes (pd.DataFrame)
@@ -345,13 +372,13 @@ def preprocess_data(
       "Timestamp of latest rating in data: ",
       pd.to_datetime(ratings[c.createdAtMillisKey], unit="ms").max(),
     )
-    print(
-      "Timestamp of latest note in data: ",
-      pd.to_datetime(notes[c.createdAtMillisKey], unit="ms").max(),
-    )
+    if not ratingsOnly:
+      print(
+        "Timestamp of latest note in data: ",
+        pd.to_datetime(notes[c.createdAtMillisKey], unit="ms").max(),
+      )
 
   ratings = remove_duplicate_ratings(ratings)
-  notes = remove_duplicate_notes(notes)
 
   ratings.loc[:, c.helpfulNumKey] = np.nan
   ratings.loc[ratings[c.helpfulKey] == 1, c.helpfulNumKey] = 1
@@ -360,6 +387,11 @@ def preprocess_data(
   ratings.loc[ratings[c.helpfulnessLevelKey] == c.somewhatHelpfulValueTsv, c.helpfulNumKey] = 0.5
   ratings.loc[ratings[c.helpfulnessLevelKey] == c.helpfulValueTsv, c.helpfulNumKey] = 1
   ratings = ratings.loc[~pd.isna(ratings[c.helpfulNumKey])]
+
+  if ratingsOnly:
+    return pd.DataFrame(), ratings, pd.DataFrame()
+
+  notes = remove_duplicate_notes(notes)
 
   notes[c.tweetIdKey] = notes[c.tweetIdKey].astype(str)
 

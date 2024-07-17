@@ -77,8 +77,9 @@ class MFTopicScorer(MFBaseScorer):
       pseudoraters: if True, compute optional pseudorater confidence intervals
     """
     super().__init__(
-      seed,
-      pseudoraters,
+      includedTopics={topicName},
+      seed=seed,
+      pseudoraters=pseudoraters,
       useStableInitialization=False,
       saveIntermediateState=saveIntermediateState,
       threads=4,
@@ -174,31 +175,6 @@ class MFTopicScorer(MFBaseScorer):
       c.internalRaterFactor1Key,
       c.raterParticipantIdKey,
     ]
-
-  def _filter_input(
-    self,
-    noteTopics: pd.DataFrame,
-    ratings: pd.DataFrame,
-    noteStatusHistory: pd.DataFrame,
-    userEnrollment: pd.DataFrame,
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Prune the contents of ratings to only include ratings from notes on this topic.
-
-    Args:
-      noteTopics: DF pairing notes and topics
-      ratings (pd.DataFrame): preprocessed ratings
-      noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
-      userEnrollment (pd.DataFrame): one row per user specifying enrollment properties
-
-    Returns:
-      Tuple[pd.DataFrame, pd.DataFrame]:
-        ratings: ratings filtered to only contain rows of interest
-        noteStatusHistory: noteStatusHistory filtered to only contain rows of interest
-    """
-    notes = noteTopics[noteTopics[c.noteTopicKey] == self._topicName][[c.noteIdKey]]
-    ratings = ratings.merge(notes)
-    noteStatusHistory = noteStatusHistory.merge(notes)
-    return ratings, noteStatusHistory
 
   def _postprocess_output(
     self,

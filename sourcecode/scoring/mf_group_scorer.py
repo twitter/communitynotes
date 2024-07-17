@@ -104,8 +104,11 @@ class MFGroupScorer(MFBaseScorer):
         for the model to be active
     """
     super().__init__(
-      seed,
-      pseudoraters,
+      includedGroups={groupNumber},
+      includeUnassigned=False,
+      captureThreshold=groupThreshold,
+      seed=seed,
+      pseudoraters=pseudoraters,
       useStableInitialization=False,
       saveIntermediateState=saveIntermediateState,
       threads=_groupScorerParalleism.get(groupNumber, 4),
@@ -135,7 +138,6 @@ class MFGroupScorer(MFBaseScorer):
     assert groupNumber > 0, "groupNumber must be positive.  0 is reserved for unassigned."
     assert groupNumber <= groupScorerCount, "groupNumber exceeds maximum expected groups."
     self._groupNumber = groupNumber
-    self._groupThreshold = groupThreshold
     self._groupNoteInterceptKey = f"{c.groupNoteInterceptKey}_{self._groupNumber}"
     self._groupNoteFactor1Key = f"{c.groupNoteFactor1Key}_{self._groupNumber}"
     self._groupRatingStatusKey = f"{c.groupRatingStatusKey}_{self._groupNumber}"
@@ -219,43 +221,6 @@ class MFGroupScorer(MFBaseScorer):
       c.aboveHelpfulnessThresholdKey,
     ]
 
-  def _filter_input(
-    self,
-    noteTopics: pd.DataFrame,
-    ratings: pd.DataFrame,
-    noteStatusHistory: pd.DataFrame,
-    userEnrollment: pd.DataFrame,
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Prune the contents of ratings to only include ratings from users in the modeling group.
-
-    This function identifies the subset of ratings to include in group model scoring.
-    To improve modeling within the group, we only include ratings from users in the modeling
-    group.  However, we place no restriction on which notes to include in the model and instead
-    include ratings on any note.  Including ratings on any note increases the amount of data
-    available during training about each user, in effect also increasing the number of users
-    and notes we are able to include in the model.
-
-    Including notes by users outside of the modeling group means that the model will issue
-    scores for notes which do not meet group modeling criteria (i.e. >80% of ratings are
-    from users in the modeling group, and the author is also from the modeling group). We
-    enforce these criteria *after* scoring in _postprocess_output so that the maximum amount
-    of ratings are available during scoring.
-
-    Args:
-      ratings (pd.DataFrame): preprocessed ratings
-      noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
-      userEnrollment (pd.DataFrame): one row per user specifying enrollment properties
-
-    Returns:
-      Tuple[pd.DataFrame, pd.DataFrame]:
-        ratings: ratings filtered to only contain rows of interest
-        noteStatusHistory: noteStatusHistory filtered to only contain rows of interest
-    """
-    userEnrollment = userEnrollment.rename(columns={c.participantIdKey: c.raterParticipantIdKey})
-    userEnrollment = userEnrollment[userEnrollment[c.modelingGroupKey] == self._groupNumber]
-    ratings = ratings.merge(userEnrollment[[c.raterParticipantIdKey]].drop_duplicates())
-    return ratings, noteStatusHistory
-
   def _postprocess_output(
     self,
     noteScores: pd.DataFrame,
@@ -283,17 +248,9 @@ class MFGroupScorer(MFBaseScorer):
         noteScores: filtered and updated note scoring output
         userScores: filtered and updated user scoring output
     """
-    # Identify notes with enough ratings from within the modeling group.
-    ratings = ratings.merge(
-      userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(
-        columns={c.participantIdKey: c.raterParticipantIdKey}
-      ),
-      how="left",
+    noteScores, userScores = super()._postprocess_output(
+      noteScores, userScores, ratings, noteStatusHistory, userEnrollment
     )
-    ratings["inGroup"] = ratings[c.modelingGroupKey] == self._groupNumber
-    ratios = ratings[[c.noteIdKey, "inGroup"]].groupby(c.noteIdKey).mean().reset_index()
-    notesAboveThreshold = ratios[ratios["inGroup"] >= self._groupThreshold][[c.noteIdKey]]
-    noteScores = noteScores.merge(notesAboveThreshold)
     # Note that even though ratings were restricted to the modeling group, users outside of
     # the modeling group may still have authored a note which was rated and may consequently
     # appear in the userScores.  Accordingly, we drop any user which was outside of the

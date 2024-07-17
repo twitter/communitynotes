@@ -1,14 +1,23 @@
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
+import gc
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from . import constants as c
 from .constants import FinalScoringArgs, ModelResult, PrescoringArgs
+from .pandas_utils import keep_columns
 
 import numpy as np
 import pandas as pd
 import torch
+
+
+_IN_GROUP = "inGroup"
+
+
+class EmptyRatingException(Exception):
+  """Exception rasied when no ratings are available"""
 
 
 class Scorer(ABC):
@@ -20,12 +29,24 @@ class Scorer(ABC):
   exactly which columns are output and which are dropped.
   """
 
-  def __init__(self, seed: Optional[int] = None, threads: int = c.defaultNumThreads) -> None:
+  def __init__(
+    self,
+    includedTopics: Set[str] = set(),
+    includedGroups: Set[int] = set(),
+    includeUnassigned: bool = False,
+    captureThreshold: Optional[float] = None,
+    seed: Optional[int] = None,
+    threads: int = c.defaultNumThreads,
+  ) -> None:
     """Configure a new Scorer object.
 
     Args:
       seed (int, optional): if not None, seed value to ensure deterministic execution
     """
+    self._includedTopics = includedTopics
+    self._includedGroups = includedGroups
+    self._includeUnassigned = includeUnassigned
+    self._captureThreshold = captureThreshold
     self._seed = seed
     self._threads = threads
 
@@ -90,6 +111,30 @@ class Scorer(ABC):
         ratings: ratings filtered to only contain rows of interest
         noteStatusHistory: noteStatusHistory filtered to only contain rows of interest
     """
+    if (not self._includedGroups) and (not self._includedTopics):
+      return ratings, noteStatusHistory
+    print(f"Filtering ratings for {self.get_name()}.  Original rating length: {len(ratings)}")
+    # Apply topic filter
+    if self._includedTopics:
+      notes = noteTopics[noteTopics[c.noteTopicKey].isin(self._includedTopics)][[c.noteIdKey]]
+      ratings = ratings.merge(notes)
+      noteStatusHistory = noteStatusHistory.merge(notes)
+    print(f"  Ratings after topic filter: {len(ratings)}")
+    # Apply group filter
+    if self._includedGroups:
+      userEnrollment = userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(
+        columns={c.participantIdKey: c.raterParticipantIdKey}
+      )
+      userEnrollment.loc[:, _IN_GROUP] = (
+        userEnrollment[c.modelingGroupKey].isin(self._includedGroups).astype(pd.BooleanDtype())
+      )
+      ratings = ratings.merge(
+        userEnrollment[[c.raterParticipantIdKey, _IN_GROUP]], on=c.raterParticipantIdKey, how="left"
+      )
+      print(f"  Ratings without assigned group: {ratings[_IN_GROUP].isna().sum()}")
+      ratings = ratings.fillna({_IN_GROUP: self._includeUnassigned})
+      ratings = ratings[ratings[_IN_GROUP]].drop(columns=[_IN_GROUP])
+    print(f"  Ratings after group filter: {len(ratings)}")
     return ratings, noteStatusHistory
 
   def _postprocess_output(
@@ -119,6 +164,27 @@ class Scorer(ABC):
         noteScores: note scoring output from _score_notes_and_users
         userScores: user scoring output from _score_notes_and_users
     """
+    if self._captureThreshold is None:
+      return noteScores, userScores
+    # Identify notes with enough ratings from within the modeling group.
+    print(f"Postprocessing output for {self.get_name()}")
+    assert self._includedGroups, "includedGroups must be set"
+    userEnrollment = userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(
+      columns={c.participantIdKey: c.raterParticipantIdKey}
+    )
+    userEnrollment.loc[:, _IN_GROUP] = (
+      userEnrollment[c.modelingGroupKey].isin(self._includedGroups).astype(pd.BooleanDtype())
+    )
+    ratings = ratings.merge(
+      userEnrollment[[c.raterParticipantIdKey, _IN_GROUP]], on=c.raterParticipantIdKey, how="left"
+    )
+    ratings = ratings.fillna({_IN_GROUP: self._includeUnassigned})
+    ratios = ratings[[c.noteIdKey, _IN_GROUP]].groupby(c.noteIdKey).mean().reset_index()
+    print(f"  Original noteScores length: {len(noteScores)}")
+    noteScores = noteScores.merge(
+      ratios[ratios[_IN_GROUP] >= self._captureThreshold][[c.noteIdKey]]
+    )
+    print(f"  Final noteScores length: {len(noteScores)}")
     return noteScores, userScores
 
   def _get_note_col_mapping(self) -> Dict[str, str]:
@@ -175,7 +241,7 @@ class Scorer(ABC):
         userScores pd.DataFrame: one row per user containing a column for each helpfulness score.
     """
 
-  def prescore(self, scoringArgs: PrescoringArgs) -> ModelResult:
+  def prescore(self, scoringArgs: PrescoringArgs, preserveRatings: bool = True) -> ModelResult:
     """
     Runs initial rounds of the matrix factorization scoring algorithm and returns intermediate
     output that can be used to initialize and reduce the runtime of final scoring.
@@ -189,10 +255,27 @@ class Scorer(ABC):
     with self.time_block("Filter input"):
       ratings, noteStatusHistory = self._filter_input(
         scoringArgs.noteTopics,
-        scoringArgs.ratings,
+        keep_columns(
+          scoringArgs.ratings,
+          [
+            c.noteIdKey,
+            c.raterParticipantIdKey,
+            c.helpfulNumKey,
+            c.helpfulnessLevelKey,
+            c.createdAtMillisKey,
+          ]
+          + c.notHelpfulTagsTSVOrder
+          + c.helpfulTagsTSVOrder,
+        ),
         scoringArgs.noteStatusHistory,
         scoringArgs.userEnrollment,
       )
+      if not preserveRatings:
+        # Only remove ratings if we're running in parallel, since otherwise later scorers will
+        # need the ratings.
+        del scoringArgs.ratings
+        gc.collect()
+
       # If there are no ratings left after filtering, then return empty dataframes.
       if len(ratings) == 0:
         return ModelResult(
@@ -215,6 +298,10 @@ class Scorer(ABC):
       ratings, noteStatusHistory, scoringArgs.userEnrollment
     )
 
+    # Returning should remove references to ratings, but manually trigger GC just to reclaim
+    # resources as soon as possible.
+    del ratings
+    gc.collect()
     # Return dataframes with specified columns in specified order
     # Reindex fills required columns with NaN if they aren't present in the original df.
     return ModelResult(
@@ -293,13 +380,16 @@ class Scorer(ABC):
       if len(ratings) == 0:
         return self._return_empty_final_scores()
 
-    noteScores, userScores = self._score_notes_and_users(
-      ratings=ratings,
-      noteStatusHistory=noteStatusHistory,
-      prescoringNoteModelOutput=prescoringNoteModelOutput,
-      prescoringRaterModelOutput=prescoringRaterModelOutput,
-      prescoringMetaScorerOutput=prescoringMetaScorerOutput,
-    )
+    try:
+      noteScores, userScores = self._score_notes_and_users(
+        ratings=ratings,
+        noteStatusHistory=noteStatusHistory,
+        prescoringNoteModelOutput=prescoringNoteModelOutput,
+        prescoringRaterModelOutput=prescoringRaterModelOutput,
+        prescoringMetaScorerOutput=prescoringMetaScorerOutput,
+      )
+    except EmptyRatingException:
+      return self._return_empty_final_scores()
 
     with self.time_block("Postprocess output"):
       # Only some subclasses do any postprocessing.

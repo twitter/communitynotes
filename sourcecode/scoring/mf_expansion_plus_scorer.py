@@ -19,7 +19,9 @@ class MFExpansionPlusScorer(MFBaseScorer):
       threads: number of threads to use for intra-op parallelism in pytorch
     """
     super().__init__(
-      seed,
+      includedGroups=(c.coreGroups | c.expansionGroups | c.expansionPlusGroups),
+      includeUnassigned=True,
+      seed=seed,
       pseudoraters=False,
       useStableInitialization=useStableInitialization,
       saveIntermediateState=saveIntermediateState,

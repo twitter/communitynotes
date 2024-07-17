@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
+from enum import Enum
 import os
 import time
 from typing import Dict, Optional
@@ -36,6 +37,8 @@ intervalHalfWidth = 0.3
 prescoringAllUnlockedNotesMaxCrhChurn = 0.04
 finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.03
 finalNotesWithNewRatingsMaxCrhChurn = 0.40
+finalNotesThatJustFlippedStatusMaxCrhChurn = 1e8
+finalNotesThatFlippedRecentlyMaxCrhChurn = 1e8
 
 # Data Filenames
 scoredNotesOutputPath = "scoredNotes.tsv"
@@ -57,6 +60,15 @@ modelingPopulationKey = "modelingPopulation"
 modelingGroupKey = "modelingGroup"
 numberOfTimesEarnedOutKey = "numberOfTimesEarnedOut"
 defaultIndexKey = "index"
+
+# Scoring Groups
+coreGroups = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 21, 25}
+expansionGroups = (
+  # Divide into 3 grouping aggregates to prepare for multi-group models,
+  # and a 4th group containing leftovers
+  {0, 15, 17, 24, 29, 30} | {4, 5, 7, 12, 26} | {27} | {16, 20, 22, 23, 28}
+)
+expansionPlusGroups = {18}
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
@@ -101,6 +113,7 @@ finalRatingStatusKey = "finalRatingStatus"
 unlockedRatingStatusKey = "unlockedRatingStatus"
 metaScorerActiveRulesKey = "metaScorerActiveRules"
 decidedByKey = "decidedBy"
+rescoringActiveRulesKey = "rescoringActiveRules"
 
 # Note Status Changes Columns
 noteFinalStatusChange = "finalStatusChange"
@@ -243,8 +256,10 @@ helpfulTagsAndTieBreakOrder = [
   (1, "helpfulUnbiasedLanguage"),
 ]
 helpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in helpfulTagsAndTieBreakOrder]
-helpfulTagsAndTypesTSVOrder = [(tag, np.int8) for tag in helpfulTagsTSVOrder]
+helpfulTagBoolsAndTypesTSVOrder = [(tag, pd.Int8Dtype()) for tag in helpfulTagsTSVOrder]
 helpfulTagsTiebreakOrder = [tag for (tiebreakOrder, tag) in sorted(helpfulTagsAndTieBreakOrder)]
+helpfulTagCountsAndTypesTSVOrder = [(tag, pd.Int64Dtype()) for tag in helpfulTagsTSVOrder]
+
 
 # NOTE: Always add new tags to the end of this list, and *never* change the order of
 # elements which are already in the list to maintain compatibility with
@@ -281,7 +296,8 @@ notHelpfulTagsAndTieBreakOrder = [
   (6, notHelpfulNoteNotNeededKey),
 ]
 notHelpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in notHelpfulTagsAndTieBreakOrder]
-notHelpfulTagsAndTypesTSVOrder = [(tag, np.int8) for tag in notHelpfulTagsTSVOrder]
+notHelpfulTagsAndTypesTSVOrder = [(tag, pd.Int8Dtype()) for tag in notHelpfulTagsTSVOrder]
+notHelpfulTagCountsAndTypesTSVOrder = [(tag, pd.Int64Dtype()) for tag in notHelpfulTagsTSVOrder]
 notHelpfulTagsTiebreakOrder = [
   tag for (tiebreakOrder, tag) in sorted(notHelpfulTagsAndTieBreakOrder)
 ]
@@ -355,7 +371,7 @@ misleadingTags = [
   "misleadingUnverifiedClaimAsFact",
   "misleadingSatire",
 ]
-misleadingTagsAndTypes = [(tag, np.int64) for tag in misleadingTags]
+misleadingTagsAndTypes = [(tag, pd.Int8Dtype()) for tag in misleadingTags]
 
 notMisleadingTags = [
   "notMisleadingOther",
@@ -364,7 +380,7 @@ notMisleadingTags = [
   "notMisleadingClearlySatire",
   "notMisleadingPersonalOpinion",
 ]
-notMisleadingTagsAndTypes = [(tag, np.int64) for tag in notMisleadingTags]
+notMisleadingTagsAndTypes = [(tag, pd.Int8Dtype()) for tag in notMisleadingTags]
 
 noteTSVColumnsAndTypes = (
   [
@@ -373,13 +389,13 @@ noteTSVColumnsAndTypes = (
     (createdAtMillisKey, np.int64),
     (tweetIdKey, np.int64),
     (classificationKey, object),
-    ("believable", object),
-    ("harmful", object),
-    ("validationDifficulty", object),
+    ("believable", "category"),
+    ("harmful", "category"),
+    ("validationDifficulty", "category"),
   ]
   + misleadingTagsAndTypes
   + notMisleadingTagsAndTypes
-  + [("trustworthySources", np.int64), (summaryKey, object), ("isMediaNote", np.int64)]
+  + [("trustworthySources", pd.Int8Dtype()), (summaryKey, object), ("isMediaNote", pd.Int8Dtype())]
 )
 noteTSVColumns = [col for (col, dtype) in noteTSVColumnsAndTypes]
 noteTSVTypes = [dtype for (col, dtype) in noteTSVColumnsAndTypes]
@@ -394,14 +410,14 @@ ratingTSVColumnsAndTypes = (
     (noteIdKey, np.int64),
     (raterParticipantIdKey, object),
     (createdAtMillisKey, np.int64),
-    (versionKey, np.int64),
-    (agreeKey, np.int64),
-    (disagreeKey, np.int64),
-    (helpfulKey, np.int64),
-    (notHelpfulKey, np.int64),
+    (versionKey, pd.Int8Dtype()),
+    (agreeKey, pd.Int8Dtype()),
+    (disagreeKey, pd.Int8Dtype()),
+    (helpfulKey, pd.Int8Dtype()),
+    (notHelpfulKey, pd.Int8Dtype()),
     (helpfulnessLevelKey, "category"),
   ]
-  + helpfulTagsAndTypesTSVOrder
+  + helpfulTagBoolsAndTypesTSVOrder
   + notHelpfulTagsAndTypesTSVOrder
   + [(ratedOnTweetIdKey, np.int64)]
 )
@@ -431,18 +447,18 @@ noteStatusHistoryTSVColumnsAndTypes = [
   (noteAuthorParticipantIdKey, object),
   (createdAtMillisKey, np.int64),
   (timestampMillisOfNoteFirstNonNMRLabelKey, np.double),  # double because nullable.
-  (firstNonNMRLabelKey, object),
+  (firstNonNMRLabelKey, "category"),
   (timestampMillisOfNoteCurrentLabelKey, np.double),  # double because nullable.
-  (currentLabelKey, object),
+  (currentLabelKey, "category"),
   (timestampMillisOfNoteMostRecentNonNMRLabelKey, np.double),  # double because nullable.
-  (mostRecentNonNMRLabelKey, object),
+  (mostRecentNonNMRLabelKey, "category"),
   (timestampMillisOfStatusLockKey, np.double),  # double because nullable.
-  (lockedStatusKey, object),
+  (lockedStatusKey, "category"),
   (timestampMillisOfRetroLockKey, np.double),  # double because nullable.
-  (currentCoreStatusKey, object),
-  (currentExpansionStatusKey, object),
-  (currentGroupStatusKey, object),
-  (currentDecidedByKey, object),
+  (currentCoreStatusKey, "category"),
+  (currentExpansionStatusKey, "category"),
+  (currentGroupStatusKey, "category"),
+  (currentDecidedByKey, "category"),
   (currentModelingGroupKey, np.double),  # TODO: int
   (timestampMillisOfMostRecentStatusChangeKey, np.double),  # double because nullable.
 ]
@@ -552,8 +568,8 @@ auxiliaryScoredNotesTSVColumnsAndTypes = (
     (currentlyRatedNotHelpfulBoolKey, np.int8),
     (unlockedRatingStatusKey, str),
   ]
-  + helpfulTagsAndTypesTSVOrder
-  + notHelpfulTagsAndTypesTSVOrder
+  + helpfulTagCountsAndTypesTSVOrder
+  + notHelpfulTagCountsAndTypesTSVOrder
   + notHelpfulTagsAdjustedTSVColumnsAndTypes
   + notHelpfulTagsAdjustedRatioTSVColumnsAndTypes
   + incorrectFilterColumnsAndTypes
@@ -641,6 +657,7 @@ noteModelOutputTSVColumnsAndTypes = [
   (expansionPlusNumFinalRoundRatingsKey, np.double),  # double because nullable.
   (groupNumFinalRoundRatingsKey, np.double),  # double because nullable.
   (topicNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (rescoringActiveRulesKey, str),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
@@ -794,10 +811,7 @@ class PrescoringMetaOutput:
 @dataclass
 class SharedMemoryDataframeInfo:
   sharedMemoryName: str
-  columns: list
-  dataShape: tuple
-  dtypesDict: dict
-  npDtype: str
+  dataSize: int
 
 
 @dataclass
@@ -861,8 +875,16 @@ class ModelResult:
   metaScores: Optional[PrescoringMetaScorerOutput]
 
 
+class RescoringRuleID(Enum):
+  ALL_NOTES = 1
+  NOTES_WITH_NEW_RATINGS = 2
+  NOTES_FLIPPED_PREVIOUS_RUN = 3
+  NEW_NOTES_NOT_RESCORED_RECENTLY_ENOUGH = 4
+  RECENTLY_FLIPPED_NOTES_NOT_RESCORED_RECENTLY_ENOUGH = 5
+
+
 @dataclass
 class NoteSubset:
   noteSet: Optional[set]
   maxCrhChurnRate: float
-  description: str
+  description: RescoringRuleID
