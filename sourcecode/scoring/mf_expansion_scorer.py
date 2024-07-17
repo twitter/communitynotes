@@ -1,10 +1,7 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from . import constants as c
 from .mf_base_scorer import MFBaseScorer
-
-import numpy as np
-import pandas as pd
 
 
 _EXPANSION_BOOL = "expansionBool"
@@ -25,13 +22,15 @@ class MFExpansionScorer(MFBaseScorer):
       threads: number of threads to use for intra-op parallelism in pytorch
     """
     super().__init__(
-      seed,
+      includedGroups=(c.coreGroups | c.expansionGroups),
+      includeUnassigned=True,
+      captureThreshold=0.5,
+      seed=seed,
       pseudoraters=False,
       useStableInitialization=useStableInitialization,
       saveIntermediateState=saveIntermediateState,
       threads=threads,
     )
-    self._expansionThreshold = 0.5
 
   def get_name(self):
     return "MFExpansionScorer"
@@ -102,78 +101,3 @@ class MFExpansionScorer(MFBaseScorer):
       c.raterAgreeRatioKey,
       c.aboveHelpfulnessThresholdKey,
     ]
-
-  def _filter_input(
-    self,
-    noteTopics: pd.DataFrame,
-    ratingsOrig: pd.DataFrame,
-    noteStatusHistoryOrig: pd.DataFrame,
-    userEnrollment: pd.DataFrame,
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Prune the contents of ratings to scope model behavior.
-
-    The MFExpansionScorer input is filtered to exclude notes and ratings from EXPANSION_PLUS
-    users.  All other ratings are included.
-
-    Args:
-      ratings (pd.DataFrame): preprocessed ratings
-      noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
-      userEnrollment (pd.DataFrame): one row per user specifying enrollment properties
-
-    Returns:
-      Tuple[pd.DataFrame, pd.DataFrame]:
-        ratingsOrig: ratings filtered to only contain rows of interest
-        noteStatusHistoryOrig: noteStatusHistory filtered to only contain rows of interest
-    """
-    print("Identifying expansion notes and ratings")
-    # Prune ratings to CORE and EXPANSION users.
-    print(f"  Total ratings: {len(ratingsOrig)}")
-    ratings = ratingsOrig.merge(
-      userEnrollment[[c.participantIdKey, c.modelingPopulationKey]].rename(
-        columns={c.participantIdKey: c.raterParticipantIdKey}
-      ),
-      on=c.raterParticipantIdKey,
-      how="left",
-    )
-    print(
-      f"  Ratings from user without modelingPopulation: {pd.isna(ratings[c.modelingPopulationKey]).sum()}"
-    )
-    ratings = ratings.fillna({c.modelingPopulationKey: c.expansion})
-    ratings = ratings[ratings[c.modelingPopulationKey] != c.expansionPlus]
-    print(f"  Ratings after EXPANSION_PLUS filter: {len(ratings)}")
-
-    return ratings.drop(columns=c.modelingPopulationKey), noteStatusHistoryOrig
-
-  def _postprocess_output(
-    self,
-    noteScores: pd.DataFrame,
-    userScores: pd.DataFrame,
-    ratings: pd.DataFrame,
-    noteStatusHistory: pd.DataFrame,
-    userEnrollment: pd.DataFrame,
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    print("Filtering Expansion Output")
-    print(f"  Original ratings length: {len(ratings)}")
-    # Separate CORE and EXPANSION notes from EXPANSION_PLUS.
-    userEnrollment[_EXPANSION_BOOL] = userEnrollment[c.modelingPopulationKey].isin(
-      {c.core, c.expansion}
-    )
-    userGroups = userEnrollment[[c.participantIdKey, _EXPANSION_BOOL]].copy()
-    ratings = ratings.merge(
-      userGroups.rename(columns={c.participantIdKey: c.raterParticipantIdKey}),
-      on=c.raterParticipantIdKey,
-      how="left",
-      unsafeAllowed=_EXPANSION_BOOL,
-    )
-    print(f"  Final ratings length: {len(ratings)}")
-    ratings = ratings.fillna({_EXPANSION_BOOL: True})
-    ratings[_EXPANSION_BOOL] = ratings[_EXPANSION_BOOL].astype(np.bool8)
-    ratios = ratings[[c.noteIdKey, _EXPANSION_BOOL]].groupby(c.noteIdKey).mean().reset_index()
-    # Identify EXPANSION notes.  We define a EXPANSION note to be any note which (1) has ratings, and
-    # (2) half or more of the ratings are from EXPANSION/CORE users.
-    print(f"  Original noteScores length: {len(noteScores)}")
-    noteScores = noteScores.merge(
-      ratios[ratios[_EXPANSION_BOOL] >= self._expansionThreshold][[c.noteIdKey]]
-    )
-    print(f"  Final noteScores length: {len(noteScores)}")
-    return noteScores, userScores

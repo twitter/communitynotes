@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional, Tuple
+import gc
+from typing import Dict, List, Optional, Set, Tuple
 
 from . import (
   constants as c,
@@ -11,6 +12,7 @@ from . import (
 from .incorrect_filter import get_user_incorrect_ratio
 from .matrix_factorization.matrix_factorization import MatrixFactorization
 from .matrix_factorization.pseudo_raters import PseudoRatersRunner
+from .pandas_utils import keep_columns
 from .reputation_matrix_factorization.diligence_model import (
   fit_low_diligence_model_final,
   fit_low_diligence_model_prescoring,
@@ -143,6 +145,10 @@ class MFBaseScorer(Scorer):
 
   def __init__(
     self,
+    includedTopics: Set[str] = set(),
+    includedGroups: Set[int] = set(),
+    includeUnassigned: bool = False,
+    captureThreshold: Optional[float] = None,
     seed: Optional[int] = None,
     pseudoraters: Optional[bool] = True,
     minNumRatingsPerRater: int = 10,
@@ -182,6 +188,8 @@ class MFBaseScorer(Scorer):
     """Configure MatrixFactorizationScorer object.
 
     Args:
+      includedGroups: if set, filter ratings and results based on includedGroups
+      includedTopics: if set, filter ratings based on includedTopics
       seed: if not None, seed value to ensure deterministic execution
       pseudoraters: if True, compute optional pseudorater confidence intervals
       minNumRatingsPerRater: Minimum number of ratings which a rater must produce to be
@@ -214,7 +222,14 @@ class MFBaseScorer(Scorer):
       maxFirstMFTrainError: maximum error allowed for the first MF training process
       maxFinalMFTrainError: maximum error allowed for the final MF training process
     """
-    super().__init__(seed, threads)
+    super().__init__(
+      includedTopics=includedTopics,
+      includedGroups=includedGroups,
+      includeUnassigned=includeUnassigned,
+      captureThreshold=captureThreshold,
+      seed=seed,
+      threads=threads,
+    )
     self._pseudoraters = pseudoraters
     self._minNumRatingsPerRater = minNumRatingsPerRater
     self._minNumRatersPerNote = minNumRatersPerNote
@@ -492,7 +507,22 @@ class MFBaseScorer(Scorer):
     # Removes ratings where either (1) the note did not receive enough ratings, or
     # (2) the rater did not rate enough notes.
     with self.time_block("Prepare ratings"):
-      ratingsForTraining = self._prepare_data_for_scoring(ratings)
+      ratingsForTraining = self._prepare_data_for_scoring(
+        ratings[
+          [
+            c.noteIdKey,
+            c.raterParticipantIdKey,
+            c.helpfulNumKey,
+            c.createdAtMillisKey,
+            c.helpfulnessLevelKey,
+            c.notHelpfulIncorrectTagKey,
+            c.notHelpfulIrrelevantSourcesTagKey,
+            c.notHelpfulSourcesMissingOrUnreliableTagKey,
+            c.notHelpfulSpamHarassmentOrAbuseTagKey,
+            c.notHelpfulOtherTagKey,
+          ]
+        ]
+      )
     if self._saveIntermediateState:
       self.ratingsForTraining = ratingsForTraining
 
@@ -502,12 +532,17 @@ class MFBaseScorer(Scorer):
         noteParamsUnfiltered,
         raterParamsUnfiltered,
         globalBias,
-      ) = self._run_stable_matrix_factorization(ratingsForTraining, userEnrollmentRaw)
+      ) = self._run_stable_matrix_factorization(
+        ratingsForTraining[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]],
+        userEnrollmentRaw[[c.participantIdKey, c.modelingGroupKey]],
+      )
     if self._saveIntermediateState:
       self.noteParamsUnfiltered = noteParamsUnfiltered
       self.raterParamsUnfiltered = raterParamsUnfiltered
       self.globalBias = globalBias
-    self.assert_train_error_is_below_threshold(ratingsForTraining, self._maxFirstMFTrainError)
+    self.assert_train_error_is_below_threshold(
+      ratingsForTraining[[c.noteIdKey]], self._maxFirstMFTrainError
+    )
 
     # If reputation is disabled, generate final intercepts, factors and note status
     # based on the first round scoring results.  Disabling reputation can be desirable
@@ -535,10 +570,36 @@ class MFBaseScorer(Scorer):
       # Get a dataframe of scored notes based on the algorithm results above
       with self.time_block("Compute scored notes"):
         scoredNotes = note_ratings.compute_scored_notes(
-          ratings,
-          noteParamsUnfiltered,
-          raterParamsUnfiltered,
-          noteStatusHistory,
+          ratings[
+            [c.noteIdKey, c.raterParticipantIdKey, c.helpfulnessLevelKey, c.createdAtMillisKey]
+            + c.notHelpfulTagsTSVOrder
+            + c.helpfulTagsTSVOrder
+          ],
+          keep_columns(
+            noteParamsUnfiltered,
+            [
+              c.noteIdKey,
+              c.internalNoteInterceptKey,
+              c.internalNoteFactor1Key,
+            ]
+            + c.noteParameterUncertaintyTSVColumns,
+          ),
+          raterParamsUnfiltered[
+            [
+              c.raterParticipantIdKey,
+              c.internalRaterFactor1Key,
+            ]
+          ],
+          noteStatusHistory[
+            [
+              c.noteIdKey,
+              c.createdAtMillisKey,
+              c.noteAuthorParticipantIdKey,
+              c.classificationKey,
+              c.currentLabelKey,
+              c.lockedStatusKey,
+            ]
+          ],
           minRatingsNeeded=self._minRatingsNeeded,
           crhThreshold=self._crhThreshold,
           crnhThresholdIntercept=self._crnhThresholdIntercept,
@@ -557,8 +618,10 @@ class MFBaseScorer(Scorer):
       # Determine "valid" ratings
       with self.time_block("Compute valid ratings"):
         validRatings = note_ratings.get_valid_ratings(
-          ratings,
-          noteStatusHistory,
+          ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey, c.createdAtMillisKey]],
+          noteStatusHistory[
+            [c.noteIdKey, c.createdAtMillisKey, c.timestampMillisOfNoteMostRecentNonNMRLabelKey]
+          ],
           scoredNotes[
             [
               c.noteIdKey,
@@ -584,11 +647,13 @@ class MFBaseScorer(Scorer):
                 c.internalNoteInterceptKey,
               ]
             ],
-            validRatings,
+            validRatings[
+              [c.raterParticipantIdKey, c.ratingAgreesWithNoteStatusKey, c.ratingCountKey]
+            ],
             self._minMeanNoteScore,
             self._minCRHVsCRNHRatio,
             self._minRaterAgreeRatio,
-            ratingsForTraining,
+            ratingsForTraining[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]],
           )
         )
       if self._saveIntermediateState:
@@ -599,7 +664,17 @@ class MFBaseScorer(Scorer):
       with self.time_block("Filtering by helpfulness score"):
         ratingsHelpfulnessScoreFilteredPreHarassmentFilter = (
           helpfulness_scores.filter_ratings_by_helpfulness_scores(
-            ratingsForTraining, helpfulnessScoresPreHarassmentFilter
+            ratingsForTraining[
+              [
+                c.noteIdKey,
+                c.raterParticipantIdKey,
+                c.notHelpfulSpamHarassmentOrAbuseTagKey,
+                c.createdAtMillisKey,
+                c.helpfulnessLevelKey,
+                c.notHelpfulOtherTagKey,
+              ]
+            ],
+            helpfulnessScoresPreHarassmentFilter,
           )
         )
 
@@ -612,10 +687,15 @@ class MFBaseScorer(Scorer):
         harassmentAbuseNoteParams, _, _ = tag_consensus.train_tag_model(
           ratingsHelpfulnessScoreFilteredPreHarassmentFilter,
           c.notHelpfulSpamHarassmentOrAbuseTagKey,
-          noteParamsUnfiltered,
-          raterParamsUnfiltered,
+          noteParamsUnfiltered[[c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]],
+          raterParamsUnfiltered[
+            [c.raterParticipantIdKey, c.internalRaterInterceptKey, c.internalRaterFactor1Key]
+          ],
           name="harassment",
         )
+      if not self._saveIntermediateState:
+        del ratingsHelpfulnessScoreFilteredPreHarassmentFilter
+        gc.collect()
 
       # Assigns contributor (author & rater) helpfulness bit based on (1) performance
       # authoring and reviewing previous and current notes, and (2) including an extra
@@ -630,16 +710,21 @@ class MFBaseScorer(Scorer):
               c.internalNoteInterceptKey,
             ]
           ],
-          validRatings,
+          validRatings[
+            [c.raterParticipantIdKey, c.ratingAgreesWithNoteStatusKey, c.ratingCountKey]
+          ],
           self._minMeanNoteScore,
           self._minCRHVsCRNHRatio,
           self._minRaterAgreeRatio,
-          ratings=ratingsForTraining,
+          ratings=ratingsForTraining[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]],
           tagConsensusHarassmentAbuseNotes=harassmentAbuseNoteParams,
           tagConsensusHarassmentHelpfulRatingPenalty=self.tagConsensusHarassmentHelpfulRatingPenalty,
           multiplyPenaltyByHarassmentScore=self.multiplyPenaltyByHarassmentScore,
           minimumHarassmentScoreToPenalize=self.minimumHarassmentScoreToPenalize,
         )
+      if not self._saveIntermediateState:
+        del validRatings
+        gc.collect()
       if self._saveIntermediateState:
         self.helpfulnessScores = helpfulnessScores
 
@@ -647,12 +732,26 @@ class MFBaseScorer(Scorer):
       # Filter ratings based on prev helpfulness scores
       with c.time_block("Final round MF"):
         finalRoundRatings = helpfulness_scores.filter_ratings_by_helpfulness_scores(
-          ratingsForTraining, helpfulnessScores
+          ratingsForTraining[
+            [
+              c.noteIdKey,
+              c.raterParticipantIdKey,
+              c.helpfulNumKey,
+              c.notHelpfulIncorrectTagKey,
+              c.notHelpfulSourcesMissingOrUnreliableTagKey,
+              c.notHelpfulIrrelevantSourcesTagKey,
+            ]
+          ],
+          helpfulnessScores[[c.raterParticipantIdKey, c.aboveHelpfulnessThresholdKey]],
         )
         noteParams, raterParams, globalBias = self._mfRanker.run_mf(
-          ratings=finalRoundRatings,
-          noteInit=noteParamsUnfiltered,
-          userInit=raterParamsUnfiltered,
+          ratings=finalRoundRatings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]],
+          noteInit=noteParamsUnfiltered[
+            [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
+          ],
+          userInit=raterParamsUnfiltered[
+            [c.raterParticipantIdKey, c.internalRaterInterceptKey, c.internalRaterFactor1Key]
+          ],
         )
 
     # Run Diligence MF Prescoring, based on the final MF
@@ -669,17 +768,52 @@ class MFBaseScorer(Scorer):
         diligenceRaterParams,
         diligenceGlobalIntercept,
       ) = fit_low_diligence_model_prescoring(
-        finalRoundRatings, raterInitStateDiligence=raterParamsDiligenceInit
+        finalRoundRatings[
+          [
+            c.noteIdKey,
+            c.raterParticipantIdKey,
+            c.notHelpfulIncorrectTagKey,
+            c.notHelpfulSourcesMissingOrUnreliableTagKey,
+            c.notHelpfulIrrelevantSourcesTagKey,
+          ]
+        ],
+        raterInitStateDiligence=raterParamsDiligenceInit,
       )
       noteParams = noteParams.merge(diligenceNoteParams, on=c.noteIdKey)
       raterParams = raterParams.merge(diligenceRaterParams, on=c.raterParticipantIdKey)
 
     # Compute scored notes -- currently not returned; only used for downstream computation.
     scoredNotes = note_ratings.compute_scored_notes(
-      ratings,
-      noteParams,
-      raterParams,
-      noteStatusHistory,
+      ratings[
+        [c.noteIdKey, c.raterParticipantIdKey, c.helpfulnessLevelKey, c.createdAtMillisKey]
+        + c.notHelpfulTagsTSVOrder
+        + c.helpfulTagsTSVOrder
+      ],
+      keep_columns(
+        noteParamsUnfiltered,
+        [
+          c.noteIdKey,
+          c.internalNoteInterceptKey,
+          c.internalNoteFactor1Key,
+        ]
+        + c.noteParameterUncertaintyTSVColumns,
+      ),
+      raterParamsUnfiltered[
+        [
+          c.raterParticipantIdKey,
+          c.internalRaterFactor1Key,
+        ]
+      ],
+      noteStatusHistory[
+        [
+          c.noteIdKey,
+          c.createdAtMillisKey,
+          c.noteAuthorParticipantIdKey,
+          c.classificationKey,
+          c.currentLabelKey,
+          c.lockedStatusKey,
+        ]
+      ],
       minRatingsNeeded=self._minRatingsNeeded,
       crhThreshold=self._crhThreshold,
       crnhThresholdIntercept=self._crnhThresholdIntercept,
@@ -699,14 +833,32 @@ class MFBaseScorer(Scorer):
       globalIntercept=globalBias,
       lowDiligenceGlobalIntercept=diligenceGlobalIntercept,
       tagFilteringThresholds=self.compute_tag_thresholds_for_percentile(
-        scoredNotes=noteParams.merge(scoredNotes, on=c.noteIdKey, suffixes=("", "_dup")),
-        raterParams=raterParams,
-        ratings=ratings,
+        scoredNotes=noteParams[[c.noteIdKey, c.internalNoteFactor1Key]].merge(
+          scoredNotes[[c.noteIdKey, c.currentlyRatedHelpfulBoolKey]],
+          on=c.noteIdKey,
+          suffixes=("", "_dup"),
+        ),
+        raterParams=raterParams[[c.raterParticipantIdKey, c.internalRaterFactor1Key]],
+        ratings=ratings[
+          [
+            c.noteIdKey,
+            c.raterParticipantIdKey,
+          ]
+          + c.notHelpfulTagsTSVOrder
+        ],
       ),
     )
 
     # Compute user incorrect tag aggregates
-    userIncorrectTagUsageDf = get_user_incorrect_ratio(ratings)
+    userIncorrectTagUsageDf = get_user_incorrect_ratio(
+      ratings[
+        [
+          c.noteIdKey,
+          c.raterParticipantIdKey,
+        ]
+        + c.notHelpfulTagsTSVOrder
+      ]
+    )
 
     raterModelOutput = raterParams.merge(
       helpfulnessScores[
@@ -728,7 +880,12 @@ class MFBaseScorer(Scorer):
     )
 
     noteModelOutput = noteParams
-
+    # Returning should remove references to these, but manually trigger GC just to reclaim
+    # resources as soon as possible.
+    del ratings
+    del ratingsForTraining
+    del finalRoundRatings
+    gc.collect()
     return noteModelOutput, raterModelOutput, metaOutput
 
   def _score_notes_and_users(
