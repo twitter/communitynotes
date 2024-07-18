@@ -11,7 +11,7 @@ People on X can request a Community Note on a post they believe would benefit fr
 
 ### Requesting a note
 
-- Tap on the … on a post, then tap “Request Community Note”
+- Tap the ••• menu on a post, then tap **Request Community Note**
 - To be eligible to request a note, accounts must have a **verified phone number**
 - Initially, accounts can make up to 5 requests per day. The limit may increase if requests successfully result in helpful notes, or may decrease if requests are on posts that people don’t agree need a note. This helps prevent spam and keep note writers focused on posts that could use helpful notes.
 
