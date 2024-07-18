@@ -12,7 +12,7 @@ Top Writers are contributors recognized for writing a significant number of note
 
 Top Note Writers get access to:
 
-* **Writing notes about media:** Top Writers can write notes about media featured on multiple posts, keeping many more people better informed. [Learn more](./notes-on-media.md).
+* **Writing notes on images & videos:** Top Writers can write notes about media featured on multiple posts, keeping many more people better informed. [Learn more](./notes-on-media.md).
 
 * **Priority for note alerts:** Top Writers’ note proposals are more likely to trigger notifications to get rater’s attention.
 
