@@ -29,6 +29,7 @@ from .mf_group_scorer import (
   trialScoringGroup,
 )
 from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
+from .pandas_utils import get_df_info, keep_columns
 from .post_selection_similarity import (
   PostSelectionSimilarity,
   filter_ratings_by_post_selection_similarity,
@@ -328,7 +329,21 @@ def _save_dfs_to_shared_memory(
   """
   shms: List[shared_memory.SharedMemory] = []
   noteTopics = save_df_to_shared_memory(scoringArgs.noteTopics, shms)
-  ratings = save_df_to_shared_memory(scoringArgs.ratings, shms)
+  ratings = save_df_to_shared_memory(
+    keep_columns(
+      scoringArgs.ratings,
+      [
+        c.noteIdKey,
+        c.raterParticipantIdKey,
+        c.helpfulNumKey,
+        c.helpfulnessLevelKey,
+        c.createdAtMillisKey,
+      ]
+      + c.notHelpfulTagsTSVOrder
+      + c.helpfulTagsTSVOrder,
+    ),
+    shms,
+  )
   noteStatusHistory = save_df_to_shared_memory(scoringArgs.noteStatusHistory, shms)
   userEnrollment = save_df_to_shared_memory(scoringArgs.userEnrollment, shms)
 
@@ -466,6 +481,16 @@ def combine_prescorer_scorer_results(
       c.lowDiligenceNoteFactor1Key,
     },
   )
+  # BUG: The type error for this concat operation shows a mix of Int64 and float64 values in
+  # some columns, suggesting that an input may be emtpy.  The type error is preceeded by this
+  # warning from Pandas, which also points to an empty input:
+  #   FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is
+  #   deprecated. In a future version, this will no longer exclude empty or all-NA columns
+  #   when determining the result dtypes. To retain the old behavior, exclude the relevant
+  #   entries before the concat operation.
+  # All columns below except incorrectTagRatingsMadeByRater and raterParticipantId show a mix
+  # of float64/float32 and object.  incorrectTagRatingsMadeByRater mixes Int64/Int8 and object,
+  # and raterParticipantId mixes Int64 and object.
   raterParamsUnfilteredMultiScorers = pd.concat(
     raterParamsUnfilteredMultiScorersList,
     unsafeAllowed={
@@ -480,6 +505,8 @@ def combine_prescorer_scorer_results(
       c.lowDiligenceRaterInterceptKey,
       c.lowDiligenceRaterFactor1Key,
       c.lowDiligenceRaterReputationKey,
+      c.incorrectTagRatingsMadeByRaterKey,
+      c.raterParticipantIdKey,
     },
   )
   return (
@@ -715,6 +742,21 @@ def meta_score(
       c.metaScorerActiveRulesKey,
       decidedByColumn=c.decidedByKey,
     )
+    # Validate that nothing that was a FIRM_REJECT or CRNH from Core or Expansion is rated CRH
+    coreRejects = scoringResult[c.coreRatingStatusKey].isin(
+      {c.firmReject, c.currentlyRatedNotHelpful}
+    )
+    expansionRejects = scoringResult[c.expansionRatingStatusKey].isin(
+      {c.firmReject, c.currentlyRatedNotHelpful}
+    )
+    blockedRows = coreRejects | (scoringResult[c.coreRatingStatusKey].isna() & expansionRejects)
+    crhRows = scoringResult[c.finalRatingStatusKey] == c.currentlyRatedHelpful
+    print("Summary of blocked and CRH rows:")
+    # TODO: validate that these are all due to ScoringDriftGuard and change to an assert
+    print(
+      scoringResult[blockedRows & crhRows][c.metaScorerActiveRulesKey].value_counts(dropna=False)
+    )
+    print(scoringResult[blockedRows & crhRows][c.decidedByKey].value_counts(dropna=False))
 
   with c.time_block("Post-scorers: Meta Score: Preparing Return Values"):
     scoredNotesCols = scoringResult[
@@ -955,42 +997,6 @@ def _validate_contributor_scoring_output(helpfulnessScores: pd.DataFrame) -> pd.
   return helpfulnessScores
 
 
-def _log_df_info(
-  notes: pd.DataFrame,
-  ratings: pd.DataFrame,
-  noteStatusHistory: pd.DataFrame,
-  userEnrollment: pd.DataFrame,
-  prescoringNoteModelOutput: Optional[pd.DataFrame] = None,
-  prescoringRaterModelOutput: Optional[pd.DataFrame] = None,
-) -> None:
-  """Log dtype and RAM usage stats for each input DataFrame."""
-  pairs = [
-    ("notes", notes),
-    ("ratings", ratings),
-    ("noteStatusHistory", noteStatusHistory),
-    ("userEnrollment", userEnrollment),
-    ("prescoringNoteModelOutput", prescoringNoteModelOutput),
-    ("prescoringRaterModelOutput", prescoringRaterModelOutput),
-  ]
-  for name, df in pairs:
-    if df is None:
-      continue
-    stats = (
-      df.dtypes.to_frame().reset_index(drop=False).rename(columns={"index": "column", 0: "dtype"})
-    ).merge(
-      # deep=True shows memory usage for the entire contained object (e.g. if the type
-      # of a column is "object", then deep=True shows the size of the objects instead
-      # of the size of the pointers.
-      df.memory_usage(index=True, deep=True)
-      .to_frame()
-      .reset_index(drop=False)
-      .rename(columns={"index": "column", 0: "RAM"})
-    )
-    print(f"""{name} total RAM: {stats["RAM"].sum()}""")
-    print(stats)
-    print()
-
-
 def run_prescoring(
   notes: pd.DataFrame,
   ratings: pd.DataFrame,
@@ -1006,8 +1012,11 @@ def run_prescoring(
 ) -> Tuple[
   pd.DataFrame, pd.DataFrame, sklearn.pipeline.Pipeline, c.PrescoringMetaOutput, pd.DataFrame
 ]:
-  with c.time_block("Logging RAM usage"):
-    _log_df_info(notes, ratings, noteStatusHistory, userEnrollment)
+  with c.time_block("Logging Prescoring Inputs Initial RAM usage"):
+    print(get_df_info(notes, "notes"))
+    print(get_df_info(ratings, "ratings"))
+    print(get_df_info(noteStatusHistory, "noteStatusHistory"))
+    print(get_df_info(userEnrollment, "userEnrollment"))
   with c.time_block("Note Topic Assignment"):
     topicModel = TopicModel()
     noteTopicClassifierPipe, seedLabels, conflictedTexts = topicModel.train_note_topic_classifier(
@@ -1035,6 +1044,28 @@ def run_prescoring(
     useStableInitialization=useStableInitialization,
   )
 
+  # Attempt to convert IDs to Int64 before prescoring.  We expect this to succeed in production,
+  # fail when running on public data and fail in some unit tests.
+  conversion = False
+  try:
+    # Complete all three conversions before doing any updates, so if there are any errors the
+    # updates don't happen.
+    ratingIds = ratings[c.raterParticipantIdKey].astype(pd.Int64Dtype())
+    noteStatusHistoryIds = noteStatusHistory[c.noteAuthorParticipantIdKey].astype(pd.Int64Dtype())
+    userEnrollmentIds = userEnrollment[c.participantIdKey].astype(pd.Int64Dtype())
+    ratings[c.raterParticipantIdKey] = ratingIds
+    noteStatusHistory[c.noteAuthorParticipantIdKey] = noteStatusHistoryIds
+    userEnrollment[c.participantIdKey] = userEnrollmentIds
+    del ratingIds, noteStatusHistoryIds, userEnrollmentIds
+    print("User IDs for ratings, noteStatusHistory and userEnrollment converted to Int64Dtype.")
+    conversion = True
+  except ValueError as e:
+    print(f"Error converting user IDs to ints.  IDs will remain as strings. {repr(e)}")
+  with c.time_block("Logging Prescoring Inputs RAM usage before _run_scorers"):
+    print(get_df_info(notes, "notes"))
+    print(get_df_info(ratings, "ratings"))
+    print(get_df_info(noteStatusHistory, "noteStatusHistory"))
+    print(get_df_info(userEnrollment, "userEnrollment"))
   prescoringModelResultsFromAllScorers = _run_scorers(
     scorers=list(chain(*scorers.values())),
     scoringArgs=PrescoringArgs(
@@ -1050,21 +1081,52 @@ def run_prescoring(
     # scorer (i.e. we would not finish faster with >6 worker processes.)
     maxWorkers=6,
   )
-
   (
     prescoringNoteModelOutput,
     prescoringRaterModelOutput,
     prescoringMetaOutput,
   ) = combine_prescorer_scorer_results(prescoringModelResultsFromAllScorers)
+  del prescoringModelResultsFromAllScorers
+  del scorers
+  gc.collect()
+
+  with c.time_block("Logging Prescoring Results RAM usage (before conversion)"):
+    print(get_df_info(notes, "notes"))
+    print(get_df_info(ratings, "ratings"))
+    print(get_df_info(noteStatusHistory, "noteStatusHistory"))
+    print(get_df_info(userEnrollment, "userEnrollment"))
+    print(get_df_info(prescoringNoteModelOutput, "prescoringNoteModelOutput"))
+    print(get_df_info(prescoringRaterModelOutput, "prescoringRaterModelOutput"))
+  # Restore IDs as string objects now that prescoring is over and memory pressure is relaxed.
+  if conversion:
+    print("Restoring string IDs.")
+    ratings[c.raterParticipantIdKey] = ratings[c.raterParticipantIdKey].astype(str)
+    noteStatusHistory[c.noteAuthorParticipantIdKey] = noteStatusHistory[
+      c.noteAuthorParticipantIdKey
+    ].astype(str)
+    userEnrollment[c.participantIdKey] = userEnrollment[c.participantIdKey].astype(str)
+    # Notice that we also do conversion on the prescoring results.
+    prescoringRaterModelOutput[c.raterParticipantIdKey] = prescoringRaterModelOutput[
+      c.raterParticipantIdKey
+    ].astype(str)
+    print("Restoration of original string IDs complete.")
+
+  with c.time_block("Logging Prescoring Results RAM usage (after conversion)"):
+    print(get_df_info(notes, "notes"))
+    print(get_df_info(ratings, "ratings"))
+    print(get_df_info(noteStatusHistory, "noteStatusHistory"))
+    print(get_df_info(userEnrollment, "userEnrollment"))
+    print(get_df_info(prescoringNoteModelOutput, "prescoringNoteModelOutput"))
+    print(get_df_info(prescoringRaterModelOutput, "prescoringRaterModelOutput"))
+
   prescoringRaterModelOutput = pd.concat(
     [prescoringRaterModelOutput, postSelectionSimilarityValues],
     unsafeAllowed={
       c.postSelectionValueKey,
     },
   )
-  del prescoringModelResultsFromAllScorers
-  del scorers
-  gc.collect()
+  with c.time_block("Logging Prescoring Results RAM usage (after concatenation)"):
+    print(get_df_info(prescoringRaterModelOutput, "prescoringRaterModelOutput"))
 
   # Prescoring itself is now done. We will not run final_note_scoring to check note status flips.
   if checkFlips:
@@ -1162,7 +1224,8 @@ def determine_which_notes_to_rescore(
   noteSubsets.append(
     c.NoteSubset(
       noteSet=notesWithNewRatings,
-      maxCrhChurnRate=c.finalNotesWithNewRatingsMaxCrhChurn,
+      maxNewCrhChurnRate=c.finalNotesWithNewRatingsMaxNewCrhChurn,
+      maxOldCrhChurnRate=c.finalNotesWithNewRatingsMaxOldCrhChurn,
       description=c.RescoringRuleID.NOTES_WITH_NEW_RATINGS,
     )
   )
@@ -1193,7 +1256,8 @@ def determine_which_notes_to_rescore(
   noteSubsets.append(
     c.NoteSubset(
       noteSet=newNotesNotRescoredRecentlyEnough,
-      maxCrhChurnRate=c.finalUnlockedNotesWithNoNewRatingsMaxCrhChurn,
+      maxNewCrhChurnRate=c.finalUnlockedNotesWithNoNewRatingsMaxCrhChurn,
+      maxOldCrhChurnRate=c.finalUnlockedNotesWithNoNewRatingsMaxCrhChurn,
       description=c.RescoringRuleID.NEW_NOTES_NOT_RESCORED_RECENTLY_ENOUGH,
     )
   )
@@ -1215,7 +1279,8 @@ def determine_which_notes_to_rescore(
   noteSubsets.append(
     c.NoteSubset(
       noteSet=justFlippedNotes,
-      maxCrhChurnRate=c.finalNotesThatJustFlippedStatusMaxCrhChurn,
+      maxNewCrhChurnRate=c.finalNotesThatJustFlippedStatusMaxCrhChurn,
+      maxOldCrhChurnRate=c.finalNotesThatJustFlippedStatusMaxCrhChurn,
       description=c.RescoringRuleID.NOTES_FLIPPED_PREVIOUS_RUN,
     )
   )
@@ -1245,7 +1310,8 @@ def determine_which_notes_to_rescore(
   noteSubsets.append(
     c.NoteSubset(
       noteSet=recentlyFlippedNotesNotRescoredRecentlyEnough,
-      maxCrhChurnRate=c.finalNotesThatFlippedRecentlyMaxCrhChurn,
+      maxNewCrhChurnRate=c.finalNotesThatFlippedRecentlyMaxCrhChurn,
+      maxOldCrhChurnRate=c.finalNotesThatFlippedRecentlyMaxCrhChurn,
       description=c.RescoringRuleID.RECENTLY_FLIPPED_NOTES_NOT_RESCORED_RECENTLY_ENOUGH,
     )
   )
@@ -1283,16 +1349,13 @@ def run_final_note_scoring(
   previousAuxiliaryNoteInfo: Optional[pd.DataFrame] = None,
   previousRatingCutoffTimestampMillis: Optional[int] = 0,
 ):
-  with c.time_block("Logging RAM usage"):
-    _log_df_info(
-      notes,
-      ratings,
-      noteStatusHistory,
-      userEnrollment,
-      prescoringNoteModelOutput,
-      prescoringRaterModelOutput,
-    )
-
+  with c.time_block("Logging Final Scoring RAM usage"):
+    print(get_df_info(notes, "notes"))
+    print(get_df_info(ratings, "ratings"))
+    print(get_df_info(noteStatusHistory, "noteStatusHistory"))
+    print(get_df_info(userEnrollment, "userEnrollment"))
+    print(get_df_info(prescoringNoteModelOutput, "prescoringNoteModelOutput"))
+    print(get_df_info(prescoringRaterModelOutput, "prescoringRaterModelOutput"))
   with c.time_block("Determine which notes to score."):
     if previousScoredNotes is None:
       print("No previous scored notes passed; scoring all notes.")
@@ -1301,7 +1364,8 @@ def run_final_note_scoring(
       noteSubsets: List[c.NoteSubset] = [
         c.NoteSubset(
           noteSet=None,
-          maxCrhChurnRate=c.prescoringAllUnlockedNotesMaxCrhChurn,
+          maxNewCrhChurnRate=c.prescoringAllUnlockedNotesMaxCrhChurn,
+          maxOldCrhChurnRate=c.prescoringAllUnlockedNotesMaxCrhChurn,
           description=c.RescoringRuleID.ALL_NOTES,
         )
       ]

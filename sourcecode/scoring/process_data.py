@@ -4,6 +4,7 @@ import os
 from typing import Dict, List, Optional, Tuple
 
 from . import constants as c, note_status_history
+from .pandas_utils import get_df_info
 
 import joblib
 import numpy as np
@@ -91,6 +92,9 @@ def tsv_parser(
         usecols=useCols,
       )
     if convertNAToNone:
+      print("Logging size effect of convertNAToNone")
+      print("Before conversion:")
+      print(get_df_info(data))
       # float types will be nan if missing; newer nullable types like "StringDtype" or "Int64Dtype" will by default
       # be pandas._libs.missing.NAType if missing. Set those to None and change the dtype back to object.
       for colname, coltype in mapping.items():
@@ -100,6 +104,8 @@ def tsv_parser(
         ):
           data[colname] = data[colname].astype(object)
           data.loc[pd.isna(data[colname]), colname] = None
+      print("After conversion:")
+      print(get_df_info(data))
     return data
   except (ValueError, IndexError) as e:
     raise ValueError(f"Invalid input: {e}")

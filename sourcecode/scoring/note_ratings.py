@@ -95,9 +95,9 @@ def get_ratings_before_note_status_and_public_tsv(
 
     assert len(ratingsWithNoteLabelInfo) == len(ratings)
     mismatches = [
-      (c, dtype, ratingsWithNoteLabelInfoTypes[c])
-      for c, dtype in zip(ratingsWithNoteLabelInfo, ratingsWithNoteLabelInfo.dtypes)
-      if dtype != ratingsWithNoteLabelInfoTypes[c]
+      (col, dtype, ratingsWithNoteLabelInfoTypes[col])
+      for col, dtype in zip(ratingsWithNoteLabelInfo, ratingsWithNoteLabelInfo.dtypes)
+      if ("participantid" not in col.lower()) and (dtype != ratingsWithNoteLabelInfoTypes[col])
     ]
     assert not len(mismatches), f"Mismatch columns: {mismatches}"
 
@@ -379,6 +379,7 @@ def compute_scored_notes(
   is_crnh_ucb_function: Callable[..., pd.Series] = is_crnh_ucb,
   lowDiligenceThreshold: float = 0.263,
   factorThreshold: float = 0.5,
+  firmRejectThreshold: Optional[float] = None,
 ) -> pd.DataFrame:
   """
   Merges note status history, ratings, and model output. It annotes the data frame with
@@ -515,7 +516,7 @@ def compute_scored_notes(
         scoring_rules.FilterTagOutliers(
           RuleID.TAG_OUTLIER,
           {RuleID.GENERAL_CRH},
-          c.needsMoreRatings,
+          c.firmReject if firmRejectThreshold is not None else c.needsMoreRatings,
           tagFilterThresholds=tagFilterThresholds,
         ),
       ]
@@ -545,7 +546,7 @@ def compute_scored_notes(
         scoring_rules.FilterIncorrect(
           RuleID.INCORRECT_OUTLIER,
           {RuleID.TAG_OUTLIER},
-          c.needsMoreRatings,
+          c.firmReject if firmRejectThreshold is not None else c.needsMoreRatings,
           tagThreshold=2,
           voteThreshold=3,
           weightedTotalVotes=incorrectFilterThreshold,
@@ -553,17 +554,26 @@ def compute_scored_notes(
         scoring_rules.FilterLowDiligence(
           RuleID.LOW_DILIGENCE,
           {RuleID.INCORRECT_OUTLIER},
-          c.needsMoreRatings,
+          c.firmReject if firmRejectThreshold is not None else c.needsMoreRatings,
           interceptThreshold=lowDiligenceThreshold,
         ),
         scoring_rules.FilterLargeFactor(
           RuleID.LARGE_FACTOR,
           {RuleID.LOW_DILIGENCE},
-          c.needsMoreRatings,
+          c.firmReject if firmRejectThreshold is not None else c.needsMoreRatings,
           factorThreshold=factorThreshold,
         ),
       ]
     )
+    if firmRejectThreshold is not None:
+      rules.append(
+        scoring_rules.RejectLowIntercept(
+          RuleID.LOW_INTERCEPT,
+          {RuleID.LARGE_FACTOR},
+          c.firmReject,
+          firmRejectThreshold,
+        )
+      )
   scoredNotes = scoring_rules.apply_scoring_rules(
     noteStats, rules, c.internalRatingStatusKey, c.internalActiveRulesKey
   )

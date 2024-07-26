@@ -137,7 +137,12 @@ class ReputationScorer(Scorer):
     )
 
     metaScorerOutput = c.PrescoringMetaScorerOutput(
-      globalIntercept=None, lowDiligenceGlobalIntercept=globalIntercept, tagFilteringThresholds=None
+      globalIntercept=None,
+      lowDiligenceGlobalIntercept=globalIntercept,
+      tagFilteringThresholds=None,
+      finalRoundNumRatings=None,
+      finalRoundNumNotes=None,
+      finalRoundNumUsers=None,
     )
     return noteStats, raterStats, metaScorerOutput
 

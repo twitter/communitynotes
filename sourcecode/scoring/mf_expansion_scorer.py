@@ -14,6 +14,7 @@ class MFExpansionScorer(MFBaseScorer):
     useStableInitialization: bool = True,
     saveIntermediateState: bool = False,
     threads: int = c.defaultNumThreads,
+    firmRejectThreshold: Optional[float] = 0.3,
   ) -> None:
     """Configure MFExpansionScorer object.
 
@@ -30,6 +31,7 @@ class MFExpansionScorer(MFBaseScorer):
       useStableInitialization=useStableInitialization,
       saveIntermediateState=saveIntermediateState,
       threads=threads,
+      firmRejectThreshold=firmRejectThreshold,
     )
 
   def get_name(self):

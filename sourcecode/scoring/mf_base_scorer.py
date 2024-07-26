@@ -184,6 +184,7 @@ class MFBaseScorer(Scorer):
     useReputation: bool = True,
     tagFilterPercentile: int = 95,
     incorrectFilterThreshold: float = 2.5,
+    firmRejectThreshold: Optional[float] = None,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -256,6 +257,7 @@ class MFBaseScorer(Scorer):
     self._useReputation = useReputation
     self._tagFilterPercentile = tagFilterPercentile
     self._incorrectFilterThreshold = incorrectFilterThreshold
+    self._firmRejectThreshold = firmRejectThreshold
     mfArgs = dict(
       [
         pair
@@ -611,6 +613,7 @@ class MFBaseScorer(Scorer):
           incorrectFilterThreshold=self._incorrectFilterThreshold,
           tagFilterThresholds=None,
           finalRound=False,
+          firmRejectThreshold=self._firmRejectThreshold,
         )
       if self._saveIntermediateState:
         self.prescoringScoredNotes = scoredNotes
@@ -826,6 +829,7 @@ class MFBaseScorer(Scorer):
       incorrectFilterThreshold=self._incorrectFilterThreshold,
       finalRound=False,
       factorThreshold=self._factorThreshold,
+      firmRejectThreshold=self._firmRejectThreshold,
     )
 
     # Compute meta output
@@ -847,6 +851,9 @@ class MFBaseScorer(Scorer):
           + c.notHelpfulTagsTSVOrder
         ],
       ),
+      finalRoundNumRatings=len(finalRoundRatings),
+      finalRoundNumNotes=finalRoundRatings[c.noteIdKey].nunique(),
+      finalRoundNumUsers=finalRoundRatings[c.raterParticipantIdKey].nunique(),
     )
 
     # Compute user incorrect tag aggregates
@@ -950,6 +957,16 @@ class MFBaseScorer(Scorer):
       if self._saveIntermediateState:
         self.finalRoundRatings = finalRoundRatings
 
+    assert (
+      prescoringMetaScorerOutput.finalRoundNumNotes is not None
+    ), "Missing final round num notes"
+    assert (
+      prescoringMetaScorerOutput.finalRoundNumRatings is not None
+    ), "Missing final round num ratings"
+    assert (
+      prescoringMetaScorerOutput.finalRoundNumUsers is not None
+    ), "Missing final round num users"
+
     # Re-runs matrix factorization using only ratings given by helpful raters.
     with self.time_block("Final helpfulness-filtered MF"):
       noteParams, raterParams, globalBias = self._mfRanker.run_mf(
@@ -958,6 +975,9 @@ class MFBaseScorer(Scorer):
         userInit=prescoringRaterModelOutput,
         globalInterceptInit=prescoringMetaScorerOutput.globalIntercept,
         freezeRaterParameters=True,
+        freezeGlobalParameters=True,
+        ratingPerNoteLossRatio=prescoringMetaScorerOutput.finalRoundNumRatings
+        / prescoringMetaScorerOutput.finalRoundNumNotes,
       )
 
     if self._saveIntermediateState:
@@ -994,6 +1014,10 @@ class MFBaseScorer(Scorer):
         noteInitStateDiligence=prescoringNoteModelOutput,
         raterInitStateDiligence=prescoringRaterModelOutput,
         globalInterceptDiligence=prescoringMetaScorerOutput.lowDiligenceGlobalIntercept,
+        ratingsPerNoteLossRatio=prescoringMetaScorerOutput.finalRoundNumRatings
+        / prescoringMetaScorerOutput.finalRoundNumNotes,
+        ratingsPerUserLossRatio=prescoringMetaScorerOutput.finalRoundNumRatings
+        / prescoringMetaScorerOutput.finalRoundNumUsers,
       )
       print(f"diligenceNP cols: {diligenceNoteParams.columns}")
       noteParams = noteParams.merge(diligenceNoteParams, on=c.noteIdKey)
@@ -1033,6 +1057,7 @@ class MFBaseScorer(Scorer):
         lowDiligenceThreshold=self._lowDiligenceThreshold,
         finalRound=True,
         factorThreshold=self._factorThreshold,
+        firmRejectThreshold=self._firmRejectThreshold,
       )
       print(f"sn cols: {scoredNotes.columns}")
 

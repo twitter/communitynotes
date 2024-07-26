@@ -31,6 +31,7 @@ class RuleID(Enum):
   INCORRECT_OUTLIER = RuleAndVersion("FilterIncorrect", "1.0", False)
   LOW_DILIGENCE = RuleAndVersion("FilterLowDiligence", "1.0", False)
   LARGE_FACTOR = RuleAndVersion("FilterLargeFactor", "1.0", False)
+  LOW_INTERCEPT = RuleAndVersion("RejectLowIntercept", "1.0", False)
 
   # Rules used in _meta_score.
   META_INITIAL_NMR = RuleAndVersion("MetaInitialNMR", "1.0", False)
@@ -193,15 +194,20 @@ class ApplyModelResult(ScoringRule):
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Propagates any status set in sourceColumn when it is non-NaN."""
-    notesWithStatus = ~noteStats[self._sourceColumn].isna()
+    # Generate the set of note status updates
+    statusUpdateRows = ~noteStats[self._sourceColumn].isna()
+    noteStatusUpdates = noteStats[statusUpdateRows][[c.noteIdKey, self._sourceColumn]].rename(
+      columns={self._sourceColumn: statusColumn}
+    )
+    # Rename FIRM_REJECT to NEEDS_MORE_RATINGS since the status will be exported as the final status
+    noteStatusUpdates.loc[
+      noteStatusUpdates[statusColumn] == c.firmReject, statusColumn
+    ] = c.needsMoreRatings
     assert (
-      noteStats.loc[notesWithStatus, self._sourceColumn]
+      noteStatusUpdates[statusColumn]
       .isin({c.currentlyRatedHelpful, c.currentlyRatedNotHelpful, c.needsMoreRatings})
       .all()
     ), "status must be set to CRH, CRNH or NMR"
-    noteStatusUpdates = noteStats[notesWithStatus][[c.noteIdKey, self._sourceColumn]].rename(
-      columns={self._sourceColumn: statusColumn}
-    )
     return (noteStatusUpdates, None)
 
 
@@ -235,10 +241,13 @@ class FilterTagOutliers(ScoringRule):
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Returns notes on track for CRH with high levels of any tag to receive NMR status."""
-    # Prune noteStats to only include CRH notes.
-    crhNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][[c.noteIdKey]]
-    crhStats = noteStats.merge(crhNotes, on=c.noteIdKey, how="inner")
-    print(f"CRH notes prior to tag filtering: {len(crhStats)}")
+    # Prune noteStats to exclude CRNH notes.  CRNH will have stronger downstream effects, so
+    # we don't want to over-write that status.
+    candidateNotes = currentLabels[currentLabels[statusColumn] != c.currentlyRatedNotHelpful][
+      [c.noteIdKey]
+    ]
+    noteStats = noteStats.merge(candidateNotes, on=c.noteIdKey, how="inner")
+    print(f"Candidate notes prior to tag filtering: {len(noteStats)}")
 
     # Identify impacted notes.
     impactedNotes = pd.DataFrame.from_dict(
@@ -255,11 +264,11 @@ class FilterTagOutliers(ScoringRule):
       if tag == c.notHelpfulHardToUnderstandKey:
         print(f"outlier filtering disabled for tag: {tag}")
         continue
-      tagFilteredNotes = crhStats[
+      tagFilteredNotes = noteStats[
         # Adjusted total must pass minimum threhsold set across all tags.
-        (crhStats[adjustedColumn] > self._minAdjustedTotal)
+        (noteStats[adjustedColumn] > self._minAdjustedTotal)
         # Adjusted ratio must exceed percentile based total for this specific tag.
-        & (crhStats[adjustedRatioColumn] > self._tagFilterThresholds[adjustedRatioColumn])
+        & (noteStats[adjustedRatioColumn] > self._tagFilterThresholds[adjustedRatioColumn])
       ][c.noteIdKey]
       impactedNotes = pd.concat(
         [impactedNotes, pd.DataFrame({c.noteIdKey: tagFilteredNotes, c.activeFilterTagsKey: tag})],
@@ -308,15 +317,18 @@ class FilterIncorrect(ScoringRule):
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Returns notes on track for CRH with high levels of any tag to receive NMR status."""
-    # Prune noteStats to only include CRH notes.
-    crhNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][[c.noteIdKey]]
-    crhStats = noteStats.merge(crhNotes, on=c.noteIdKey, how="inner")
+    # Prune noteStats to exclude CRNH notes.  CRNH will have stronger downstream effects, so
+    # we don't want to over-write that status.
+    candidateNotes = currentLabels[currentLabels[statusColumn] != c.currentlyRatedNotHelpful][
+      [c.noteIdKey]
+    ]
+    noteStats = noteStats.merge(candidateNotes, on=c.noteIdKey, how="inner")
 
     # Identify impacted notes.
-    noteStatusUpdates = crhStats.loc[
-      (crhStats["notHelpfulIncorrect_interval"] >= self._tagThreshold)
-      & (crhStats["num_voters_interval"] >= self._voteThreshold)
-      & (crhStats["tf_idf_incorrect_interval"] >= self._weightedTotalVotes)
+    noteStatusUpdates = noteStats.loc[
+      (noteStats["notHelpfulIncorrect_interval"] >= self._tagThreshold)
+      & (noteStats["num_voters_interval"] >= self._voteThreshold)
+      & (noteStats["tf_idf_incorrect_interval"] >= self._weightedTotalVotes)
     ][[c.noteIdKey]]
 
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
@@ -351,13 +363,16 @@ class FilterLowDiligence(ScoringRule):
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Returns notes on track for CRH with a high low diligence intercept."""
-    # Prune noteStats to only include CRH notes.
-    crhNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][[c.noteIdKey]]
-    crhStats = noteStats.merge(crhNotes, on=c.noteIdKey, how="inner")
+    # Prune noteStats to exclude CRNH notes.  CRNH will have stronger downstream effects, so
+    # we don't want to over-write that status.
+    candidateNotes = currentLabels[currentLabels[statusColumn] != c.currentlyRatedNotHelpful][
+      [c.noteIdKey]
+    ]
+    noteStats = noteStats.merge(candidateNotes, on=c.noteIdKey, how="inner")
 
     # Identify impacted notes.
-    noteStatusUpdates = crhStats.loc[
-      crhStats[c.lowDiligenceNoteInterceptKey] > self._interceptThreshold
+    noteStatusUpdates = noteStats.loc[
+      noteStats[c.lowDiligenceNoteInterceptKey] > self._interceptThreshold
     ][[c.noteIdKey]]
 
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
@@ -392,13 +407,16 @@ class FilterLargeFactor(ScoringRule):
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Returns notes on track for CRH with a high low diligence intercept."""
-    # Prune noteStats to only include CRH notes.
-    crhNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][[c.noteIdKey]]
-    crhStats = noteStats.merge(crhNotes, on=c.noteIdKey, how="inner")
+    # Prune noteStats to exclude CRNH notes.  CRNH will have stronger downstream effects, so
+    # we don't want to over-write that status.
+    candidateNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][
+      [c.noteIdKey]
+    ]
+    noteStats = noteStats.merge(candidateNotes, on=c.noteIdKey, how="inner")
 
     # Identify impacted notes.
-    noteStatusUpdates = crhStats.loc[
-      crhStats[c.internalNoteFactor1Key].abs() > self._factorThreshold
+    noteStatusUpdates = noteStats.loc[
+      noteStats[c.internalNoteFactor1Key].abs() > self._factorThreshold
     ][[c.noteIdKey]]
 
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
@@ -406,6 +424,44 @@ class FilterLargeFactor(ScoringRule):
     print(f"Total notes impacted by large factor filtering: {len(noteStatusUpdates)}")
     noteStatusUpdates[statusColumn] = self._status
 
+    return (noteStatusUpdates, None)
+
+
+class RejectLowIntercept(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    status: str,
+    firmRejectThreshold: float,
+  ):
+    """Set notes with an intercept below firmRejectThreshold to firmReject, preventing downstream CRH.
+
+    Args:
+      rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
+      dependencies: Rules which must run before this rule can run.
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
+      firmRejectThreshold: firmReject notes with an intercept below this threshold
+    """
+    super().__init__(ruleID, dependencies)
+    self._status = status
+    self._firmRejectThreshold = firmRejectThreshold
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Returns notes on track for NMR with an intercept below firmRejectThreshold."""
+    # Require that notes are currently NMR.  If the note is already on track for firmReject, no need
+    # to update the status since a more specific rule has already acted on the note.  If the note is
+    # on track for CRNH, leave status unchanged so the finalRatingStatus is CRNH.
+    candidateNotes = currentLabels[currentLabels[statusColumn] != c.currentlyRatedNotHelpful][
+      [c.noteIdKey]
+    ]
+    noteStats = noteStats.merge(candidateNotes, on=c.noteIdKey, how="inner")
+    noteStatusUpdates = noteStats.loc[
+      (noteStats[c.internalNoteInterceptKey] < self._firmRejectThreshold)
+    ][[c.noteIdKey]]
+    noteStatusUpdates[statusColumn] = self._status
     return (noteStatusUpdates, None)
 
 
@@ -451,7 +507,14 @@ class ApplyGroupModelResult(ScoringRule):
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Flip notes from NMR to CRH based on group models and subject to core/expansion model safeguards."""
-    # Identify notes which were CRH from the applicable group model.
+    # Identify notes blocked from CRH status due to FR/CRNH status in core or expansion
+    coreRejects = noteStats[c.coreRatingStatusKey].isin({c.firmReject, c.currentlyRatedNotHelpful})
+    expansionRejects = noteStats[c.expansionRatingStatusKey].isin(
+      {c.firmReject, c.currentlyRatedNotHelpful}
+    )
+    blocked = coreRejects | (noteStats[c.coreRatingStatusKey].isna() & expansionRejects)
+    noteStats = noteStats[~blocked]
+    # Generate the set of note status updates
     probationaryCRHNotes = noteStats[
       (noteStats[c.groupRatingStatusKey] == c.currentlyRatedHelpful)
       & (noteStats[c.modelingGroupKey] == self._groupNumber)

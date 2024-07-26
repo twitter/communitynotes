@@ -15,6 +15,8 @@ import torch
 def _setup_dataset_and_hparams(
   filteredRatings: pd.DataFrame,
   device=torch.device("cpu"),
+  ratingsPerNoteLossRatio: Optional[float] = None,
+  ratingsPerUserLossRatio: Optional[float] = None,
 ):
   # Define dataset
   targets = (
@@ -62,6 +64,8 @@ def _setup_dataset_and_hparams(
     reputationExp=0.5,
     alpha=0.1,
     defaultReputation=1.0,
+    ratingPerNoteLossRatio=ratingsPerNoteLossRatio,  # 35.0, # approx 29377568 / 795977
+    ratingPerUserLossRatio=ratingsPerUserLossRatio,  # 75.0, # approx 29377568 / 265214
   )
   return dataset, hParams
 
@@ -89,6 +93,8 @@ def fit_low_diligence_model_final(
   noteInitStateDiligence: pd.DataFrame,
   raterInitStateDiligence: pd.DataFrame,
   globalInterceptDiligence: c.ReputationGlobalIntercept,
+  ratingsPerNoteLossRatio: Optional[float] = None,
+  ratingsPerUserLossRatio: Optional[float] = None,
   device=torch.device("cpu"),
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
   """
@@ -99,7 +105,9 @@ def fit_low_diligence_model_final(
     globalInterceptDiligence: float
     device: torch.device to use for training
   """
-  dataset, hParams = _setup_dataset_and_hparams(filteredRatings, device)
+  dataset, hParams = _setup_dataset_and_hparams(
+    filteredRatings, device, ratingsPerNoteLossRatio, ratingsPerUserLossRatio
+  )
   noteInitStateInternal, raterInitStateInternal = _prepare_diligence_init_state(
     noteInitStateDiligence, raterInitStateDiligence
   )

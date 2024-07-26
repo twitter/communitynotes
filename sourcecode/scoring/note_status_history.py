@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 
 from . import constants as c
 from .scoring_rules import RuleID
@@ -186,15 +187,20 @@ def check_flips(mergedStatuses: pd.DataFrame, noteSubset: c.NoteSubset) -> None:
     mergedStatuses = mergedStatuses[mergedStatuses[c.timestampMillisOfStatusLockKey].isna()]
     # Prune to note subset
     print(
-      f"Checking Flip Rate for note subset: {noteSubset.description} (unlocked only), with max churn: {noteSubset.maxCrhChurnRate}"
+      f"Checking Flip Rate for note subset: {noteSubset.description} (unlocked only), with max new CRH churn: {noteSubset.maxNewCrhChurnRate}, and max old CRH churn: {noteSubset.maxOldCrhChurnRate}"
     )
     if noteSubset.noteSet is not None:
       mergedStatuses = mergedStatuses[mergedStatuses[c.noteIdKey].isin(noteSubset.noteSet)]
 
-    _check_flips(mergedStatuses, noteSubset.maxCrhChurnRate)
+    _check_flips(mergedStatuses, noteSubset.maxNewCrhChurnRate, noteSubset.maxOldCrhChurnRate)
 
 
-def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn: float) -> None:
+def _check_flips(
+  mergedStatuses: pd.DataFrame, maxNewCrhChurn: float, maxOldCrhChurn: Optional[float] = None
+) -> None:
+  if maxOldCrhChurn is None:
+    maxOldCrhChurn = maxNewCrhChurn
+
   # Identify new and old CRH notes.
   oldCrhNotes = frozenset(
     mergedStatuses[mergedStatuses[c.currentLabelKey] == c.currentlyRatedHelpful][c.noteIdKey]
@@ -207,15 +213,17 @@ def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn: float) -> None:
     print(
       f"new note ratio: {(len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes))}. (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
     )
-    assert (
-      (len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
-    ), f"Too many new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
     print(
       f"old note ratio: {len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)} (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
     )
+
     assert (
-      (len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
-    ), f"Too few new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
+      (len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes)) < maxNewCrhChurn
+    ), f"Too many new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
+
+    assert (
+      (len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)) < maxOldCrhChurn
+    ), f"Too many notes lost CRH status: oldCrhNotes={len(oldCrhNotes)}, newCrhNotes={len(newCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
 
 
 def merge_old_and_new_note_statuses(

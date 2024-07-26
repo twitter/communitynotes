@@ -36,7 +36,8 @@ intervalHalfWidth = 0.3
 # Max flip rates
 prescoringAllUnlockedNotesMaxCrhChurn = 0.04
 finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.03
-finalNotesWithNewRatingsMaxCrhChurn = 0.40
+finalNotesWithNewRatingsMaxNewCrhChurn = 0.80
+finalNotesWithNewRatingsMaxOldCrhChurn = 0.25
 finalNotesThatJustFlippedStatusMaxCrhChurn = 1e8
 finalNotesThatFlippedRecentlyMaxCrhChurn = 1e8
 
@@ -236,6 +237,9 @@ raterAgreeRatioWithHarassmentAbusePenaltyKey = "raterAgreeRatioKeyWithHarassment
 currentlyRatedHelpful = "CURRENTLY_RATED_HELPFUL"
 currentlyRatedNotHelpful = "CURRENTLY_RATED_NOT_HELPFUL"
 needsMoreRatings = "NEEDS_MORE_RATINGS"
+# FIRM_REJECT is set by individual scorers to indicate downstream scorers should not CRH
+# a note, but is never set as the finalRatingStatus of a note.
+firmReject = "FIRM_REJECT"
 
 # Boolean Note Status Labels
 currentlyRatedHelpfulBoolKey = "crhBool"
@@ -511,7 +515,7 @@ userEnrollmentTSVColumnsAndTypes = [
   (successfulRatingNeededToEarnIn, np.int64),
   (timestampOfLastStateChange, np.int64),
   (timestampOfLastEarnOut, np.double),  # double because nullable.
-  (modelingPopulationKey, str),
+  (modelingPopulationKey, "category"),
   (modelingGroupKey, np.float64),
   (numberOfTimesEarnedOutKey, np.int64),
 ]
@@ -801,6 +805,9 @@ class PrescoringMetaScorerOutput:
   globalIntercept: Optional[float]
   lowDiligenceGlobalIntercept: Optional[ReputationGlobalIntercept]
   tagFilteringThresholds: Optional[Dict[str, float]]  # tag => threshold
+  finalRoundNumRatings: Optional[int]
+  finalRoundNumNotes: Optional[int]
+  finalRoundNumUsers: Optional[int]
 
 
 @dataclass
@@ -886,5 +893,6 @@ class RescoringRuleID(Enum):
 @dataclass
 class NoteSubset:
   noteSet: Optional[set]
-  maxCrhChurnRate: float
+  maxNewCrhChurnRate: float
+  maxOldCrhChurnRate: float
   description: RescoringRuleID
