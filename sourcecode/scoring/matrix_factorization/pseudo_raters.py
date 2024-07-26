@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from .. import constants as c
 from .matrix_factorization import Constants as mf_c, MatrixFactorization
 
+import numpy as np
 import pandas as pd
 import torch
 
@@ -236,6 +237,13 @@ class PseudoRatersRunner:
       extremeRatingsToAdd = pd.DataFrame(ratingsWithNoteIds).drop(
         [c.internalRaterInterceptKey, c.internalRaterFactor1Key], axis=1
       )
+      extremeRatingsToAdd[c.noteIdKey] = extremeRatingsToAdd[c.noteIdKey].astype(np.int64)
+      if isinstance(self.ratingFeaturesAndLabels[c.raterParticipantIdKey].dtype, pd.Int64Dtype):
+        # Only convert ID type from string to Int64 if is necessary to match existing IDs (which is
+        # expected when running in prod, but not always in unit tests or public data.)
+        extremeRatingsToAdd[c.raterParticipantIdKey] = extremeRatingsToAdd[
+          c.raterParticipantIdKey
+        ].astype(pd.Int64Dtype())
       ratingFeaturesAndLabelsWithExtremeRatings = pd.concat(
         [self.ratingFeaturesAndLabels, extremeRatingsToAdd]
       )

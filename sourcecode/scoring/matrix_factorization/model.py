@@ -7,8 +7,8 @@ import torch
 @dataclass
 class ModelData:
   rating_labels: Optional[torch.FloatTensor]
-  user_indexes: Optional[torch.LongTensor]
-  note_indexes: Optional[torch.LongTensor]
+  user_indexes: Optional[torch.IntTensor]
+  note_indexes: Optional[torch.IntTensor]
 
 
 class BiasedMatrixFactorization(torch.nn.Module):
@@ -35,14 +35,14 @@ class BiasedMatrixFactorization(torch.nn.Module):
 
     self._logging = logging
 
-    self.user_factors = torch.nn.Embedding(n_users, n_factors, sparse=False)
-    self.note_factors = torch.nn.Embedding(n_notes, n_factors, sparse=False)
+    self.user_factors = torch.nn.Embedding(n_users, n_factors, sparse=False, dtype=torch.float32)
+    self.note_factors = torch.nn.Embedding(n_notes, n_factors, sparse=False, dtype=torch.float32)
 
-    self.user_intercepts = torch.nn.Embedding(n_users, 1, sparse=False)
-    self.note_intercepts = torch.nn.Embedding(n_notes, 1, sparse=False)
+    self.user_intercepts = torch.nn.Embedding(n_users, 1, sparse=False, dtype=torch.float32)
+    self.note_intercepts = torch.nn.Embedding(n_notes, 1, sparse=False, dtype=torch.float32)
 
     self.use_global_intercept = use_global_intercept
-    self.global_intercept = torch.nn.parameter.Parameter(torch.zeros(1, 1))
+    self.global_intercept = torch.nn.parameter.Parameter(torch.zeros(1, 1, dtype=torch.float32))
     torch.nn.init.xavier_uniform_(self.user_factors.weight)
     torch.nn.init.xavier_uniform_(self.note_factors.weight)
     self.user_intercepts.weight.data.fill_(0.0)

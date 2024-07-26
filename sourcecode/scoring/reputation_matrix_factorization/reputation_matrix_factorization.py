@@ -47,6 +47,8 @@ class ReputationModelHyperparameters:
   reputationExp: float
   alpha: float
   defaultReputation: float = 1.0
+  ratingPerNoteLossRatio: Optional[float] = None
+  ratingPerUserLossRatio: Optional[float] = None
 
 
 def get_or_default_if_nan(lookupDict, key, default):
@@ -75,6 +77,8 @@ class ReputationMFModel(nn.Module):
     globalInterceptInit: Optional[float] = None,
     device=torch.device("cpu"),
     defaultReputation=1.0,
+    ratingPerNoteLossRatio: Optional[float] = None,
+    ratingPerUserLossRatio: Optional[float] = None,
   ):
     """
     noteInitState expects a df with columns:
@@ -103,6 +107,8 @@ class ReputationMFModel(nn.Module):
     self.raterReputation.weight = nn.Parameter(
       torch.ones(self.raterReputation.weight.shape[0], 1, **self.format) * defaultReputation
     )
+    self._ratingPerNoteLossRatio = ratingPerNoteLossRatio
+    self._ratingPerUserLossRatio = ratingPerUserLossRatio
 
     self.init_global_bias(globalInterceptInit)
     self.init_rater_factor(raterInitState, dataset, device, defaultValue=0.0)
@@ -216,15 +222,52 @@ class ReputationMFModel(nn.Module):
     pred += self.raterBias(raters) + self.globalBias
     return self.activation_fn(pred)
 
-  def get_regularization_loss(self):
-    regularizationLoss = (
-      (self.l2Lambda * (self.noteEmbedding.weight**2).mean())
-      + (self.l2Lambda * (self.raterEmbedding.weight**2).mean())
-      + (self.l2Lambda * self.l2NoteBiasMultiplier * (self.noteBias.weight**2).mean())
-      + (self.l2Lambda * self.l2RaterBiasMultiplier * (self.raterBias.weight**2).mean())
-      + (self.l2Lambda * self.l2RaterReputationMultiplier * (self.raterReputation.weight**2).mean())
-      + (self.l2Lambda * self.l2GlobalBiasMultiplier * (self.globalBias**2))
-    )
+  def get_regularization_loss(self, numRatings):
+    regularizationLoss = self.l2Lambda * self.l2GlobalBiasMultiplier * (self.globalBias**2)
+
+    if self._ratingPerNoteLossRatio is None:
+      regularizationLoss += self.l2Lambda * (self.noteEmbedding.weight**2).mean()
+      regularizationLoss += (
+        self.l2Lambda * self.l2NoteBiasMultiplier * (self.noteBias.weight**2).mean()
+      )
+    else:
+      simulatedNumberOfNotesForLoss = numRatings / self._ratingPerNoteLossRatio
+      regularizationLoss += (
+        self.l2Lambda * (self.noteEmbedding.weight**2).sum() / simulatedNumberOfNotesForLoss
+      )
+      regularizationLoss += (
+        self.l2Lambda
+        * self.l2NoteBiasMultiplier
+        * (self.noteBias.weight**2).sum()
+        / simulatedNumberOfNotesForLoss
+      )
+
+    if self._ratingPerUserLossRatio is None:
+      regularizationLoss += self.l2Lambda * (self.raterEmbedding.weight**2).mean()
+      regularizationLoss += (
+        self.l2Lambda * self.l2RaterBiasMultiplier * (self.raterBias.weight**2).mean()
+      )
+      regularizationLoss += (
+        self.l2Lambda * self.l2RaterReputationMultiplier * (self.raterReputation.weight**2).mean()
+      )
+    else:
+      simulatedNumberOfRatersForLoss = numRatings / self._ratingPerUserLossRatio
+      regularizationLoss += (
+        self.l2Lambda * (self.raterEmbedding.weight**2).sum() / simulatedNumberOfRatersForLoss
+      )
+      regularizationLoss += (
+        self.l2Lambda
+        * self.l2RaterBiasMultiplier
+        * (self.raterBias.weight**2).sum()
+        / simulatedNumberOfRatersForLoss
+      )
+      regularizationLoss += (
+        self.l2Lambda
+        * self.l2RaterReputationMultiplier
+        * (self.raterReputation.weight**2).sum()
+        / simulatedNumberOfRatersForLoss
+      )
+
     return regularizationLoss
 
 
@@ -233,6 +276,7 @@ def _train_one_round(model, loss_fn, dataset, hParams):
   # Identify tensors for training and testing
   notes = dataset.noteTensor
   raters = dataset.raterTensor
+  numRatings = dataset.raterTensor.shape[0]
   # Initilaize training state
   optim = torch.optim.Adam(model.parameters(), lr=hParams.learningRate)
   epoch = 0
@@ -245,7 +289,7 @@ def _train_one_round(model, loss_fn, dataset, hParams):
     pred = model(notes, raters)
     # Compute loss
     loss = loss_fn(pred.flatten())
-    loss += model.get_regularization_loss()
+    loss += model.get_regularization_loss(numRatings)
     assert not torch.isnan(loss).any()
     if hParams.logRate and epoch % hParams.logRate == 0:
       print(f"epoch={epoch:03d} | loss={loss.item():7.6f} | time={time.time() - start:.1f}s")
@@ -306,6 +350,8 @@ def _setup_model(
     raterInitState=raterInitState,
     globalInterceptInit=globalInterceptInit,
     defaultReputation=hParams.defaultReputation,
+    ratingPerNoteLossRatio=hParams.ratingPerNoteLossRatio,
+    ratingPerUserLossRatio=hParams.ratingPerUserLossRatio,
   )
   return model, loss_fn
 

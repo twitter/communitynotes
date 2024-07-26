@@ -250,7 +250,6 @@ class Scorer(ABC):
     print(
       f"prescore: Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}"
     )
-
     # Transform input, run core scoring algorithm, transform output.
     with self.time_block("Filter input"):
       ratings, noteStatusHistory = self._filter_input(

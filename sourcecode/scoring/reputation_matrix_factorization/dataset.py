@@ -36,15 +36,16 @@ def build_dataset(
   """
   # Identify mappings from note and rater IDs to indices
   notes = ratings[c.noteIdKey].drop_duplicates().sort_values().values
-  noteIdToIndex = dict(zip(notes, np.arange(len(notes), dtype=np.int64)))
+  noteIdToIndex = dict(zip(notes, np.arange(len(notes), dtype=np.int32)))
   raters = ratings[c.raterParticipantIdKey].drop_duplicates().sort_values().values
-  raterIdToIndex = dict(zip(raters, np.arange(len(raters), dtype=np.int64)))
+  raterIdToIndex = dict(zip(raters, np.arange(len(raters), dtype=np.int32)))
   # Generate tensors
-  noteTensor = torch.tensor(
+  noteTensor = torch.IntTensor(
     [noteIdToIndex[noteId] for noteId in ratings[c.noteIdKey]], device=device
   )
-  raterTensor = torch.tensor(
-    [raterIdToIndex[raterId] for raterId in ratings[c.raterParticipantIdKey]], device=device
+  raterTensor = torch.IntTensor(
+    [raterIdToIndex[raterId] for raterId in ratings[c.raterParticipantIdKey]],
+    device=device,
   )
   targetTensor = torch.tensor(targets, device=device, dtype=torch.float32)
 

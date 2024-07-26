@@ -28,7 +28,9 @@ import re
 import sys
 from threading import Lock
 import traceback
-from typing import Any, Callable, Dict, List, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+
+from . import constants as c
 
 import numpy as np
 import pandas as pd
@@ -37,6 +39,34 @@ import pandas as pd
 def keep_columns(df: pd.DataFrame, cols: List[str]):
   cols = [col for col in cols if col in df]
   return df[cols]
+
+
+def get_df_info(
+  df: pd.DataFrame, name: Optional[str] = None, deep: bool = False, counter: bool = False
+) -> str:
+  """Log dtype and RAM usage stats for each input DataFrame."""
+  stats = (
+    df.dtypes.to_frame().reset_index(drop=False).rename(columns={"index": "column", 0: "dtype"})
+  ).merge(
+    # deep=True shows memory usage for the entire contained object (e.g. if the type
+    # of a column is "object", then deep=True shows the size of the objects instead
+    # of the size of the pointers.
+    df.memory_usage(index=True, deep=deep)
+    .to_frame()
+    .reset_index(drop=False)
+    .rename(columns={"index": "column", 0: "RAM"})
+  )
+  if name is not None:
+    lines = [f"""{name} total RAM: {stats["RAM"].sum()}"""]
+  else:
+    lines = [f"""total RAM: {stats["RAM"].sum()}"""]
+  lines.extend(str(stats).split("\n"))
+  if counter:
+    for col, dtype in zip(stats["column"], stats["dtype"]):
+      if dtype != object:
+        continue
+      lines.append(f"{col}: {Counter(type(obj) for obj in df[col])}")
+  return "\n".join(lines)
 
 
 class TypeErrorCounter(object):
@@ -103,7 +133,9 @@ class PandasPatcher(object):
     self._origSetItem = pd.DataFrame.__setitem__
     self._origLocGetItem = pd.core.indexing._LocationIndexer.__getitem__
     self._origLocSetItem = pd.core.indexing._LocationIndexer.__setitem__
-    self._expectations: Dict[str, TypeExpectation] = dict()
+    self._expectations = {
+      c.noteIdKey: TypeExpectation(np.int64, LogLevel.ERROR),
+    }
     for column, expectation in typeOverrides.items():
       self._expectations[column] = expectation
 
@@ -300,6 +332,9 @@ class PandasPatcher(object):
         # If DataFrame, validate that all input columns with matching names have the same type
         # and build expectation for output column types
         assert type(objs[0]) == pd.DataFrame
+        # Validate all inputs
+        for dfArg in objs:
+          lines.extend(self._validate_dataframe(dfArg))
         colTypes: Dict[str, List[type]] = dict()
         for df in objs:
           for col, dtype in df.reset_index(drop=False).dtypes.items():
@@ -360,6 +395,8 @@ class PandasPatcher(object):
       # Validate that argument types are as expected
       assert type(leftFrame) is pd.DataFrame
       assert type(rightFrame) is pd.DataFrame
+      lines.extend(self._validate_dataframe(leftFrame))
+      lines.extend(self._validate_dataframe(rightFrame))
       # Store dtypes and validate that any common columns have the same type
       leftDtypes = dict(leftFrame.reset_index(drop=False).dtypes)
       rightDtypes = dict(rightFrame.reset_index(drop=False).dtypes)
@@ -454,6 +491,8 @@ class PandasPatcher(object):
       # Validate arguments are as expected
       assert type(leftFrame) is pd.DataFrame
       assert type(rightFrame) is pd.DataFrame
+      lines.extend(self._validate_dataframe(leftFrame))
+      lines.extend(self._validate_dataframe(rightFrame))
       assert len(set(kwargs) - {"lsuffix", "rsuffix", "how"}) == 0, f"unexpected kwargs: {kwargs}"
       # Validate the assumption that columns used as the join key in the index have the same type.
       # This is analogous to validating that onCols match and have the same types in _safe_merge.
@@ -481,7 +520,16 @@ class PandasPatcher(object):
         match = True
         for col in set(leftIndexTypes) & set(rightIndexTypes):
           match = match & (leftIndexTypes[col] == rightIndexTypes[col])
-      assert match, f"Join index mismatch:\n{leftFrame.index}\nvs\n{rightFrame.index}"
+      check(
+        list(set(leftFrame.index.names) | set(rightFrame.index.names)),
+        match,
+        "Join index mismatch:\nleft:\n{left}\nvs\nright:\n{right}".format(
+          left=leftFrame.index.dtype if len(leftFrame.index.names) == 1 else leftFrame.index.dtypes,
+          right=rightFrame.index.dtype
+          if len(rightFrame.index.names) == 1
+          else rightFrame.index.dtypes,
+        ),
+      )
       # Validate that input columns with the same name have the same types
       leftDtypes = dict(leftFrame.dtypes)
       rightDtypes = dict(rightFrame.dtypes)

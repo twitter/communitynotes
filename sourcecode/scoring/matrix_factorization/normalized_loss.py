@@ -125,9 +125,16 @@ class NormalizedLoss(torch.nn.Module):
     # Finalize weights
     weightMap = dict(
       ((rater, note), weight)
-      for (rater, note, weight) in ratings[[c.raterParticipantIdKey, c.noteIdKey, "weights"]].values
+      for (rater, note, weight) in zip(
+        ratings[c.raterParticipantIdKey], ratings[c.noteIdKey], ratings["weights"]
+      )
     )
-    self.weights = torch.tensor([weightMap[(rater, note)] for (rater, note) in ratingOrder.values])
+    self.weights = torch.FloatTensor(
+      [
+        weightMap[(rater, note)]
+        for (rater, note) in zip(ratingOrder[c.raterParticipantIdKey], ratingOrder[c.noteIdKey])
+      ]
+    )
     assert len(self.weights) == len(self.targets)
 
   def forward(self, pred):
