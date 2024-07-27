@@ -20,7 +20,7 @@ class Topics(Enum):
 
   Unassigned = 0
   UkraineConflict = 1
-  GazaConflict = 2
+  GazaOccupation = 2
   MessiRonaldo = 3
 
 
