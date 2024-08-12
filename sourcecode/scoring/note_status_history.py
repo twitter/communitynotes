@@ -89,6 +89,11 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   Returns:
       row of pd.DataFrame
   """
+  if not pd.isna(mergedNote[c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey]):
+    mergedNote[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = mergedNote[
+      c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey
+    ]
+
   if mergedNote[c.finalRatingStatusKey] != mergedNote[c.currentLabelKey]:
     # Changed status vs. previous run:
     mergedNote[c.timestampMillisOfMostRecentStatusChangeKey] = currentTimeMillis
@@ -110,6 +115,8 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   mergedNote[c.currentDecidedByKey] = mergedNote[c.decidedByKey]
   mergedNote[c.currentModelingGroupKey] = mergedNote[c.modelingGroupKey]
   mergedNote[c.timestampMillisOfNoteCurrentLabelKey] = currentTimeMillis
+  mergedNote[c.currentMultiGroupStatusKey] = mergedNote[c.multiGroupRatingStatusKey]
+  mergedNote[c.currentModelingMultiGroupKey] = mergedNote[c.modelingMultiGroupKey]
 
   # Lock notes which are (1) not already locked, (2) old enough to lock and (3)
   # were decided by logic which has global display impact.  Criteria (3) guarantees
@@ -196,7 +203,10 @@ def check_flips(mergedStatuses: pd.DataFrame, noteSubset: c.NoteSubset) -> None:
 
 
 def _check_flips(
-  mergedStatuses: pd.DataFrame, maxNewCrhChurn: float, maxOldCrhChurn: Optional[float] = None
+  mergedStatuses: pd.DataFrame,
+  maxNewCrhChurn: float,
+  maxOldCrhChurn: Optional[float] = None,
+  smoothingCount: int = 100,
 ) -> None:
   if maxOldCrhChurn is None:
     maxOldCrhChurn = maxNewCrhChurn
@@ -210,19 +220,23 @@ def _check_flips(
   )
   if len(oldCrhNotes) > 0 and len(newCrhNotes) > 0:
     # Validate that changes are within allowable bounds.
+    smoothedNewNoteRatio = (len(newCrhNotes - oldCrhNotes)) / (len(oldCrhNotes) + smoothingCount)
+    rawNewNoteRatio = (len(newCrhNotes - oldCrhNotes)) / len(oldCrhNotes)
     print(
-      f"new note ratio: {(len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes))}. (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
+      f"Raw new note ratio: {rawNewNoteRatio}, smoothed new note ratio: {smoothedNewNoteRatio}. (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
     )
+    smoothedOldNoteRatio = (len(oldCrhNotes - newCrhNotes)) / (len(oldCrhNotes) + smoothingCount)
+    rawOldNoteRatio = (len(oldCrhNotes - newCrhNotes)) / len(oldCrhNotes)
     print(
-      f"old note ratio: {len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)} (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
+      f"Raw old note ratio: {rawOldNoteRatio}, smoothed old note ratio: {smoothedOldNoteRatio}. (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
     )
 
     assert (
-      (len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes)) < maxNewCrhChurn
+      smoothedNewNoteRatio < maxNewCrhChurn
     ), f"Too many new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
 
     assert (
-      (len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)) < maxOldCrhChurn
+      smoothedOldNoteRatio < maxOldCrhChurn
     ), f"Too many notes lost CRH status: oldCrhNotes={len(oldCrhNotes)}, newCrhNotes={len(newCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
 
 
@@ -242,6 +256,9 @@ def merge_old_and_new_note_statuses(
         c.expansionRatingStatusKey,
         c.groupRatingStatusKey,
         c.modelingGroupKey,
+        c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey,
+        c.multiGroupRatingStatusKey,
+        c.modelingMultiGroupKey,
       ]
     ].rename(
       {

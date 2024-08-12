@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from enum import Enum
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from . import constants as c
 from .enums import Topics
@@ -53,11 +53,15 @@ class RuleID(Enum):
   GROUP_MODEL_12 = RuleAndVersion("GroupModel12", "1.1", False)
   GROUP_MODEL_13 = RuleAndVersion("GroupModel13", "1.1", True)
   GROUP_MODEL_14 = RuleAndVersion("GroupModel14", "1.1", True)
-  INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
-  SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
   TOPIC_MODEL_1 = RuleAndVersion("TopicModel01", "1.0", False)
   TOPIC_MODEL_2 = RuleAndVersion("TopicModel02", "1.0", False)
   TOPIC_MODEL_3 = RuleAndVersion("TopicModel03", "1.0", False)
+  MULTI_GROUP_MODEL_1 = RuleAndVersion("MultiGroupModel01", "1.0", False)
+  MULTI_GROUP_MODEL_2 = RuleAndVersion("MultiGroupModel02", "1.0", False)
+  MULTI_GROUP_MODEL_3 = RuleAndVersion("MultiGroupModel03", "1.0", False)
+  INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
+  SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
+  NMR_DUE_TO_MIN_STABLE_CRH_TIME = RuleAndVersion("NmrDueToMinStableCrhTime", "1.0", False)
 
   def get_name(self) -> str:
     """Returns a string combining the name and version to uniquely name the logic of the ScoringRule."""
@@ -179,6 +183,8 @@ class ApplyModelResult(ScoringRule):
     ruleID: RuleID,
     dependencies: Set[RuleID],
     sourceColumn: str,
+    checkFirmReject: bool = False,
+    filterColumnPairs: List[Tuple[str, Any]] = [],
   ):
     """Propagate the note status from sourceColumn when the status is not NaN.
 
@@ -189,11 +195,28 @@ class ApplyModelResult(ScoringRule):
     """
     super().__init__(ruleID, dependencies)
     self._sourceColumn = sourceColumn
+    self._checkFirmReject = checkFirmReject
+    self._filterColumnPairs = filterColumnPairs
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Propagates any status set in sourceColumn when it is non-NaN."""
+    # If necessary, prune noteStats according to prior firm rejects
+    if self._checkFirmReject:
+      coreRejects = noteStats[c.coreRatingStatusKey].isin(
+        {c.firmReject, c.currentlyRatedNotHelpful}
+      )
+      expansionRejects = noteStats[c.expansionRatingStatusKey].isin(
+        {c.firmReject, c.currentlyRatedNotHelpful}
+      )
+      crhBlocked = coreRejects | (noteStats[c.coreRatingStatusKey].isna() & expansionRejects)
+      crhNotes = noteStats[self._sourceColumn] == c.currentlyRatedHelpful
+      noteStats = noteStats[~(crhBlocked & crhNotes)]
+    # If necessary, prune noteStatus based on filter column pairs
+    if self._filterColumnPairs:
+      for col, value in self._filterColumnPairs:
+        noteStats = noteStats[noteStats[col] == value]
     # Generate the set of note status updates
     statusUpdateRows = ~noteStats[self._sourceColumn].isna()
     noteStatusUpdates = noteStats[statusUpdateRows][[c.noteIdKey, self._sourceColumn]].rename(
@@ -425,6 +448,118 @@ class FilterLargeFactor(ScoringRule):
     noteStatusUpdates[statusColumn] = self._status
 
     return (noteStatusUpdates, None)
+
+
+class NmrDueToMinStableCrhTime(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    requiredStableCrhMinutesThreshold: int = 30,
+  ):
+    """Make CRH notes NMR if it hasn't been stably CRH >= requiredStableCrhMinutesThreshold.
+
+    Args:
+      rule: enum corresponding to a namedtuple defining a rule name and version string for the
+      ScoringRule.
+      dependencies: Rules which must run before this rule can run.
+      requiredStableCrhMinutesThreshold: threshold for required stable CRH time, in minutes.
+    """
+    super().__init__(ruleID, dependencies)
+    self.requiredStableCrhMinutesThreshold = requiredStableCrhMinutesThreshold
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    # Prune noteStats to exclude CRH notes (CRHed before current scoring run).
+    noteStats = noteStats[noteStats[c.currentLabelKey] != c.currentlyRatedHelpful]
+    noteStats = noteStats.merge(currentLabels, on=c.noteIdKey, how="inner")
+
+    # Identify impacted notes:
+    # (1) CRH from current run
+    #     (A) If timestampMillisOfNmrDueToMinStableCrhTime doesn't exist:
+    #         Set status to NMR, set timestampMillisOfNmrDueToMinStableCrhTime to now.
+    #     (B) Otherwise:
+    #         (a) If it has been long enough since timestampMillisOfNmrDueToMinStableCrhTime,
+    #             set status to CRH, clear timestampMillisOfNmrDueToMinStableCrhTime
+    #         (b) Otherwise, set status to NMR.
+    # (2) Non-CRH from current run and timestampMillisOfNmrDueToMinStableCrhTime exists.
+    #     Clear timestampMillisOfNmrDueToMinStableCrhTime.
+    noteStatusUpdates = noteStats.loc[
+      (noteStats[statusColumn] == c.currentlyRatedHelpful)
+      | (
+        ~noteStats[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
+        & (noteStats[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0)
+      )
+    ][[c.noteIdKey, c.timestampMillisOfNmrDueToMinStableCrhTimeKey, statusColumn]]
+
+    pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
+
+    newStatusColumn = statusColumn + "_new"
+    noteStatusUpdates[newStatusColumn] = np.nan
+    noteStatusUpdates[c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey] = noteStatusUpdates[
+      c.timestampMillisOfNmrDueToMinStableCrhTimeKey
+    ]
+    # (1)-(A)
+    noteStatusUpdates.loc[
+      (noteStatusUpdates[statusColumn] == c.currentlyRatedHelpful)
+      & (
+        noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
+        | (noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] <= 0)
+      ),
+      [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
+    ] = [c.needsMoreRatings, c.epochMillis]
+    # (1)-(B)-(a)
+    noteStatusUpdates.loc[
+      (noteStatusUpdates[statusColumn] == c.currentlyRatedHelpful)
+      & (
+        ~noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
+        & (noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0)
+      )
+      & (
+        c.epochMillis - noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
+        >= self.requiredStableCrhMinutesThreshold * 60 * 1000
+      ),
+      [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
+    ] = [c.currentlyRatedHelpful, -1]
+    # (1)-(B)-(b)
+    noteStatusUpdates.loc[
+      (noteStatusUpdates[statusColumn] == c.currentlyRatedHelpful)
+      & (
+        ~noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
+        & (noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0)
+      )
+      & (
+        c.epochMillis - noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
+        < self.requiredStableCrhMinutesThreshold * 60 * 1000
+      ),
+      newStatusColumn,
+    ] = c.needsMoreRatings
+    # (2)
+    noteStatusUpdates.loc[
+      (noteStatusUpdates[statusColumn] != c.currentlyRatedHelpful)
+      & (
+        ~noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
+        & (noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0)
+      ),
+      c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey,
+    ] = -1
+
+    noteStatusUpdatesWithStatusChange = noteStatusUpdates.loc[
+      (noteStatusUpdates[statusColumn] == c.currentlyRatedHelpful)
+      & (noteStatusUpdates[newStatusColumn] == c.needsMoreRatings)
+    ][[c.noteIdKey, newStatusColumn]]
+    noteStatusUpdatesWithStatusChange.rename(columns={newStatusColumn: statusColumn}, inplace=True)
+
+    print(
+      f"Total notes impacted (CRH->NMR) by NmrDueToMinStableCrhTime: "
+      f"{len(noteStatusUpdatesWithStatusChange)}"
+    )
+
+    return (
+      noteStatusUpdatesWithStatusChange,
+      noteStatusUpdates[[c.noteIdKey, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey]],
+    )
 
 
 class RejectLowIntercept(ScoringRule):
@@ -890,8 +1025,14 @@ def apply_scoring_rules(
       ruleIDs.add(rule.get_rule_id())
       with c.time_block(f"Calling score_notes: {rule.get_name()}"):
         noteStatusUpdates, additionalColumns = rule.score_notes(noteStats, noteLabels, statusColumn)
-      if additionalColumns is not None:
+      if (
+        additionalColumns is not None
+        # This rule updates both status and NmrDueToStableCrhTime (in additional column), they can
+        # be on different rows.
+        and rule.get_rule_id() != RuleID.NMR_DUE_TO_MIN_STABLE_CRH_TIME
+      ):
         assert set(noteStatusUpdates[c.noteIdKey]) == set(additionalColumns[c.noteIdKey])
+
       # Update noteLabels, which will always hold at most one label per note.
       unsafeAllowed = {c.internalRatingStatusKey, c.finalRatingStatusKey, c.defaultIndexKey}
       noteLabels = (
