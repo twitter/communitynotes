@@ -324,6 +324,9 @@ For not-helpful notes:
 
 ## What’s New?
 
+**July 25, 2024**
+- Only score a subset of notes each time we run final note scoring. This doesn't affect what statuses new notes get, but does cause them to get scored more quickly.
+
 **May 1, 2024**
 - Modify scoring thresholds for the Expanded Consensus trial to raise the note intercept threshold for Helpful notes, increase tag filtering and require a minimum Core or Expansion intercept for Helpful notes.
 
