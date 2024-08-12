@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import Enum
 import os
 import time
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
 
 import numpy as np
 import pandas as pd
@@ -34,12 +34,17 @@ tagPercentileForNormalization = 40
 intervalHalfWidth = 0.3
 
 # Max flip rates
-prescoringAllUnlockedNotesMaxCrhChurn = 0.04
-finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.03
+prescoringAllUnlockedNotesMaxCrhChurn = 0.2
+prescoringAllNotesCreatedThreeToThirteenDaysAgoMaxChurn = 0.06
+finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.05
 finalNotesWithNewRatingsMaxNewCrhChurn = 0.80
 finalNotesWithNewRatingsMaxOldCrhChurn = 0.25
 finalNotesThatJustFlippedStatusMaxCrhChurn = 1e8
 finalNotesThatFlippedRecentlyMaxCrhChurn = 1e8
+# TODO(jiansongc): adjust these 2 below
+finalNotesNmrDueToMinStableCrhTimeMaxOldCrhChurn = 1.0
+finalNotesNmrDueToMinStableCrhTimeMaxNewCrhChurn = 1.0
+
 
 # Data Filenames
 scoredNotesOutputPath = "scoredNotes.tsv"
@@ -59,17 +64,14 @@ noteTopicKey = "noteTopic"
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 modelingPopulationKey = "modelingPopulation"
 modelingGroupKey = "modelingGroup"
+modelingMultiGroupKey = "modelingMultiGroup"
 numberOfTimesEarnedOutKey = "numberOfTimesEarnedOut"
 defaultIndexKey = "index"
 
 # Scoring Groups
-coreGroups = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 21, 25}
-expansionGroups = (
-  # Divide into 3 grouping aggregates to prepare for multi-group models,
-  # and a 4th group containing leftovers
-  {0, 15, 17, 24, 29, 30} | {4, 5, 7, 12, 26} | {27} | {16, 20, 22, 23, 28}
-)
-expansionPlusGroups = {18}
+coreGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 21, 25}
+expansionGroups: Set[int] = {0, 4, 5, 7, 12, 16, 18, 20, 22, 23, 24, 26, 27, 28}
+expansionPlusGroups: Set[int] = {15, 17, 29, 30}
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
@@ -193,6 +195,14 @@ groupRaterInterceptKey = "groupRaterIntercept"
 groupRaterFactor1Key = "groupRaterFactor1"
 groupInternalActiveRulesKey = "groupActiveRules"
 groupNumFinalRoundRatingsKey = "groupNumFinalRoundRatings"
+# MultiGroup Model
+multiGroupNoteInterceptKey = "multiGroupNoteIntercept"
+multiGroupNoteFactor1Key = "multiGroupNoteFactor1"
+multiGroupRatingStatusKey = "multiGroupRatingStatus"
+multiGroupRaterInterceptKey = "multiGroupRaterIntercept"
+multiGroupRaterFactor1Key = "multiGroupRaterFactor1"
+multiGroupInternalActiveRulesKey = "multiGroupActiveRules"
+multiGroupNumFinalRoundRatingsKey = "multiGroupNumFinalRoundRatings"
 # Topic Model
 topicNoteInterceptKey = "topicNoteIntercept"
 topicNoteFactor1Key = "topicNoteFactor1"
@@ -445,6 +455,12 @@ currentGroupStatusKey = "currentGroupStatus"
 currentDecidedByKey = "currentDecidedBy"
 currentModelingGroupKey = "currentModelingGroup"
 timestampMillisOfMostRecentStatusChangeKey = "timestampMillisOfMostRecentStatusChange"
+currentMultiGroupStatusKey = "currentMultiGroupStatus"
+currentModelingMultiGroupKey = "currentModelingMultiGroup"
+timestampMillisOfNmrDueToMinStableCrhTimeKey = "timestampMillisOfNmrDueToMinStableCrhTime"
+updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey = (
+  "updatedTimestampMillisOfNmrDueToMinStableCrhTime"
+)
 
 noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
@@ -465,12 +481,22 @@ noteStatusHistoryTSVColumnsAndTypes = [
   (currentDecidedByKey, "category"),
   (currentModelingGroupKey, np.double),  # TODO: int
   (timestampMillisOfMostRecentStatusChangeKey, np.double),  # double because nullable.
+  (timestampMillisOfNmrDueToMinStableCrhTimeKey, np.double),  # double because nullable.
+  (currentMultiGroupStatusKey, "category"),
+  (currentModelingMultiGroupKey, np.double),  # TODO: int
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypes = [dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypeMapping = {
   col: dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes
 }
+# TODO(jiansongc): clean up after new column is in production.
+noteStatusHistoryTSVColumnsOld = noteStatusHistoryTSVColumns[:-1]
+noteStatusHistoryTSVColumnsAndTypesOld = noteStatusHistoryTSVColumnsAndTypes[:-1]
+noteStatusHistoryTSVTypeMappingOld = {
+  col: dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypesOld
+}
+
 
 # Earn In + Earn Out
 enrollmentState = "enrollmentState"
@@ -587,6 +613,8 @@ deprecatedNoteModelOutputColumns = frozenset(
   {
     coverageNoteInterceptMinKey,
     coverageNoteInterceptMaxKey,
+    groupNoteInterceptMinKey,
+    groupNoteInterceptMaxKey,
   }
 )
 
@@ -610,58 +638,64 @@ noteModelOutputTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
   (coreNoteInterceptKey, np.double),
   (coreNoteFactor1Key, np.double),
-  (finalRatingStatusKey, str),
-  (firstTagKey, str),
-  (secondTagKey, str),
+  (finalRatingStatusKey, "category"),
+  (firstTagKey, "category"),
+  (secondTagKey, "category"),
   # Note that this column was formerly named "activeRules" and the name is now
   # updated to "coreActiveRules".  The data values remain the compatible,
   # but the new column only contains rules that ran when deciding status based on
   # the core model.
-  (coreActiveRulesKey, str),
-  (activeFilterTagsKey, str),
-  (classificationKey, str),
+  (coreActiveRulesKey, "category"),
+  (activeFilterTagsKey, "category"),
+  (classificationKey, "category"),
   (createdAtMillisKey, np.int64),
-  (coreRatingStatusKey, str),
-  (metaScorerActiveRulesKey, str),
-  (decidedByKey, str),
+  (coreRatingStatusKey, "category"),
+  (metaScorerActiveRulesKey, "category"),
+  (decidedByKey, "category"),
   (expansionNoteInterceptKey, np.double),
   (expansionNoteFactor1Key, np.double),
-  (expansionRatingStatusKey, str),
+  (expansionRatingStatusKey, "category"),
   (coverageNoteInterceptKey, np.double),
   (coverageNoteFactor1Key, np.double),
-  (coverageRatingStatusKey, str),
+  (coverageRatingStatusKey, "category"),
   (coreNoteInterceptMinKey, np.double),
   (coreNoteInterceptMaxKey, np.double),
-  (expansionNoteInterceptMinKey, np.double),
-  (expansionNoteInterceptMaxKey, np.double),
-  (coverageNoteInterceptMinKey, np.double),
-  (coverageNoteInterceptMaxKey, np.double),
+  (expansionNoteInterceptMinKey, "category"),  # category because always nan
+  (expansionNoteInterceptMaxKey, "category"),  # category because always nan
+  (coverageNoteInterceptMinKey, "category"),  # category because always nan
+  (coverageNoteInterceptMaxKey, "category"),  # category because always nan
   (groupNoteInterceptKey, np.double),
   (groupNoteFactor1Key, np.double),
-  (groupRatingStatusKey, str),
-  (groupNoteInterceptMaxKey, np.double),
-  (groupNoteInterceptMinKey, np.double),
+  (groupRatingStatusKey, "category"),
+  (groupNoteInterceptMaxKey, "category"),  # category because always nan
+  (groupNoteInterceptMinKey, "category"),  # category because always nan
   (modelingGroupKey, np.float64),
   (numRatingsKey, np.int64),
   (timestampMillisOfNoteCurrentLabelKey, np.double),
   (expansionPlusNoteInterceptKey, np.double),
   (expansionPlusNoteFactor1Key, np.double),
-  (expansionPlusRatingStatusKey, str),
+  (expansionPlusRatingStatusKey, "category"),
   (topicNoteInterceptKey, np.double),
   (topicNoteFactor1Key, np.double),
-  (topicRatingStatusKey, str),
-  (noteTopicKey, str),
+  (topicRatingStatusKey, "category"),
+  (noteTopicKey, "category"),
   (topicNoteConfidentKey, pd.BooleanDtype()),
-  (expansionInternalActiveRulesKey, str),
-  (expansionPlusInternalActiveRulesKey, str),
-  (groupInternalActiveRulesKey, str),
-  (topicInternalActiveRulesKey, str),
+  (expansionInternalActiveRulesKey, "category"),
+  (expansionPlusInternalActiveRulesKey, "category"),
+  (groupInternalActiveRulesKey, "category"),
+  (topicInternalActiveRulesKey, "category"),
   (coreNumFinalRoundRatingsKey, np.double),  # double because nullable.
   (expansionNumFinalRoundRatingsKey, np.double),  # double because nullable.
   (expansionPlusNumFinalRoundRatingsKey, np.double),  # double because nullable.
   (groupNumFinalRoundRatingsKey, np.double),  # double because nullable.
   (topicNumFinalRoundRatingsKey, np.double),  # double because nullable.
-  (rescoringActiveRulesKey, str),
+  (rescoringActiveRulesKey, "category"),
+  (multiGroupNoteInterceptKey, np.double),
+  (multiGroupNoteFactor1Key, np.double),
+  (multiGroupRatingStatusKey, str),
+  (modelingMultiGroupKey, np.float64),
+  (multiGroupInternalActiveRulesKey, str),
+  (multiGroupNumFinalRoundRatingsKey, np.double),  # double because nullable.
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
@@ -733,6 +767,9 @@ raterModelOutputTSVColumnsAndTypes = [
   (expansionRaterFactor1Key, np.double),
   (expansionPlusRaterInterceptKey, np.double),
   (expansionPlusRaterFactor1Key, np.double),
+  (multiGroupRaterInterceptKey, np.double),
+  (multiGroupRaterFactor1Key, np.double),
+  (modelingMultiGroupKey, np.float64),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
@@ -780,6 +817,8 @@ inputPathsTSVColumnsAndTypes = [
 ]
 inputPathsTSVColumns = [col for (col, _) in inputPathsTSVColumnsAndTypes]
 inputPathsTSVTypeMapping = {col: dtype for (col, dtype) in inputPathsTSVColumnsAndTypes}
+
+timestampMinuteOfFinalScoringOutput = "timestampMinuteOfFinalScoringOutput"
 
 
 @contextmanager
@@ -888,6 +927,8 @@ class RescoringRuleID(Enum):
   NOTES_FLIPPED_PREVIOUS_RUN = 3
   NEW_NOTES_NOT_RESCORED_RECENTLY_ENOUGH = 4
   RECENTLY_FLIPPED_NOTES_NOT_RESCORED_RECENTLY_ENOUGH = 5
+  NMR_DUE_TO_MIN_STABLE_CRH_TIME = 6
+  NOTES_CREATED_SOMEWHAT_RECENTLY = 7
 
 
 @dataclass

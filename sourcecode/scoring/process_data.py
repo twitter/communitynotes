@@ -188,19 +188,36 @@ def read_from_tsv(
   if noteStatusHistoryPath is None:
     noteStatusHistory = None
   else:
-    noteStatusHistory = tsv_reader(
-      noteStatusHistoryPath,
-      c.noteStatusHistoryTSVTypeMapping,
-      c.noteStatusHistoryTSVColumns,
-      header=headers,
-      convertNAToNone=False,
-    )
-    assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
-      noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
-    ), (
-      f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
-      + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
-    )
+    # TODO(jiansongc): clean up after new column is in production.
+    try:
+      noteStatusHistory = tsv_reader(
+        noteStatusHistoryPath,
+        c.noteStatusHistoryTSVTypeMapping,
+        c.noteStatusHistoryTSVColumns,
+        header=headers,
+        convertNAToNone=False,
+      )
+      assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
+        noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
+      ), (
+        f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
+        + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
+      )
+    except ValueError:
+      noteStatusHistory = tsv_reader(
+        noteStatusHistoryPath,
+        c.noteStatusHistoryTSVTypeMappingOld,
+        c.noteStatusHistoryTSVColumnsOld,
+        header=headers,
+        convertNAToNone=False,
+      )
+      noteStatusHistory[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = np.nan
+      assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
+        noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
+      ), (
+        f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
+        + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
+      )
 
   if userEnrollmentPath is None:
     userEnrollment = None

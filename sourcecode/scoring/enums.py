@@ -13,6 +13,7 @@ class Scorers(Enum):
   MFExpansionPlusScorer = auto()
   ReputationScorer = auto()
   MFTopicScorer = auto()
+  MFMultiGroupScorer = auto()
 
 
 class Topics(Enum):

@@ -26,7 +26,13 @@ from .mf_group_scorer import (
   coalesce_group_model_helpfulness_scores,
   coalesce_group_model_scored_notes,
   groupScorerCount,
+  groupScorerParalleism,
   trialScoringGroup,
+)
+from .mf_multi_group_scorer import (
+  MFMultiGroupScorer,
+  coalesce_multi_group_model_helpfulness_scores,
+  coalesce_multi_group_model_scored_notes,
 )
 from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
 from .pandas_utils import get_df_info, keep_columns
@@ -48,7 +54,6 @@ import sklearn
 def _get_scorers(
   seed: Optional[int],
   pseudoraters: Optional[bool],
-  enabledScorers: Optional[Set[Scorers]],
   useStableInitialization: bool = True,
 ) -> Dict[Scorers, List[Scorer]]:
   """Instantiate all Scorer objects which should be used for note ranking.
@@ -56,73 +61,72 @@ def _get_scorers(
   Args:
     seed (int, optional): if not None, base distinct seeds for the first and second MF rounds on this value
     pseudoraters (bool, optional): if True, compute optional pseudorater confidence intervals
-    enabledScorers: if not None, set of which scorers should be instantiated and enabled
 
   Returns:
     Dict[Scorers, List[Scorer]] containing instantiated Scorer objects for note ranking.
   """
   scorers: Dict[Scorers, List[Scorer]] = dict()
-
-  if enabledScorers is None or Scorers.MFCoreScorer in enabledScorers:
-    scorers[Scorers.MFCoreScorer] = [
-      MFCoreScorer(seed, pseudoraters, useStableInitialization=useStableInitialization, threads=12)
-    ]
-  if enabledScorers is None or Scorers.MFExpansionScorer in enabledScorers:
-    scorers[Scorers.MFExpansionScorer] = [
-      MFExpansionScorer(seed, useStableInitialization=useStableInitialization, threads=12)
-    ]
-  if enabledScorers is None or Scorers.MFExpansionPlusScorer in enabledScorers:
-    scorers[Scorers.MFExpansionPlusScorer] = [
-      MFExpansionPlusScorer(seed, useStableInitialization=useStableInitialization, threads=12)
-    ]
-  if enabledScorers is None or Scorers.ReputationScorer in enabledScorers:
-    scorers[Scorers.ReputationScorer] = [
-      ReputationScorer(seed, useStableInitialization=useStableInitialization, threads=12)
-    ]
-  if enabledScorers is None or Scorers.MFGroupScorer in enabledScorers:
-    # Note that index 0 is reserved, corresponding to no group assigned, so scoring group
-    # numbers begin with index 1.
-    scorers[Scorers.MFGroupScorer] = [
-      # Scoring Group 13 is currently the largest by far, so total runtime benefits from
-      # adding the group scorers in descending order so we start work on Group 13 first.
-      MFGroupScorer(groupNumber=i, seed=seed)
-      for i in range(groupScorerCount, 0, -1)
-      if i != trialScoringGroup
-    ]
-    scorers[Scorers.MFGroupScorer].append(
-      MFGroupScorer(
-        groupNumber=trialScoringGroup,
-        seed=seed,
-        noteInterceptLambda=0.03 * 30,
-        userInterceptLambda=0.03 * 5,
-        globalInterceptLambda=0.03 * 5,
-        noteFactorLambda=0.03 / 3,
-        userFactorLambda=0.03 / 4,
-        diamondLambda=0.03 * 25,
-        normalizedLossHyperparameters=NormalizedLossHyperparameters(
-          globalSignNorm=True, noteSignAlpha=None, noteNormExp=0, raterNormExp=-0.25
-        ),
-        maxFinalMFTrainError=0.16,
-        groupThreshold=0.4,
-        minMeanNoteScore=-0.01,
-        crhThreshold=0.15,
-        crhSuperThreshold=None,
-        crnhThresholdIntercept=-0.01,
-        crnhThresholdNoteFactorMultiplier=0,
-        crnhThresholdNMIntercept=-0.02,
-        lowDiligenceThreshold=1000,
-        factorThreshold=0.4,
-        multiplyPenaltyByHarassmentScore=False,
-        minimumHarassmentScoreToPenalize=2.5,
-        tagConsensusHarassmentHelpfulRatingPenalty=10,
-        tagFilterPercentile=90,
-        incorrectFilterThreshold=1.5,
-      )
+  scorers[Scorers.MFCoreScorer] = [
+    MFCoreScorer(seed, pseudoraters, useStableInitialization=useStableInitialization, threads=12)
+  ]
+  scorers[Scorers.MFExpansionScorer] = [
+    MFExpansionScorer(seed, useStableInitialization=useStableInitialization, threads=12)
+  ]
+  scorers[Scorers.MFExpansionPlusScorer] = [
+    MFExpansionPlusScorer(seed, useStableInitialization=useStableInitialization, threads=12)
+  ]
+  scorers[Scorers.ReputationScorer] = [
+    ReputationScorer(seed, useStableInitialization=useStableInitialization, threads=12)
+  ]
+  # Note that index 0 is reserved, corresponding to no group assigned, so scoring group
+  # numbers begin with index 1.
+  scorers[Scorers.MFGroupScorer] = [
+    # Scoring Group 13 is currently the largest by far, so total runtime benefits from
+    # adding the group scorers in descending order so we start work on Group 13 first.
+    MFGroupScorer(includedGroups={i}, groupId=i, threads=groupScorerParalleism.get(i, 4), seed=seed)
+    for i in range(groupScorerCount, 0, -1)
+    if i != trialScoringGroup
+  ]
+  scorers[Scorers.MFGroupScorer].append(
+    MFGroupScorer(
+      includedGroups={trialScoringGroup},
+      groupId=trialScoringGroup,
+      threads=groupScorerParalleism.get(trialScoringGroup, 4),
+      seed=seed,
+      noteInterceptLambda=0.03 * 30,
+      userInterceptLambda=0.03 * 5,
+      globalInterceptLambda=0.03 * 5,
+      noteFactorLambda=0.03 / 3,
+      userFactorLambda=0.03 / 4,
+      diamondLambda=0.03 * 25,
+      normalizedLossHyperparameters=NormalizedLossHyperparameters(
+        globalSignNorm=True, noteSignAlpha=None, noteNormExp=0, raterNormExp=-0.25
+      ),
+      maxFinalMFTrainError=0.16,
+      groupThreshold=0.4,
+      minMeanNoteScore=-0.01,
+      crhThreshold=0.15,
+      crhSuperThreshold=None,
+      crnhThresholdIntercept=-0.01,
+      crnhThresholdNoteFactorMultiplier=0,
+      crnhThresholdNMIntercept=-0.02,
+      lowDiligenceThreshold=1000,
+      factorThreshold=0.4,
+      multiplyPenaltyByHarassmentScore=False,
+      minimumHarassmentScoreToPenalize=2.5,
+      tagConsensusHarassmentHelpfulRatingPenalty=10,
+      tagFilterPercentile=90,
+      incorrectFilterThreshold=1.5,
     )
-  if enabledScorers is None or Scorers.MFTopicScorer in enabledScorers:
-    scorers[Scorers.MFTopicScorer] = [
-      MFTopicScorer(topicName=topic.name, seed=seed) for topic in Topics
-    ]
+  )
+  scorers[Scorers.MFTopicScorer] = [
+    MFTopicScorer(topicName=topic.name, seed=seed) for topic in Topics
+  ]
+  scorers[Scorers.MFMultiGroupScorer] = [
+    MFMultiGroupScorer(includedGroups={4, 5, 7, 12, 26}, groupId=1, threads=4, seed=seed),
+    MFMultiGroupScorer(includedGroups={24, 27}, groupId=2, threads=4, seed=seed),
+    MFMultiGroupScorer(includedGroups={16, 20, 22, 23, 28}, groupId=3, threads=4, seed=seed),
+  ]
 
   return scorers
 
@@ -539,6 +543,7 @@ def combine_final_scorer_results(
       modelResult.auxiliaryNoteInfo,
     )
   scoredNotes = coalesce_group_model_scored_notes(scoredNotes)
+  scoredNotes = coalesce_multi_group_model_scored_notes(scoredNotes)
   scoredNotes = coalesce_topic_models(scoredNotes)
   return scoredNotes, auxiliaryNoteInfo
 
@@ -561,7 +566,7 @@ def convert_prescoring_rater_model_output_to_coalesced_helpfulness_scores(
     ]
   ].drop_duplicates()
 
-  scorersEnumDict = _get_scorers(seed=None, pseudoraters=None, enabledScorers=None)
+  scorersEnumDict = _get_scorers(seed=None, pseudoraters=None)
   scorers = chain(*scorersEnumDict.values())
   uniqueScorerNames = prescoringRaterModelOutput[c.scorerNameKey].unique()
   for scorer in scorers:
@@ -576,10 +581,10 @@ def convert_prescoring_rater_model_output_to_coalesced_helpfulness_scores(
       columns=scorer._get_user_col_mapping()
     )
     if isinstance(scorer, MFGroupScorer):
-      scorerOutputExternalNames[scorer._modelingGroupKey] = scorer._groupNumber
+      scorerOutputExternalNames[scorer._modelingGroupKey] = scorer._groupId
       # Raters may appear in multiple groups due to authorship -- filter out rows not from this group
       scorerOutputExternalNames = scorerOutputExternalNames[
-        scorerOutputExternalNames[c.modelingGroupKey] == scorer._groupNumber
+        scorerOutputExternalNames[c.modelingGroupKey].isin(scorer._includedGroups)
       ]
 
     finalCols = scorer.get_helpfulness_scores_cols()
@@ -606,8 +611,9 @@ def meta_score(
   scorers: Dict[Scorers, List[Scorer]],
   scoredNotes: pd.DataFrame,
   auxiliaryNoteInfo: pd.DataFrame,
-  lockedStatus: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
   enabledScorers: Optional[Set[Scorers]],
+  enableNmrDueToMinStableCrhTime: bool = False,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
   """Determine final note status based on individual scoring results.
 
@@ -619,7 +625,7 @@ def meta_score(
   Args:
     scoredNotes: pd.DataFrame containing all scored note results.
     auxiliaryNoteInfo: pd.DataFrame containing tag aggregates
-    lockedStatus: pd.DataFrame containing {noteId, status} pairs for all notes
+    noteStatusHistory: pd.DataFrame containing {noteId, lockedStatus, timestampMillisOfNmrDueToMinStableCrhTime} for all notes
     enabledScorers: if not None, set of which scorers should be instantiated and enabled
 
   Returns:
@@ -631,7 +637,13 @@ def meta_score(
   with c.time_block("Post-scorers: Meta Score: Setup"):
     assert len(scoredNotes) == len(auxiliaryNoteInfo)
     scoredNotes = scoredNotes.merge(
-      auxiliaryNoteInfo[[c.noteIdKey] + c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder],
+      auxiliaryNoteInfo[
+        [c.noteIdKey, c.currentLabelKey] + c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder
+      ],
+      on=c.noteIdKey,
+    )
+    scoredNotes = scoredNotes.merge(
+      noteStatusHistory[[c.noteIdKey, c.timestampMillisOfNmrDueToMinStableCrhTimeKey]],
       on=c.noteIdKey,
     )
     assert len(scoredNotes) == len(auxiliaryNoteInfo)
@@ -668,6 +680,17 @@ def meta_score(
           c.coreRatingStatusKey,
         )
       )
+    if enabledScorers is None or Scorers.MFMultiGroupScorer in enabledScorers:
+      for i in range(1, 4):
+        rules.append(
+          scoring_rules.ApplyModelResult(
+            RuleID[f"MULTI_GROUP_MODEL_{i}"],
+            {RuleID.CORE_MODEL},
+            c.multiGroupRatingStatusKey,
+            checkFirmReject=True,
+            filterColumnPairs=[(c.modelingMultiGroupKey, i)],
+          )
+        )
     if enabledScorers is None or Scorers.MFGroupScorer in enabledScorers:
       # TODO: modify this code to work when MFExpansionScorer is disabled by the system test
       assert len(scorers[Scorers.MFCoreScorer]) == 1
@@ -711,10 +734,17 @@ def meta_score(
             topic,
           )
         )
+    if enableNmrDueToMinStableCrhTime:
+      rules.append(
+        scoring_rules.NmrDueToMinStableCrhTime(
+          RuleID.NMR_DUE_TO_MIN_STABLE_CRH_TIME,
+          {RuleID.CORE_MODEL},
+        )
+      )
     rules.extend(
       [
         scoring_rules.ScoringDriftGuard(
-          RuleID.SCORING_DRIFT_GUARD, {RuleID.CORE_MODEL}, lockedStatus
+          RuleID.SCORING_DRIFT_GUARD, {RuleID.CORE_MODEL}, noteStatusHistory
         ),
         # TODO: The rule below both sets tags for notes which are CRH / CRNH and unsets status for
         # any notes which are CRH / CRNH but don't have enough ratings to assign two tags.  The later
@@ -742,6 +772,8 @@ def meta_score(
       c.metaScorerActiveRulesKey,
       decidedByColumn=c.decidedByKey,
     )
+    if not enableNmrDueToMinStableCrhTime:
+      scoringResult[c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey] = np.nan
     # Validate that nothing that was a FIRM_REJECT or CRNH from Core or Expansion is rated CRH
     coreRejects = scoringResult[c.coreRatingStatusKey].isin(
       {c.firmReject, c.currentlyRatedNotHelpful}
@@ -757,7 +789,6 @@ def meta_score(
       scoringResult[blockedRows & crhRows][c.metaScorerActiveRulesKey].value_counts(dropna=False)
     )
     print(scoringResult[blockedRows & crhRows][c.decidedByKey].value_counts(dropna=False))
-
   with c.time_block("Post-scorers: Meta Score: Preparing Return Values"):
     scoredNotesCols = scoringResult[
       [
@@ -767,6 +798,7 @@ def meta_score(
         c.firstTagKey,
         c.secondTagKey,
         c.decidedByKey,
+        c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey,
       ]
     ]
     auxiliaryNoteInfoCols = scoringResult[
@@ -954,6 +986,8 @@ def _add_deprecated_columns(scoredNotes: pd.DataFrame) -> pd.DataFrame:
       scoredNotes[column] = np.nan
     elif columnType == str:
       scoredNotes[column] = ""
+    elif columnType == "category":
+      scoredNotes[column] = np.nan
     else:
       assert False, f"column type {columnType} unsupported"
   return scoredNotes
@@ -1009,6 +1043,8 @@ def run_prescoring(
   useStableInitialization: bool = True,
   pseudoraters: bool = True,
   checkFlips: bool = True,
+  enableNmrDueToMinStableCrhTime: bool = False,
+  previousRatingCutoffTimestampMillis: Optional[int] = None,
 ) -> Tuple[
   pd.DataFrame, pd.DataFrame, sklearn.pipeline.Pipeline, c.PrescoringMetaOutput, pd.DataFrame
 ]:
@@ -1040,7 +1076,6 @@ def run_prescoring(
   scorers = _get_scorers(
     seed=seed,
     pseudoraters=False,
-    enabledScorers=enabledScorers,
     useStableInitialization=useStableInitialization,
   )
 
@@ -1147,7 +1182,7 @@ def run_prescoring(
       userEnrollment=userEnrollment,
       seed=seed,
       pseudoraters=pseudoraters,
-      enabledScorers=None,
+      enabledScorers=enabledScorers,
       runParallel=runParallel,
       useStableInitialization=useStableInitialization,
       prescoringNoteModelOutput=prescoringNoteModelOutput,
@@ -1155,6 +1190,8 @@ def run_prescoring(
       noteTopicClassifier=noteTopicClassifierPipe,
       prescoringMetaOutput=prescoringMetaOutput,
       checkFlips=checkFlips,
+      enableNmrDueToMinStableCrhTime=enableNmrDueToMinStableCrhTime,
+      previousRatingCutoffTimestampMillis=previousRatingCutoffTimestampMillis,
     )
   else:
     scoredNotes = None
@@ -1181,6 +1218,7 @@ def run_contributor_scoring(
     prescoringRaterModelOutput, userEnrollment
   )
   helpfulnessScores = coalesce_group_model_helpfulness_scores(helpfulnessScores)
+  helpfulnessScores = coalesce_multi_group_model_helpfulness_scores(helpfulnessScores)
 
   # Compute contribution statistics and enrollment state for users.
   with c.time_block("Post-scorers: Compute helpfulness scores"):
@@ -1316,12 +1354,38 @@ def determine_which_notes_to_rescore(
     )
   )
 
+  # 5. Rescore all notes that were NMRed due to MinStableCrhTime was not met.
+  nmrDueToMinStableCrhTimeNotes = set(
+    noteStatusHistory.loc[
+      (
+        ~noteStatusHistory[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
+        & noteStatusHistory[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
+        > 0
+      ),
+      c.noteIdKey,
+    ]
+  )
+  print(
+    "5. Rescore all notes that were NMRed due to MinStableCrhTime was not met.",
+    len(nmrDueToMinStableCrhTimeNotes),
+  )
+  notesToRescoreSet.update(nmrDueToMinStableCrhTimeNotes)
+  noteSubsets.append(
+    c.NoteSubset(
+      noteSet=nmrDueToMinStableCrhTimeNotes,
+      maxNewCrhChurnRate=c.finalNotesNmrDueToMinStableCrhTimeMaxNewCrhChurn,
+      maxOldCrhChurnRate=c.finalNotesNmrDueToMinStableCrhTimeMaxOldCrhChurn,
+      description=c.RescoringRuleID.NMR_DUE_TO_MIN_STABLE_CRH_TIME,
+    )
+  )
+
   print(
     f"""----\nNotes to rescore:
         * {len(notesWithNewRatings)} notes with new ratings since last scoring run.
         * {len(newNotesNotRescoredRecentlyEnough)} notes created recently and not rescored recently enough.
         * {len(justFlippedNotes)} notes that flipped status in the previous scoring run.
         * {len(recentlyFlippedNotesNotRescoredRecentlyEnough)} notes that flipped status recently and not rescored recently enough.
+        * {len(nmrDueToMinStableCrhTimeNotes)} notes that were NMRed due to MinStableCrhTime was not met.
       Overall: {len(notesToRescoreSet)} notes to rescore, out of {len(notes)} total.\n----"""
   )
 
@@ -1348,6 +1412,7 @@ def run_final_note_scoring(
   previousScoredNotes: Optional[pd.DataFrame] = None,
   previousAuxiliaryNoteInfo: Optional[pd.DataFrame] = None,
   previousRatingCutoffTimestampMillis: Optional[int] = 0,
+  enableNmrDueToMinStableCrhTime: bool = False,
 ):
   with c.time_block("Logging Final Scoring RAM usage"):
     print(get_df_info(notes, "notes"))
@@ -1361,14 +1426,49 @@ def run_final_note_scoring(
       print("No previous scored notes passed; scoring all notes.")
       notesToRescoreSet: Set[int] = set()
       scoredNotesPassthrough = None
+      currentMillis = int(time.time() * 1000)
+      recentNotesAgeTooOldCutoffMillis = (
+        1000 * 60 * 60 * 24 * 13
+      )  # 13 days: one less than final scoring to avoid boundary issues
+      recentNotesAgeTooRecentCutoffMillis = (
+        1000 * 60 * 60 * 24 * 3
+      )  # 2 days, to avoid notes with too many new ratings
+
       noteSubsets: List[c.NoteSubset] = [
         c.NoteSubset(
           noteSet=None,
           maxNewCrhChurnRate=c.prescoringAllUnlockedNotesMaxCrhChurn,
           maxOldCrhChurnRate=c.prescoringAllUnlockedNotesMaxCrhChurn,
           description=c.RescoringRuleID.ALL_NOTES,
-        )
+        ),
+        c.NoteSubset(
+          noteSet=set(
+            noteStatusHistory.loc[
+              (
+                (
+                  noteStatusHistory[c.createdAtMillisKey]
+                  >= currentMillis - recentNotesAgeTooOldCutoffMillis
+                )
+                & (
+                  noteStatusHistory[c.createdAtMillisKey]
+                  < currentMillis - recentNotesAgeTooRecentCutoffMillis
+                )
+              ),
+              c.noteIdKey,
+            ]
+          ),
+          maxNewCrhChurnRate=c.prescoringAllNotesCreatedThreeToThirteenDaysAgoMaxChurn,
+          maxOldCrhChurnRate=c.prescoringAllNotesCreatedThreeToThirteenDaysAgoMaxChurn,
+          description=c.RescoringRuleID.NOTES_CREATED_SOMEWHAT_RECENTLY,
+        ),
       ]
+
+      noteSubsetsForProdScoring, _ = determine_which_notes_to_rescore(
+        notes, ratings, noteStatusHistory, previousRatingCutoffTimestampMillis
+      )
+      for noteSubset in noteSubsetsForProdScoring:
+        if noteSubset.description == c.RescoringRuleID.NEW_NOTES_NOT_RESCORED_RECENTLY_ENOUGH:
+          noteSubsets.append(noteSubset)
     else:
       assert previousAuxiliaryNoteInfo is not None
       assert previousRatingCutoffTimestampMillis is not None
@@ -1420,9 +1520,7 @@ def run_final_note_scoring(
     )
     print(f"Post Selection Similarity Final Scoring: {len(ratings)} ratings remaining.")
 
-  scorers = _get_scorers(
-    seed, pseudoraters, enabledScorers, useStableInitialization=useStableInitialization
-  )
+  scorers = _get_scorers(seed, pseudoraters, useStableInitialization=useStableInitialization)
 
   modelResults = _run_scorers(
     scorers=list(chain(*scorers.values())),
@@ -1455,6 +1553,7 @@ def run_final_note_scoring(
     enabledScorers,
     strictColumns,
     checkFlips,
+    enableNmrDueToMinStableCrhTime,
   )
 
   # Concat final scoring results for newly-scored notes with the results for old notes not scores.
@@ -1497,6 +1596,7 @@ def post_note_scoring(
   enabledScorers: Optional[Set[Scorers]] = None,
   strictColumns: bool = True,
   checkFlips: bool = True,
+  enableNmrDueToMinStableCrhTime: bool = False,
 ):
   """
   Apply individual scoring models and obtained merged result.
@@ -1517,8 +1617,11 @@ def post_note_scoring(
       scorers,
       scoredNotes,
       auxiliaryNoteInfo,
-      noteStatusHistory[[c.noteIdKey, c.lockedStatusKey]],
+      noteStatusHistory[
+        [c.noteIdKey, c.lockedStatusKey, c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
+      ],
       enabledScorers,
+      enableNmrDueToMinStableCrhTime,
     )
 
   with c.time_block("Post-scorers: Join scored notes"):
@@ -1539,6 +1642,8 @@ def post_note_scoring(
     mergedNoteStatuses = note_status_history.merge_old_and_new_note_statuses(
       noteStatusHistory, scoredNotes
     )
+    # Not needed anymore, has been merged into note_status_history.
+    scoredNotes = scoredNotes.drop(columns=[c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey])
 
     scoredNotes[c.rescoringActiveRulesKey] = ""
     for noteSubset in noteSubsetsAndMaxFlipRates:
@@ -1667,6 +1772,7 @@ def run_scoring(
     dataLoader=dataLoader,
     useStableInitialization=useStableInitialization,
     checkFlips=False,
+    previousRatingCutoffTimestampMillis=previousRatingCutoffTimestampMillis,
   )
 
   print("We invoked run_scoring and are now in between prescoring and scoring.")
