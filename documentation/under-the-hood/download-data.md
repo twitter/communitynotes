@@ -152,8 +152,12 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `currentExpansionStatus` | String | The current status, if any, assigned by the expansion submodel. | "", "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |
 | `currentGroupStatus` | String | The current status, if any, assigned by the group submodel. | "", "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |
 | `currentDecidedByKey` | String | The submodel whose status was used to determine the note's overall current status. | "CoreModel (v1.1)", "ExpansionModel (v1.1)", "GroupModel01 (v1.1)", "GroupModel02 (v1.1)", ..., "InsufficientExplanation (v1.0)", "ScoringDriftGuard (v1.0)" |
-| `currentModelingGroup` | Int | The ID of the modeling group that this note would be scored by, if eligible to be scored by a group model (determined by the modeling groups of its raters, from the user enrollment file). 0 is a placeholder for no modeling group. | 0-13 |
+| `currentModelingGroup` | Int | The ID of the modeling group that this note would be scored by, if eligible to be scored by a group model (determined by the modeling groups of its raters, from the user enrollment file). 0 is a placeholder for no modeling group. | nonnegative int |
 | `timestampMillisOfMostRecentStatusChange` | Long | The timestamp, in milliseconds since epoch (UTC), of when the note's status was last changed. Value is -1 if the note's status has never changed. |
+| `timestampMillisOfNmrDueToMinStableCrhTime` | Long | The timestamp, in milliseconds since epoch (UTC), of when the note first met the scoring criteria to become CRH, but was set to NMR due to the NmrDueToMinStableCRHTime scoring rule. |
+| `currentMultiGroupStatus` | String | The current status, if any, assigned by the multi-group submodel. | "", "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |
+| `currentModelingMultiGroup` | Int | The ID of the multi-modeling group that this note would be scored by, if eligible to be scored by a multi group model (determined by the modeling groups of its raters, from the user enrollment file). 0 is a placeholder for no multi modeling group. | nonnegative int |
+
 
 
 ### Ratings
