@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 
 from .. import constants as c
 from .matrix_factorization import Constants as mf_c, MatrixFactorization
@@ -6,6 +7,10 @@ from .matrix_factorization import Constants as mf_c, MatrixFactorization
 import numpy as np
 import pandas as pd
 import torch
+
+
+logger = logging.getLogger("birdwatch.pseudo_raters")
+logger.setLevel(logging.INFO)
 
 
 @dataclass
@@ -28,10 +33,10 @@ class PseudoRatersRunner:
     raterParams: pd.DataFrame,
     globalBias: float,
     mfRanker: MatrixFactorization,
-    logging=True,
+    log=True,
     checkParamsSame=True,
   ):
-    self._logging = logging
+    self._log = log
     self._mfRanker = mfRanker
     self._checkParamsSame = checkParamsSame
     self.ratings = ratings
@@ -258,9 +263,9 @@ class PseudoRatersRunner:
         self._create_dataset_with_extreme_rating_on_each_note(ratingToAddWithoutNoteId)
       )
 
-      if self._logging:
-        print("------------------")
-        print(f"Re-scoring all notes with extra rating added: {ratingToAddWithoutNoteId}")
+      if self._log:
+        logger.info("------------------")
+        logger.info(f"Re-scoring all notes with extra rating added: {ratingToAddWithoutNoteId}")
 
       with c.time_block("Pseudo: fit all notes with raters constant"):
         fitNoteParams = self._fit_all_notes_with_raters_constant(

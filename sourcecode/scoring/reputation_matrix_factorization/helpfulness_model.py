@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Tuple
 
 from .. import constants as c
@@ -10,6 +11,10 @@ from .reputation_matrix_factorization import (
 
 import pandas as pd
 import torch
+
+
+logger = logging.getLogger("birdwatch.helpfulness_model")
+logger.setLevel(logging.INFO)
 
 
 def _setup_dataset_and_hparams(
@@ -85,7 +90,7 @@ def get_helpfulness_reputation_results_final(
     globalInterceptInit=globalIntercept,
     device=device,
   )
-  print(f"Helpfulness reputation loss: {loss:.4f}")
+  logger.info(f"Helpfulness reputation loss: {loss:.4f}")
 
   # Compose and return DataFrames
   noteStats = pd.DataFrame(
@@ -131,7 +136,7 @@ def get_helpfulness_reputation_results_prescoring(
     raterInitState=raterInitState,
     device=device,
   )
-  print(f"Helpfulness reputation loss: {loss1:.4f}, {loss2:.4f}, {loss3:.4f}")
+  logger.info(f"Helpfulness reputation loss: {loss1:.4f}, {loss2:.4f}, {loss3:.4f}")
 
   # Compose and return DataFrames
   noteStats = pd.DataFrame(

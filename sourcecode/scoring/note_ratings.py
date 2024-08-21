@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import logging
 from typing import Callable, Dict, Optional
 
 from . import constants as c, incorrect_filter, scoring_rules, tag_filter
@@ -6,6 +7,10 @@ from .scoring_rules import RuleID
 
 import numpy as np
 import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.note_ratings")
+logger.setLevel(logging.INFO)
 
 
 # Threshold limiting the number of ratings which can be counted as "valid" for the purpose of
@@ -43,7 +48,7 @@ def is_crnh_diamond(
 def get_ratings_before_note_status_and_public_tsv(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
-  logging: bool = True,
+  log: bool = True,
   doTypeCheck: bool = True,
 ) -> pd.DataFrame:
   """Determine which ratings are made before note's most recent non-NMR status,
@@ -54,7 +59,7 @@ def get_ratings_before_note_status_and_public_tsv(
   Args:
       ratings (pd.DataFrame)
       noteStatusHistory (pd.DataFrame)
-      logging (bool, optional). Defaults to True.
+      log (bool, optional). Defaults to True.
       doTypeCheck (bool): do asserts to check types.
   Returns:
       pd.DataFrame combinedRatingsBeforeStatus ratings that were created early enough to be valid ratings
@@ -140,11 +145,11 @@ def get_ratings_before_note_status_and_public_tsv(
 
   combinedRatingsBeforeStatus = pd.concat([ratingsBeforeStatusNewNotes, first5RatingsOldNotes])
 
-  if logging:
-    print(
+  if log:
+    logger.info(
       f"Total ratings: {np.invert(noteCreatedBeforeNoteStatusHistory).sum()} post-tombstones and {(noteCreatedBeforeNoteStatusHistory).sum()} pre-tombstones"
     )
-    print(
+    logger.info(
       f"Total ratings created before statuses: {len(combinedRatingsBeforeStatus)}, including {len(ratingsBeforeStatusNewNotes)} post-tombstones and {len(first5RatingsOldNotes)} pre-tombstones."
     )
 
@@ -156,7 +161,7 @@ def get_ratings_with_scores(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
-  logging: bool = True,
+  log: bool = True,
   doTypeCheck: bool = True,
 ) -> pd.DataFrame:
   """
@@ -170,7 +175,7 @@ def get_ratings_with_scores(
       pd.DataFrame: binaryRatingsOnNotesWithStatusLabels Binary ratings with status labels
   """
   ratingsBeforeNoteStatus = get_ratings_before_note_status_and_public_tsv(
-    ratings, noteStatusHistory, logging, doTypeCheck
+    ratings, noteStatusHistory, log, doTypeCheck
   )
 
   ratingsWithScores = ratingsBeforeNoteStatus[
@@ -193,7 +198,7 @@ def get_valid_ratings(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
-  logging: bool = True,
+  log: bool = True,
   doTypeCheck: bool = True,
 ) -> pd.DataFrame:
   """Determine which ratings are "valid" (used to determine rater helpfulness score)
@@ -204,13 +209,13 @@ def get_valid_ratings(
       ratings (pd.DataFrame)
       noteStatusHistory (pd.DataFrame)
       scoredNotes (pd.DataFrame)
-      logging (bool, optional): Defaults to True.
+      log (bool, optional): Defaults to True.
       doTypeCheck (bool): do asserts to check types.
   Returns:
       pd.DataFrame: binaryRatingsOnNotesWithStatusLabels CRH/CRNH notes group by helpfulness
   """
   ratingsWithScores = get_ratings_with_scores(
-    ratings, noteStatusHistory, scoredNotes, logging, doTypeCheck
+    ratings, noteStatusHistory, scoredNotes, log, doTypeCheck
   )
   ratingsWithScores[c.ratingCountKey] = 1
 
@@ -271,8 +276,8 @@ def get_valid_ratings(
     helpfulRatingOnCrhNote | notHelpfulRatingOnCrnhNote, c.ratingAgreesWithNoteStatusKey
   ] = True
 
-  if logging:
-    print(f"Total valid ratings: {len(binaryRatingsOnNotesWithStatusLabels)}")
+  if log:
+    logger.info(f"Total valid ratings: {len(binaryRatingsOnNotesWithStatusLabels)}")
 
   return binaryRatingsOnNotesWithStatusLabels
 

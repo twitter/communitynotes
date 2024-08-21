@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import sys
 
@@ -9,6 +10,10 @@ from .process_data import LocalDataLoader, tsv_reader, write_parquet_local, writ
 from .run_scoring import run_scoring
 
 import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.runner")
+logger.setLevel(logging.INFO)
 
 
 def parse_args():
@@ -243,8 +248,8 @@ def main(
 ):
   if args is None:
     args = parse_args()
-  print(f"scorer python version: {sys.version}")
-  print(f"scorer pandas version: {pd.__version__}")
+  logger.info(f"scorer python version: {sys.version}")
+  logger.info(f"scorer pandas version: {pd.__version__}")
   # patch_pandas requires that args are available (which matches the production binary) so
   # we first parse the arguments then invoke the decorated _run_scorer.
   return _run_scorer(args=args, dataLoader=dataLoader, extraScoringArgs=extraScoringArgs)

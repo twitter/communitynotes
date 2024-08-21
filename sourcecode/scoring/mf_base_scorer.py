@@ -1,4 +1,5 @@
 import gc
+import logging
 from typing import Dict, List, Optional, Set, Tuple
 
 from . import (
@@ -22,6 +23,10 @@ from .scorer import Scorer
 import numpy as np
 import pandas as pd
 import torch
+
+
+logger = logging.getLogger("birdwatch.mf_base_scorer")
+logger.setLevel(logging.INFO)
 
 
 def coalesce_columns(df: pd.DataFrame, columnPrefix: str) -> pd.DataFrame:
@@ -503,7 +508,7 @@ class MFBaseScorer(Scorer):
           helpfulnessScores (pd.DataFrame)
     """
     if self._seed is not None:
-      print(f"seeding with {self._seed}")
+      logger.info(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
 
     # Removes ratings where either (1) the note did not receive enough ratings, or
@@ -551,7 +556,7 @@ class MFBaseScorer(Scorer):
     # in situations where the overall volume of ratings is lower (e.g. topic models).
     if not self._useReputation:
       assert "Topic" in self.get_name(), f"Unexpected scorer: {self.get_name()}"
-      print(f"Skipping rep-filtering in prescoring for {self.get_name()}")
+      logger.info(f"Skipping rep-filtering in prescoring for {self.get_name()}")
       helpfulnessScores = raterParamsUnfiltered[[c.raterParticipantIdKey]]
       helpfulnessScores[
         [
@@ -568,7 +573,7 @@ class MFBaseScorer(Scorer):
       finalRoundRatings = ratingsForTraining
     else:
       assert "Topic" not in self.get_name(), f"Unexpected scorer: {self.get_name()}"
-      print(f"Performing rep-filtering for {self.get_name()}")
+      logger.info(f"Performing rep-filtering for {self.get_name()}")
       # Get a dataframe of scored notes based on the algorithm results above
       with self.time_block("Compute scored notes"):
         scoredNotes = note_ratings.compute_scored_notes(
@@ -763,7 +768,7 @@ class MFBaseScorer(Scorer):
       raterParamsDiligenceInit = raterParams[
         [c.raterParticipantIdKey, c.internalRaterFactor1Key]
       ].rename({c.internalRaterFactor1Key: c.lowDiligenceRaterFactor1Key}, axis=1)
-      print(
+      logger.info(
         f"In {self.get_name()} prescoring, about to call diligence with {len(finalRoundRatings)} final round ratings."
       )
       (
@@ -921,7 +926,7 @@ class MFBaseScorer(Scorer):
         userScores pd.DataFrame: one row per user containing a column for each helpfulness score.
     """
     if self._seed is not None:
-      print(f"seeding with {self._seed}")
+      logger.info(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
 
     # Removes ratings where either the note did not receive enough ratings
@@ -948,7 +953,7 @@ class MFBaseScorer(Scorer):
       assert (
         "Topic" in self.get_name()
       ), f"Unexpected scorer has reputation filtering disabled: {self.get_name()}"
-      print(f"Skipping rep-filtering in 2nd phase for {self.get_name()}")
+      logger.info(f"Skipping rep-filtering in 2nd phase for {self.get_name()}")
       finalRoundRatings = ratingsForTraining
     else:
       finalRoundRatings = helpfulness_scores.filter_ratings_by_helpfulness_scores(
@@ -1003,7 +1008,7 @@ class MFBaseScorer(Scorer):
 
     # Add low diligence intercepts.
     with self.time_block("Low Diligence Reputation Model"):
-      print(
+      logger.info(
         f"In {self.get_name()} final scoring, about to call diligence with {len(finalRoundRatings)} final round ratings."
       )
       assert (
@@ -1019,9 +1024,9 @@ class MFBaseScorer(Scorer):
         ratingsPerUserLossRatio=prescoringMetaScorerOutput.finalRoundNumRatings
         / prescoringMetaScorerOutput.finalRoundNumUsers,
       )
-      print(f"diligenceNP cols: {diligenceNoteParams.columns}")
+      logger.info(f"diligenceNP cols: {diligenceNoteParams.columns}")
       noteParams = noteParams.merge(diligenceNoteParams, on=c.noteIdKey)
-      print(f"np cols: {noteParams.columns}")
+      logger.info(f"np cols: {noteParams.columns}")
 
     if self._saveIntermediateState:
       self.noteParams = noteParams
@@ -1038,7 +1043,7 @@ class MFBaseScorer(Scorer):
     # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
     # and ML output.
     with self.time_block("Final compute scored notes"):
-      print(f"About to call compute_scored_notes with {self.get_name()}")
+      logger.info(f"About to call compute_scored_notes with {self.get_name()}")
       scoredNotes = note_ratings.compute_scored_notes(
         ratings,
         noteParams,
@@ -1059,7 +1064,7 @@ class MFBaseScorer(Scorer):
         factorThreshold=self._factorThreshold,
         firmRejectThreshold=self._firmRejectThreshold,
       )
-      print(f"sn cols: {scoredNotes.columns}")
+      logger.info(f"sn cols: {scoredNotes.columns}")
 
       # Takes raterParams from the MF run, but use the pre-computed
       # helpfulness scores from prescoringRaterModelOutput.
@@ -1093,7 +1098,7 @@ class MFBaseScorer(Scorer):
     c.scorerNameKey field of those dataframes.
     """
     torch.set_num_threads(self._threads)
-    print(
+    logger.info(
       f"score_final: Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}"
     )
 
@@ -1110,7 +1115,7 @@ class MFBaseScorer(Scorer):
     ].drop(columns=c.scorerNameKey, inplace=False)
 
     if self.get_name() not in scoringArgs.prescoringMetaOutput.metaScorerOutput:
-      print(
+      logger.info(
         f"Scorer {self.get_name()} not found in prescoringMetaOutput; returning empty scores from final scoring."
       )
       return self._return_empty_final_scores()

@@ -9,6 +9,7 @@ This approach represents a prelimiary approach to topic assignment while Communi
 evaluates the efficacy of per-topic note scoring.
 """
 
+import logging
 import re
 from typing import List, Optional, Tuple
 
@@ -21,6 +22,10 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.pipeline import Pipeline
+
+
+logger = logging.getLogger("birdwatch.topic_model")
+logger.setLevel(logging.INFO)
 
 
 class TopicModel(object):
@@ -85,7 +90,7 @@ class TopicModel(object):
         conflictedTexts[i] = True
 
     unassigned_count = np.sum(conflictedTexts)
-    print(f"  Notes unassigned due to multiple matches: {unassigned_count}")
+    logger.info(f"  Notes unassigned due to multiple matches: {unassigned_count}")
     return labels, conflictedTexts
 
   def _get_stop_words(self, texts: np.ndarray) -> List[str]:
@@ -105,15 +110,15 @@ class TopicModel(object):
     cv = CountVectorizer(strip_accents="unicode")
     cv.fit(texts)
     rawVocabulary = cv.vocabulary_.keys()
-    print(f"  Initial vocabulary length: {len(rawVocabulary)}")
+    logger.info(f"  Initial vocabulary length: {len(rawVocabulary)}")
     # Identify stop words
     blockedTokens = set()
     for terms in self._seedTerms.values():
       # Remove whitespace and any escaped characters from terms
       blockedTokens |= {re.sub(r"\\.", "", t.strip()) for t in terms}
-    print(f"  Total tokens to filter: {len(blockedTokens)}")
+    logger.info(f"  Total tokens to filter: {len(blockedTokens)}")
     stopWords = [v for v in rawVocabulary if any(t in v for t in blockedTokens)]
-    print(f"  Total identified stopwords: {len(stopWords)}")
+    logger.info(f"  Total identified stopwords: {len(stopWords)}")
     return stopWords
 
   def _merge_predictions_and_labels(
@@ -208,11 +213,11 @@ class TopicModel(object):
     Args:
       notes: DF containing all notes to potentially assign to a topic
     """
-    print("Assigning notes to topics:")
+    logger.info("Assigning notes to topics:")
     if noteTopicClassifier is not None:
       pipe = noteTopicClassifier
     else:
-      print("Training note topic classifier")
+      logger.info("Training note topic classifier")
       pipe, seedLabels, conflictedTextsForAccuracyEval = self.train_note_topic_classifier(notes)
     postText = self._prepare_post_text(notes)
 
@@ -234,7 +239,7 @@ class TopicModel(object):
 
     with c.time_block("Get Note Topics: Merge and assign predictions"):
       pred = self._merge_predictions_and_labels(pred, seedLabels)
-      print(f"  Topic assignment results: {np.bincount(pred)}")
+      logger.info(f"  Topic assignment results: {np.bincount(pred)}")
 
       # Assign topics to notes based on aggregated note text, and drop any
       # notes on posts that were unassigned.
@@ -247,7 +252,7 @@ class TopicModel(object):
 
   def validate_note_topic_accuracy_on_seed_labels(self, pred, seedLabels, conflictedTexts):
     balancedAccuracy = balanced_accuracy_score(seedLabels[~conflictedTexts], pred[~conflictedTexts])
-    print(f"  Balanced accuracy on raw predictions: {balancedAccuracy}")
+    logger.info(f"  Balanced accuracy on raw predictions: {balancedAccuracy}")
     assert balancedAccuracy > 0.5, f"Balanced accuracy too low: {balancedAccuracy}"
     # Validate that any conflicted text is Unassigned in seedLabels
     assert all(seedLabels[conflictedTexts] == Topics.Unassigned.value)

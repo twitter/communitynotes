@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from enum import Enum
+import logging
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from . import constants as c
@@ -10,6 +11,9 @@ from .explanation_tags import get_top_two_tags_for_note
 import numpy as np
 import pandas as pd
 
+
+logger = logging.getLogger("birdwatch.scoring_rules")
+logger.setLevel(logging.INFO)
 
 RuleAndVersion = namedtuple("RuleAndVersion", ["ruleName", "ruleVersion", "lockingEnabled"])
 """namedtuple identifying ScoringRule with a name and tracking revisions with a version."""
@@ -57,8 +61,6 @@ class RuleID(Enum):
   TOPIC_MODEL_2 = RuleAndVersion("TopicModel02", "1.0", False)
   TOPIC_MODEL_3 = RuleAndVersion("TopicModel03", "1.0", False)
   MULTI_GROUP_MODEL_1 = RuleAndVersion("MultiGroupModel01", "1.0", False)
-  MULTI_GROUP_MODEL_2 = RuleAndVersion("MultiGroupModel02", "1.0", False)
-  MULTI_GROUP_MODEL_3 = RuleAndVersion("MultiGroupModel03", "1.0", False)
   INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
   SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
   NMR_DUE_TO_MIN_STABLE_CRH_TIME = RuleAndVersion("NmrDueToMinStableCrhTime", "1.0", False)
@@ -270,7 +272,7 @@ class FilterTagOutliers(ScoringRule):
       [c.noteIdKey]
     ]
     noteStats = noteStats.merge(candidateNotes, on=c.noteIdKey, how="inner")
-    print(f"Candidate notes prior to tag filtering: {len(noteStats)}")
+    logger.info(f"Candidate notes prior to tag filtering: {len(noteStats)}")
 
     # Identify impacted notes.
     impactedNotes = pd.DataFrame.from_dict(
@@ -279,13 +281,13 @@ class FilterTagOutliers(ScoringRule):
         c.activeFilterTagsKey: pd.Series([], dtype=object),
       }
     )
-    print("Checking note tags:")
+    logger.info("Checking note tags:")
     for tag in c.notHelpfulTagsTSVOrder:
       adjustedColumn = f"{tag}{c.adjustedSuffix}"
       adjustedRatioColumn = f"{adjustedColumn}{c.ratioSuffix}"
-      print(tag)
+      logger.info(tag)
       if tag == c.notHelpfulHardToUnderstandKey:
-        print(f"outlier filtering disabled for tag: {tag}")
+        logger.info(f"outlier filtering disabled for tag: {tag}")
         continue
       tagFilteredNotes = noteStats[
         # Adjusted total must pass minimum threhsold set across all tags.
@@ -298,12 +300,12 @@ class FilterTagOutliers(ScoringRule):
         unsafeAllowed=[c.defaultIndexKey, c.activeFilterTagsKey],
       )
     # log and consolidate imapcted notes
-    print(f"Total {{note, tag}} pairs where tag filter logic triggered: {len(impactedNotes)}")
+    logger.info(f"Total {{note, tag}} pairs where tag filter logic triggered: {len(impactedNotes)}")
     impactedNotes = impactedNotes.groupby(c.noteIdKey).aggregate(list).reset_index()
     impactedNotes[c.activeFilterTagsKey] = [
       ",".join(tags) for tags in impactedNotes[c.activeFilterTagsKey]
     ]
-    print(f"Total unique notes impacted by tag filtering: {len(impactedNotes)}")
+    logger.info(f"Total unique notes impacted by tag filtering: {len(impactedNotes)}")
     noteStatusUpdates = impactedNotes[[c.noteIdKey]].drop_duplicates()
     noteStatusUpdates[statusColumn] = self._status
     return (noteStatusUpdates, impactedNotes)
@@ -356,7 +358,7 @@ class FilterIncorrect(ScoringRule):
 
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
 
-    print(f"Total notes impacted by incorrect filtering: {len(noteStatusUpdates)}")
+    logger.info(f"Total notes impacted by incorrect filtering: {len(noteStatusUpdates)}")
     noteStatusUpdates[statusColumn] = self._status
 
     return (noteStatusUpdates, None)
@@ -400,7 +402,7 @@ class FilterLowDiligence(ScoringRule):
 
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
 
-    print(f"Total notes impacted by low diligence filtering: {len(noteStatusUpdates)}")
+    logger.info(f"Total notes impacted by low diligence filtering: {len(noteStatusUpdates)}")
     noteStatusUpdates[statusColumn] = self._status
 
     return (noteStatusUpdates, None)
@@ -444,7 +446,7 @@ class FilterLargeFactor(ScoringRule):
 
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
 
-    print(f"Total notes impacted by large factor filtering: {len(noteStatusUpdates)}")
+    logger.info(f"Total notes impacted by large factor filtering: {len(noteStatusUpdates)}")
     noteStatusUpdates[statusColumn] = self._status
 
     return (noteStatusUpdates, None)
@@ -551,7 +553,7 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     ][[c.noteIdKey, newStatusColumn]]
     noteStatusUpdatesWithStatusChange.rename(columns={newStatusColumn: statusColumn}, inplace=True)
 
-    print(
+    logger.info(
       f"Total notes impacted (CRH->NMR) by NmrDueToMinStableCrhTime: "
       f"{len(noteStatusUpdatesWithStatusChange)}"
     )
@@ -788,7 +790,9 @@ class InsufficientExplanation(ScoringRule):
         | (currentLabels[statusColumn] == c.currentlyRatedNotHelpful)
       ][[c.noteIdKey]]
       crStats = noteStats.merge(crNotes, on=c.noteIdKey, how="inner")
-      print(f"CRH / CRNH notes prior to filtering for insufficient explanation: {len(crStats)}")
+      logger.info(
+        f"CRH / CRNH notes prior to filtering for insufficient explanation: {len(crStats)}"
+      )
 
       # Identify impacted notes.
       noteStatusUpdates = crStats.loc[
@@ -798,7 +802,7 @@ class InsufficientExplanation(ScoringRule):
 
       pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
 
-      print(f"Total notes impacted by explanation filtering: {len(noteStatusUpdates)}")
+      logger.info(f"Total notes impacted by explanation filtering: {len(noteStatusUpdates)}")
       noteStatusUpdates[statusColumn] = self._status
 
     return (noteStatusUpdates, None)
@@ -1019,7 +1023,7 @@ def apply_scoring_rules(
   # Successively apply each rule
   for rule in rules:
     with c.time_block(f"Applying scoring rule: {rule.get_name()}"):
-      print(f"Applying scoring rule: {rule.get_name()}")
+      logger.info(f"Applying scoring rule: {rule.get_name()}")
       rule.check_dependencies(ruleIDs)
       assert rule.get_rule_id() not in ruleIDs, f"repeat ruleID: {rule.get_name()}"
       ruleIDs.add(rule.get_rule_id())

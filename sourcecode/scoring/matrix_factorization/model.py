@@ -1,7 +1,12 @@
 from dataclasses import dataclass
+import logging
 from typing import Optional
 
 import torch
+
+
+logger = logging.getLogger("birdwatch.model")
+logger.setLevel(logging.INFO)
 
 
 @dataclass
@@ -20,7 +25,7 @@ class BiasedMatrixFactorization(torch.nn.Module):
     n_notes: int,
     n_factors: int = 1,
     use_global_intercept: bool = True,
-    logging: bool = True,
+    log: bool = True,
   ) -> None:
     """Initialize matrix factorization model using xavier_uniform for factors
     and zeros for intercepts.
@@ -33,7 +38,7 @@ class BiasedMatrixFactorization(torch.nn.Module):
     """
     super().__init__()
 
-    self._logging = logging
+    self._log = log
 
     self.user_factors = torch.nn.Embedding(n_users, n_factors, sparse=False, dtype=torch.float32)
     self.note_factors = torch.nn.Embedding(n_notes, n_factors, sparse=False, dtype=torch.float32)
@@ -81,6 +86,6 @@ class BiasedMatrixFactorization(torch.nn.Module):
     for name, param in self.named_parameters():
       for word in words_to_freeze:
         if word in name:
-          if self._logging:
-            print("Freezing parameter: ", name)
+          if self._log:
+            logger.info(f"Freezing parameter: {name}")
           param.requires_grad_(False)

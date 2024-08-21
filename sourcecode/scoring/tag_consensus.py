@@ -1,9 +1,14 @@
+import logging
 from typing import Optional
 
 from . import constants as c, process_data
 from .matrix_factorization.matrix_factorization import MatrixFactorization
 
 import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.tag_consensus")
+logger.setLevel(logging.INFO)
 
 
 def train_tag_model(
@@ -14,16 +19,16 @@ def train_tag_model(
   useSigmoidCrossEntropy: bool = True,
   name: Optional[str] = None,
 ):
-  print(f"-------------------Training for tag {tag}-------------------")
+  logger.info(f"-------------------Training for tag {tag}-------------------")
   ratingDataForTag, labelColName = prepare_tag_data(ratings, tag)
   if ratingDataForTag is None or len(ratingDataForTag) == 0:
-    print(f"No valid data for {tag}, returning None and aborting {tag} model training.")
+    logger.info(f"No valid data for {tag}, returning None and aborting {tag} model training.")
     return None, None, None
 
   posRate = ratingDataForTag[labelColName].sum() / len(ratingDataForTag)
-  print(f"{tag} Positive Rate: {posRate}")
+  logger.info(f"{tag} Positive Rate: {posRate}")
   if pd.isna(posRate) or posRate == 0 or posRate == 1:
-    print(
+    logger.info(
       f"{tag} tag positive rate is {posRate}: returning None and aborting {tag} model training."
     )
     return None, None, None
@@ -105,16 +110,16 @@ def prepare_tag_data(
   # Positives
   ratings.loc[ratings[tagName] == 1, labelColName] = 1
 
-  print("Pre-filtering tag label breakdown", ratings.groupby(labelColName).size())
-  print("Number of rows with no tag label", ratings[labelColName].isnull().sum())
+  logger.info(f"Pre-filtering tag label breakdown {ratings.groupby(labelColName).size()}")
+  logger.info(f"Number of rows with no tag label {ratings[labelColName].isnull().sum()}")
 
   # Currently leave in raters who only made one type of rating, but can throw them out in the future.
   ratings = process_data.filter_ratings(
     ratings[ratings[labelColName].notnull()], minNumRatingsPerRater, minNumRatersPerNote
   )
 
-  print("Post-filtering tag label breakdown", ratings.groupby(labelColName).size())
-  print("Number of rows with no tag label", ratings[labelColName].isnull().sum())
+  logger.info(f"Post-filtering tag label breakdown {ratings.groupby(labelColName).size()}")
+  logger.info(f"Number of rows with no tag label {ratings[labelColName].isnull().sum()}")
 
   ratings[labelColName] = ratings[labelColName].astype(int)
 

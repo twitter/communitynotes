@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Tuple
 
 from .. import constants as c
@@ -10,6 +11,10 @@ from .reputation_matrix_factorization import (
 
 import pandas as pd
 import torch
+
+
+logger = logging.getLogger("birdwatch.diligence_model")
+logger.setLevel(logging.INFO)
 
 
 def _setup_dataset_and_hparams(
@@ -120,7 +125,7 @@ def fit_low_diligence_model_final(
     globalInterceptInit=globalInterceptDiligence,
     device=device,
   )
-  print(f"Low diligence final loss: {loss_final:.4f}")
+  logger.info(f"Low diligence final loss: {loss_final:.4f}")
 
   noteStats = pd.DataFrame(
     {
@@ -170,7 +175,7 @@ def fit_low_diligence_model_prescoring(
     raterInitState=raterInitStateInternal,
     device=device,
   )
-  print(f"Low diligence training loss: {loss1:.4f}, {loss2:.4f}, {loss3:.4f}")
+  logger.info(f"Low diligence training loss: {loss1:.4f}, {loss2:.4f}, {loss3:.4f}")
 
   noteStats = pd.DataFrame(
     {

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 import time
 from typing import Optional
 
@@ -9,6 +10,10 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+
+
+logger = logging.getLogger("birdwatch.reputation_matrix_factorization")
+logger.setLevel(logging.INFO)
 
 
 # Define dataclass to represent learning hyperparameters
@@ -120,8 +125,8 @@ class ReputationMFModel(nn.Module):
   def init_parameter(self, initDf, initCol, idKey, ratersOrNotes, device, defaultValue):
     if initDf is not None and initCol in initDf.columns:
       idToInitValue = dict(initDf[[idKey, initCol]].values)
-      print(f"Initializing {initCol}:")
-      print(
+      logger.info(f"Initializing {initCol}:")
+      logger.info(
         f"  num in dataset: {ratersOrNotes.shape[0]}, vs. num we are initializing: {len(initDf)}"
       )
       paramWeightToInit = nn.Parameter(
@@ -135,11 +140,11 @@ class ReputationMFModel(nn.Module):
         .reshape(-1, 1)
         .to(device)
       )
-      print(f"  uninitialized {initCol}s: {(paramWeightToInit == 0).flatten().sum()}")
-      print(f"  initialized {initCol}s: {(paramWeightToInit != 0).flatten().sum()}")
+      logger.info(f"  uninitialized {initCol}s: {(paramWeightToInit == 0).flatten().sum()}")
+      logger.info(f"  initialized {initCol}s: {(paramWeightToInit != 0).flatten().sum()}")
       return paramWeightToInit
     else:
-      print(f"Not initializing {initCol}")
+      logger.info(f"Not initializing {initCol}")
       return None
 
   def init_note_factor(self, noteInitState, dataset, device, defaultValue=0):
@@ -292,11 +297,13 @@ def _train_one_round(model, loss_fn, dataset, hParams):
     loss += model.get_regularization_loss(numRatings)
     assert not torch.isnan(loss).any()
     if hParams.logRate and epoch % hParams.logRate == 0:
-      print(f"epoch={epoch:03d} | loss={loss.item():7.6f} | time={time.time() - start:.1f}s")
+      logger.info(f"epoch={epoch:03d} | loss={loss.item():7.6f} | time={time.time() - start:.1f}s")
     if hParams.convergence > 0 and epoch % hParams.stablePeriod == 0:
       if priorLoss is not None and (priorLoss - loss).abs() < hParams.convergence:
         if hParams.logRate:
-          print(f"epoch={epoch:03d} | loss={loss.item():7.6f} | time={time.time() - start:.1f}s")
+          logger.info(
+            f"epoch={epoch:03d} | loss={loss.item():7.6f} | time={time.time() - start:.1f}s"
+          )
         break
       priorLoss = loss
     # Perform backward pass
@@ -336,7 +343,9 @@ def _setup_model(
     assert hParams.lossFunction == "BCEWithLogitsLoss"
     loss_fn = nn.BCEWithLogitsLoss(reduction="none")
 
-  print(f"Setup model: noteInitState: \n{noteInitState},\n raterInitState: \n{raterInitState}")
+  logger.info(
+    f"Setup model: noteInitState: \n{noteInitState},\n raterInitState: \n{raterInitState}"
+  )
   model = ReputationMFModel(
     dataset,
     activation_fn=activation_fn,
@@ -366,8 +375,8 @@ def train_model_prescoring(
 ):
   model, loss_fn = _setup_model(dataset, hParams, noteInitState, raterInitState)
 
-  print("Reputation Matrix Factorization: rater reputation frozen")
-  print("Round 1:")
+  logger.info("Reputation Matrix Factorization: rater reputation frozen")
+  logger.info("Round 1:")
   loss_fn_1 = WeightedLoss(
     loss_fn,
     dataset.noteTensor,
@@ -380,10 +389,10 @@ def train_model_prescoring(
   )
   model.raterReputation.requires_grad_(False)
   loss1 = _train_one_round(model, loss_fn_1, dataset, hParams)
-  print(f"After round 1, global bias: {model.globalBias}")
+  logger.info(f"After round 1, global bias: {model.globalBias}")
   globalInt1 = model.globalBias.data.cpu().detach().numpy().item()
 
-  print("\nRound 2: learn rater rep (and everything else), freeze note intercept")
+  logger.info("\nRound 2: learn rater rep (and everything else), freeze note intercept")
   loss_fn_2 = WeightedLoss(
     loss_fn,
     dataset.noteTensor,
@@ -402,7 +411,7 @@ def train_model_prescoring(
   noteIntercept2 = model.noteBias.weight.cpu().flatten().detach().numpy().copy()
   raterIntercept2 = model.raterBias.weight.cpu().flatten().detach().numpy().copy()
 
-  print("\nRound 3: fit intercepts and global intercept with everything else frozen")
+  logger.info("\nRound 3: fit intercepts and global intercept with everything else frozen")
   model.l2Lambda = hParams.l2Lambda * hParams.l2LambdaThirdRoundMultiplier
   model.l2NoteBiasMultiplier = hParams.l2NoteBiasMultiplier * hParams.l2NoteBiasThirdRoundMultiplier
   model.noteBias.requires_grad_(True)
@@ -427,7 +436,7 @@ def train_model_prescoring(
 
   loss3 = _train_one_round(model, loss_fn_3, dataset, hParams)
 
-  print(f"After round 3, global bias: {model.globalBias}")
+  logger.info(f"After round 3, global bias: {model.globalBias}")
   globalInt3 = model.globalBias.data.cpu().detach().numpy().item()
   globalIntercept = c.ReputationGlobalIntercept(
     firstRound=globalInt1, secondRound=globalInt2, finalRound=globalInt3
@@ -464,7 +473,7 @@ def train_model_final(
     dataset, hParams, noteInitState, raterInitState, globalInterceptInit.secondRound
   )
 
-  print(
+  logger.info(
     "Final scoring, initial round fitting reputation MF (equivalent to Round 2 in Prescoring - learn note factor)"
   )
 
@@ -487,7 +496,7 @@ def train_model_final(
   )
   _train_one_round(model, loss_fn_2, dataset, hParams)
 
-  print("Final scoring, final round fitting reputation MF: learn just note intercept")
+  logger.info("Final scoring, final round fitting reputation MF: learn just note intercept")
 
   # Now set the global intercept to the value from the final round
   model.globalBias.data = torch.tensor(globalInterceptInit.finalRound, **model.format)

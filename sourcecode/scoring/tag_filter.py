@@ -1,11 +1,16 @@
 """Utilites for tag based scoring logic."""
 
+import logging
 from typing import Dict
 
 from . import constants as c
 
 import numpy as np
 import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.tag_filter")
+logger.setLevel(logging.INFO)
 
 
 def _normalize_factors(rawFactors: pd.DataFrame, entityKey: str, factorKey: str) -> pd.DataFrame:
@@ -133,7 +138,7 @@ def get_tag_thresholds(ratings: pd.DataFrame, percentile: int) -> Dict[str, floa
   thresholds = {}
   for column in c.notHelpfulTagsAdjustedRatioColumns:
     if len(ratings[column]) == 0:
-      print(
+      logger.info(
         f"Warning: No ratings for column {column} in get_tag_thresholds. Setting threshold to 0.0 arbitrarily."
       )
       thresholds[column] = 0.0
