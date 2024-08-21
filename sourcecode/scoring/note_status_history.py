@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import Optional
 
@@ -7,6 +8,9 @@ from .scoring_rules import RuleID
 import numpy as np
 import pandas as pd
 
+
+logger = logging.getLogger("birdwatch.note_status_history")
+logger.setLevel(logging.INFO)
 
 # Delay specifying when to lock note status, currently set to two weeks.
 _noteLockMillis = 14 * 24 * 60 * 60 * 1000
@@ -36,7 +40,7 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
     unsafeAllowed={c.createdAtMillisKey, c.createdAtMillisKey + noteSuffix},
   )
   newNotes = pd.isna(newNoteStatusHistory[c.createdAtMillisKey])
-  print(f"total notes added to noteStatusHistory: {sum(newNotes)}")
+  logger.info(f"total notes added to noteStatusHistory: {sum(newNotes)}")
   # Copy timestamp and authorship data over for new notes.
   newNoteStatusHistory.loc[newNotes, c.createdAtMillisKey] = newNoteStatusHistory.loc[
     newNotes, c.createdAtMillisKey + noteSuffix
@@ -89,10 +93,21 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   Returns:
       row of pd.DataFrame
   """
+  # This TS will be set by run_combine_scoring_outputs.
+  mergedNote[c.timestampMinuteOfFinalScoringOutput] = np.nan
+
+  # TODO(jiansongc): remove after new column is in prod.
+  if c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey not in mergedNote:
+    mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = np.nan
+
   if not pd.isna(mergedNote[c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey]):
     mergedNote[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = mergedNote[
       c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey
     ]
+    if pd.isna(mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey]):
+      mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = mergedNote[
+        c.timestampMillisOfNmrDueToMinStableCrhTimeKey
+      ]
 
   if mergedNote[c.finalRatingStatusKey] != mergedNote[c.currentLabelKey]:
     # Changed status vs. previous run:
@@ -193,7 +208,7 @@ def check_flips(mergedStatuses: pd.DataFrame, noteSubset: c.NoteSubset) -> None:
     # Prune notes to unlocked notes.
     mergedStatuses = mergedStatuses[mergedStatuses[c.timestampMillisOfStatusLockKey].isna()]
     # Prune to note subset
-    print(
+    logger.info(
       f"Checking Flip Rate for note subset: {noteSubset.description} (unlocked only), with max new CRH churn: {noteSubset.maxNewCrhChurnRate}, and max old CRH churn: {noteSubset.maxOldCrhChurnRate}"
     )
     if noteSubset.noteSet is not None:
@@ -222,12 +237,12 @@ def _check_flips(
     # Validate that changes are within allowable bounds.
     smoothedNewNoteRatio = (len(newCrhNotes - oldCrhNotes)) / (len(oldCrhNotes) + smoothingCount)
     rawNewNoteRatio = (len(newCrhNotes - oldCrhNotes)) / len(oldCrhNotes)
-    print(
+    logger.info(
       f"Raw new note ratio: {rawNewNoteRatio}, smoothed new note ratio: {smoothedNewNoteRatio}. (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
     )
     smoothedOldNoteRatio = (len(oldCrhNotes - newCrhNotes)) / (len(oldCrhNotes) + smoothingCount)
     rawOldNoteRatio = (len(oldCrhNotes - newCrhNotes)) / len(oldCrhNotes)
-    print(
+    logger.info(
       f"Raw old note ratio: {rawOldNoteRatio}, smoothed old note ratio: {smoothedOldNoteRatio}. (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
     )
 

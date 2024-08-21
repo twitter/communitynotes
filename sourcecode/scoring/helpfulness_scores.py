@@ -1,9 +1,14 @@
+import logging
 from typing import Optional
 
 from . import constants as c
 
 import numpy as np
 import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.helpfulness_scores")
+logger.setLevel(logging.INFO)
 
 
 def author_helpfulness(
@@ -199,7 +204,7 @@ def compute_general_helpfulness_scores(
 def filter_ratings_by_helpfulness_scores(
   ratingsForTraining: pd.DataFrame,
   helpfulnessScores: pd.DataFrame,
-  logging: bool = True,
+  log: bool = True,
 ):
   """Filter out ratings from raters whose helpfulness scores are too low.
   See https://twitter.github.io/communitynotes/contributor-scores/#filtering-ratings-based-on-helpfulness-scores.
@@ -207,7 +212,7 @@ def filter_ratings_by_helpfulness_scores(
   Args:
       ratingsForTraining pandas.DataFrame: unfiltered input ratings
       helpfulnessScores pandas.DataFrame: helpfulness scores to use to determine which raters to filter out.
-      logging (bool, optional): debug output. Defaults to True.
+      log (bool, optional): debug output. Defaults to True.
 
   Returns:
       filtered_ratings pandas.DataFrame: same schema as input ratings, but filtered.
@@ -219,15 +224,14 @@ def filter_ratings_by_helpfulness_scores(
     ratingsForTraining, on=c.raterParticipantIdKey
   )
 
-  if logging:
-    print("Unique Raters: ", len(np.unique(ratingsForTraining[c.raterParticipantIdKey])))
-    print("People (Authors or Raters) With Helpfulness Scores: ", len(helpfulnessScores))
-    print("Raters Included Based on Helpfulness Scores: ", len(includedUsers))
-    print(
-      "Included Raters who have rated at least 1 note in the final dataset: ",
-      len(np.unique(ratingsHelpfulnessScoreFiltered[c.raterParticipantIdKey])),
+  if log:
+    logger.info(f"Unique Raters: {len(np.unique(ratingsForTraining[c.raterParticipantIdKey]))}")
+    logger.info(f"People (Authors or Raters) With Helpfulness Scores: {len(helpfulnessScores)}")
+    logger.info(f"Raters Included Based on Helpfulness Scores: {len(includedUsers)}")
+    logger.info(
+      f"Included Raters who have rated at least 1 note in the final dataset: {len(np.unique(ratingsHelpfulnessScoreFiltered[c.raterParticipantIdKey]))}",
     )
-    print("Number of Ratings Used For 1st Training: ", len(ratingsForTraining))
-    print("Number of Ratings for Final Training: ", len(ratingsHelpfulnessScoreFiltered))
+    logger.info(f"Number of Ratings Used For 1st Training: {len(ratingsForTraining)}")
+    logger.info(f"Number of Ratings for Final Training: {len(ratingsHelpfulnessScoreFiltered)}")
 
   return ratingsHelpfulnessScoreFiltered

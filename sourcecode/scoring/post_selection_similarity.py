@@ -1,10 +1,15 @@
 import gc
+import logging
 from typing import Dict
 
 from . import constants as c
 
 import numpy as np
 import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.post_selection_similarity")
+logger.setLevel(logging.INFO)
 
 
 class PostSelectionSimilarity:
@@ -240,11 +245,11 @@ def _get_pair_counts(ratings: pd.DataFrame, windowMillis: int = 1000 * 60 * 10) 
     values = ratings[
       [c.noteIdKey, c.createdAtMillisKey, c.raterParticipantIdKey, c.tweetIdKey]
     ].values
-    print(len(values))
+    logger.info(len(values))
     for i in range(len(values)):
       priorNote, priorTs, priorRater, priorTweet = values[i]
       if i == 0 or i == 1000 or i == 100000 or i % 5000000 == 0:
-        print(f"get_pair_counts i={i}")
+        logger.info(f"get_pair_counts i={i}")
       j = i + 1
       while j < len(values):
         nextNote, nextTs, nextRater, nextTweet = values[j]

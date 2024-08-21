@@ -1,12 +1,17 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
+import logging
 import os
 import time
 from typing import Dict, Optional, Set
 
 import numpy as np
 import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.constants")
+logger.setLevel(logging.INFO)
 
 
 # Default number of threads to use in torch if os.cpu_count() is unavailable
@@ -461,6 +466,8 @@ timestampMillisOfNmrDueToMinStableCrhTimeKey = "timestampMillisOfNmrDueToMinStab
 updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey = (
   "updatedTimestampMillisOfNmrDueToMinStableCrhTime"
 )
+timestampMinuteOfFinalScoringOutput = "timestampMinuteOfFinalScoringOutput"
+timestampMillisOfFirstNmrDueToMinStableCrhTimeKey = "timestampMillisOfFirstNmrDueToMinStableCrhTime"
 
 noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
@@ -484,6 +491,8 @@ noteStatusHistoryTSVColumnsAndTypes = [
   (timestampMillisOfNmrDueToMinStableCrhTimeKey, np.double),  # double because nullable.
   (currentMultiGroupStatusKey, "category"),
   (currentModelingMultiGroupKey, np.double),  # TODO: int
+  (timestampMinuteOfFinalScoringOutput, np.double),  # double because nullable.
+  (timestampMillisOfFirstNmrDueToMinStableCrhTimeKey, np.double),  # double because nullable.
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypes = [dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
@@ -818,8 +827,6 @@ inputPathsTSVColumnsAndTypes = [
 inputPathsTSVColumns = [col for (col, _) in inputPathsTSVColumnsAndTypes]
 inputPathsTSVTypeMapping = {col: dtype for (col, dtype) in inputPathsTSVColumnsAndTypes}
 
-timestampMinuteOfFinalScoringOutput = "timestampMinuteOfFinalScoringOutput"
-
 
 @contextmanager
 def time_block(label):
@@ -828,7 +835,7 @@ def time_block(label):
     yield
   finally:
     end = time.time()
-    print(f"{label} elapsed time: {end - start:.2f} secs ({((end - start) / 60.0):.2f} mins)")
+    logger.info(f"{label} elapsed time: {end - start:.2f} secs ({((end - start) / 60.0):.2f} mins)")
 
 
 ### TODO: weave through second round intercept.

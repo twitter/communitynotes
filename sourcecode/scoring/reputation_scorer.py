@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List, Optional, Tuple
 
 from . import constants as c
@@ -12,6 +13,10 @@ from .scorer import EmptyRatingException, Scorer
 
 import pandas as pd
 import torch
+
+
+logger = logging.getLogger("birdwatch.reputation_scorer")
+logger.setLevel(logging.INFO)
 
 
 class ReputationScorer(Scorer):
@@ -105,7 +110,7 @@ class ReputationScorer(Scorer):
     self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
   ) -> Tuple[pd.DataFrame, pd.DataFrame, c.PrescoringMetaScorerOutput]:
     if self._seed is not None:
-      print(f"seeding with {self._seed}")
+      logger.info(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
     ratings = filter_ratings(ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote)
     # Calculate initialization factors if necessary
@@ -129,7 +134,7 @@ class ReputationScorer(Scorer):
     # Fill in NaN values for any missing notes
     noteStats = noteStats.merge(noteStatusHistory[[c.noteIdKey]].drop_duplicates(), how="outer")
     assert len(noteStats) == len(noteStatusHistory)
-    print(
+    logger.info(
       f"""Reputation prescoring: returning these columns:
           noteStats: {noteStats.columns}
           raterStats: {raterStats.columns}
@@ -155,7 +160,7 @@ class ReputationScorer(Scorer):
     prescoringMetaScorerOutput: c.PrescoringMetaScorerOutput,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     if self._seed is not None:
-      print(f"seeding with {self._seed}")
+      logger.info(f"seeding with {self._seed}")
       torch.manual_seed(self._seed)
     ratings = filter_ratings(ratings, self._minNumRatingsPerRater, self._minNumRatersPerNote)
     if len(ratings) == 0:

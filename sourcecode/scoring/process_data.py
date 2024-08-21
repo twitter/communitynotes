@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from io import StringIO
+import logging
 import os
 from typing import Dict, List, Optional, Tuple
 
@@ -10,6 +11,10 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
+
+
+logger = logging.getLogger("birdwatch.process_data")
+logger.setLevel(logging.INFO)
 
 
 def read_from_strings(
@@ -92,9 +97,9 @@ def tsv_parser(
         usecols=useCols,
       )
     if convertNAToNone:
-      print("Logging size effect of convertNAToNone")
-      print("Before conversion:")
-      print(get_df_info(data))
+      logger.info("Logging size effect of convertNAToNone")
+      logger.info("Before conversion:")
+      logger.info(get_df_info(data))
       # float types will be nan if missing; newer nullable types like "StringDtype" or "Int64Dtype" will by default
       # be pandas._libs.missing.NAType if missing. Set those to None and change the dtype back to object.
       for colname, coltype in mapping.items():
@@ -104,8 +109,8 @@ def tsv_parser(
         ):
           data[colname] = data[colname].astype(object)
           data.loc[pd.isna(data[colname]), colname] = None
-      print("After conversion:")
-      print(get_df_info(data))
+      logger.info("After conversion:")
+      logger.info(get_df_info(data))
     return data
   except (ValueError, IndexError) as e:
     raise ValueError(f"Invalid input: {e}")
@@ -211,7 +216,7 @@ def read_from_tsv(
         header=headers,
         convertNAToNone=False,
       )
-      noteStatusHistory[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = np.nan
+      noteStatusHistory[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = np.nan
       assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
         noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
       ), (
@@ -243,7 +248,7 @@ def _filter_misleading_notes(
   notes: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
-  logging: bool = True,
+  log: bool = True,
 ) -> pd.DataFrame:
   """
   This function actually filters ratings (not notes), based on which notes they rate.
@@ -256,7 +261,7 @@ def _filter_misleading_notes(
       notes (pd.DataFrame): _description_
       ratings (pd.DataFrame): _description_
       noteStatusHistory (pd.DataFrame): _description_
-      logging (bool, optional): _description_. Defaults to True.
+      log (bool, optional): _description_. Defaults to True.
 
   Returns:
       pd.DataFrame: filtered ratings
@@ -290,20 +295,20 @@ def _filter_misleading_notes(
     ratings[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey
   ) & (ratings[createdAtMillisNSHKey] > c.notMisleadingUILaunchTime)
 
-  if logging:
-    print(
+  if log:
+    logger.info(
       f"Preprocess Data: Filter misleading notes, starting with {len(ratings)} ratings on {len(np.unique(ratings[c.noteIdKey]))} notes"
     )
-    print(
+    logger.info(
       f"  Keeping {ratings[notDeletedMisleadingKey].sum()} ratings on {len(np.unique(ratings.loc[ratings[notDeletedMisleadingKey],c.noteIdKey]))} misleading notes"
     )
-    print(
+    logger.info(
       f"  Keeping {ratings[deletedButInNSHKey].sum()} ratings on {len(np.unique(ratings.loc[ratings[deletedButInNSHKey],c.noteIdKey]))} deleted notes that were previously scored (in note status history)"
     )
-    print(
+    logger.info(
       f"  Removing {notDeletedNotMisleadingOldUI.sum()} ratings on {len(np.unique(ratings.loc[notDeletedNotMisleadingOldUI, c.noteIdKey]))} older notes that aren't deleted, but are not-misleading."
     )
-    print(
+    logger.info(
       f"  Removing {deletedNotInNSH.sum()} ratings on {len(np.unique(ratings.loc[deletedNotInNSH, c.noteIdKey]))} notes that were deleted and not in note status history (e.g. old)."
     )
 
@@ -368,7 +373,7 @@ def preprocess_data(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   shouldFilterNotMisleadingNotes: bool = True,
-  logging: bool = True,
+  log: bool = True,
   ratingsOnly: bool = False,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Populate helpfulNumKey, a unified column that merges the helpfulness answers from
@@ -382,7 +387,7 @@ def preprocess_data(
       ratings (pd.DataFrame)
       noteStatusHistory (pd.DataFrame)
       shouldFilterNotMisleadingNotes (bool, optional): Defaults to True.
-      logging (bool, optional): Defaults to True.
+      log (bool, optional): Defaults to True.
       ratingsOnly (bool, optional): Defaults to False
 
   Returns:
@@ -390,15 +395,13 @@ def preprocess_data(
       ratings (pd.DataFrame)
       noteStatusHistory (pd.DataFrame)
   """
-  if logging:
-    print(
-      "Timestamp of latest rating in data: ",
-      pd.to_datetime(ratings[c.createdAtMillisKey], unit="ms").max(),
+  if log:
+    logger.info(
+      f"Timestamp of latest rating in data: {pd.to_datetime(ratings[c.createdAtMillisKey], unit='ms').max()}",
     )
     if not ratingsOnly:
-      print(
-        "Timestamp of latest note in data: ",
-        pd.to_datetime(notes[c.createdAtMillisKey], unit="ms").max(),
+      logger.info(
+        f"Timestamp of latest note in data: {pd.to_datetime(notes[c.createdAtMillisKey], unit='ms').max()}",
       )
 
   ratings = remove_duplicate_ratings(ratings)
@@ -421,10 +424,10 @@ def preprocess_data(
   noteStatusHistory = note_status_history.merge_note_info(noteStatusHistory, notes)
 
   if shouldFilterNotMisleadingNotes:
-    ratings = _filter_misleading_notes(notes, ratings, noteStatusHistory, logging)
+    ratings = _filter_misleading_notes(notes, ratings, noteStatusHistory, log)
 
-  if logging:
-    print(
+  if log:
+    logger.info(
       "Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d"
       % (
         len(ratings),
@@ -439,7 +442,7 @@ def filter_ratings(
   ratings: pd.DataFrame,
   minNumRatingsPerRater: int,
   minNumRatersPerNote: int,
-  logging: bool = True,
+  log: bool = True,
 ) -> pd.DataFrame:
   """Apply min number of ratings for raters & notes. Instead of iterating these filters
   until convergence, simply stop after going back and force once.
@@ -450,7 +453,7 @@ def filter_ratings(
         included in scoring.  Raters with fewer ratings are removed.
       minNumRatersPerNote: Minimum number of ratings which a note must have to be included
         in scoring.  Notes with fewer ratings are removed.
-      logging: Debug output. Defaults to True.
+      log: Debug output. Defaults to True.
 
   Returns:
       pd.DataFrame: filtered ratings
@@ -470,11 +473,11 @@ def filter_ratings(
   ratings = filter_raters(ratings)
   ratings = filter_notes(ratings)
 
-  if logging:
+  if log:
     # Log final details
     unique_notes = ratings[c.noteIdKey].nunique()
     unique_raters = ratings[c.raterParticipantIdKey].nunique()
-    print(
+    logger.info(
       f"After applying min {minNumRatingsPerRater} ratings per rater and min {minNumRatersPerNote} raters per note: \n"
       + f"Num Ratings: {len(ratings)}, Num Unique Notes Rated: {unique_notes}, Num Unique Raters: {unique_raters}"
     )
@@ -574,7 +577,7 @@ class LocalDataLoader(CommunityNotesDataLoader):
     userEnrollmentPath: str,
     headers: bool,
     shouldFilterNotMisleadingNotes: bool = True,
-    logging: bool = True,
+    log: bool = True,
     prescoringNoteModelOutputPath: Optional[str] = None,
     prescoringRaterModelOutputPath: Optional[str] = None,
     prescoringNoteTopicClassifierPath: Optional[str] = None,
@@ -588,7 +591,7 @@ class LocalDataLoader(CommunityNotesDataLoader):
         userEnrollmentPath (str): file path
         headers: If true, expect first row of input files to be headers.
         shouldFilterNotMisleadingNotes (bool, optional): Throw out not-misleading notes if True. Defaults to True.
-        logging (bool, optional): Print out debug output. Defaults to True.
+        log (bool, optional): Print out debug output. Defaults to True.
     """
     self.notesPath = notesPath
     self.ratingsPath = ratingsPath
@@ -600,7 +603,7 @@ class LocalDataLoader(CommunityNotesDataLoader):
     self.prescoringMetaOutputPath = prescoringMetaOutputPath
     self.headers = headers
     self.shouldFilterNotMisleadingNotes = shouldFilterNotMisleadingNotes
-    self.logging = logging
+    self.log = log
 
   def get_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """All-in-one function for reading Birdwatch notes and ratings from TSV files.
@@ -617,14 +620,14 @@ class LocalDataLoader(CommunityNotesDataLoader):
       self.headers,
     )
     notes, ratings, noteStatusHistory = preprocess_data(
-      notes, ratings, noteStatusHistory, self.shouldFilterNotMisleadingNotes, self.logging
+      notes, ratings, noteStatusHistory, self.shouldFilterNotMisleadingNotes, self.log
     )
     return notes, ratings, noteStatusHistory, userEnrollment
 
   def get_prescoring_model_output(
     self,
   ) -> Tuple[pd.DataFrame, pd.DataFrame, Pipeline, c.PrescoringMetaOutput]:
-    print(
+    logger.info(
       f"Attempting to read prescoring model output from {self.prescoringNoteModelOutputPath}, {self.prescoringRaterModelOutputPath}, {self.prescoringNoteTopicClassifierPath}, {self.prescoringMetaOutputPath}"
     )
     if self.prescoringRaterModelOutputPath is None:
@@ -702,7 +705,7 @@ def filter_input_data_for_testing(
 
   Returns: notes, ratings, prescoringNotesInput, prescoringRatingsInput
   """
-  print(
+  logger.info(
     f"""Called filter_input_data_for_testing.
         Notes: {len(notes)}, Ratings: {len(ratings)}. Max note createdAt: {pd.to_datetime(notes[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(ratings[c.createdAtMillisKey].max(), unit='ms')}"""
   )
@@ -710,7 +713,7 @@ def filter_input_data_for_testing(
   notes, ratings = filter_notes_and_ratings_after_particular_timestamp_millis(
     notes, ratings, cutoffTimestampMillis
   )
-  print(
+  logger.info(
     f"""After filtering notes and ratings after particular timestamp (={cutoffTimestampMillis}). 
         Notes: {len(notes)}, Ratings: {len(ratings)}. Max note createdAt: {pd.to_datetime(notes[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(ratings[c.createdAtMillisKey].max(), unit='ms')}"""
   )
@@ -721,7 +724,7 @@ def filter_input_data_for_testing(
     excludeRatingsAfterANoteGotFirstStatusPlusNHours,
     daysInPastToApplyPostFirstStatusFiltering,
   )
-  print(
+  logger.info(
     f"""After filtering ratings after first status (plus {excludeRatingsAfterANoteGotFirstStatusPlusNHours} hours) for notes created in last {daysInPastToApplyPostFirstStatusFiltering} days. 
         Notes: {len(notes)}, Ratings: {len(ratings)}. Max note createdAt: {pd.to_datetime(notes[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(ratings[c.createdAtMillisKey].max(), unit='ms')}"""
   )
@@ -732,7 +735,7 @@ def filter_input_data_for_testing(
   ) = filter_prescoring_input_to_simulate_delay_in_hours(
     notes, ratings, filterPrescoringInputToSimulateDelayInHours
   )
-  print(
+  logger.info(
     f"""After filtering prescoring notes and ratings to simulate a delay of {filterPrescoringInputToSimulateDelayInHours} hours: 
         Notes: {len(prescoringNotesInput)}, Ratings: {len(prescoringRatingsInput)}. Max note createdAt: {pd.to_datetime(prescoringNotesInput[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(prescoringRatingsInput[c.createdAtMillisKey].max(), unit='ms')}"""
   )
@@ -759,7 +762,7 @@ def filter_ratings_after_first_status_plus_n_hours(
   millisToLookBack = daysInPastToApplyPostFirstStatusFiltering * 24 * 60 * 60 * 1000
   cutoffTimeMillis = noteStatusHistory[c.createdAtMillisKey].max() - millisToLookBack
   nshToFilter = noteStatusHistory[noteStatusHistory[c.createdAtMillisKey] > cutoffTimeMillis]
-  print(
+  logger.info(
     f"  Notes to apply the post-first-status filter for (from last {daysInPastToApplyPostFirstStatusFiltering} days): {len(nshToFilter)}"
   )
   nshToFilter[ratingCutoffTimeMillisKey] = nshToFilter[
@@ -802,7 +805,7 @@ def filter_prescoring_input_to_simulate_delay_in_hours(
     cutoffMillis = latestRatingMillis - (
       filterPrescoringInputToSimulateDelayInHours * 60 * 60 * 1000
     )
-    print(
+    logger.info(
       f"""
       Filtering input data for prescoring to simulate running prescoring earlier than final scoring.
       Latest rating timestamp: {pd.to_datetime(latestRatingMillis, unit='ms')}

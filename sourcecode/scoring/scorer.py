@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 import gc
+import logging
 import time
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -12,6 +13,9 @@ import numpy as np
 import pandas as pd
 import torch
 
+
+logger = logging.getLogger("birdwatch.scorer")
+logger.setLevel(logging.INFO)
 
 _IN_GROUP = "inGroup"
 
@@ -57,7 +61,7 @@ class Scorer(ABC):
       yield
     finally:
       end = time.time()
-      print(
+      logger.info(
         f"{self.get_name()} {label} elapsed time: {end - start:.2f} secs ({((end-start)/60.0):.2f} mins)"
       )
 
@@ -113,13 +117,13 @@ class Scorer(ABC):
     """
     if (not self._includedGroups) and (not self._includedTopics):
       return ratings, noteStatusHistory
-    print(f"Filtering ratings for {self.get_name()}.  Original rating length: {len(ratings)}")
+    logger.info(f"Filtering ratings for {self.get_name()}.  Original rating length: {len(ratings)}")
     # Apply topic filter
     if self._includedTopics:
       notes = noteTopics[noteTopics[c.noteTopicKey].isin(self._includedTopics)][[c.noteIdKey]]
       ratings = ratings.merge(notes)
       noteStatusHistory = noteStatusHistory.merge(notes)
-    print(f"  Ratings after topic filter: {len(ratings)}")
+    logger.info(f"  Ratings after topic filter: {len(ratings)}")
     # Apply group filter
     if self._includedGroups:
       userEnrollment = userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(
@@ -131,10 +135,10 @@ class Scorer(ABC):
       ratings = ratings.merge(
         userEnrollment[[c.raterParticipantIdKey, _IN_GROUP]], on=c.raterParticipantIdKey, how="left"
       )
-      print(f"  Ratings without assigned group: {ratings[_IN_GROUP].isna().sum()}")
+      logger.info(f"  Ratings without assigned group: {ratings[_IN_GROUP].isna().sum()}")
       ratings = ratings.fillna({_IN_GROUP: self._includeUnassigned})
       ratings = ratings[ratings[_IN_GROUP]].drop(columns=[_IN_GROUP])
-    print(f"  Ratings after group filter: {len(ratings)}")
+    logger.info(f"  Ratings after group filter: {len(ratings)}")
     return ratings, noteStatusHistory
 
   def _postprocess_output(
@@ -167,7 +171,7 @@ class Scorer(ABC):
     if self._captureThreshold is None:
       return noteScores, userScores
     # Identify notes with enough ratings from within the modeling group.
-    print(f"Postprocessing output for {self.get_name()}")
+    logger.info(f"Postprocessing output for {self.get_name()}")
     assert self._includedGroups, "includedGroups must be set"
     userEnrollment = userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(
       columns={c.participantIdKey: c.raterParticipantIdKey}
@@ -180,11 +184,11 @@ class Scorer(ABC):
     )
     ratings = ratings.fillna({_IN_GROUP: self._includeUnassigned})
     ratios = ratings[[c.noteIdKey, _IN_GROUP]].groupby(c.noteIdKey).mean().reset_index()
-    print(f"  Original noteScores length: {len(noteScores)}")
+    logger.info(f"  Original noteScores length: {len(noteScores)}")
     noteScores = noteScores.merge(
       ratios[ratios[_IN_GROUP] >= self._captureThreshold][[c.noteIdKey]]
     )
-    print(f"  Final noteScores length: {len(noteScores)}")
+    logger.info(f"  Final noteScores length: {len(noteScores)}")
     return noteScores, userScores
 
   def _get_note_col_mapping(self) -> Dict[str, str]:
@@ -247,7 +251,7 @@ class Scorer(ABC):
     output that can be used to initialize and reduce the runtime of final scoring.
     """
     torch.set_num_threads(self._threads)
-    print(
+    logger.info(
       f"prescore: Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}"
     )
     # Transform input, run core scoring algorithm, transform output.
@@ -344,7 +348,7 @@ class Scorer(ABC):
     c.scorerNameKey field of those dataframes.
     """
     torch.set_num_threads(self._threads)
-    print(
+    logger.info(
       f"score_final: Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}"
     )
 
@@ -361,7 +365,7 @@ class Scorer(ABC):
     ].drop(columns=c.scorerNameKey, inplace=False)
 
     if self.get_name() not in scoringArgs.prescoringMetaOutput.metaScorerOutput:
-      print(
+      logger.info(
         f"Scorer {self.get_name()} not found in prescoringMetaOutput; returning empty scores from final scoring."
       )
       return self._return_empty_final_scores()
@@ -441,7 +445,7 @@ class Scorer(ABC):
     This function is deprecated and only included for testing purposes for now. Not intended to be called in
     main code flow (since the scorer will be split, and this function calls both phases sequentially)
     """
-    print(
+    logger.info(
       "CALLED DEPRECATED scorer.score() function. Prefer sequentially calling prescore() then score_final()."
     )
 

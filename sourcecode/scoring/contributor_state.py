@@ -1,8 +1,14 @@
+import logging
+
 from . import constants as c, explanation_tags
 from .helpfulness_scores import author_helpfulness
 from .note_ratings import get_ratings_with_scores, get_valid_ratings
 
 import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.contributor_state")
+logger.setLevel(logging.INFO)
 
 
 def should_earn_in(contributorScoresWithEnrollment: pd.DataFrame):
@@ -124,21 +130,21 @@ def _get_rated_after_decision(
   assert (
     len(ratingInfos) == len(ratings)
   ), f"assigning a status timestamp shouldn't decrease number of ratings: {len(ratingInfos)} vs. {len(ratings)}"
-  print("Calculating ratedAfterDecision:")
-  print(f"  Total ratings: {len(ratingInfos)}")
+  logger.info("Calculating ratedAfterDecision:")
+  logger.info(f"  Total ratings: {len(ratingInfos)}")
   ratingInfos = ratingInfos[~pd.isna(ratingInfos[c.timestampMillisOfNoteMostRecentNonNMRLabelKey])]
-  print(f"  Total ratings on notes with status: {len(ratingInfos)}")
+  logger.info(f"  Total ratings on notes with status: {len(ratingInfos)}")
   ratingInfos = ratingInfos[
     ratingInfos[c.createdAtMillisKey] > ratingInfos[c.timestampMillisOfNoteMostRecentNonNMRLabelKey]
   ]
-  print(f"  Total ratings after status: {len(ratingInfos)}")
+  logger.info(f"  Total ratings after status: {len(ratingInfos)}")
   ratingInfos[c.ratedAfterDecision] = 1
   ratedAfterDecision = (
     ratingInfos[[c.raterParticipantIdKey, c.ratedAfterDecision]]
     .groupby(c.raterParticipantIdKey)
     .sum()
   )
-  print(f"  Total raters rating after decision: {len(ratedAfterDecision)}")
+  logger.info(f"  Total raters rating after decision: {len(ratedAfterDecision)}")
   return ratedAfterDecision
 
 
@@ -421,7 +427,7 @@ def get_contributor_state(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
-  logging: bool = True,
+  log: bool = True,
 ) -> pd.DataFrame:
   """
   Given scored notes, ratings, note status history, the current user enrollment state, this
@@ -433,7 +439,7 @@ def get_contributor_state(
       ratings (pd.DataFrame): all ratings
       noteStatusHistory (pd.DataFrame): history of note statuses
       userEnrollment (pd.DataFrame): User enrollment for BW participants.
-      logging (bool): Should we log
+      log (bool): Should we log
   Returns:
       pd.DataFrame: contributorScoresWithEnrollment The contributor scores with enrollments
   """
@@ -582,27 +588,22 @@ def get_contributor_state(
     # users that do not have an id.
     contributorScoresWithEnrollment.dropna(subset=[c.raterParticipantIdKey], inplace=True)
 
-  if logging:
-    print("Enrollment State")
-    print(
-      "Number of Earned In",
-      len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 0]),
+  if log:
+    logger.info("Enrollment State")
+    logger.info(
+      f"Number of Earned In {len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 0])}"
     )
-    print(
-      "Number At Risk",
-      len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 1]),
+    logger.info(
+      f"Number At Risk {len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 1])}"
     )
-    print(
-      "Number of Earn Out No Ack",
-      len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 2]),
+    logger.info(
+      f"Number of Earn Out No Ack {len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 2])}"
     )
-    print(
-      "Number of Earned Out Ack",
-      len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 3]),
+    logger.info(
+      f"Number of Earned Out Ack {len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 3])}"
     )
-    print(
-      "Number of New Users",
-      len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 4]),
+    logger.info(
+      f"Number of New Users {len(contributorScoresWithEnrollment[contributorScoresWithEnrollment[c.enrollmentState] == 4])}"
     )
 
   return contributorScoresWithEnrollment, mappedUserEnrollment
@@ -615,7 +616,7 @@ def get_contributor_scores(
   lastNNotes=-1,
   countNMRNotesLast: bool = False,
   sinceLastEarnOut: bool = False,
-  logging: bool = True,
+  log: bool = True,
 ) -> pd.DataFrame:
   """
   Given the outputs of the MF model, this function aggregates stats over notes and ratings. The
@@ -628,7 +629,7 @@ def get_contributor_scores(
       lastNNotes (int): count over the last n notes
       countNMRNotesLast (bool): count NMR notes last. Useful when you want to calculate over a limited set of CRH + CRNH notes
       sinceLastEarnOut: only count notes since last Earn Out event
-      logging (bool): Should we log?
+      log (bool): Should we log?
   Returns:
       pd.DataFrame: contributorScores - rating + note aggregates per contributor.
   """
@@ -676,7 +677,7 @@ def get_contributor_scores(
     ]
   )
 
-  if logging:
-    print("Number Contributor Counts: ", len(contributorCounts))
+  if log:
+    logger.info(f"Number Contributor Counts: {len(contributorCounts)}")
 
   return contributorCounts
