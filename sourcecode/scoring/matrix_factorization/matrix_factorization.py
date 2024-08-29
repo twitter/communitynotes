@@ -181,12 +181,12 @@ class MatrixFactorization:
     if noteInit is not None:
       if self._log:
         logger.info("initializing notes")
-      # noteInit = self.noteIdMap.merge(
-      #   noteInit,
-      #   on=c.noteIdKey,
-      #   how="left",
-      #   unsafeAllowed={c.noteIdKey, "noteIndex_y"},
-      # )
+      noteInit = self.noteIdMap.merge(
+        noteInit,
+        on=c.noteIdKey,
+        how="left" # ,
+        # unsafeAllowed={c.noteIdKey, "noteIndex_y"},    my code wouldn't run with this line and I don't see it in the docs?
+      )
 
       noteInit[c.internalNoteInterceptKey].fillna(0.0, inplace=True)
       self.mf_model.note_intercepts.weight.data = torch.tensor(
@@ -527,31 +527,6 @@ class MatrixFactorization:
 
     self._initialize_note_and_rater_id_maps(ratings)
 
-    if useSpectralInit:
-
-      # self._create_train_validate_sets(validatePercent)
-      model_data = ModelData(self.ratingFeaturesAndLabels, self.raterIdMap, self.noteIdMap)    # fix: training on test data
-      data_matrix = model_data.rating_labels.pivot(index='raterIndex', columns='noteIndex', values='helpfulNum').values
-      mean_matrix = (np.nanmean(data_matrix, axis=1)[:,np.newaxis] + np.nanmean(data_matrix, axis=0)) / 2 - np.nanmean(data_matrix)    # fix: do regression for optimal weights
-      filled_matrix = np.where(np.isnan(data_matrix), mean_matrix, data_matrix)
-      
-      U, S, Vt = svds(filled_matrix, k=1)
-      note_factor_init_vals = np.sqrt(S[0]) * Vt[0]
-      user_factor_init_vals = np.sqrt(S[0]) * U.T[0]
-
-      noteInit = pd.DataFrame({
-        c.noteIdKey: self.noteIdMap["noteId"],
-        c.note_factor_key(1): note_factor_init_vals, 
-        c.internalNoteInterceptKey: np.zeros(len(note_factor_init_vals))
-      })
-      userInit = pd.DataFrame({
-        c.raterParticipantIdKey: self.raterIdMap["raterParticipantId"],
-        c.rater_factor_key(1): user_factor_init_vals, 
-        c.internalRaterInterceptKey: np.zeros(len(user_factor_init_vals))
-      })
-      globalInterceptInit = np.nanmean(data_matrix)
-
-
     self._create_mf_model(noteInit, userInit, globalInterceptInit)
     assert self.mf_model is not None
 
@@ -577,6 +552,38 @@ class MatrixFactorization:
     if specificNoteId is not None:
       self.mf_model.freeze_rater_and_global_parameters()
     self.prepare_features_and_labels(specificNoteId)
+
+    if useSpectralInit:
+
+      self._create_train_validate_sets(validatePercent)
+      data_df = self.ratingFeaturesAndLabels.pivot(index='noteId', columns='raterParticipantId', values='helpfulNum')
+      if self.validateModelData is not None:
+        notes_map_to_id = self.noteIdMap.set_index(Constants.noteIndexKey)[c.noteIdKey]
+        rater_map_to_id = self.raterIdMap.set_index(Constants.raterIndexKey)[c.raterParticipantIdKey]
+        valid_row_pos = data_df.index.get_indexer(pd.Series(self.validateModelData.note_indexes.numpy()).map(notes_map_to_id))    # may need to call detach, but I don't think so since they don't have gradients?
+        valid_col_pos = data_df.columns.get_indexer(pd.Series(self.validateModelData.user_indexes.numpy()).map(rater_map_to_id))
+        data_df.values[valid_row_pos, valid_col_pos] = np.nan
+      data_matrix = data_df.values
+      mean_matrix = 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=1), nan=0.0)[:,np.newaxis] + 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=0), nan=0.0) - np.nanmean(data_matrix)    # fix: do regression for optimal weights
+      filled_matrix = np.where(np.isnan(data_matrix), mean_matrix, data_matrix)
+
+      U, S, Vt = svds(filled_matrix, k=1)
+      note_factor_init_vals = np.sqrt(S[0]) * U.T[0]
+      user_factor_init_vals = np.sqrt(S[0]) * Vt[0]
+
+      noteInit = pd.DataFrame({
+        c.noteIdKey: data_df.index, # self.noteIdMap["noteId"],
+        c.note_factor_key(1): note_factor_init_vals, 
+        c.internalNoteInterceptKey: np.zeros(len(note_factor_init_vals))
+      })
+      userInit = pd.DataFrame({
+        c.raterParticipantIdKey: data_df.columns, # self.raterIdMap["raterParticipantId"],
+        c.rater_factor_key(1): user_factor_init_vals, 
+        c.internalRaterInterceptKey: np.zeros(len(user_factor_init_vals))
+      })
+      globalInterceptInit = np.nanmean(data_matrix)
+
+      self._initialize_parameters(noteInit, userInit, globalInterceptInit)
 
     train_loss, loss, validate_loss = self._fit_model(validatePercent)
     if self._normalizedLossHyperparameters is not None:
