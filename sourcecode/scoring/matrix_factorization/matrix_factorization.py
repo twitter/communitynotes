@@ -9,6 +9,7 @@ from .normalized_loss import NormalizedLoss
 import numpy as np
 import pandas as pd
 import torch
+from scipy.sparse.linalg import svds
 
 
 logger = logging.getLogger("birdwatch.matrix_factorization")
@@ -180,12 +181,12 @@ class MatrixFactorization:
     if noteInit is not None:
       if self._log:
         logger.info("initializing notes")
-      noteInit = self.noteIdMap.merge(
-        noteInit,
-        on=c.noteIdKey,
-        how="left",
-        unsafeAllowed={c.noteIdKey, "noteIndex_y"},
-      )
+      # noteInit = self.noteIdMap.merge(
+      #   noteInit,
+      #   on=c.noteIdKey,
+      #   how="left",
+      #   unsafeAllowed={c.noteIdKey, "noteIndex_y"},
+      # )
 
       noteInit[c.internalNoteInterceptKey].fillna(0.0, inplace=True)
       self.mf_model.note_intercepts.weight.data = torch.tensor(
@@ -434,7 +435,8 @@ class MatrixFactorization:
         rating (torch.FloatTensor)
     """
     assert self.mf_model is not None
-    self._create_train_validate_sets(validate_percent)
+    if self.trainModelData is None:
+      self._create_train_validate_sets(validate_percent)
     assert self.trainModelData is not None
 
     prev_loss = 1e10
@@ -495,6 +497,7 @@ class MatrixFactorization:
     noteInit: pd.DataFrame = None,
     userInit: pd.DataFrame = None,
     globalInterceptInit: Optional[float] = None,
+    useSpectralInit: Optional[bool] = False,
     specificNoteId: Optional[int] = None,
     validatePercent: Optional[float] = None,
     freezeRaterParameters: bool = False,
@@ -523,6 +526,31 @@ class MatrixFactorization:
     self._ratingPerUserLossRatio = ratingPerUserLossRatio
 
     self._initialize_note_and_rater_id_maps(ratings)
+
+    if useSpectralInit:
+
+      # self._create_train_validate_sets(validatePercent)
+      model_data = ModelData(self.ratingFeaturesAndLabels, self.raterIdMap, self.noteIdMap)    # fix: training on test data
+      data_matrix = model_data.rating_labels.pivot(index='raterIndex', columns='noteIndex', values='helpfulNum').values
+      mean_matrix = (np.nanmean(data_matrix, axis=1)[:,np.newaxis] + np.nanmean(data_matrix, axis=0)) / 2 - np.nanmean(data_matrix)    # fix: do regression for optimal weights
+      filled_matrix = np.where(np.isnan(data_matrix), mean_matrix, data_matrix)
+      
+      U, S, Vt = svds(filled_matrix, k=1)
+      note_factor_init_vals = np.sqrt(S[0]) * Vt[0]
+      user_factor_init_vals = np.sqrt(S[0]) * U.T[0]
+
+      noteInit = pd.DataFrame({
+        c.noteIdKey: self.noteIdMap["noteId"],
+        c.note_factor_key(1): note_factor_init_vals, 
+        c.internalNoteInterceptKey: np.zeros(len(note_factor_init_vals))
+      })
+      userInit = pd.DataFrame({
+        c.raterParticipantIdKey: self.raterIdMap["raterParticipantId"],
+        c.rater_factor_key(1): user_factor_init_vals, 
+        c.internalRaterInterceptKey: np.zeros(len(user_factor_init_vals))
+      })
+      globalInterceptInit = np.nanmean(data_matrix)
+
 
     self._create_mf_model(noteInit, userInit, globalInterceptInit)
     assert self.mf_model is not None
