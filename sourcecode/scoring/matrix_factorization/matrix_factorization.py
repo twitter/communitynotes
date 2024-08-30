@@ -188,13 +188,13 @@ class MatrixFactorization:
         # unsafeAllowed={c.noteIdKey, "noteIndex_y"},    my code wouldn't run with this line and I don't see it in the docs?
       )
 
-      noteInit[c.internalNoteInterceptKey].fillna(0.0, inplace=True)
+      noteInit[c.internalNoteInterceptKey] = noteInit[c.internalNoteInterceptKey].fillna(0.0)    # I had to get rid of these inplace=True's to silence a warning, but I think pandas would make a temporary copy anywhere so not sure it saves memory
       self.mf_model.note_intercepts.weight.data = torch.tensor(
         np.expand_dims(noteInit[c.internalNoteInterceptKey].astype(np.float32).values, axis=1)
       )
 
       for i in range(1, self._numFactors + 1):
-        noteInit[c.note_factor_key(i)].fillna(0.0, inplace=True)
+        noteInit[c.note_factor_key(i)] = noteInit[c.note_factor_key(i)].fillna(0.0)
       self.mf_model.note_factors.weight.data = torch.tensor(
         noteInit[[c.note_factor_key(i) for i in range(1, self._numFactors + 1)]]
         .astype(np.float32)
@@ -206,13 +206,13 @@ class MatrixFactorization:
         logger.info("initializing users")
       userInit = self.raterIdMap.merge(userInit, on=c.raterParticipantIdKey, how="left")
 
-      userInit[c.internalRaterInterceptKey].fillna(0.0, inplace=True)
+      userInit[c.internalRaterInterceptKey] = userInit[c.internalRaterInterceptKey].fillna(0.0)
       self.mf_model.user_intercepts.weight.data = torch.tensor(
         np.expand_dims(userInit[c.internalRaterInterceptKey].astype(np.float32).values, axis=1)
       )
 
       for i in range(1, self._numFactors + 1):
-        userInit[c.rater_factor_key(i)].fillna(0.0, inplace=True)
+        userInit[c.rater_factor_key(i)] = userInit[c.rater_factor_key(i)].fillna(0.0)
       self.mf_model.user_factors.weight.data = torch.tensor(
         userInit[[c.rater_factor_key(i) for i in range(1, self._numFactors + 1)]]
         .astype(np.float32)
@@ -563,8 +563,8 @@ class MatrixFactorization:
         valid_row_pos = data_df.index.get_indexer(pd.Series(self.validateModelData.note_indexes.numpy()).map(notes_map_to_id))    # may need to call detach, but I don't think so since they don't have gradients?
         valid_col_pos = data_df.columns.get_indexer(pd.Series(self.validateModelData.user_indexes.numpy()).map(rater_map_to_id))
         data_df.values[valid_row_pos, valid_col_pos] = np.nan
-      data_matrix = data_df.values
-      mean_matrix = 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=1), nan=0.0)[:,np.newaxis] + 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=0), nan=0.0) - np.nanmean(data_matrix)    # fix: do regression for optimal weights
+      data_matrix = data_df.values    # fix: get better weights than 1/2, 1/2 on next line
+      mean_matrix = 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=1), nan=0.0)[:,np.newaxis] + 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=0), nan=0.0) - np.nanmean(data_matrix)    # warning can be ignored, I deal with it on the next line 
       filled_matrix = np.where(np.isnan(data_matrix), mean_matrix, data_matrix)
 
       U, S, Vt = svds(filled_matrix, k=1)
@@ -572,12 +572,12 @@ class MatrixFactorization:
       user_factor_init_vals = np.sqrt(S[0]) * Vt[0]
 
       noteInit = pd.DataFrame({
-        c.noteIdKey: data_df.index, # self.noteIdMap["noteId"],
+        c.noteIdKey: data_df.index,
         c.note_factor_key(1): note_factor_init_vals, 
         c.internalNoteInterceptKey: np.zeros(len(note_factor_init_vals))
       })
       userInit = pd.DataFrame({
-        c.raterParticipantIdKey: data_df.columns, # self.raterIdMap["raterParticipantId"],
+        c.raterParticipantIdKey: data_df.columns,
         c.rater_factor_key(1): user_factor_init_vals, 
         c.internalRaterInterceptKey: np.zeros(len(user_factor_init_vals))
       })
