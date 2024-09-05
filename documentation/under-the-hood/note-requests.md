@@ -21,7 +21,7 @@ People on X can request a Community Note on a post they believe would benefit fr
 Contributors who have earned [Top Writer status](../contributing/top-contributors.md) will see that there are requests on a post, if there are enough requests. They can also see a timeline on posts with note requests in their [Community Notes tab](https://x.com/i/communitynotes).
 
 During the note request pilot:
-- Requests will show on a post if the number of requests on the post is greater than or equal to MIN(5, number of views on post / 25000)
+- Requests will show on a post if the number of requests on the post is greater than or equal to MAX(5, number of views on post / 25000)
 - Requests will show for 24 hours
 - For a post to show up in the Note Requests timeline, the post must be recent (less than 24 hours old)
 
