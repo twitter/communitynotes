@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import List, Optional
+from typing import List
 
 from . import constants as c
 
@@ -7,46 +7,66 @@ import numpy as np
 import pandas as pd
 
 
-def top_tags(
-  row: pd.Series,
+def get_top_two_tags_for_note(
+  noteStats: pd.DataFrame,
   minRatingsToGetTag: int,
-  minTagsNeededForStatus: int,
-  tagsConsidered: Optional[List[str]] = None,
-) -> pd.Series:
-  """Given a particular row of the scoredNotes DataFrame, determine which two
-  explanation tags to assign to the note based on its ratings.
+  minTagsNeededToGetStatus: int,
+  tagsConsideredInTiebreakOrder: List[str],
+) -> pd.DataFrame:
+  """Given a scoredNotes DataFrame, determine which two
+  explanation tags to assign to each note based on its ratings.
 
   See https://twitter.github.io/communitynotes/ranking-notes/#determining-note-status-explanation-tags
 
   Args:
-      row (pd.Series): row of the scoredNotes dataframe, including a count of each tag
+      noteStats (pd.DataFrame): row of the scoredNotes dataframe, including a count of each tag
       minRatingsToGetTag (int): min ratings needed
       minTagsNeededForStatus (int): min tags needed before a note gets a status
-      tagsConsidered (list[str]): set of tags to consider for *all* notes
+      tagsConsideredInTiebreakOrder (list[str]): set of tags to consider for *all* notes
 
   Returns:
-      Tuple: return the whole row back, with rating tag fields filled in.
+      A dataframe back, filtered to just the rows that are assigned tags, with
+      c.firstTagKey and c.secondTagKey columns set, and the index set to noteId.
   """
-  if tagsConsidered:
-    tagCounts = pd.DataFrame(row[tagsConsidered])
-  elif row[c.finalRatingStatusKey] == c.currentlyRatedHelpful:
-    tagCounts = pd.DataFrame(row[c.helpfulTagsTiebreakOrder])
-  elif row[c.finalRatingStatusKey] == c.currentlyRatedNotHelpful:
-    tagCounts = pd.DataFrame(row[c.notHelpfulTagsTiebreakOrder])
-  else:
-    return row
-  tagCounts.columns = [c.tagCountsKey]
-  tagCounts[c.tiebreakOrderKey] = range(len(tagCounts))
-  tagCounts = tagCounts[tagCounts[c.tagCountsKey] >= minRatingsToGetTag]
-  topTags = tagCounts.sort_values(by=[c.tagCountsKey, c.tiebreakOrderKey], ascending=False)[:2]
-  # Note: this currently only allows for minTagsNeededForStatus between 0-2
-  if len(topTags) >= minTagsNeededForStatus:
-    if len(topTags):
-      row[c.firstTagKey] = topTags.index[0]
-    if len(topTags) > 1:
-      row[c.secondTagKey] = topTags.index[1]
+  assert (
+    minTagsNeededToGetStatus == 2
+  ), f"minTagsNeededToGetStatus was {minTagsNeededToGetStatus} but only implemented for minTagsNeededToGetStatus=2"
 
-  return row
+  with c.time_block("NH Tags: Top 2 per note"):
+    noteStats.set_index(c.noteIdKey, inplace=True)
+    noteTagTotals = noteStats[tagsConsideredInTiebreakOrder[::-1]]  # Put winning tags at front.
+
+    # Filter tags and apply minimum rating threshold
+    filteredTags = noteTagTotals.where(lambda x: x >= minRatingsToGetTag)
+    filteredTags.dropna(
+      thresh=minTagsNeededToGetStatus, inplace=True
+    )  # only keep rows with at least 2 non-NaN entries
+
+    negativeTags = -1 * filteredTags.to_numpy(dtype=np.float64)
+
+    # Create a small value for tie-breaking, proportional to the column indices
+    # The small value should be smaller than the smallest difference between any two elements (ints)
+    epsilon = 1e-3
+    tieBreakers = np.arange(negativeTags.shape[1]) * epsilon
+
+    # Add the tie_breaker to the array
+    negativeTieBrokenTags = tieBreakers + negativeTags
+
+    # Fill nans with 0 (higher than all other values with nonzero tag counts)
+    negativeTieBrokenTags = np.nan_to_num(negativeTieBrokenTags)
+
+    # Use argsort on the modified array
+    sortedIndices = np.argsort(negativeTieBrokenTags, axis=1)
+
+    # Extract indices of the two largest values in each row
+    topTwoIndices = sortedIndices[:, :2]
+    noteTopTags = pd.DataFrame(
+      np.array(filteredTags.columns)[topTwoIndices], columns=[c.firstTagKey, c.secondTagKey]
+    )
+    noteTopTags[c.noteIdKey] = filteredTags.index
+    noteTopTags.index = filteredTags.index
+
+    return noteTopTags
 
 
 def get_top_nonhelpful_tags_per_author(
@@ -78,7 +98,7 @@ def get_top_nonhelpful_tags_per_author(
     filteredTags = noteTagTotals.where(lambda x: x >= c.minRatingsToGetTag)
     filteredTags.dropna(thresh=2, inplace=True)  # only keep rows with at least 2 non-NaN entries
 
-    negativeTags = -1 * filteredTags.to_numpy()
+    negativeTags = -1 * filteredTags.to_numpy(dtype=np.float64)
 
     # Create a small value for tie-breaking, proportional to the column indices
     # The small value should be smaller than the smallest difference between any two elements (ints)
@@ -88,13 +108,16 @@ def get_top_nonhelpful_tags_per_author(
     # Add the tie_breaker to the array
     negativeTieBrokenTags = tieBreakers + negativeTags
 
+    # Fill nans with 0 (higher than all other values with nonzero tag counts)
+    negativeTieBrokenTags = np.nan_to_num(negativeTieBrokenTags)
+
     # Use argsort on the modified array
     sortedIndices = np.argsort(negativeTieBrokenTags, axis=1)
 
     # Extract indices of the two largest values in each row
     topTwoIndices = sortedIndices[:, :2]
     noteTopTags = pd.DataFrame(
-      np.array(filteredTags.columns)[topTwoIndices], columns=["firstTag", "secondTag"]
+      np.array(filteredTags.columns)[topTwoIndices], columns=[c.firstTagKey, c.secondTagKey]
     )
     noteTopTags[c.noteIdKey] = filteredTags.index
 

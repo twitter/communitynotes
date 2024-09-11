@@ -31,10 +31,12 @@ As there are important nuances in each market, we’ll expand the contributor ba
 Thank you for your interest in contributing to Community Notes! Currently, we will consider pull requests that contribute to the following areas:
 * Downstream analyses of scoring model output
 * Alternate scoring algorithm ideas (outside the core algorithm)
-* Documentation
+* Documentation (in the documentation directory, not the sourcecode directory)
 * Open issues
 
 Note that we aren’t currently accepting changes that alter existing APIs, as there is other utility and production infrastructure code at X that depends on these APIs remaining stable.
+
+Also note that we are unlikely to merge any minor documentation/typo/comment cleanup pull requests that touch the sourcecode directory due to our heavyweight deployment process (this code is developed in a separate internal repo and exported to Github whenever we deploy an update to the scorer). We are more likely to merge changes that edit the documentation directory only, and don't edit latex (since the documntation website described below parses latex differently than Github).
 
 We are also exploring ways to make it easier for people to contribute directly to the core algorithm. For example, by making available testing and evaluation frameworks that would allow open source contributors to evaluate the impact of their PRs on note quality.
 
@@ -63,7 +65,7 @@ $ cd sourcecode
 $ python main.py
 ```
 
-Most versions of Python3 should work, but we have tested the code with Python 3.7.9.
+Multiple versions of Python3 should work, but we have tested the code with Python 3.10.
 
 ### Community Notes data
 

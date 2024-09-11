@@ -1,14 +1,19 @@
 from dataclasses import dataclass
+import logging
 from typing import Optional
 
 import torch
 
 
+logger = logging.getLogger("birdwatch.model")
+logger.setLevel(logging.INFO)
+
+
 @dataclass
 class ModelData:
   rating_labels: Optional[torch.FloatTensor]
-  user_indexes: Optional[torch.LongTensor]
-  note_indexes: Optional[torch.LongTensor]
+  user_indexes: Optional[torch.IntTensor]
+  note_indexes: Optional[torch.IntTensor]
 
 
 class BiasedMatrixFactorization(torch.nn.Module):
@@ -20,7 +25,7 @@ class BiasedMatrixFactorization(torch.nn.Module):
     n_notes: int,
     n_factors: int = 1,
     use_global_intercept: bool = True,
-    logging: bool = True,
+    log: bool = True,
   ) -> None:
     """Initialize matrix factorization model using xavier_uniform for factors
     and zeros for intercepts.
@@ -33,16 +38,16 @@ class BiasedMatrixFactorization(torch.nn.Module):
     """
     super().__init__()
 
-    self._logging = logging
+    self._log = log
 
-    self.user_factors = torch.nn.Embedding(n_users, n_factors, sparse=False)
-    self.note_factors = torch.nn.Embedding(n_notes, n_factors, sparse=False)
+    self.user_factors = torch.nn.Embedding(n_users, n_factors, sparse=False, dtype=torch.float32)
+    self.note_factors = torch.nn.Embedding(n_notes, n_factors, sparse=False, dtype=torch.float32)
 
-    self.user_intercepts = torch.nn.Embedding(n_users, 1, sparse=False)
-    self.note_intercepts = torch.nn.Embedding(n_notes, 1, sparse=False)
+    self.user_intercepts = torch.nn.Embedding(n_users, 1, sparse=False, dtype=torch.float32)
+    self.note_intercepts = torch.nn.Embedding(n_notes, 1, sparse=False, dtype=torch.float32)
 
     self.use_global_intercept = use_global_intercept
-    self.global_intercept = torch.nn.parameter.Parameter(torch.zeros(1, 1))
+    self.global_intercept = torch.nn.parameter.Parameter(torch.zeros(1, 1, dtype=torch.float32))
     torch.nn.init.xavier_uniform_(self.user_factors.weight)
     torch.nn.init.xavier_uniform_(self.note_factors.weight)
     self.user_intercepts.weight.data.fill_(0.0)
@@ -81,6 +86,6 @@ class BiasedMatrixFactorization(torch.nn.Module):
     for name, param in self.named_parameters():
       for word in words_to_freeze:
         if word in name:
-          if self._logging:
-            print("Freezing parameter: ", name)
+          if self._log:
+            logger.info(f"Freezing parameter: {name}")
           param.requires_grad_(False)

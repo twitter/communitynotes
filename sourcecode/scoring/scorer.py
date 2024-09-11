@@ -1,14 +1,27 @@
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
+import gc
+import logging
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from . import constants as c
 from .constants import FinalScoringArgs, ModelResult, PrescoringArgs
+from .pandas_utils import keep_columns
 
 import numpy as np
 import pandas as pd
 import torch
+
+
+logger = logging.getLogger("birdwatch.scorer")
+logger.setLevel(logging.INFO)
+
+_IN_GROUP = "inGroup"
+
+
+class EmptyRatingException(Exception):
+  """Exception rasied when no ratings are available"""
 
 
 class Scorer(ABC):
@@ -20,12 +33,24 @@ class Scorer(ABC):
   exactly which columns are output and which are dropped.
   """
 
-  def __init__(self, seed: Optional[int] = None, threads: int = c.defaultNumThreads) -> None:
+  def __init__(
+    self,
+    includedTopics: Set[str] = set(),
+    includedGroups: Set[int] = set(),
+    includeUnassigned: bool = False,
+    captureThreshold: Optional[float] = None,
+    seed: Optional[int] = None,
+    threads: int = c.defaultNumThreads,
+  ) -> None:
     """Configure a new Scorer object.
 
     Args:
       seed (int, optional): if not None, seed value to ensure deterministic execution
     """
+    self._includedTopics = includedTopics
+    self._includedGroups = includedGroups
+    self._includeUnassigned = includeUnassigned
+    self._captureThreshold = captureThreshold
     self._seed = seed
     self._threads = threads
 
@@ -36,7 +61,7 @@ class Scorer(ABC):
       yield
     finally:
       end = time.time()
-      print(
+      logger.info(
         f"{self.get_name()} {label} elapsed time: {end - start:.2f} secs ({((end-start)/60.0):.2f} mins)"
       )
 
@@ -90,6 +115,30 @@ class Scorer(ABC):
         ratings: ratings filtered to only contain rows of interest
         noteStatusHistory: noteStatusHistory filtered to only contain rows of interest
     """
+    if (not self._includedGroups) and (not self._includedTopics):
+      return ratings, noteStatusHistory
+    logger.info(f"Filtering ratings for {self.get_name()}.  Original rating length: {len(ratings)}")
+    # Apply topic filter
+    if self._includedTopics:
+      notes = noteTopics[noteTopics[c.noteTopicKey].isin(self._includedTopics)][[c.noteIdKey]]
+      ratings = ratings.merge(notes)
+      noteStatusHistory = noteStatusHistory.merge(notes)
+    logger.info(f"  Ratings after topic filter: {len(ratings)}")
+    # Apply group filter
+    if self._includedGroups:
+      userEnrollment = userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(
+        columns={c.participantIdKey: c.raterParticipantIdKey}
+      )
+      userEnrollment.loc[:, _IN_GROUP] = (
+        userEnrollment[c.modelingGroupKey].isin(self._includedGroups).astype(pd.BooleanDtype())
+      )
+      ratings = ratings.merge(
+        userEnrollment[[c.raterParticipantIdKey, _IN_GROUP]], on=c.raterParticipantIdKey, how="left"
+      )
+      logger.info(f"  Ratings without assigned group: {ratings[_IN_GROUP].isna().sum()}")
+      ratings = ratings.fillna({_IN_GROUP: self._includeUnassigned})
+      ratings = ratings[ratings[_IN_GROUP]].drop(columns=[_IN_GROUP])
+    logger.info(f"  Ratings after group filter: {len(ratings)}")
     return ratings, noteStatusHistory
 
   def _postprocess_output(
@@ -119,11 +168,32 @@ class Scorer(ABC):
         noteScores: note scoring output from _score_notes_and_users
         userScores: user scoring output from _score_notes_and_users
     """
+    if self._captureThreshold is None:
+      return noteScores, userScores
+    # Identify notes with enough ratings from within the modeling group.
+    logger.info(f"Postprocessing output for {self.get_name()}")
+    assert self._includedGroups, "includedGroups must be set"
+    userEnrollment = userEnrollment[[c.participantIdKey, c.modelingGroupKey]].rename(
+      columns={c.participantIdKey: c.raterParticipantIdKey}
+    )
+    userEnrollment.loc[:, _IN_GROUP] = (
+      userEnrollment[c.modelingGroupKey].isin(self._includedGroups).astype(pd.BooleanDtype())
+    )
+    ratings = ratings.merge(
+      userEnrollment[[c.raterParticipantIdKey, _IN_GROUP]], on=c.raterParticipantIdKey, how="left"
+    )
+    ratings = ratings.fillna({_IN_GROUP: self._includeUnassigned})
+    ratios = ratings[[c.noteIdKey, _IN_GROUP]].groupby(c.noteIdKey).mean().reset_index()
+    logger.info(f"  Original noteScores length: {len(noteScores)}")
+    noteScores = noteScores.merge(
+      ratios[ratios[_IN_GROUP] >= self._captureThreshold][[c.noteIdKey]]
+    )
+    logger.info(f"  Final noteScores length: {len(noteScores)}")
     return noteScores, userScores
 
   def _get_note_col_mapping(self) -> Dict[str, str]:
     """Returns a dict mapping default note column names to custom names for a specific model."""
-    return {}
+    return {c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey}
 
   def _get_user_col_mapping(self) -> Dict[str, str]:
     """Returns a dict mapping default user column names to custom names for a specific model."""
@@ -132,7 +202,7 @@ class Scorer(ABC):
   @abstractmethod
   def _prescore_notes_and_users(
     self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  ) -> Tuple[pd.DataFrame, pd.DataFrame, c.PrescoringMetaScorerOutput]:
     """
     Runs initial rounds of the matrix factorization scoring algorithm and returns intermediate
     output that can be used to initialize and reduce the runtime of final scoring.
@@ -155,6 +225,7 @@ class Scorer(ABC):
     noteStatusHistory: pd.DataFrame,
     prescoringNoteModelOutput: pd.DataFrame,
     prescoringRaterModelOutput: pd.DataFrame,
+    prescoringMetaScorerOutput: c.PrescoringMetaScorerOutput,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Run the matrix factorization scoring algorithm.
 
@@ -174,24 +245,40 @@ class Scorer(ABC):
         userScores pd.DataFrame: one row per user containing a column for each helpfulness score.
     """
 
-  def prescore(self, scoringArgs: PrescoringArgs) -> ModelResult:
+  def prescore(self, scoringArgs: PrescoringArgs, preserveRatings: bool = True) -> ModelResult:
     """
     Runs initial rounds of the matrix factorization scoring algorithm and returns intermediate
     output that can be used to initialize and reduce the runtime of final scoring.
     """
     torch.set_num_threads(self._threads)
-    print(
+    logger.info(
       f"prescore: Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}"
     )
-
     # Transform input, run core scoring algorithm, transform output.
     with self.time_block("Filter input"):
       ratings, noteStatusHistory = self._filter_input(
         scoringArgs.noteTopics,
-        scoringArgs.ratings,
+        keep_columns(
+          scoringArgs.ratings,
+          [
+            c.noteIdKey,
+            c.raterParticipantIdKey,
+            c.helpfulNumKey,
+            c.helpfulnessLevelKey,
+            c.createdAtMillisKey,
+          ]
+          + c.notHelpfulTagsTSVOrder
+          + c.helpfulTagsTSVOrder,
+        ),
         scoringArgs.noteStatusHistory,
         scoringArgs.userEnrollment,
       )
+      if not preserveRatings:
+        # Only remove ratings if we're running in parallel, since otherwise later scorers will
+        # need the ratings.
+        del scoringArgs.ratings
+        gc.collect()
+
       # If there are no ratings left after filtering, then return empty dataframes.
       if len(ratings) == 0:
         return ModelResult(
@@ -207,12 +294,17 @@ class Scorer(ABC):
             else None
           ),
           self.get_name(),
+          None,
         )
 
-    noteScores, userScores = self._prescore_notes_and_users(
+    noteScores, userScores, metaScores = self._prescore_notes_and_users(
       ratings, noteStatusHistory, scoringArgs.userEnrollment
     )
 
+    # Returning should remove references to ratings, but manually trigger GC just to reclaim
+    # resources as soon as possible.
+    del ratings
+    gc.collect()
     # Return dataframes with specified columns in specified order
     # Reindex fills required columns with NaN if they aren't present in the original df.
     return ModelResult(
@@ -226,6 +318,7 @@ class Scorer(ABC):
         columns=self.get_auxiliary_note_info_cols(), fill_value=np.nan
       ),
       scorerName=self.get_name(),
+      metaScores=metaScores,
     )
 
   def _return_empty_final_scores(self) -> ModelResult:
@@ -242,6 +335,7 @@ class Scorer(ABC):
         else None
       ),
       scorerName=self.get_name(),
+      metaScores=None,
     )
 
   def score_final(self, scoringArgs: FinalScoringArgs) -> ModelResult:
@@ -254,7 +348,7 @@ class Scorer(ABC):
     c.scorerNameKey field of those dataframes.
     """
     torch.set_num_threads(self._threads)
-    print(
+    logger.info(
       f"score_final: Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}"
     )
 
@@ -263,11 +357,19 @@ class Scorer(ABC):
     prescoringNoteModelOutput = scoringArgs.prescoringNoteModelOutput[
       scoringArgs.prescoringNoteModelOutput[c.scorerNameKey] == self.get_name()
     ].drop(columns=c.scorerNameKey, inplace=False)
+
     if scoringArgs.prescoringRaterModelOutput is None:
       return self._return_empty_final_scores()
     prescoringRaterModelOutput = scoringArgs.prescoringRaterModelOutput[
       scoringArgs.prescoringRaterModelOutput[c.scorerNameKey] == self.get_name()
     ].drop(columns=c.scorerNameKey, inplace=False)
+
+    if self.get_name() not in scoringArgs.prescoringMetaOutput.metaScorerOutput:
+      logger.info(
+        f"Scorer {self.get_name()} not found in prescoringMetaOutput; returning empty scores from final scoring."
+      )
+      return self._return_empty_final_scores()
+    prescoringMetaScorerOutput = scoringArgs.prescoringMetaOutput.metaScorerOutput[self.get_name()]
 
     # Filter raw input
     with self.time_block("Filter input"):
@@ -281,12 +383,16 @@ class Scorer(ABC):
       if len(ratings) == 0:
         return self._return_empty_final_scores()
 
-    noteScores, userScores = self._score_notes_and_users(
-      ratings=ratings,
-      noteStatusHistory=noteStatusHistory,
-      prescoringNoteModelOutput=prescoringNoteModelOutput,
-      prescoringRaterModelOutput=prescoringRaterModelOutput,
-    )
+    try:
+      noteScores, userScores = self._score_notes_and_users(
+        ratings=ratings,
+        noteStatusHistory=noteStatusHistory,
+        prescoringNoteModelOutput=prescoringNoteModelOutput,
+        prescoringRaterModelOutput=prescoringRaterModelOutput,
+        prescoringMetaScorerOutput=prescoringMetaScorerOutput,
+      )
+    except EmptyRatingException:
+      return self._return_empty_final_scores()
 
     with self.time_block("Postprocess output"):
       # Only some subclasses do any postprocessing.
@@ -325,6 +431,7 @@ class Scorer(ABC):
       if self.get_auxiliary_note_info_cols()
       else None,
       scorerName=self.get_name(),
+      metaScores=None,
     )
 
   def score(
@@ -338,7 +445,7 @@ class Scorer(ABC):
     This function is deprecated and only included for testing purposes for now. Not intended to be called in
     main code flow (since the scorer will be split, and this function calls both phases sequentially)
     """
-    print(
+    logger.info(
       "CALLED DEPRECATED scorer.score() function. Prefer sequentially calling prescore() then score_final()."
     )
 
@@ -355,6 +462,14 @@ class Scorer(ABC):
       prescoringModelResult.scoredNotes[c.scorerNameKey] = prescoringModelResult.scorerName
     if prescoringModelResult.helpfulnessScores is not None:
       prescoringModelResult.helpfulnessScores[c.scorerNameKey] = prescoringModelResult.scorerName
+    if (
+      prescoringModelResult.metaScores is not None and prescoringModelResult.scorerName is not None
+    ):
+      prescoringMetaOutput = c.PrescoringMetaOutput(
+        metaScorerOutput={prescoringModelResult.scorerName: prescoringModelResult.metaScores}
+      )
+    else:
+      prescoringMetaOutput = c.PrescoringMetaOutput(metaScorerOutput={})
 
     finalScoringArgs = FinalScoringArgs(
       noteTopics=noteTopics,
@@ -363,6 +478,7 @@ class Scorer(ABC):
       userEnrollment=userEnrollment,
       prescoringNoteModelOutput=prescoringModelResult.scoredNotes,
       prescoringRaterModelOutput=prescoringModelResult.helpfulnessScores,
+      prescoringMetaOutput=prescoringMetaOutput,
     )
     finalModelResult = self.score_final(finalScoringArgs)
     return (

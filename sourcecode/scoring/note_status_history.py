@@ -1,4 +1,6 @@
+import logging
 import time
+from typing import Optional
 
 from . import constants as c
 from .scoring_rules import RuleID
@@ -6,6 +8,9 @@ from .scoring_rules import RuleID
 import numpy as np
 import pandas as pd
 
+
+logger = logging.getLogger("birdwatch.note_status_history")
+logger.setLevel(logging.INFO)
 
 # Delay specifying when to lock note status, currently set to two weeks.
 _noteLockMillis = 14 * 24 * 60 * 60 * 1000
@@ -32,9 +37,10 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
     # use outer so we don't drop deleted notes from "oldNoteStatusHistory" or new notes from "notes"
     how="outer",
     suffixes=("", noteSuffix),
+    unsafeAllowed={c.createdAtMillisKey, c.createdAtMillisKey + noteSuffix},
   )
   newNotes = pd.isna(newNoteStatusHistory[c.createdAtMillisKey])
-  print(f"total notes added to noteStatusHistory: {sum(newNotes)}")
+  logger.info(f"total notes added to noteStatusHistory: {sum(newNotes)}")
   # Copy timestamp and authorship data over for new notes.
   newNoteStatusHistory.loc[newNotes, c.createdAtMillisKey] = newNoteStatusHistory.loc[
     newNotes, c.createdAtMillisKey + noteSuffix
@@ -55,6 +61,7 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
       notes[[c.noteIdKey, c.createdAtMillisKey]],
       on=[c.noteIdKey, c.createdAtMillisKey],
       how="inner",
+      unsafeAllowed=c.createdAtMillisKey,
     )
   ), "timestamps from notes and noteStatusHistory must match"
   assert len(notes) == len(
@@ -86,6 +93,34 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   Returns:
       row of pd.DataFrame
   """
+  # This TS will be set by run_combine_scoring_outputs.
+  mergedNote[c.timestampMinuteOfFinalScoringOutput] = np.nan
+
+  # TODO(jiansongc): remove after new column is in prod.
+  if c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey not in mergedNote:
+    mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = np.nan
+
+  if not pd.isna(mergedNote[c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey]):
+    mergedNote[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = mergedNote[
+      c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey
+    ]
+    if pd.isna(mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey]):
+      mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = mergedNote[
+        c.timestampMillisOfNmrDueToMinStableCrhTimeKey
+      ]
+
+  if mergedNote[c.finalRatingStatusKey] != mergedNote[c.currentLabelKey]:
+    # Changed status vs. previous run:
+    mergedNote[c.timestampMillisOfMostRecentStatusChangeKey] = currentTimeMillis
+  else:
+    # No change in status vs. previous run
+    # If the note has not changed status (since the launch of this feature on 2024/07/02),
+    # then the timestamp of the most recent status change should be set to -1 by default.
+    if c.timestampMillisOfMostRecentStatusChangeKey not in mergedNote.index:
+      mergedNote[c.timestampMillisOfMostRecentStatusChangeKey] = -1
+    elif pd.isna(mergedNote[c.timestampMillisOfMostRecentStatusChangeKey]):
+      mergedNote[c.timestampMillisOfMostRecentStatusChangeKey] = -1
+
   # Update the current status in accordance with this scoring run.
   assert not pd.isna(mergedNote[c.finalRatingStatusKey])
   mergedNote[c.currentLabelKey] = mergedNote[c.finalRatingStatusKey]
@@ -95,6 +130,8 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   mergedNote[c.currentDecidedByKey] = mergedNote[c.decidedByKey]
   mergedNote[c.currentModelingGroupKey] = mergedNote[c.modelingGroupKey]
   mergedNote[c.timestampMillisOfNoteCurrentLabelKey] = currentTimeMillis
+  mergedNote[c.currentMultiGroupStatusKey] = mergedNote[c.multiGroupRatingStatusKey]
+  mergedNote[c.currentModelingMultiGroupKey] = mergedNote[c.modelingMultiGroupKey]
 
   # Lock notes which are (1) not already locked, (2) old enough to lock and (3)
   # were decided by logic which has global display impact.  Criteria (3) guarantees
@@ -155,7 +192,7 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   return mergedNote
 
 
-def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn=0.25) -> None:
+def check_flips(mergedStatuses: pd.DataFrame, noteSubset: c.NoteSubset) -> None:
   """Validate that number of CRH notes remains within an accepted bound.
 
   Assert fails and scoring exits with error if maximum allowable churn is exceeded.
@@ -167,8 +204,28 @@ def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn=0.25) -> None:
   Returns:
     None
   """
-  # Prune to unlocked notes.
-  mergedStatuses = mergedStatuses[mergedStatuses[c.timestampMillisOfStatusLockKey].isna()]
+  if len(mergedStatuses) > c.minNumNotesForProdData:
+    # Prune notes to unlocked notes.
+    mergedStatuses = mergedStatuses[mergedStatuses[c.timestampMillisOfStatusLockKey].isna()]
+    # Prune to note subset
+    logger.info(
+      f"Checking Flip Rate for note subset: {noteSubset.description} (unlocked only), with max new CRH churn: {noteSubset.maxNewCrhChurnRate}, and max old CRH churn: {noteSubset.maxOldCrhChurnRate}"
+    )
+    if noteSubset.noteSet is not None:
+      mergedStatuses = mergedStatuses[mergedStatuses[c.noteIdKey].isin(noteSubset.noteSet)]
+
+    _check_flips(mergedStatuses, noteSubset.maxNewCrhChurnRate, noteSubset.maxOldCrhChurnRate)
+
+
+def _check_flips(
+  mergedStatuses: pd.DataFrame,
+  maxNewCrhChurn: float,
+  maxOldCrhChurn: Optional[float] = None,
+  smoothingCount: int = 100,
+) -> None:
+  if maxOldCrhChurn is None:
+    maxOldCrhChurn = maxNewCrhChurn
+
   # Identify new and old CRH notes.
   oldCrhNotes = frozenset(
     mergedStatuses[mergedStatuses[c.currentLabelKey] == c.currentlyRatedHelpful][c.noteIdKey]
@@ -176,35 +233,32 @@ def _check_flips(mergedStatuses: pd.DataFrame, maxCrhChurn=0.25) -> None:
   newCrhNotes = frozenset(
     mergedStatuses[mergedStatuses[c.finalRatingStatusKey] == c.currentlyRatedHelpful][c.noteIdKey]
   )
-  # Validate that changes are within allowable bounds.
-  assert (
-    (len(newCrhNotes - oldCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
-  ), f"Too many new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
-  assert (
-    (len(oldCrhNotes - newCrhNotes) / len(oldCrhNotes)) < maxCrhChurn
-  ), f"Too few new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
+  if len(oldCrhNotes) > 0 and len(newCrhNotes) > 0:
+    # Validate that changes are within allowable bounds.
+    smoothedNewNoteRatio = (len(newCrhNotes - oldCrhNotes)) / (len(oldCrhNotes) + smoothingCount)
+    rawNewNoteRatio = (len(newCrhNotes - oldCrhNotes)) / len(oldCrhNotes)
+    logger.info(
+      f"Raw new note ratio: {rawNewNoteRatio}, smoothed new note ratio: {smoothedNewNoteRatio}. (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
+    )
+    smoothedOldNoteRatio = (len(oldCrhNotes - newCrhNotes)) / (len(oldCrhNotes) + smoothingCount)
+    rawOldNoteRatio = (len(oldCrhNotes - newCrhNotes)) / len(oldCrhNotes)
+    logger.info(
+      f"Raw old note ratio: {rawOldNoteRatio}, smoothed old note ratio: {smoothedOldNoteRatio}. (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
+    )
+
+    assert (
+      smoothedNewNoteRatio < maxNewCrhChurn
+    ), f"Too many new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
+
+    assert (
+      smoothedOldNoteRatio < maxOldCrhChurn
+    ), f"Too many notes lost CRH status: oldCrhNotes={len(oldCrhNotes)}, newCrhNotes={len(newCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
 
 
-def update_note_status_history(
+def merge_old_and_new_note_statuses(
   oldNoteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
-) -> pd.DataFrame:
-  """Generate new noteStatusHistory by merging in new note labels.
-
-  Args:
-      oldNoteStatusHistory (pd.DataFrame)
-      scoredNotes (pd.DataFrame)
-
-  Returns:
-      pd.DataFrame: noteStatusHistory
-  """
-  if c.useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory:
-    # When running in prod, we use the latest time possible, so as to include as many valid ratings
-    # as possible, and be closest to the time the new note statuses are user-visible.
-    currentTimeMillis = 1000 * time.time()
-  else:
-    # When running in test, we use the overridable epochMillis constant.
-    currentTimeMillis = c.epochMillis
+):
   newScoredNotesSuffix = "_sn"
   mergedStatuses = oldNoteStatusHistory.merge(
     scoredNotes[
@@ -217,6 +271,9 @@ def update_note_status_history(
         c.expansionRatingStatusKey,
         c.groupRatingStatusKey,
         c.modelingGroupKey,
+        c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey,
+        c.multiGroupRatingStatusKey,
+        c.modelingMultiGroupKey,
       ]
     ].rename(
       {
@@ -230,8 +287,21 @@ def update_note_status_history(
   assert len(mergedStatuses) == len(
     oldNoteStatusHistory
   ), "scoredNotes and oldNoteStatusHistory should both contain all notes"
-  if len(mergedStatuses) > c.minNumNotesForProdData:
-    _check_flips(mergedStatuses)
+  return mergedStatuses
+
+
+def update_note_status_history(
+  mergedStatuses: pd.DataFrame,
+  newScoredNotesSuffix: str = "_sn",
+) -> pd.DataFrame:
+  """Generate new noteStatusHistory by merging in new note labels."""
+  if c.useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory:
+    # When running in prod, we use the latest time possible, so as to include as many valid ratings
+    # as possible, and be closest to the time the new note statuses are user-visible.
+    currentTimeMillis = 1000 * time.time()
+  else:
+    # When running in test, we use the overridable epochMillis constant.
+    currentTimeMillis = c.epochMillis
 
   def apply_update(mergedNote):
     return _update_single_note_status_history(

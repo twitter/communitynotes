@@ -1,12 +1,20 @@
 from abc import ABC, abstractmethod
 from io import StringIO
+import logging
 import os
 from typing import Dict, List, Optional, Tuple
 
 from . import constants as c, note_status_history
+from .pandas_utils import get_df_info
 
+import joblib
 import numpy as np
 import pandas as pd
+from sklearn.pipeline import Pipeline
+
+
+logger = logging.getLogger("birdwatch.process_data")
+logger.setLevel(logging.INFO)
 
 
 def read_from_strings(
@@ -39,7 +47,13 @@ def read_from_strings(
 
 
 def tsv_parser(
-  rawTSV: str, mapping: Dict[str, type], columns: List[str], header: bool
+  rawTSV: str,
+  mapping: Dict[str, type],
+  columns: List[str],
+  header: bool,
+  useCols: Optional[List[str]] = None,
+  chunkSize: Optional[int] = None,
+  convertNAToNone: bool = True,
 ) -> pd.DataFrame:
   """Parse a TSV input and raise an Exception if the input is not formatted as expected.
 
@@ -48,6 +62,8 @@ def tsv_parser(
     mapping: Dict mapping column names to types
     columns: List of column names
     header: bool indicating whether the input will have a header
+    useCols: Optional list of columns to return
+    chunkSize: Optional number of rows to read at a time when returning a subset of columns
 
   Returns:
     pd.DataFrame containing parsed data
@@ -58,36 +74,78 @@ def tsv_parser(
     if num_fields != len(columns):
       raise ValueError(f"Expected {len(columns)} columns, but got {num_fields}")
 
-    data = pd.read_csv(
-      StringIO(rawTSV),
-      sep="\t",
-      names=columns,
-      dtype=mapping,
-      header=0 if header else None,
-      index_col=[],
-    )
+    if useCols and chunkSize:
+      textParser = pd.read_csv(
+        StringIO(rawTSV),
+        sep="\t",
+        names=columns,
+        dtype=mapping,
+        header=0 if header else None,
+        index_col=[],
+        usecols=useCols,
+        chunksize=chunkSize,
+      )
+      data = pd.concat(textParser, ignore_index=True)
+    else:
+      data = pd.read_csv(
+        StringIO(rawTSV),
+        sep="\t",
+        names=columns,
+        dtype=mapping,
+        header=0 if header else None,
+        index_col=[],
+        usecols=useCols,
+      )
+    if convertNAToNone:
+      logger.info("Logging size effect of convertNAToNone")
+      logger.info("Before conversion:")
+      logger.info(get_df_info(data))
+      # float types will be nan if missing; newer nullable types like "StringDtype" or "Int64Dtype" will by default
+      # be pandas._libs.missing.NAType if missing. Set those to None and change the dtype back to object.
+      for colname, coltype in mapping.items():
+        # check if coltype is pd.BooleanDtype
+        if coltype in set(
+          [pd.StringDtype(), pd.BooleanDtype(), pd.Int64Dtype(), pd.Int32Dtype(), "boolean"]
+        ):
+          data[colname] = data[colname].astype(object)
+          data.loc[pd.isna(data[colname]), colname] = None
+      logger.info("After conversion:")
+      logger.info(get_df_info(data))
     return data
   except (ValueError, IndexError) as e:
     raise ValueError(f"Invalid input: {e}")
 
 
-def tsv_reader_single(path: str, mapping, columns, header=False, parser=tsv_parser):
+def tsv_reader_single(
+  path: str, mapping, columns, header=False, parser=tsv_parser, convertNAToNone=True
+):
   """Read a single TSV file."""
   with open(path, "r", encoding="utf-8") as handle:
-    return tsv_parser(handle.read(), mapping, columns, header)
+    return tsv_parser(handle.read(), mapping, columns, header, convertNAToNone=convertNAToNone)
 
 
-def tsv_reader(path: str, mapping, columns, header=False, parser=tsv_parser):
+def tsv_reader(
+  path: str, mapping, columns, header=False, parser=tsv_parser, convertNAToNone=True
+) -> pd.DataFrame:
   """Read a single TSV file or a directory of TSV files."""
   if os.path.isdir(path):
     dfs = [
-      tsv_reader_single(os.path.join(path, filename), mapping, columns, header, parser)
+      tsv_reader_single(
+        os.path.join(path, filename),
+        mapping,
+        columns,
+        header,
+        parser,
+        convertNAToNone=convertNAToNone,
+      )
       for filename in os.listdir(path)
       if filename.endswith(".tsv")
     ]
     return pd.concat(dfs, ignore_index=True)
   else:
-    return tsv_reader_single(path, mapping, columns, header, parser)
+    return tsv_reader_single(
+      path, mapping, columns, header, parser, convertNAToNone=convertNAToNone
+    )
 
 
 def read_from_tsv(
@@ -111,7 +169,9 @@ def read_from_tsv(
   if notesPath is None:
     notes = None
   else:
-    notes = tsv_reader(notesPath, c.noteTSVTypeMapping, c.noteTSVColumns, header=headers)
+    notes = tsv_reader(
+      notesPath, c.noteTSVTypeMapping, c.noteTSVColumns, header=headers, convertNAToNone=False
+    )
     assert len(notes.columns) == len(c.noteTSVColumns) and all(notes.columns == c.noteTSVColumns), (
       f"note columns don't match: \n{[col for col in notes.columns if not col in c.noteTSVColumns]} are extra columns, "
       + f"\n{[col for col in c.noteTSVColumns if not col in notes.columns]} are missing."
@@ -120,7 +180,9 @@ def read_from_tsv(
   if ratingsPath is None:
     ratings = None
   else:
-    ratings = tsv_reader(ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns, header=headers)
+    ratings = tsv_reader(
+      ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns, header=headers, convertNAToNone=False
+    )
     assert len(ratings.columns.values) == len(c.ratingTSVColumns) and all(
       ratings.columns == c.ratingTSVColumns
     ), (
@@ -131,18 +193,36 @@ def read_from_tsv(
   if noteStatusHistoryPath is None:
     noteStatusHistory = None
   else:
-    noteStatusHistory = tsv_reader(
-      noteStatusHistoryPath,
-      c.noteStatusHistoryTSVTypeMapping,
-      c.noteStatusHistoryTSVColumns,
-      header=headers,
-    )
-    assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
-      noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
-    ), (
-      f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
-      + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
-    )
+    # TODO(jiansongc): clean up after new column is in production.
+    try:
+      noteStatusHistory = tsv_reader(
+        noteStatusHistoryPath,
+        c.noteStatusHistoryTSVTypeMapping,
+        c.noteStatusHistoryTSVColumns,
+        header=headers,
+        convertNAToNone=False,
+      )
+      assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
+        noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
+      ), (
+        f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
+        + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
+      )
+    except ValueError:
+      noteStatusHistory = tsv_reader(
+        noteStatusHistoryPath,
+        c.noteStatusHistoryTSVTypeMappingOld,
+        c.noteStatusHistoryTSVColumnsOld,
+        header=headers,
+        convertNAToNone=False,
+      )
+      noteStatusHistory[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = np.nan
+      assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
+        noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
+      ), (
+        f"noteStatusHistory columns don't match: \n{[col for col in noteStatusHistory.columns if not col in c.noteStatusHistoryTSVColumns]} are extra columns, "
+        + f"\n{[col for col in c.noteStatusHistoryTSVColumns if not col in noteStatusHistory.columns]} are missing."
+      )
 
   if userEnrollmentPath is None:
     userEnrollment = None
@@ -152,6 +232,7 @@ def read_from_tsv(
       c.userEnrollmentTSVTypeMapping,
       c.userEnrollmentTSVColumns,
       header=headers,
+      convertNAToNone=False,
     )
     assert len(userEnrollment.columns.values) == len(c.userEnrollmentTSVColumns) and all(
       userEnrollment.columns == c.userEnrollmentTSVColumns
@@ -183,7 +264,7 @@ def _filter_misleading_notes(
   notes: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
-  logging: bool = True,
+  log: bool = True,
 ) -> pd.DataFrame:
   """
   This function actually filters ratings (not notes), based on which notes they rate.
@@ -201,7 +282,7 @@ def _filter_misleading_notes(
       notes (pd.DataFrame): _description_
       ratings (pd.DataFrame): _description_
       noteStatusHistory (pd.DataFrame): _description_
-      logging (bool, optional): _description_. Defaults to True.
+      log (bool, optional): _description_. Defaults to True.
 
   Returns:
       pd.DataFrame: filtered ratings
@@ -211,6 +292,7 @@ def _filter_misleading_notes(
     on=c.noteIdKey,
     how="left",
     suffixes=("", "_nsh"),
+    unsafeAllowed=c.createdAtMillisKey,
   )
 
   createdAtMillisNSHKey = c.createdAtMillisKey + "_nsh"
@@ -237,33 +319,33 @@ def _filter_misleading_notes(
   # not deleted, says the tweet is not misleading, and before new UI launch time, remove
   notDeletedNotMisleadingOldUINote = (ratings[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey) & (ratings[createdAtMillisNSHKey] <= c.notMisleadingUILaunchTime)
 
-  if logging:
-    print(
+  if log:
+    logger.info(
       f"Finished filtering misleading notes\n"
       f"Preprocess Data: Filter misleading notes, starting with {len(ratings)} ratings on {get_unique_size(ratings, c.noteIdKey)} notes"
     )
-    print(
+    logger.info(
       f"For {deletedNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=deletedNote)} deleted notes"
     )
-    print(
+    logger.info(
       f"  Keep {deletedButInNSHNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=deletedButInNSHNote)} deleted notes that are in noteStatusHistory (e.g., previously scored)"
     )
-    print(
+    logger.info(
       f"  Remove {deletedNotInNSHNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=deletedNotInNSHNote)} deleted notes that are not in noteStatusHistory (e.g., old)"
     )
-    print(
+    logger.info(
       f"For {availableNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=availableNote)} still available notes"
     )
-    print(
+    logger.info(
       f"  Keep {notDeletedMisleadingNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=notDeletedMisleadingNote)} available notes saying the associated tweet is misleading"
     )
-    print(
+    logger.info(
       f"  For {notDeletedNotMisleadingNote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=notDeletedNotMisleadingNote)} available notes saying the associated tweet is not misleading"
     )
-    print(
+    logger.info(
       f"    Keep {notDeletedNotMisleadingNewUINote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=notDeletedNotMisleadingNewUINote)} available and not misleading notes, and after the new UI launch time"
     )
-    print(
+    logger.info(
       f"    Remove {notDeletedNotMisleadingOldUINote.sum()} ratings on {get_unique_size(ratings, c.noteIdKey, rows=notDeletedNotMisleadingOldUINote)} available and not misleading notes, and before the new UI launch time"
     )
   
@@ -357,7 +439,8 @@ def preprocess_data(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   shouldFilterNotMisleadingNotes: bool = True,
-  logging: bool = True,
+  log: bool = True,
+  ratingsOnly: bool = False,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Populate helpfulNumKey, a unified column that merges the helpfulness answers from 
   the V1 and V2 rating forms together, as described in
@@ -371,23 +454,23 @@ def preprocess_data(
       ratings (pd.DataFrame)
       noteStatusHistory (pd.DataFrame)
       shouldFilterNotMisleadingNotes (bool, optional): Defaults to True.
-      logging (bool, optional): Defaults to True.
+      log (bool, optional): Defaults to True.
+      ratingsOnly (bool, optional): Defaults to False
 
   Returns:
       notes (pd.DataFrame)
       ratings (pd.DataFrame)
       noteStatusHistory (pd.DataFrame)
   """
-  if logging:
-    print(
-      "Timestamp of latest rating in data: ",
-      pd.to_datetime(ratings[c.createdAtMillisKey], unit="ms").max(),
+  if log:
+    logger.info(
+      f"Timestamp of latest rating in data: {pd.to_datetime(ratings[c.createdAtMillisKey], unit='ms').max()}",
     )
-    print(
-      "Timestamp of latest note in data: ",
-      pd.to_datetime(notes[c.createdAtMillisKey], unit="ms").max(),
-    )
-    print(
+    if not ratingsOnly:
+      logger.info(
+        f"Timestamp of latest note in data: {pd.to_datetime(notes[c.createdAtMillisKey], unit='ms').max()}",
+      )
+    logger.info(
       f"Original row numbers from provided tsv files\n",
       f"  notes: {len(notes)}\n",
       f"  ratings: {len(ratings)}\n",
@@ -396,11 +479,9 @@ def preprocess_data(
   
   # each rating must have a unique (noteId, raterParticipantId) pair
   ratings = remove_duplicate_ratings(ratings)
-  # each note must have a unique noteId
-  notes = remove_duplicate_notes(notes)
 
-  if logging:
-    print(
+  if log:
+    logger.info(
       f"After removing duplicates, there are {len(notes)} notes and {len(ratings)} ratings from {get_unique_size(ratings, c.noteIdKey)} notes\n"
       f"  Thus, {len(notes) - get_unique_size(ratings, c.noteIdKey)} notes have no ratings yet, removed..."
     )
@@ -417,11 +498,16 @@ def preprocess_data(
   num_raw_ratings = len(ratings)
   ratings = ratings.loc[~pd.isna(ratings[c.helpfulNumKey])]
 
-  if logging:
-    print(
+  if log:
+    logger.info(
       f"After populating helpfulNumKey, there are {len(ratings)} ratings from {get_unique_size(ratings, c.noteIdKey)} notes\n"
       f"  Thus, {num_raw_ratings - len(ratings)} ratings have no helpfulness labels (i.e., helpfulKey=0 and notHelpfulKey=0), removed..."
     )
+  if ratingsOnly:
+    return pd.DataFrame(), ratings, pd.DataFrame()
+
+  # each note must have a unique noteId
+  notes = remove_duplicate_notes(notes)
 
   notes[c.tweetIdKey] = notes[c.tweetIdKey].astype(str)
 
@@ -436,10 +522,10 @@ def preprocess_data(
   noteStatusHistory = note_status_history.merge_note_info(noteStatusHistory, notes)
 
   if shouldFilterNotMisleadingNotes:
-    ratings = _filter_misleading_notes(notes, ratings, noteStatusHistory, logging)
+    ratings = _filter_misleading_notes(notes, ratings, noteStatusHistory, log)
 
-  if logging:
-    print(
+  if log:
+    logger.info(
       "After data preprocess, Num Ratings: %d, Num Unique Notes Rated: %d, Num Unique Raters: %d\n"
       % (
         len(ratings),
@@ -454,7 +540,7 @@ def filter_ratings(
   ratings: pd.DataFrame,
   minNumRatingsPerRater: int,
   minNumRatersPerNote: int,
-  logging: bool = True,
+  log: bool = True,
 ) -> pd.DataFrame:
   """Apply min number of ratings for raters & notes. Instead of iterating these filters
   until convergence, simply stop after going back and force once.
@@ -465,7 +551,7 @@ def filter_ratings(
         included in scoring.  Raters with fewer ratings are removed.
       minNumRatersPerNote: Minimum number of ratings which a note must have to be included
         in scoring.  Notes with fewer ratings are removed.
-      logging: Debug output. Defaults to True.
+      log: Debug output. Defaults to True.
 
   Returns:
       pd.DataFrame: filtered ratings
@@ -485,11 +571,11 @@ def filter_ratings(
   ratings = filter_raters(ratings)
   ratings = filter_notes(ratings)
 
-  if logging:
+  if log:
     # Log final details
     unique_notes = ratings[c.noteIdKey].nunique()
     unique_raters = ratings[c.raterParticipantIdKey].nunique()
-    print(
+    logger.info(
       f"After applying min {minNumRatingsPerRater} ratings per rater and min {minNumRatersPerNote} raters per note: \n"
       + f"Num Ratings: {len(ratings)}, Num Unique Notes Rated: {unique_notes}, Num Unique Raters: {unique_raters}"
     )
@@ -500,19 +586,32 @@ def filter_ratings(
 def write_prescoring_output(
   prescoringNoteModelOutput: pd.DataFrame,
   prescoringRaterModelOutput: pd.DataFrame,
+  noteTopicClassifier: Pipeline,
+  prescoringMetaOutput: c.PrescoringMetaOutput,
+  prescoringScoredNotesOutput: Optional[pd.DataFrame],
   noteModelOutputPath: str,
   raterModelOutputPath: str,
+  noteTopicClassifierPath: str,
+  prescoringMetaOutputPath: str,
+  prescoringScoredNotesOutputPath: Optional[str],
+  headers: bool = True,
 ):
   prescoringNoteModelOutput = prescoringNoteModelOutput[c.prescoringNoteModelOutputTSVColumns]
   assert all(prescoringNoteModelOutput.columns == c.prescoringNoteModelOutputTSVColumns)
-  write_tsv_local(prescoringNoteModelOutput, noteModelOutputPath)
+  write_tsv_local(prescoringNoteModelOutput, noteModelOutputPath, headers=headers)
 
   prescoringRaterModelOutput = prescoringRaterModelOutput[c.prescoringRaterModelOutputTSVColumns]
   assert all(prescoringRaterModelOutput.columns == c.prescoringRaterModelOutputTSVColumns)
-  write_tsv_local(prescoringRaterModelOutput, raterModelOutputPath)
+  write_tsv_local(prescoringRaterModelOutput, raterModelOutputPath, headers=headers)
+
+  if prescoringScoredNotesOutput is not None and prescoringScoredNotesOutputPath is not None:
+    write_tsv_local(prescoringScoredNotesOutput, prescoringScoredNotesOutputPath, headers=headers)
+
+  joblib.dump(noteTopicClassifier, noteTopicClassifierPath)
+  joblib.dump(prescoringMetaOutput, prescoringMetaOutputPath)
 
 
-def write_tsv_local(df: pd.DataFrame, path: str) -> None:
+def write_tsv_local(df: pd.DataFrame, path: str, headers: bool = True) -> None:
   """Write DF as a TSV stored to local disk.
 
   Note that index=False (so the index column will not be written to disk), and header=True
@@ -521,13 +620,27 @@ def write_tsv_local(df: pd.DataFrame, path: str) -> None:
   Args:
     df: pd.DataFrame to write to disk.
     path: location of file on disk.
-
-  Returns:
-    None, because path is always None.
   """
 
   assert path is not None
-  assert df.to_csv(path, index=False, header=True, sep="\t") is None
+  assert df.to_csv(path, index=False, header=headers, sep="\t") is None
+
+
+def write_parquet_local(
+  df: pd.DataFrame, path: str, compression: str = "snappy", engine: str = "pyarrow"
+) -> None:
+  """Write DF as a parquet file stored to local disk. Compress with snappy
+  and use pyarrow engine.
+
+  Args:
+    df: pd.DataFrame to write to disk.
+    path: location of file on disk.
+    compression: compression algorithm to use. Defaults to 'snappy'.
+    engine: engine to use. Defaults to 'pyarrow'.
+  """
+
+  assert path is not None
+  df.to_parquet(path, compression=compression, engine=engine)
 
 
 class CommunityNotesDataLoader(ABC):
@@ -562,9 +675,11 @@ class LocalDataLoader(CommunityNotesDataLoader):
     userEnrollmentPath: str,
     headers: bool,
     shouldFilterNotMisleadingNotes: bool = True,
-    logging: bool = True,
+    log: bool = True,
     prescoringNoteModelOutputPath: Optional[str] = None,
     prescoringRaterModelOutputPath: Optional[str] = None,
+    prescoringNoteTopicClassifierPath: Optional[str] = None,
+    prescoringMetaOutputPath: Optional[str] = None,
   ) -> None:
     """
     Args:
@@ -574,7 +689,7 @@ class LocalDataLoader(CommunityNotesDataLoader):
         userEnrollmentPath (str): file path
         headers: If true, expect first row of input files to be headers.
         shouldFilterNotMisleadingNotes (bool, optional): Throw out not-misleading notes if True. Defaults to True.
-        logging (bool, optional): Print out debug output. Defaults to True.
+        log (bool, optional): Print out debug output. Defaults to True.
     """
     self.notesPath = notesPath
     self.ratingsPath = ratingsPath
@@ -582,9 +697,11 @@ class LocalDataLoader(CommunityNotesDataLoader):
     self.userEnrollmentPath = userEnrollmentPath
     self.prescoringNoteModelOutputPath = prescoringNoteModelOutputPath
     self.prescoringRaterModelOutputPath = prescoringRaterModelOutputPath
+    self.prescoringNoteTopicClassifierPath = prescoringNoteTopicClassifierPath
+    self.prescoringMetaOutputPath = prescoringMetaOutputPath
     self.headers = headers
     self.shouldFilterNotMisleadingNotes = shouldFilterNotMisleadingNotes
-    self.logging = logging
+    self.log = log
 
   def get_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """All-in-one function for reading Birdwatch notes and ratings from TSV files.
@@ -601,13 +718,15 @@ class LocalDataLoader(CommunityNotesDataLoader):
       self.headers,
     )
     notes, ratings, noteStatusHistory = preprocess_data(
-      notes, ratings, noteStatusHistory, self.shouldFilterNotMisleadingNotes, self.logging
+      notes, ratings, noteStatusHistory, self.shouldFilterNotMisleadingNotes, self.log
     )
     return notes, ratings, noteStatusHistory, userEnrollment
 
-  def get_prescoring_model_output(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    print(
-      f"Attempting to read prescoring model output from {self.prescoringNoteModelOutputPath} and {self.prescoringRaterModelOutputPath}"
+  def get_prescoring_model_output(
+    self,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame, Pipeline, c.PrescoringMetaOutput]:
+    logger.info(
+      f"Attempting to read prescoring model output from {self.prescoringNoteModelOutputPath}, {self.prescoringRaterModelOutputPath}, {self.prescoringNoteTopicClassifierPath}, {self.prescoringMetaOutputPath}"
     )
     if self.prescoringRaterModelOutputPath is None:
       prescoringRaterModelOutput = None
@@ -616,7 +735,7 @@ class LocalDataLoader(CommunityNotesDataLoader):
         self.prescoringRaterModelOutputPath,
         c.prescoringRaterModelOutputTSVTypeMapping,
         c.prescoringRaterModelOutputTSVColumns,
-        header=True,
+        header=self.headers,
       )
       assert len(prescoringRaterModelOutput.columns) == len(
         c.prescoringRaterModelOutputTSVColumns
@@ -632,7 +751,7 @@ class LocalDataLoader(CommunityNotesDataLoader):
         self.prescoringNoteModelOutputPath,
         c.prescoringNoteModelOutputTSVTypeMapping,
         c.prescoringNoteModelOutputTSVColumns,
-        header=True,
+        header=self.headers,
       )
       assert len(prescoringNoteModelOutput.columns) == len(
         c.prescoringNoteModelOutputTSVColumns
@@ -641,4 +760,159 @@ class LocalDataLoader(CommunityNotesDataLoader):
         + f"\n{[col for col in c.prescoringNoteModelOutputTSVColumns if not col in prescoringNoteModelOutput.columns]} are missing."
       )  # ensure constants file is up to date.
 
-    return prescoringNoteModelOutput, prescoringRaterModelOutput
+    if self.prescoringNoteTopicClassifierPath is None:
+      prescoringNoteTopicClassifier = None
+    else:
+      prescoringNoteTopicClassifier = joblib.load(self.prescoringNoteTopicClassifierPath)
+    assert type(prescoringNoteTopicClassifier) == Pipeline
+
+    if self.prescoringMetaOutputPath is None:
+      prescoringMetaOutput = None
+    else:
+      prescoringMetaOutput = joblib.load(self.prescoringMetaOutputPath)
+    assert type(prescoringMetaOutput) == c.PrescoringMetaOutput
+
+    return (
+      prescoringNoteModelOutput,
+      prescoringRaterModelOutput,
+      prescoringNoteTopicClassifier,
+      prescoringMetaOutput,
+    )
+
+
+def filter_input_data_for_testing(
+  notes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+  cutoffTimestampMillis: Optional[int] = None,
+  excludeRatingsAfterANoteGotFirstStatusPlusNHours: Optional[int] = None,
+  daysInPastToApplyPostFirstStatusFiltering: Optional[int] = 14,
+  filterPrescoringInputToSimulateDelayInHours: Optional[int] = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+  """
+  Args:
+    cutoffTimestampMillis: filter all notes and ratings after this time.
+
+    excludeRatingsAfterANoteGotFirstStatusPlusNHours: set to 0 to throw out all
+      ratings after a note was first CRH. Set to None to turn off.
+    daysInPastToApplyPostFirstStatusFiltering: only apply the previous
+      filter to notes created in the last this-many days.
+
+    filterPrescoringInputToSimulateDelayInHours: Optional[int]: for system tests,
+      simulate final scoring running this many hours after prescoring.
+
+  Returns: notes, ratings, prescoringNotesInput, prescoringRatingsInput
+  """
+  logger.info(
+    f"""Called filter_input_data_for_testing.
+        Notes: {len(notes)}, Ratings: {len(ratings)}. Max note createdAt: {pd.to_datetime(notes[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(ratings[c.createdAtMillisKey].max(), unit='ms')}"""
+  )
+
+  notes, ratings = filter_notes_and_ratings_after_particular_timestamp_millis(
+    notes, ratings, cutoffTimestampMillis
+  )
+  logger.info(
+    f"""After filtering notes and ratings after particular timestamp (={cutoffTimestampMillis}). 
+        Notes: {len(notes)}, Ratings: {len(ratings)}. Max note createdAt: {pd.to_datetime(notes[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(ratings[c.createdAtMillisKey].max(), unit='ms')}"""
+  )
+
+  ratings = filter_ratings_after_first_status_plus_n_hours(
+    ratings,
+    noteStatusHistory,
+    excludeRatingsAfterANoteGotFirstStatusPlusNHours,
+    daysInPastToApplyPostFirstStatusFiltering,
+  )
+  logger.info(
+    f"""After filtering ratings after first status (plus {excludeRatingsAfterANoteGotFirstStatusPlusNHours} hours) for notes created in last {daysInPastToApplyPostFirstStatusFiltering} days. 
+        Notes: {len(notes)}, Ratings: {len(ratings)}. Max note createdAt: {pd.to_datetime(notes[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(ratings[c.createdAtMillisKey].max(), unit='ms')}"""
+  )
+
+  (
+    prescoringNotesInput,
+    prescoringRatingsInput,
+  ) = filter_prescoring_input_to_simulate_delay_in_hours(
+    notes, ratings, filterPrescoringInputToSimulateDelayInHours
+  )
+  logger.info(
+    f"""After filtering prescoring notes and ratings to simulate a delay of {filterPrescoringInputToSimulateDelayInHours} hours: 
+        Notes: {len(prescoringNotesInput)}, Ratings: {len(prescoringRatingsInput)}. Max note createdAt: {pd.to_datetime(prescoringNotesInput[c.createdAtMillisKey].max(), unit='ms')}; Max rating createAt: {pd.to_datetime(prescoringRatingsInput[c.createdAtMillisKey].max(), unit='ms')}"""
+  )
+
+  return notes, ratings, prescoringNotesInput, prescoringRatingsInput
+
+
+def filter_ratings_after_first_status_plus_n_hours(
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+  excludeRatingsAfterANoteGotFirstStatusPlusNHours: Optional[int] = None,
+  daysInPastToApplyPostFirstStatusFiltering: Optional[int] = 14,
+) -> pd.DataFrame:
+  if excludeRatingsAfterANoteGotFirstStatusPlusNHours is None:
+    return ratings
+
+  if daysInPastToApplyPostFirstStatusFiltering is None:
+    daysInPastToApplyPostFirstStatusFiltering = 14
+
+  ratingCutoffTimeMillisKey = "ratingCutoffTimeMillis"
+
+  # First: determine out which notes to apply this to (created in past
+  #   daysInPastToApplyPostFirstStatusFiltering days)
+  millisToLookBack = daysInPastToApplyPostFirstStatusFiltering * 24 * 60 * 60 * 1000
+  cutoffTimeMillis = noteStatusHistory[c.createdAtMillisKey].max() - millisToLookBack
+  nshToFilter = noteStatusHistory[noteStatusHistory[c.createdAtMillisKey] > cutoffTimeMillis]
+  logger.info(
+    f"  Notes to apply the post-first-status filter for (from last {daysInPastToApplyPostFirstStatusFiltering} days): {len(nshToFilter)}"
+  )
+  nshToFilter[ratingCutoffTimeMillisKey] = nshToFilter[
+    c.timestampMillisOfNoteFirstNonNMRLabelKey
+  ] + (excludeRatingsAfterANoteGotFirstStatusPlusNHours * 60 * 60 * 1000)
+
+  # Next: join their firstStatusTime from NSH with their ratings
+  ratingsWithNSH = ratings.merge(
+    nshToFilter[[c.noteIdKey, ratingCutoffTimeMillisKey]], on=c.noteIdKey, how="left"
+  )
+  # And then filter out ratings made after that time. Don't filter any ratings for notes with
+  #   nan cutoff time.
+  ratingsWithNSH[ratingCutoffTimeMillisKey].fillna(
+    ratingsWithNSH[c.createdAtMillisKey].max() + 1, inplace=True
+  )
+  ratingsWithNSH = ratingsWithNSH[
+    ratingsWithNSH[c.createdAtMillisKey] < ratingsWithNSH[ratingCutoffTimeMillisKey]
+  ]
+  return ratingsWithNSH.drop(columns=[ratingCutoffTimeMillisKey])
+
+
+def filter_notes_and_ratings_after_particular_timestamp_millis(
+  notes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  cutoffTimestampMillis: Optional[int],
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  if cutoffTimestampMillis is not None:
+    notes = notes[notes[c.createdAtMillisKey] <= cutoffTimestampMillis].copy()
+    ratings = ratings[ratings[c.createdAtMillisKey] <= cutoffTimestampMillis].copy()
+  return notes, ratings
+
+
+def filter_prescoring_input_to_simulate_delay_in_hours(
+  notes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  filterPrescoringInputToSimulateDelayInHours: Optional[int],
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  if filterPrescoringInputToSimulateDelayInHours is not None:
+    latestRatingMillis = ratings[c.createdAtMillisKey].max()
+    cutoffMillis = latestRatingMillis - (
+      filterPrescoringInputToSimulateDelayInHours * 60 * 60 * 1000
+    )
+    logger.info(
+      f"""
+      Filtering input data for prescoring to simulate running prescoring earlier than final scoring.
+      Latest rating timestamp: {pd.to_datetime(latestRatingMillis, unit='ms')}
+      Cutoff timestamp: {pd.to_datetime(cutoffMillis, unit='ms')} ({filterPrescoringInputToSimulateDelayInHours} hours before)
+    """
+    )
+    prescoringNotesInput = notes[notes[c.createdAtMillisKey] < cutoffMillis].copy()
+    prescoringRatingsInput = ratings[ratings[c.createdAtMillisKey] < cutoffMillis].copy()
+  else:
+    prescoringNotesInput = notes
+    prescoringRatingsInput = ratings
+  return prescoringNotesInput, prescoringRatingsInput

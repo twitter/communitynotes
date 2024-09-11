@@ -1,11 +1,17 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
+from enum import Enum
+import logging
 import os
 import time
-from typing import Optional
+from typing import Dict, Optional, Set
 
 import numpy as np
 import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.constants")
+logger.setLevel(logging.INFO)
 
 
 # Default number of threads to use in torch if os.cpu_count() is unavailable
@@ -32,6 +38,19 @@ minTagsNeededForStatus = 2
 tagPercentileForNormalization = 40
 intervalHalfWidth = 0.3
 
+# Max flip rates
+prescoringAllUnlockedNotesMaxCrhChurn = 0.2
+prescoringAllNotesCreatedThreeToThirteenDaysAgoMaxChurn = 0.06
+finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.05
+finalNotesWithNewRatingsMaxNewCrhChurn = 0.80
+finalNotesWithNewRatingsMaxOldCrhChurn = 0.25
+finalNotesThatJustFlippedStatusMaxCrhChurn = 1e8
+finalNotesThatFlippedRecentlyMaxCrhChurn = 1e8
+# TODO(jiansongc): adjust these 2 below
+finalNotesNmrDueToMinStableCrhTimeMaxOldCrhChurn = 1.0
+finalNotesNmrDueToMinStableCrhTimeMaxNewCrhChurn = 1.0
+
+
 # Data Filenames
 scoredNotesOutputPath = "scoredNotes.tsv"
 enrollmentInputPath = "userEnrollment-00000.tsv"
@@ -50,7 +69,14 @@ noteTopicKey = "noteTopic"
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 modelingPopulationKey = "modelingPopulation"
 modelingGroupKey = "modelingGroup"
+modelingMultiGroupKey = "modelingMultiGroup"
 numberOfTimesEarnedOutKey = "numberOfTimesEarnedOut"
+defaultIndexKey = "index"
+
+# Scoring Groups
+coreGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 21, 25}
+expansionGroups: Set[int] = {0, 4, 5, 7, 12, 16, 18, 20, 22, 23, 24, 26, 27, 28}
+expansionPlusGroups: Set[int] = {15, 17, 29, 30}
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
@@ -95,6 +121,15 @@ finalRatingStatusKey = "finalRatingStatus"
 unlockedRatingStatusKey = "unlockedRatingStatus"
 metaScorerActiveRulesKey = "metaScorerActiveRules"
 decidedByKey = "decidedBy"
+rescoringActiveRulesKey = "rescoringActiveRules"
+
+# Note Status Changes Columns
+noteFinalStatusChange = "finalStatusChange"
+noteNewRatings = "newRatings"
+noteDecidedByChange = "decidedByChange"
+noteAllAddedRules = "allAddedRules"
+noteAllRemovedRules = "allRemovedRules"
+noteDecidedByInterceptChange = "decidedByInterceptChange"
 
 # Internal Scoring Columns.  These columns should be renamed before writing to disk.
 internalNoteInterceptKey = "internalNoteIntercept"
@@ -103,6 +138,7 @@ internalNoteFactorKeyBase = "internalNoteFactor"
 internalRaterFactorKeyBase = "internalRaterFactor"
 internalRatingStatusKey = "internalRatingStatus"
 internalActiveRulesKey = "internalActiveRules"
+internalRaterReputationKey = "internalRaterReputation"
 
 scorerNameKey = "scorerName"
 
@@ -128,16 +164,25 @@ coreRatingStatusKey = "coreRatingStatus"
 coreActiveRulesKey = "coreActiveRules"
 coreNoteInterceptMaxKey = "coreNoteInterceptMax"
 coreNoteInterceptMinKey = "coreNoteInterceptMin"
+coreNumFinalRoundRatingsKey = "coreNumFinalRoundRatings"
 # Expansion Model
 expansionNoteInterceptKey = "expansionNoteIntercept"
 expansionNoteFactor1Key = "expansionNoteFactor1"
 expansionRatingStatusKey = "expansionRatingStatus"
 expansionNoteInterceptMaxKey = "expansionNoteInterceptMax"
 expansionNoteInterceptMinKey = "expansionNoteInterceptMin"
+expansionInternalActiveRulesKey = "expansionActiveRules"
+expansionNumFinalRoundRatingsKey = "expansionNumFinalRoundRatings"
+expansionRaterFactor1Key = "expansionRaterFactor1"
+expansionRaterInterceptKey = "expansionRaterIntercept"
 # ExpansionPlus Model
 expansionPlusNoteInterceptKey = "expansionPlusNoteIntercept"
 expansionPlusNoteFactor1Key = "expansionPlusNoteFactor1"
 expansionPlusRatingStatusKey = "expansionPlusRatingStatus"
+expansionPlusInternalActiveRulesKey = "expansionPlusActiveRules"
+expansionPlusNumFinalRoundRatingsKey = "expansionPlusNumFinalRoundRatings"
+expansionPlusRaterFactor1Key = "expansionPlusRaterFactor1"
+expansionPlusRaterInterceptKey = "expansionPlusRaterIntercept"
 # Coverage / Helpfulness Reputation Model
 coverageNoteInterceptKey = "coverageNoteIntercept"
 coverageNoteFactor1Key = "coverageNoteFactor1"
@@ -153,17 +198,28 @@ groupNoteInterceptMaxKey = "groupNoteInterceptMax"
 groupNoteInterceptMinKey = "groupNoteInterceptMin"
 groupRaterInterceptKey = "groupRaterIntercept"
 groupRaterFactor1Key = "groupRaterFactor1"
+groupInternalActiveRulesKey = "groupActiveRules"
+groupNumFinalRoundRatingsKey = "groupNumFinalRoundRatings"
+# MultiGroup Model
+multiGroupNoteInterceptKey = "multiGroupNoteIntercept"
+multiGroupNoteFactor1Key = "multiGroupNoteFactor1"
+multiGroupRatingStatusKey = "multiGroupRatingStatus"
+multiGroupRaterInterceptKey = "multiGroupRaterIntercept"
+multiGroupRaterFactor1Key = "multiGroupRaterFactor1"
+multiGroupInternalActiveRulesKey = "multiGroupActiveRules"
+multiGroupNumFinalRoundRatingsKey = "multiGroupNumFinalRoundRatings"
 # Topic Model
 topicNoteInterceptKey = "topicNoteIntercept"
 topicNoteFactor1Key = "topicNoteFactor1"
 topicRatingStatusKey = "topicRatingStatus"
 topicNoteConfidentKey = "topicNoteConfident"
+topicInternalActiveRulesKey = "topicActiveRules"
+topicNumFinalRoundRatingsKey = "topicNumFinalRoundRatings"
 # Harassment/Abuse Tag
 harassmentNoteInterceptKey = "harassmentNoteIntercept"
 harassmentNoteFactor1Key = "harassmentNoteFactor1"
 harassmentRaterInterceptKey = "harassmentRaterIntercept"
 harassmentRaterFactor1Key = "harassmentRaterFactor1"
-
 
 # Ids and Indexes
 noteIdKey = "noteId"
@@ -179,6 +235,7 @@ numRatingsKey = "numRatings"
 numRatingsLast28DaysKey = "numRatingsLast28"
 ratingFromInitialModelingGroupKey = "ratingFromInitialModelingGroup"
 percentFromInitialModelingGroupKey = "percentFromInitialModelingGroup"
+numFinalRoundRatingsKey = "numFinalRoundRatings"
 
 # Helpfulness Score Keys
 crhRatioKey = "CRHRatio"
@@ -195,6 +252,9 @@ raterAgreeRatioWithHarassmentAbusePenaltyKey = "raterAgreeRatioKeyWithHarassment
 currentlyRatedHelpful = "CURRENTLY_RATED_HELPFUL"
 currentlyRatedNotHelpful = "CURRENTLY_RATED_NOT_HELPFUL"
 needsMoreRatings = "NEEDS_MORE_RATINGS"
+# FIRM_REJECT is set by individual scorers to indicate downstream scorers should not CRH
+# a note, but is never set as the finalRatingStatus of a note.
+firmReject = "FIRM_REJECT"
 
 # Boolean Note Status Labels
 currentlyRatedHelpfulBoolKey = "crhBool"
@@ -215,8 +275,10 @@ helpfulTagsAndTieBreakOrder = [
   (1, "helpfulUnbiasedLanguage"),
 ]
 helpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in helpfulTagsAndTieBreakOrder]
-helpfulTagsAndTypesTSVOrder = [(tag, np.int64) for tag in helpfulTagsTSVOrder]
+helpfulTagBoolsAndTypesTSVOrder = [(tag, pd.Int8Dtype()) for tag in helpfulTagsTSVOrder]
 helpfulTagsTiebreakOrder = [tag for (tiebreakOrder, tag) in sorted(helpfulTagsAndTieBreakOrder)]
+helpfulTagCountsAndTypesTSVOrder = [(tag, pd.Int64Dtype()) for tag in helpfulTagsTSVOrder]
+
 
 # NOTE: Always add new tags to the end of this list, and *never* change the order of
 # elements which are already in the list to maintain compatibility with
@@ -253,7 +315,8 @@ notHelpfulTagsAndTieBreakOrder = [
   (6, notHelpfulNoteNotNeededKey),
 ]
 notHelpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in notHelpfulTagsAndTieBreakOrder]
-notHelpfulTagsAndTypesTSVOrder = [(tag, np.int64) for tag in notHelpfulTagsTSVOrder]
+notHelpfulTagsAndTypesTSVOrder = [(tag, pd.Int8Dtype()) for tag in notHelpfulTagsTSVOrder]
+notHelpfulTagCountsAndTypesTSVOrder = [(tag, pd.Int64Dtype()) for tag in notHelpfulTagsTSVOrder]
 notHelpfulTagsTiebreakOrder = [
   tag for (tiebreakOrder, tag) in sorted(notHelpfulTagsAndTieBreakOrder)
 ]
@@ -265,20 +328,58 @@ notHelpfulTagsEnumMapping = {
 }
 adjustedSuffix = "Adjusted"
 notHelpfulTagsAdjustedColumns = [f"{column}{adjustedSuffix}" for column in notHelpfulTagsTSVOrder]
+notHelpfulTagsAdjustedTSVColumnsAndTypes = [
+  (tag, np.double) for tag in notHelpfulTagsAdjustedColumns
+]
 ratioSuffix = "Ratio"
 notHelpfulTagsAdjustedRatioColumns = [
   f"{column}{ratioSuffix}" for column in notHelpfulTagsAdjustedColumns
 ]
+notHelpfulTagsAdjustedRatioTSVColumnsAndTypes = [
+  (tag, np.double) for tag in notHelpfulTagsAdjustedRatioColumns
+]
 ratingWeightKey = "ratingWeight"
 
+incorrectTagRatingsMadeByRaterKey = "incorrectTagRatingsMadeByRater"
+totalRatingsMadeByRaterKey = "totalRatingsMadeByRater"
+
+noteTfIdfIncorrectScoreKey = "tf_idf_incorrect"
+numVotersKey = "num_voters"  # num voters who rated a note
+incorrectTagRateByRaterKey = "p_incorrect_user"
+
+noteTfIdfIncorrectScoreIntervalKey = (
+  "tf_idf_incorrect_interval"  # note's tf-idf scores from within the interval
+)
+numVotersIntervalKey = "num_voters_interval"  # num voters (in the interval) who rated a note
+sumOfIncorrectTagRateByRaterIntervalKey = (
+  "p_incorrect_user_interval"
+)  # sum of p_incorrect_user for all raters who rated a note in the interval
+notHelpfulIncorrectIntervalKey = (
+  "notHelpfulIncorrect_interval"  # notHelpfulIncorrect ratings on the note in the interval
+)
+
 lowDiligenceInterceptKey = "lowDiligenceIntercept"
-incorrectFilterColumns = [
-  "notHelpfulIncorrect_interval",
-  "p_incorrect_user_interval",
-  "num_voters_interval",
-  "tf_idf_incorrect_interval",
-  lowDiligenceInterceptKey,
+
+
+lowDiligenceRaterFactor1Key = "lowDiligenceRaterFactor1"
+lowDiligenceRaterInterceptKey = "lowDiligenceRaterIntercept"
+lowDiligenceRaterReputationKey = "lowDiligenceRaterReputation"
+lowDiligenceNoteFactor1Key = "lowDiligenceNoteFactor1"
+lowDiligenceNoteInterceptKey = "lowDiligenceNoteIntercept"
+lowDiligenceLegacyNoteInterceptKey = "lowDiligenceIntercept"
+lowDiligenceNoteInterceptRound2Key = "lowDiligenceNoteInterceptRound2"
+internalNoteInterceptRound2Key = "internalNoteInterceptRound2"
+lowDiligenceRaterInterceptRound2Key = "lowDiligenceRaterInterceptRound2"
+internalRaterInterceptRound2Key = "internalRaterInterceptRound2"
+
+incorrectFilterColumnsAndTypes = [
+  (notHelpfulIncorrectIntervalKey, np.double),
+  (sumOfIncorrectTagRateByRaterIntervalKey, np.double),
+  (numVotersIntervalKey, np.double),
+  (noteTfIdfIncorrectScoreIntervalKey, np.double),
+  (lowDiligenceLegacyNoteInterceptKey, np.double),
 ]
+incorrectFilterColumns = [col for (col, _) in incorrectFilterColumnsAndTypes]
 
 misleadingTags = [
   "misleadingOther",
@@ -289,7 +390,7 @@ misleadingTags = [
   "misleadingUnverifiedClaimAsFact",
   "misleadingSatire",
 ]
-misleadingTagsAndTypes = [(tag, np.int64) for tag in misleadingTags]
+misleadingTagsAndTypes = [(tag, pd.Int8Dtype()) for tag in misleadingTags]
 
 notMisleadingTags = [
   "notMisleadingOther",
@@ -298,8 +399,7 @@ notMisleadingTags = [
   "notMisleadingClearlySatire",
   "notMisleadingPersonalOpinion",
 ]
-notMisleadingTagsAndTypes = [(tag, np.int64) for tag in notMisleadingTags]
-
+notMisleadingTagsAndTypes = [(tag, pd.Int8Dtype()) for tag in notMisleadingTags]
 
 noteTSVColumnsAndTypes = (
   [
@@ -308,13 +408,13 @@ noteTSVColumnsAndTypes = (
     (createdAtMillisKey, np.int64),
     (tweetIdKey, np.int64),
     (classificationKey, object),
-    ("believable", object),
-    ("harmful", object),
-    ("validationDifficulty", object),
+    ("believable", "category"),
+    ("harmful", "category"),
+    ("validationDifficulty", "category"),
   ]
   + misleadingTagsAndTypes
   + notMisleadingTagsAndTypes
-  + [("trustworthySources", np.int64), (summaryKey, object), ("isMediaNote", np.int64)]
+  + [("trustworthySources", pd.Int8Dtype()), (summaryKey, object), ("isMediaNote", pd.Int8Dtype())]
 )
 noteTSVColumns = [col for (col, dtype) in noteTSVColumnsAndTypes]
 noteTSVTypes = [dtype for (col, dtype) in noteTSVColumnsAndTypes]
@@ -329,14 +429,14 @@ ratingTSVColumnsAndTypes = (
     (noteIdKey, np.int64),
     (raterParticipantIdKey, object),
     (createdAtMillisKey, np.int64),
-    (versionKey, np.int64),
-    (agreeKey, np.int64),
-    (disagreeKey, np.int64),
-    (helpfulKey, np.int64),
-    (notHelpfulKey, np.int64),
-    (helpfulnessLevelKey, object),
+    (versionKey, pd.Int8Dtype()),
+    (agreeKey, pd.Int8Dtype()),
+    (disagreeKey, pd.Int8Dtype()),
+    (helpfulKey, pd.Int8Dtype()),
+    (notHelpfulKey, pd.Int8Dtype()),
+    (helpfulnessLevelKey, "category"),
   ]
-  + helpfulTagsAndTypesTSVOrder
+  + helpfulTagBoolsAndTypesTSVOrder
   + notHelpfulTagsAndTypesTSVOrder
   + [(ratedOnTweetIdKey, np.int64)]
 )
@@ -344,7 +444,6 @@ ratingTSVColumnsAndTypes = (
 ratingTSVColumns = [col for (col, dtype) in ratingTSVColumnsAndTypes]
 ratingTSVTypes = [dtype for (col, dtype) in ratingTSVColumnsAndTypes]
 ratingTSVTypeMapping = {col: dtype for (col, dtype) in ratingTSVColumnsAndTypes}
-
 
 timestampMillisOfNoteFirstNonNMRLabelKey = "timestampMillisOfFirstNonNMRStatus"
 firstNonNMRLabelKey = "firstNonNMRStatus"
@@ -360,30 +459,51 @@ currentExpansionStatusKey = "currentExpansionStatus"
 currentGroupStatusKey = "currentGroupStatus"
 currentDecidedByKey = "currentDecidedBy"
 currentModelingGroupKey = "currentModelingGroup"
+timestampMillisOfMostRecentStatusChangeKey = "timestampMillisOfMostRecentStatusChange"
+currentMultiGroupStatusKey = "currentMultiGroupStatus"
+currentModelingMultiGroupKey = "currentModelingMultiGroup"
+timestampMillisOfNmrDueToMinStableCrhTimeKey = "timestampMillisOfNmrDueToMinStableCrhTime"
+updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey = (
+  "updatedTimestampMillisOfNmrDueToMinStableCrhTime"
+)
+timestampMinuteOfFinalScoringOutput = "timestampMinuteOfFinalScoringOutput"
+timestampMillisOfFirstNmrDueToMinStableCrhTimeKey = "timestampMillisOfFirstNmrDueToMinStableCrhTime"
 
 noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
   (noteAuthorParticipantIdKey, object),
   (createdAtMillisKey, np.int64),
   (timestampMillisOfNoteFirstNonNMRLabelKey, np.double),  # double because nullable.
-  (firstNonNMRLabelKey, object),
+  (firstNonNMRLabelKey, "category"),
   (timestampMillisOfNoteCurrentLabelKey, np.double),  # double because nullable.
-  (currentLabelKey, object),
+  (currentLabelKey, "category"),
   (timestampMillisOfNoteMostRecentNonNMRLabelKey, np.double),  # double because nullable.
-  (mostRecentNonNMRLabelKey, object),
+  (mostRecentNonNMRLabelKey, "category"),
   (timestampMillisOfStatusLockKey, np.double),  # double because nullable.
-  (lockedStatusKey, object),
+  (lockedStatusKey, "category"),
   (timestampMillisOfRetroLockKey, np.double),  # double because nullable.
-  (currentCoreStatusKey, object),
-  (currentExpansionStatusKey, object),
-  (currentGroupStatusKey, object),
-  (currentDecidedByKey, object),
-  (currentModelingGroupKey, object),
+  (currentCoreStatusKey, "category"),
+  (currentExpansionStatusKey, "category"),
+  (currentGroupStatusKey, "category"),
+  (currentDecidedByKey, "category"),
+  (currentModelingGroupKey, np.double),  # TODO: int
+  (timestampMillisOfMostRecentStatusChangeKey, np.double),  # double because nullable.
+  (timestampMillisOfNmrDueToMinStableCrhTimeKey, np.double),  # double because nullable.
+  (currentMultiGroupStatusKey, "category"),
+  (currentModelingMultiGroupKey, np.double),  # TODO: int
+  (timestampMinuteOfFinalScoringOutput, np.double),  # double because nullable.
+  (timestampMillisOfFirstNmrDueToMinStableCrhTimeKey, np.double),  # double because nullable.
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypes = [dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypeMapping = {
   col: dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes
+}
+# TODO(jiansongc): clean up after new column is in production.
+noteStatusHistoryTSVColumnsOld = noteStatusHistoryTSVColumns[:-1]
+noteStatusHistoryTSVColumnsAndTypesOld = noteStatusHistoryTSVColumnsAndTypes[:-1]
+noteStatusHistoryTSVTypeMappingOld = {
+  col: dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypesOld
 }
 
 
@@ -400,6 +520,7 @@ atRisk = "atRisk"
 earnedOutNoAcknowledge = "earnedOutNoAcknowledge"
 earnedOutAcknowledged = "earnedOutAcknowledged"
 newUser = "newUser"
+removed = "removed"
 isAtRiskCRNHCount = 2
 ratingImpactForEarnIn = 5
 ratingImpact = "ratingImpact"
@@ -409,6 +530,7 @@ enrollmentStateToThrift = {
   earnedOutNoAcknowledge: 2,
   earnedOutAcknowledged: 3,
   newUser: 4,
+  removed: 5,
 }
 emergingWriterDays = 28
 isEmergingWriterKey = "isEmergingWriter"
@@ -428,7 +550,7 @@ userEnrollmentTSVColumnsAndTypes = [
   (successfulRatingNeededToEarnIn, np.int64),
   (timestampOfLastStateChange, np.int64),
   (timestampOfLastEarnOut, np.double),  # double because nullable.
-  (modelingPopulationKey, str),
+  (modelingPopulationKey, "category"),
   (modelingGroupKey, np.float64),
   (numberOfTimesEarnedOutKey, np.int64),
 ]
@@ -472,30 +594,36 @@ noteParameterUncertaintyTSVTypeMapping = {
   col: dtype for (col, dtype) in noteParameterUncertaintyTSVColumnsAndTypes
 }
 
-auxiliaryScoredNotesTSVColumns = (
+auxiliaryScoredNotesTSVColumnsAndTypes = (
   [
-    noteIdKey,
-    ratingWeightKey,
-    createdAtMillisKey,
-    noteAuthorParticipantIdKey,
-    awaitingMoreRatingsBoolKey,
-    numRatingsLast28DaysKey,
-    currentLabelKey,
-    currentlyRatedHelpfulBoolKey,
-    currentlyRatedNotHelpfulBoolKey,
-    unlockedRatingStatusKey,
+    (noteIdKey, np.int64),
+    (ratingWeightKey, np.double),
+    (createdAtMillisKey, np.int64),
+    (noteAuthorParticipantIdKey, object),
+    (awaitingMoreRatingsBoolKey, np.int8),
+    (numRatingsLast28DaysKey, np.int64),
+    (currentLabelKey, str),
+    (currentlyRatedHelpfulBoolKey, np.int8),
+    (currentlyRatedNotHelpfulBoolKey, np.int8),
+    (unlockedRatingStatusKey, str),
   ]
-  + helpfulTagsTSVOrder
-  + notHelpfulTagsTSVOrder
-  + notHelpfulTagsAdjustedColumns
-  + notHelpfulTagsAdjustedRatioColumns
-  + incorrectFilterColumns
+  + helpfulTagCountsAndTypesTSVOrder
+  + notHelpfulTagCountsAndTypesTSVOrder
+  + notHelpfulTagsAdjustedTSVColumnsAndTypes
+  + notHelpfulTagsAdjustedRatioTSVColumnsAndTypes
+  + incorrectFilterColumnsAndTypes
 )
+auxiliaryScoredNotesTSVColumns = [col for (col, dtype) in auxiliaryScoredNotesTSVColumnsAndTypes]
+auxiliaryScoredNotesTSVTypeMapping = {
+  col: dtype for (col, dtype) in auxiliaryScoredNotesTSVColumnsAndTypes
+}
 
 deprecatedNoteModelOutputColumns = frozenset(
   {
     coverageNoteInterceptMinKey,
     coverageNoteInterceptMaxKey,
+    groupNoteInterceptMinKey,
+    groupNoteInterceptMaxKey,
   }
 )
 
@@ -504,6 +632,9 @@ prescoringNoteModelOutputTSVColumnsAndTypes = [
   (internalNoteInterceptKey, np.double),
   (internalNoteFactor1Key, np.double),
   (scorerNameKey, str),
+  (lowDiligenceNoteInterceptKey, np.double),
+  (lowDiligenceNoteFactor1Key, np.double),
+  (lowDiligenceNoteInterceptRound2Key, np.double),
 ]
 prescoringNoteModelOutputTSVColumns = [
   col for (col, dtype) in prescoringNoteModelOutputTSVColumnsAndTypes
@@ -516,48 +647,64 @@ noteModelOutputTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
   (coreNoteInterceptKey, np.double),
   (coreNoteFactor1Key, np.double),
-  (finalRatingStatusKey, str),
-  (firstTagKey, str),
-  (secondTagKey, str),
+  (finalRatingStatusKey, "category"),
+  (firstTagKey, "category"),
+  (secondTagKey, "category"),
   # Note that this column was formerly named "activeRules" and the name is now
   # updated to "coreActiveRules".  The data values remain the compatible,
   # but the new column only contains rules that ran when deciding status based on
   # the core model.
-  (coreActiveRulesKey, str),
-  (activeFilterTagsKey, str),
-  (classificationKey, str),
+  (coreActiveRulesKey, "category"),
+  (activeFilterTagsKey, "category"),
+  (classificationKey, "category"),
   (createdAtMillisKey, np.int64),
-  (coreRatingStatusKey, str),
-  (metaScorerActiveRulesKey, str),
-  (decidedByKey, str),
+  (coreRatingStatusKey, "category"),
+  (metaScorerActiveRulesKey, "category"),
+  (decidedByKey, "category"),
   (expansionNoteInterceptKey, np.double),
   (expansionNoteFactor1Key, np.double),
-  (expansionRatingStatusKey, str),
+  (expansionRatingStatusKey, "category"),
   (coverageNoteInterceptKey, np.double),
   (coverageNoteFactor1Key, np.double),
-  (coverageRatingStatusKey, str),
+  (coverageRatingStatusKey, "category"),
   (coreNoteInterceptMinKey, np.double),
   (coreNoteInterceptMaxKey, np.double),
-  (expansionNoteInterceptMinKey, np.double),
-  (expansionNoteInterceptMaxKey, np.double),
-  (coverageNoteInterceptMinKey, np.double),
-  (coverageNoteInterceptMaxKey, np.double),
+  (expansionNoteInterceptMinKey, "category"),  # category because always nan
+  (expansionNoteInterceptMaxKey, "category"),  # category because always nan
+  (coverageNoteInterceptMinKey, "category"),  # category because always nan
+  (coverageNoteInterceptMaxKey, "category"),  # category because always nan
   (groupNoteInterceptKey, np.double),
   (groupNoteFactor1Key, np.double),
-  (groupRatingStatusKey, str),
-  (groupNoteInterceptMaxKey, np.double),
-  (groupNoteInterceptMinKey, np.double),
+  (groupRatingStatusKey, "category"),
+  (groupNoteInterceptMaxKey, "category"),  # category because always nan
+  (groupNoteInterceptMinKey, "category"),  # category because always nan
   (modelingGroupKey, np.float64),
   (numRatingsKey, np.int64),
   (timestampMillisOfNoteCurrentLabelKey, np.double),
   (expansionPlusNoteInterceptKey, np.double),
   (expansionPlusNoteFactor1Key, np.double),
-  (expansionPlusRatingStatusKey, str),
+  (expansionPlusRatingStatusKey, "category"),
   (topicNoteInterceptKey, np.double),
   (topicNoteFactor1Key, np.double),
-  (topicRatingStatusKey, str),
-  (noteTopicKey, str),
-  (topicNoteConfidentKey, str),
+  (topicRatingStatusKey, "category"),
+  (noteTopicKey, "category"),
+  (topicNoteConfidentKey, pd.BooleanDtype()),
+  (expansionInternalActiveRulesKey, "category"),
+  (expansionPlusInternalActiveRulesKey, "category"),
+  (groupInternalActiveRulesKey, "category"),
+  (topicInternalActiveRulesKey, "category"),
+  (coreNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (expansionNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (expansionPlusNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (groupNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (topicNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (rescoringActiveRulesKey, "category"),
+  (multiGroupNoteInterceptKey, np.double),
+  (multiGroupNoteFactor1Key, np.double),
+  (multiGroupRatingStatusKey, str),
+  (modelingMultiGroupKey, np.float64),
+  (multiGroupInternalActiveRulesKey, str),
+  (multiGroupNumFinalRoundRatingsKey, np.double),  # double because nullable.
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
@@ -567,6 +714,8 @@ deprecatedNoteModelOutputTSVColumnsAndTypes = [
   if col in deprecatedNoteModelOutputColumns
 ]
 
+postSelectionValueKey = "postSelectionValue"
+
 prescoringRaterModelOutputTSVColumnsAndTypes = [
   (raterParticipantIdKey, object),
   (internalRaterInterceptKey, np.double),
@@ -574,11 +723,16 @@ prescoringRaterModelOutputTSVColumnsAndTypes = [
   (crhCrnhRatioDifferenceKey, np.double),
   (meanNoteScoreKey, np.double),
   (raterAgreeRatioKey, np.double),
-  (
-    aboveHelpfulnessThresholdKey,
-    "boolean",
-  ),  # nullable bool https://pandas.pydata.org/docs/user_guide/boolean.html
+  (aboveHelpfulnessThresholdKey, pd.BooleanDtype()),
   (scorerNameKey, str),
+  (internalRaterReputationKey, np.double),
+  (lowDiligenceRaterInterceptKey, np.double),
+  (lowDiligenceRaterFactor1Key, np.double),
+  (lowDiligenceRaterReputationKey, np.double),
+  (lowDiligenceRaterInterceptRound2Key, np.double),
+  (incorrectTagRatingsMadeByRaterKey, pd.Int64Dtype()),
+  (totalRatingsMadeByRaterKey, pd.Int64Dtype()),
+  (postSelectionValueKey, pd.Int64Dtype()),
 ]
 prescoringRaterModelOutputTSVColumns = [
   col for (col, dtype) in prescoringRaterModelOutputTSVColumnsAndTypes
@@ -609,7 +763,7 @@ raterModelOutputTSVColumnsAndTypes = [
   (successfulRatingNeededToEarnIn, pd.Int64Dtype()),
   (authorTopNotHelpfulTagValues, str),
   (timestampOfLastStateChange, np.double),
-  (aboveHelpfulnessThresholdKey, np.float64),  # nullable bool
+  (aboveHelpfulnessThresholdKey, np.float64),  # nullable bool.
   (isEmergingWriterKey, pd.BooleanDtype()),
   (aggregateRatingReceivedTotal, pd.Int64Dtype()),
   (timestampOfLastEarnOut, np.double),
@@ -618,9 +772,60 @@ raterModelOutputTSVColumnsAndTypes = [
   (modelingGroupKey, np.float64),
   (raterHelpfulnessReputationKey, np.double),
   (numberOfTimesEarnedOutKey, np.float64),
+  (expansionRaterInterceptKey, np.double),
+  (expansionRaterFactor1Key, np.double),
+  (expansionPlusRaterInterceptKey, np.double),
+  (expansionPlusRaterFactor1Key, np.double),
+  (multiGroupRaterInterceptKey, np.double),
+  (multiGroupRaterFactor1Key, np.double),
+  (modelingMultiGroupKey, np.float64),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
+
+noteStatusChangesPrev = "_prev"
+noteStatusChangesDerivedColumnsAndTypes = [
+  (noteIdKey, np.int64),
+  (noteFinalStatusChange, str),
+  (noteNewRatings, np.int64),
+  (noteDecidedByChange, str),
+  (noteAllAddedRules, str),
+  (noteAllRemovedRules, str),
+  (noteDecidedByInterceptChange, str),
+]
+noteStatusChangesRemovedCols = [
+  col
+  for col in noteModelOutputTSVColumns
+  if ("NoteInterceptMin" in col) or ("NoteInterceptMax" in col)
+]
+noteStatusChangesModelOutputColumnsAndTypes = [
+  (col, t)
+  for (col, t) in noteModelOutputTSVColumnsAndTypes
+  if col not in noteStatusChangesRemovedCols + [noteIdKey]
+]
+noteStatusChangesModelOutputWithPreviousColumnsAndTypes = (
+  noteStatusChangesModelOutputColumnsAndTypes
+  + [(col + noteStatusChangesPrev, t) for (col, t) in noteStatusChangesModelOutputColumnsAndTypes]
+)
+
+noteStatusChangeTSVColumnsAndTypes = noteStatusChangesDerivedColumnsAndTypes + sorted(
+  noteStatusChangesModelOutputWithPreviousColumnsAndTypes, key=lambda tup: tup[0]
+)
+noteStatusChangesTSVColumns = [col for (col, dtype) in noteStatusChangeTSVColumnsAndTypes]
+noteStatusChangesTSVTypeMapping = {
+  col: dtype for (col, dtype) in noteStatusChangeTSVColumnsAndTypes
+}
+
+datasetKeyKey = "datasetKey"
+partitionToReadKey = "partitionToRead"
+fileNameToReadKey = "fileNameToRead"
+inputPathsTSVColumnsAndTypes = [
+  (datasetKeyKey, str),
+  (partitionToReadKey, str),
+  (fileNameToReadKey, str),
+]
+inputPathsTSVColumns = [col for (col, _) in inputPathsTSVColumnsAndTypes]
+inputPathsTSVTypeMapping = {col: dtype for (col, dtype) in inputPathsTSVColumnsAndTypes}
 
 
 @contextmanager
@@ -630,16 +835,36 @@ def time_block(label):
     yield
   finally:
     end = time.time()
-    print(f"{label} elapsed time: {end - start:.2f} secs ({((end-start)/60.0):.2f} mins)")
+    logger.info(f"{label} elapsed time: {end - start:.2f} secs ({((end - start) / 60.0):.2f} mins)")
+
+
+### TODO: weave through second round intercept.
+@dataclass
+class ReputationGlobalIntercept:
+  firstRound: float
+  secondRound: float
+  finalRound: float
+
+
+@dataclass
+class PrescoringMetaScorerOutput:
+  globalIntercept: Optional[float]
+  lowDiligenceGlobalIntercept: Optional[ReputationGlobalIntercept]
+  tagFilteringThresholds: Optional[Dict[str, float]]  # tag => threshold
+  finalRoundNumRatings: Optional[int]
+  finalRoundNumNotes: Optional[int]
+  finalRoundNumUsers: Optional[int]
+
+
+@dataclass
+class PrescoringMetaOutput:
+  metaScorerOutput: Dict[str, PrescoringMetaScorerOutput]  # scorerName => output
 
 
 @dataclass
 class SharedMemoryDataframeInfo:
   sharedMemoryName: str
-  columns: list
-  dataShape: tuple
-  dtypesDict: dict
-  npDtype: str
+  dataSize: int
 
 
 @dataclass
@@ -684,6 +909,7 @@ class PrescoringArgs(ScoringArgs):
 class FinalScoringArgs(ScoringArgs):
   prescoringNoteModelOutput: pd.DataFrame
   prescoringRaterModelOutput: pd.DataFrame
+  prescoringMetaOutput: PrescoringMetaOutput
 
   def remove_large_args_for_multiprocessing(self):
     self.ratings = None
@@ -699,3 +925,22 @@ class ModelResult:
   helpfulnessScores: pd.DataFrame
   auxiliaryNoteInfo: pd.DataFrame
   scorerName: Optional[str]
+  metaScores: Optional[PrescoringMetaScorerOutput]
+
+
+class RescoringRuleID(Enum):
+  ALL_NOTES = 1
+  NOTES_WITH_NEW_RATINGS = 2
+  NOTES_FLIPPED_PREVIOUS_RUN = 3
+  NEW_NOTES_NOT_RESCORED_RECENTLY_ENOUGH = 4
+  RECENTLY_FLIPPED_NOTES_NOT_RESCORED_RECENTLY_ENOUGH = 5
+  NMR_DUE_TO_MIN_STABLE_CRH_TIME = 6
+  NOTES_CREATED_SOMEWHAT_RECENTLY = 7
+
+
+@dataclass
+class NoteSubset:
+  noteSet: Optional[set]
+  maxNewCrhChurnRate: float
+  maxOldCrhChurnRate: float
+  description: RescoringRuleID

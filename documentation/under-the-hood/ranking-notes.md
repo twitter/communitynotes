@@ -303,7 +303,7 @@ For not-helpful notes:
 
 ## Complete Algorithm Steps:
 
-# Prescoring
+### Prescoring
 
 1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence).
 2. For each scorer (Core, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
@@ -311,7 +311,7 @@ For not-helpful notes:
     - Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
     - Fit the harassment-abuse tag-consensus matrix factorization model on the helpfulness-score filtered ratings, then update Author and Rater Helpfulness scores using the output of the tag-consensus model.
 
-# Scoring
+### Scoring
 
 1. Load the output of step 2 above from prescoring, but re-run step 1 on the newest available notes and ratings data.
 2. For each scorer (Core, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
@@ -323,6 +323,12 @@ For not-helpful notes:
 5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**July 25, 2024**
+- Only score a subset of notes each time we run final note scoring. This doesn't affect what statuses new notes get, but does cause them to get scored more quickly.
+
+**May 1, 2024**
+- Modify scoring thresholds for the Expanded Consensus trial to raise the note intercept threshold for Helpful notes, increase tag filtering and require a minimum Core or Expansion intercept for Helpful notes.
 
 **April 11, 2024**
 - Split the scorer into separate prescoring and final scoring phases.

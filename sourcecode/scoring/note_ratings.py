@@ -1,11 +1,16 @@
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Optional
+import logging
+from typing import Callable, Dict, Optional
 
 from . import constants as c, incorrect_filter, scoring_rules, tag_filter
 from .scoring_rules import RuleID
 
 import numpy as np
 import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.note_ratings")
+logger.setLevel(logging.INFO)
 
 
 # Threshold limiting the number of ratings which can be counted as "valid" for the purpose of
@@ -43,7 +48,7 @@ def is_crnh_diamond(
 def get_ratings_before_note_status_and_public_tsv(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
-  logging: bool = True,
+  log: bool = True,
   doTypeCheck: bool = True,
 ) -> pd.DataFrame:
   """Determine which ratings are made before note's most recent non-NMR status,
@@ -54,7 +59,7 @@ def get_ratings_before_note_status_and_public_tsv(
   Args:
       ratings (pd.DataFrame)
       noteStatusHistory (pd.DataFrame)
-      logging (bool, optional). Defaults to True.
+      log (bool, optional). Defaults to True.
       doTypeCheck (bool): do asserts to check types.
   Returns:
       pd.DataFrame combinedRatingsBeforeStatus ratings that were created early enough to be valid ratings
@@ -69,6 +74,7 @@ def get_ratings_before_note_status_and_public_tsv(
     on=c.noteIdKey,
     how="left",
     suffixes=("", right_suffix),
+    unsafeAllowed={c.createdAtMillisKey},
   )
   # Note that the column types for c.createdAtMillisKey and
   # c.timestampMillisOfNoteMostRecentNonNMRLabelKey are determined at runtime and cannot be statically
@@ -94,9 +100,9 @@ def get_ratings_before_note_status_and_public_tsv(
 
     assert len(ratingsWithNoteLabelInfo) == len(ratings)
     mismatches = [
-      (c, dtype, ratingsWithNoteLabelInfoTypes[c])
-      for c, dtype in zip(ratingsWithNoteLabelInfo, ratingsWithNoteLabelInfo.dtypes)
-      if dtype != ratingsWithNoteLabelInfoTypes[c]
+      (col, dtype, ratingsWithNoteLabelInfoTypes[col])
+      for col, dtype in zip(ratingsWithNoteLabelInfo, ratingsWithNoteLabelInfo.dtypes)
+      if ("participantid" not in col.lower()) and (dtype != ratingsWithNoteLabelInfoTypes[col])
     ]
     assert not len(mismatches), f"Mismatch columns: {mismatches}"
 
@@ -139,11 +145,11 @@ def get_ratings_before_note_status_and_public_tsv(
 
   combinedRatingsBeforeStatus = pd.concat([ratingsBeforeStatusNewNotes, first5RatingsOldNotes])
 
-  if logging:
-    print(
+  if log:
+    logger.info(
       f"Total ratings: {np.invert(noteCreatedBeforeNoteStatusHistory).sum()} post-tombstones and {(noteCreatedBeforeNoteStatusHistory).sum()} pre-tombstones"
     )
-    print(
+    logger.info(
       f"Total ratings created before statuses: {len(combinedRatingsBeforeStatus)}, including {len(ratingsBeforeStatusNewNotes)} post-tombstones and {len(first5RatingsOldNotes)} pre-tombstones."
     )
 
@@ -155,7 +161,7 @@ def get_ratings_with_scores(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
-  logging: bool = True,
+  log: bool = True,
   doTypeCheck: bool = True,
 ) -> pd.DataFrame:
   """
@@ -169,7 +175,7 @@ def get_ratings_with_scores(
       pd.DataFrame: binaryRatingsOnNotesWithStatusLabels Binary ratings with status labels
   """
   ratingsBeforeNoteStatus = get_ratings_before_note_status_and_public_tsv(
-    ratings, noteStatusHistory, logging, doTypeCheck
+    ratings, noteStatusHistory, log, doTypeCheck
   )
 
   ratingsWithScores = ratingsBeforeNoteStatus[
@@ -192,7 +198,7 @@ def get_valid_ratings(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
-  logging: bool = True,
+  log: bool = True,
   doTypeCheck: bool = True,
 ) -> pd.DataFrame:
   """Determine which ratings are "valid" (used to determine rater helpfulness score)
@@ -203,13 +209,13 @@ def get_valid_ratings(
       ratings (pd.DataFrame)
       noteStatusHistory (pd.DataFrame)
       scoredNotes (pd.DataFrame)
-      logging (bool, optional): Defaults to True.
+      log (bool, optional): Defaults to True.
       doTypeCheck (bool): do asserts to check types.
   Returns:
       pd.DataFrame: binaryRatingsOnNotesWithStatusLabels CRH/CRNH notes group by helpfulness
   """
   ratingsWithScores = get_ratings_with_scores(
-    ratings, noteStatusHistory, scoredNotes, logging, doTypeCheck
+    ratings, noteStatusHistory, scoredNotes, log, doTypeCheck
   )
   ratingsWithScores[c.ratingCountKey] = 1
 
@@ -270,8 +276,8 @@ def get_valid_ratings(
     helpfulRatingOnCrhNote | notHelpfulRatingOnCrnhNote, c.ratingAgreesWithNoteStatusKey
   ] = True
 
-  if logging:
-    print(f"Total valid ratings: {len(binaryRatingsOnNotesWithStatusLabels)}")
+  if log:
+    logger.info(f"Total valid ratings: {len(binaryRatingsOnNotesWithStatusLabels)}")
 
   return binaryRatingsOnNotesWithStatusLabels
 
@@ -326,6 +332,14 @@ def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -
     ],
     on=c.noteIdKey,
     how="outer",
+    unsafeAllowed=set(
+      [
+        c.numRatingsKey,
+        c.numRatingsLast28DaysKey,
+      ]
+      + c.helpfulTagsTSVOrder
+      + c.notHelpfulTagsTSVOrder
+    ),
   )
 
   # Fill in nan values resulting from the outer merge with zero since these values were not
@@ -359,8 +373,10 @@ def compute_scored_notes(
   crnhThresholdNoteFactorMultiplier: float,
   crnhThresholdNMIntercept: float,
   crnhThresholdUCBIntercept: float,
-  crhSuperThreshold: float,
+  crhSuperThreshold: Optional[float],
   inertiaDelta: float,
+  tagFilterThresholds: Optional[Dict[str, float]],
+  incorrectFilterThreshold: float,
   finalRound: bool = False,
   # TODO: We might want to consider inputing only the series here, instead of the whole callable
   is_crh_function: Callable[..., pd.Series] = is_crh,
@@ -368,6 +384,7 @@ def compute_scored_notes(
   is_crnh_ucb_function: Callable[..., pd.Series] = is_crnh_ucb,
   lowDiligenceThreshold: float = 0.263,
   factorThreshold: float = 0.5,
+  firmRejectThreshold: Optional[float] = None,
 ) -> pd.DataFrame:
   """
   Merges note status history, ratings, and model output. It annotes the data frame with
@@ -414,11 +431,16 @@ def compute_scored_notes(
   # Merge with noteParams as necessary
   noteParamsColsToKeep = [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
   if finalRound:
-    noteParamsColsToKeep += [c.lowDiligenceInterceptKey]
+    noteParamsColsToKeep += [c.lowDiligenceNoteInterceptKey]
   for col in c.noteParameterUncertaintyTSVColumns:
     if col in noteParams.columns:
       noteParamsColsToKeep.append(col)
-  noteStats = noteStats.merge(noteParams[noteParamsColsToKeep], on=c.noteIdKey, how="left")
+  noteStats = noteStats.merge(
+    noteParams[noteParamsColsToKeep],
+    on=c.noteIdKey,
+    how="left",
+    unsafeAllowed={"ratingCount_all", "ratingCount_neg_fac", "ratingCount_pos_fac"},
+  )
 
   rules = [
     scoring_rules.DefaultRule(RuleID.INITIAL_NMR, set(), c.needsMoreRatings),
@@ -452,14 +474,38 @@ def compute_scored_notes(
     ),
   ]
   if finalRound:
-    # Compute tag aggregates only if they are required for tag filtering.
-    tagAggregates = tag_filter.get_note_tag_aggregates(ratings, noteParams, raterParams)
-    assert len(tagAggregates) == len(noteParams), "there should be one aggregate per scored note"
-    noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer")
-    incorrectAggregates = incorrect_filter.get_incorrect_aggregates(
-      ratings, noteParams, raterParams
-    )
-    noteStats = noteStats.merge(incorrectAggregates, on=c.noteIdKey, how="outer")
+    with c.time_block("compute_scored_notes: compute tag aggregates"):
+      # Compute tag aggregates only if they are required for tag filtering.
+      tagAggregates = tag_filter.get_note_tag_aggregates(ratings, noteParams, raterParams)
+
+      # set pandas option to display all columns
+      pd.set_option("display.max_columns", None)
+      assert len(tagAggregates) == len(noteParams), f"""there should be one aggregate per scored note
+      len(noteParams) == {len(noteParams)}; len(np.unique(noteParams[c.noteIdKey])) == {len(np.unique(noteParams[c.noteIdKey]))}
+      len(tagAggregates) == {len(tagAggregates)}; len(np.unique(tagAggregates[c.noteIdKey])) == {len(np.unique(tagAggregates[c.noteIdKey]))}
+
+      The first 30 notes that appear in noteParams but not in tagAggregates are:
+      {noteParams[~noteParams[c.noteIdKey].isin(tagAggregates[c.noteIdKey])].head(30)}
+
+      The first 30 notes that appear in tagAggregates but not in noteParams are:
+      {tagAggregates[~tagAggregates[c.noteIdKey].isin(noteParams[c.noteIdKey])].head(30)}
+      """
+
+      noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer")
+    with c.time_block("compute_scored_notes: compute incorrect aggregates"):
+      incorrectAggregates = incorrect_filter.get_incorrect_aggregates_final_scoring(
+        ratings, noteParams, raterParams
+      )
+      noteStats = noteStats.merge(
+        incorrectAggregates,
+        on=c.noteIdKey,
+        how="outer",
+        unsafeAllowed={
+          c.notHelpfulIncorrectIntervalKey,
+          c.numVotersIntervalKey,
+        },
+      )
+    assert tagFilterThresholds is not None
 
     # Add tag filtering and sticky scoring logic.
     rules.extend(
@@ -475,47 +521,64 @@ def compute_scored_notes(
         scoring_rules.FilterTagOutliers(
           RuleID.TAG_OUTLIER,
           {RuleID.GENERAL_CRH},
-          c.needsMoreRatings,
-          crhSuperThreshold,
+          c.firmReject if firmRejectThreshold is not None else c.needsMoreRatings,
+          tagFilterThresholds=tagFilterThresholds,
         ),
-        scoring_rules.RuleFromFunction(
-          RuleID.ELEVATED_CRH,
-          {RuleID.INITIAL_NMR},
-          c.currentlyRatedHelpful,
-          lambda noteStats: is_crh_function(noteStats, minRatingsNeeded, crhSuperThreshold),
-          onlyApplyToNotesThatSayTweetIsMisleading=True,
-        ),
-        scoring_rules.AddCRHInertia(
-          RuleID.ELEVATED_CRH_INERTIA,
-          {RuleID.TAG_OUTLIER},
-          c.currentlyRatedHelpful,
-          crhSuperThreshold - inertiaDelta,
-          crhSuperThreshold,
-          minRatingsNeeded,
-        ),
+      ]
+    )
+    if crhSuperThreshold is not None:
+      rules.extend(
+        [
+          scoring_rules.RuleFromFunction(
+            RuleID.ELEVATED_CRH,
+            {RuleID.INITIAL_NMR},
+            c.currentlyRatedHelpful,
+            lambda noteStats: is_crh_function(noteStats, minRatingsNeeded, crhSuperThreshold),
+            onlyApplyToNotesThatSayTweetIsMisleading=True,
+          ),
+          scoring_rules.AddCRHInertia(
+            RuleID.ELEVATED_CRH_INERTIA,
+            {RuleID.TAG_OUTLIER},
+            c.currentlyRatedHelpful,
+            crhSuperThreshold - inertiaDelta,
+            crhSuperThreshold,
+            minRatingsNeeded,
+          ),
+        ]
+      )
+    rules.extend(
+      [
         scoring_rules.FilterIncorrect(
           RuleID.INCORRECT_OUTLIER,
           {RuleID.TAG_OUTLIER},
-          c.needsMoreRatings,
+          c.firmReject if firmRejectThreshold is not None else c.needsMoreRatings,
           tagThreshold=2,
           voteThreshold=3,
-          weightedTotalVotes=2.5,
-          superThreshold=None,
+          weightedTotalVotes=incorrectFilterThreshold,
         ),
         scoring_rules.FilterLowDiligence(
           RuleID.LOW_DILIGENCE,
           {RuleID.INCORRECT_OUTLIER},
-          c.needsMoreRatings,
+          c.firmReject if firmRejectThreshold is not None else c.needsMoreRatings,
           interceptThreshold=lowDiligenceThreshold,
         ),
         scoring_rules.FilterLargeFactor(
           RuleID.LARGE_FACTOR,
           {RuleID.LOW_DILIGENCE},
-          c.needsMoreRatings,
+          c.firmReject if firmRejectThreshold is not None else c.needsMoreRatings,
           factorThreshold=factorThreshold,
         ),
       ]
     )
+    if firmRejectThreshold is not None:
+      rules.append(
+        scoring_rules.RejectLowIntercept(
+          RuleID.LOW_INTERCEPT,
+          {RuleID.LARGE_FACTOR},
+          c.firmReject,
+          firmRejectThreshold,
+        )
+      )
   scoredNotes = scoring_rules.apply_scoring_rules(
     noteStats, rules, c.internalRatingStatusKey, c.internalActiveRulesKey
   )

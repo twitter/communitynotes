@@ -1,9 +1,14 @@
+import logging
 from typing import Optional
 
 from . import constants as c
 
 import numpy as np
 import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.helpfulness_scores")
+logger.setLevel(logging.INFO)
 
 
 def author_helpfulness(
@@ -101,7 +106,26 @@ def compute_general_helpfulness_scores(
   raterCounts = _rater_helpfulness(validRatings)
 
   helpfulnessScores = (
-    authorCounts.join(raterCounts, how="outer", lsuffix="_author", rsuffix="_rater")
+    authorCounts.join(
+      raterCounts,
+      how="outer",
+      lsuffix="_author",
+      rsuffix="_rater",
+      unsafeAllowed={
+        c.defaultIndexKey,
+        c.currentlyRatedHelpfulBoolKey,
+        c.currentlyRatedNotHelpfulBoolKey,
+        c.noteCountKey,
+        c.ratingAgreesWithNoteStatusKey,
+        # ratingCountKey was added with the migration to Pandas 2.2.2 because type checking showed
+        # a new conversion from int64 to float64.  Given the outer join and hte data involved, that
+        # type conversion is actually expected.  Additionally, we already have an exception for an
+        # int64 to float64 type conversion for ratingAgreesWithNoteStatusKey, which suggests the only
+        # reason we didn't see warnings for ratingCountKey before was that they type may have already
+        # been float64 going into the join.
+        c.ratingCountKey,
+      },
+    )
     .reset_index()
     .rename({"index": c.raterParticipantIdKey}, axis=1)[
       [
@@ -135,12 +159,16 @@ def compute_general_helpfulness_scores(
       )
 
     helpfulRatingsOnBadNotesCount = (
-      helpfulRatingsOnBadNotes.groupby(c.raterParticipantIdKey)
-      .sum()[[c.totalHelpfulHarassmentRatingsPenaltyKey]]
+      helpfulRatingsOnBadNotes[[c.raterParticipantIdKey, c.totalHelpfulHarassmentRatingsPenaltyKey]]
+      .groupby(c.raterParticipantIdKey)[[c.totalHelpfulHarassmentRatingsPenaltyKey]]
+      .sum()
       .reset_index()
     )
     helpfulnessScores = helpfulnessScores.merge(
-      helpfulRatingsOnBadNotesCount, on=c.raterParticipantIdKey, how="left"
+      helpfulRatingsOnBadNotesCount,
+      on=c.raterParticipantIdKey,
+      how="left",
+      unsafeAllowed=c.totalHelpfulHarassmentRatingsPenaltyKey,
     )
     helpfulnessScores[c.totalHelpfulHarassmentRatingsPenaltyKey].fillna(0, inplace=True)
 
@@ -176,7 +204,7 @@ def compute_general_helpfulness_scores(
 def filter_ratings_by_helpfulness_scores(
   ratingsForTraining: pd.DataFrame,
   helpfulnessScores: pd.DataFrame,
-  logging: bool = True,
+  log: bool = True,
 ):
   """Filter out ratings from raters whose helpfulness scores are too low.
   See https://twitter.github.io/communitynotes/contributor-scores/#filtering-ratings-based-on-helpfulness-scores.
@@ -184,7 +212,7 @@ def filter_ratings_by_helpfulness_scores(
   Args:
       ratingsForTraining pandas.DataFrame: unfiltered input ratings
       helpfulnessScores pandas.DataFrame: helpfulness scores to use to determine which raters to filter out.
-      logging (bool, optional): debug output. Defaults to True.
+      log (bool, optional): debug output. Defaults to True.
 
   Returns:
       filtered_ratings pandas.DataFrame: same schema as input ratings, but filtered.
@@ -196,15 +224,14 @@ def filter_ratings_by_helpfulness_scores(
     ratingsForTraining, on=c.raterParticipantIdKey
   )
 
-  if logging:
-    print("Unique Raters: ", len(np.unique(ratingsForTraining[c.raterParticipantIdKey])))
-    print("People (Authors or Raters) With Helpfulness Scores: ", len(helpfulnessScores))
-    print("Raters Included Based on Helpfulness Scores: ", len(includedUsers))
-    print(
-      "Included Raters who have rated at least 1 note in the final dataset: ",
-      len(np.unique(ratingsHelpfulnessScoreFiltered[c.raterParticipantIdKey])),
+  if log:
+    logger.info(f"Unique Raters: {len(np.unique(ratingsForTraining[c.raterParticipantIdKey]))}")
+    logger.info(f"People (Authors or Raters) With Helpfulness Scores: {len(helpfulnessScores)}")
+    logger.info(f"Raters Included Based on Helpfulness Scores: {len(includedUsers)}")
+    logger.info(
+      f"Included Raters who have rated at least 1 note in the final dataset: {len(np.unique(ratingsHelpfulnessScoreFiltered[c.raterParticipantIdKey]))}",
     )
-    print("Number of Ratings Used For 1st Training: ", len(ratingsForTraining))
-    print("Number of Ratings for Final Training: ", len(ratingsHelpfulnessScoreFiltered))
+    logger.info(f"Number of Ratings Used For 1st Training: {len(ratingsForTraining)}")
+    logger.info(f"Number of Ratings for Final Training: {len(ratingsHelpfulnessScoreFiltered)}")
 
   return ratingsHelpfulnessScoreFiltered

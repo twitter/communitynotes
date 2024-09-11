@@ -1,14 +1,49 @@
 import argparse
+import logging
 import os
+import sys
 
 from . import constants as c
 from .enums import scorers_from_csv
-from .process_data import LocalDataLoader, write_prescoring_output, write_tsv_local
+from .pandas_utils import patch_pandas
+from .process_data import LocalDataLoader, tsv_reader, write_parquet_local, write_tsv_local
 from .run_scoring import run_scoring
+
+import pandas as pd
+
+
+logger = logging.getLogger("birdwatch.runner")
+logger.setLevel(logging.INFO)
 
 
 def parse_args():
   parser = argparse.ArgumentParser("Community Notes Scoring")
+  parser.add_argument(
+    "--check-flips",
+    dest="check_flips",
+    help="Validate that note statuses align with prior runs (disable for testing)",
+    action="store_true",
+  )
+  parser.add_argument(
+    "--nocheck-flips",
+    help="Disable validation that note statuses align with prior runs (use for testing)",
+    action="store_false",
+    dest="check_flips",
+  )
+  parser.set_defaults(check_flips=True)
+  parser.add_argument(
+    "--enforce-types",
+    dest="enforce_types",
+    help="Raise errors when types in Pandas operations do not meet expectations.",
+    action="store_true",
+  )
+  parser.add_argument(
+    "--noenforce-types",
+    dest="enforce_types",
+    help="Log to stderr when types in Pandas operations do not meet expectations.",
+    action="store_false",
+  )
+  parser.set_defaults(enforce_types=True)
   parser.add_argument(
     "-e", "--enrollment", default=c.enrollmentInputPath, help="note enrollment dataset"
   )
@@ -33,6 +68,15 @@ def parse_args():
   )
   parser.set_defaults(headers=True)
   parser.add_argument("-n", "--notes", default=c.notesInputPath, help="note dataset")
+  parser.add_argument(
+    "--previous-scored-notes", default=None, help="previous scored notes dataset path"
+  )
+  parser.add_argument(
+    "--previous-aux-note-info", default=None, help="previous aux note info dataset path"
+  )
+  parser.add_argument(
+    "--previous-rating-cutoff-millis", default=None, type=int, help="previous rating cutoff millis"
+  )
   parser.add_argument("-o", "--outdir", default=".", help="directory for output files")
   parser.add_argument(
     "--pseudoraters",
@@ -77,6 +121,36 @@ def parse_args():
     dest="parallel",
   )
   parser.set_defaults(parallel=False)
+
+  parser.add_argument(
+    "--no-parquet",
+    help="Disable writing parquet files.",
+    default=False,
+    action="store_true",
+    dest="no_parquet",
+  )
+
+  parser.add_argument(
+    "--cutoff-timestamp-millis",
+    default=None,
+    type=int,
+    dest="cutoffTimestampMillis",
+    help="filter notes and ratings created after this time.",
+  )
+  parser.add_argument(
+    "--exclude-ratings-after-a-note-got-first-status-plus-n-hours",
+    default=None,
+    type=int,
+    dest="excludeRatingsAfterANoteGotFirstStatusPlusNHours",
+    help="Exclude ratings after a note got first status plus n hours",
+  )
+  parser.add_argument(
+    "--days-in-past-to-apply-post-first-status-filtering",
+    default=14,
+    type=int,
+    dest="daysInPastToApplyPostFirstStatusFiltering",
+    help="Days in past to apply post first status filtering",
+  )
   parser.add_argument(
     "--prescoring-delay-hours",
     default=None,
@@ -88,33 +162,48 @@ def parse_args():
   return parser.parse_args()
 
 
-def main():
-  # Parse arguments and fix timestamp, if applicable.
-  args = parse_args()
+@patch_pandas
+def _run_scorer(
+  args=None,
+  dataLoader=None,
+  extraScoringArgs={},
+):
+  assert args is not None, "args must be available"
   if args.epoch_millis:
     c.epochMillis = args.epoch_millis
     c.useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory = False
 
   # Load input dataframes.
-  dataLoader = LocalDataLoader(
-    args.notes,
-    args.ratings,
-    args.status,
-    args.enrollment,
-    args.headers,
-    prescoringNoteModelOutputPath=os.path.join(args.outdir, "prescoring_scored_notes.tsv"),
-    prescoringRaterModelOutputPath=os.path.join(args.outdir, "prescoring_helpfulness_scores.tsv"),
-  )
-  notes, ratings, statusHistory, userEnrollment = dataLoader.get_data()
-
-  # Prepare callback to write first round scoring output
-  def prescoring_write_fn(notePath, raterPath):
-    return write_prescoring_output(
-      notePath,
-      raterPath,
-      os.path.join(args.outdir, "prescoring_scored_notes.tsv"),
-      os.path.join(args.outdir, "prescoring_helpfulness_scores.tsv"),
+  if dataLoader is None:
+    dataLoader = LocalDataLoader(
+      args.notes,
+      args.ratings,
+      args.status,
+      args.enrollment,
+      args.headers,
     )
+  notes, ratings, statusHistory, userEnrollment = dataLoader.get_data()
+  if args.previous_scored_notes is not None:
+    previousScoredNotes = tsv_reader(
+      args.previous_scored_notes,
+      c.noteModelOutputTSVTypeMapping,
+      c.noteModelOutputTSVColumns,
+      header=False,
+      convertNAToNone=False,
+    )
+    assert (
+      args.previous_aux_note_info is not None
+    ), "previous_aux_note_info must be available if previous_scored_notes is available"
+    previousAuxiliaryNoteInfo = tsv_reader(
+      args.previous_aux_note_info,
+      c.auxiliaryScoredNotesTSVTypeMapping,
+      c.auxiliaryScoredNotesTSVColumns,
+      header=False,
+      convertNAToNone=False,
+    )
+  else:
+    previousScoredNotes = None
+    previousAuxiliaryNoteInfo = None
 
   # Invoke scoring and user contribution algorithms.
   scoredNotes, helpfulnessScores, newStatus, auxNoteInfo = run_scoring(
@@ -128,8 +217,15 @@ def main():
     strictColumns=args.strict_columns,
     runParallel=args.parallel,
     dataLoader=dataLoader if args.parallel == True else None,
-    writePrescoringScoringOutputCallback=prescoring_write_fn,
+    cutoffTimestampMillis=args.cutoffTimestampMillis,
+    excludeRatingsAfterANoteGotFirstStatusPlusNHours=args.excludeRatingsAfterANoteGotFirstStatusPlusNHours,
+    daysInPastToApplyPostFirstStatusFiltering=args.daysInPastToApplyPostFirstStatusFiltering,
     filterPrescoringInputToSimulateDelayInHours=args.prescoring_delay_hours,
+    checkFlips=args.check_flips,
+    previousScoredNotes=previousScoredNotes,
+    previousAuxiliaryNoteInfo=previousAuxiliaryNoteInfo,
+    previousRatingCutoffTimestampMillis=args.previous_rating_cutoff_millis,
+    **extraScoringArgs,
   )
 
   # Write outputs to local disk.
@@ -137,6 +233,26 @@ def main():
   write_tsv_local(helpfulnessScores, os.path.join(args.outdir, "helpfulness_scores.tsv"))
   write_tsv_local(newStatus, os.path.join(args.outdir, "note_status_history.tsv"))
   write_tsv_local(auxNoteInfo, os.path.join(args.outdir, "aux_note_info.tsv"))
+
+  if not args.no_parquet:
+    write_parquet_local(scoredNotes, os.path.join(args.outdir, "scored_notes.parquet"))
+    write_parquet_local(helpfulnessScores, os.path.join(args.outdir, "helpfulness_scores.parquet"))
+    write_parquet_local(newStatus, os.path.join(args.outdir, "note_status_history.parquet"))
+    write_parquet_local(auxNoteInfo, os.path.join(args.outdir, "aux_note_info.parquet"))
+
+
+def main(
+  args=None,
+  dataLoader=None,
+  extraScoringArgs={},
+):
+  if args is None:
+    args = parse_args()
+  logger.info(f"scorer python version: {sys.version}")
+  logger.info(f"scorer pandas version: {pd.__version__}")
+  # patch_pandas requires that args are available (which matches the production binary) so
+  # we first parse the arguments then invoke the decorated _run_scorer.
+  return _run_scorer(args=args, dataLoader=dataLoader, extraScoringArgs=extraScoringArgs)
 
 
 if __name__ == "__main__":

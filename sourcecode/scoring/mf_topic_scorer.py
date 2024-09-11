@@ -26,6 +26,8 @@ def coalesce_topic_models(scoredNotes: pd.DataFrame) -> pd.DataFrame:
     c.topicRatingStatusKey,
     c.topicNoteConfidentKey,
     c.noteTopicKey,
+    c.topicInternalActiveRulesKey,
+    c.topicNumFinalRoundRatingsKey,
   ]:
     scoredNotes = coalesce_columns(scoredNotes, col)
 
@@ -75,8 +77,9 @@ class MFTopicScorer(MFBaseScorer):
       pseudoraters: if True, compute optional pseudorater confidence intervals
     """
     super().__init__(
-      seed,
-      pseudoraters,
+      includedTopics={topicName},
+      seed=seed,
+      pseudoraters=pseudoraters,
       useStableInitialization=False,
       saveIntermediateState=saveIntermediateState,
       threads=4,
@@ -106,6 +109,8 @@ class MFTopicScorer(MFBaseScorer):
     self._topicNoteInterceptKey = f"{c.topicNoteInterceptKey}_{self._topicName}"
     self._topicNoteFactor1Key = f"{c.topicNoteFactor1Key}_{self._topicName}"
     self._topicRatingStatusKey = f"{c.topicRatingStatusKey}_{self._topicName}"
+    self._topicInternalActiveRulesKey = f"{c.topicInternalActiveRulesKey}_{self._topicName}"
+    self._topicNumFinalRoundRatingsKey = f"{c.topicNumFinalRoundRatingsKey}_{self._topicName}"
     self._noteTopicKey = f"{c.noteTopicKey}_{self._topicName}"
     self._noteTopicConfidentKey = f"{c.topicNoteConfidentKey}_{self._topicName}"
 
@@ -118,6 +123,9 @@ class MFTopicScorer(MFBaseScorer):
       c.internalNoteInterceptKey: self._topicNoteInterceptKey,
       c.internalNoteFactor1Key: self._topicNoteFactor1Key,
       c.internalRatingStatusKey: self._topicRatingStatusKey,
+      c.internalActiveRulesKey: self._topicInternalActiveRulesKey,
+      c.numFinalRoundRatingsKey: self._topicNumFinalRoundRatingsKey,
+      c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey,
     }
 
   def get_scored_notes_cols(self) -> List[str]:
@@ -129,6 +137,8 @@ class MFTopicScorer(MFBaseScorer):
       self._topicRatingStatusKey,
       self._noteTopicKey,
       self._noteTopicConfidentKey,
+      self._topicInternalActiveRulesKey,
+      self._topicNumFinalRoundRatingsKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
@@ -143,7 +153,6 @@ class MFTopicScorer(MFBaseScorer):
     """Returns a list of columns which should be excluded from scoredNotes and auxiliaryNoteInfo."""
     return super()._get_dropped_note_cols() + (
       [
-        c.internalActiveRulesKey,
         c.activeFilterTagsKey,
         c.ratingWeightKey,
         c.noteInterceptMinKey,
@@ -166,31 +175,6 @@ class MFTopicScorer(MFBaseScorer):
       c.internalRaterFactor1Key,
       c.raterParticipantIdKey,
     ]
-
-  def _filter_input(
-    self,
-    noteTopics: pd.DataFrame,
-    ratings: pd.DataFrame,
-    noteStatusHistory: pd.DataFrame,
-    userEnrollment: pd.DataFrame,
-  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Prune the contents of ratings to only include ratings from notes on this topic.
-
-    Args:
-      noteTopics: DF pairing notes and topics
-      ratings (pd.DataFrame): preprocessed ratings
-      noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
-      userEnrollment (pd.DataFrame): one row per user specifying enrollment properties
-
-    Returns:
-      Tuple[pd.DataFrame, pd.DataFrame]:
-        ratings: ratings filtered to only contain rows of interest
-        noteStatusHistory: noteStatusHistory filtered to only contain rows of interest
-    """
-    notes = noteTopics[noteTopics[c.noteTopicKey] == self._topicName][[c.noteIdKey]]
-    ratings = ratings.merge(notes)
-    noteStatusHistory = noteStatusHistory.merge(notes)
-    return ratings, noteStatusHistory
 
   def _postprocess_output(
     self,
@@ -247,6 +231,8 @@ class MFTopicScorer(MFBaseScorer):
     negFactorCounts = negFactorCounts[negFactorCounts["negRatingTotal"] > 4][[c.noteIdKey]]
     confidentNotes = posFactorCounts.merge(negFactorCounts)
     confidentNotes[self._noteTopicConfidentKey] = True
-    noteScores = noteScores.merge(confidentNotes, how="left")
+    noteScores = noteScores.merge(
+      confidentNotes, how="left", unsafeAllowed=[self._noteTopicConfidentKey, c.defaultIndexKey]
+    )
     noteScores = noteScores.fillna({self._noteTopicConfidentKey: False})
     return noteScores, userScores

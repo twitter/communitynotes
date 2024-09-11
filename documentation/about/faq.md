@@ -47,7 +47,9 @@ Post authors with Community Notes on their posts can request additional review o
 {% /accordionItem %}
 
 {% accordionItem title="How do I opt-out of the program?" %}
-If you join the program but later want to leave, DM @CommunityNotes to let the team know.
+If you join the program but later want to leave, you can do so in your [Community Notes settings](https://x.com/i/communitynotes/notification_settings).
+
+If you leave and then later want to re-join, you can do so on your [Community Notes alias profile](http://x.com/i/communitynotes/u/me).
 {% /accordionItem %}
 {% /accordionSection %}
 
