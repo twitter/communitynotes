@@ -208,7 +208,7 @@ class MatrixFactorization:
         # unsafeAllowed={c.noteIdKey, "noteIndex_y"},    my code wouldn't run with this line and I don't see it in the docs?
       )
 
-      noteInit[c.internalNoteInterceptKey] = noteInit[c.internalNoteInterceptKey].fillna(0.0)    # I had to get rid of these inplace=True's to silence a warning, but I think pandas would make a temporary copy anywhere so not sure it saves memory
+      noteInit[c.internalNoteInterceptKey] = noteInit[c.internalNoteInterceptKey].fillna(0.0)    # I had to get rid of these inplace=True's to silence a warning, but I think pandas would make a temporary copy anyway so not sure it saves memory
       self.mf_model.note_intercepts.weight.data = torch.tensor(
         np.expand_dims(noteInit[c.internalNoteInterceptKey].astype(np.float32).values, axis=1)
       )
@@ -242,7 +242,7 @@ class MatrixFactorization:
     if globalInterceptInit is not None:
       if self._log:
         logger.info("initialized global intercept")
-      self.mf_model.global_intercept = torch.nn.parameter.Parameter(
+      self.mf_model.global_intercept.data = torch.nn.parameter.Parameter(
         torch.ones(1, 1, dtype=torch.float32) * globalInterceptInit
       )
 
