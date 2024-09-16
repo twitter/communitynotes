@@ -242,9 +242,7 @@ class MatrixFactorization:
     if globalInterceptInit is not None:
       if self._log:
         logger.info("initialized global intercept")
-      self.mf_model.global_intercept.data = torch.nn.parameter.Parameter(
-        torch.ones(1, 1, dtype=torch.float32) * globalInterceptInit
-      )
+      self.mf_model.global_intercept.data = torch.ones(1, 1, dtype=torch.float32) * globalInterceptInit
 
   def _get_parameters_from_trained_model(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
