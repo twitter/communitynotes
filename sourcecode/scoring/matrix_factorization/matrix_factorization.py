@@ -30,7 +30,6 @@ class MatrixFactorization:
     numFactors=1,
     useGlobalIntercept=True,
     log=True,
-    flipFactorsForIdentification=True,
     model: Optional[BiasedMatrixFactorization] = None,
     featureCols: List[str] = [c.noteIdKey, c.raterParticipantIdKey],
     labelCol: str = c.helpfulNumKey,
@@ -51,7 +50,6 @@ class MatrixFactorization:
     self._numFactors = numFactors
     self._useGlobalIntercept = useGlobalIntercept
     self._log = log
-    self._flipFactorsForIdentification = flipFactorsForIdentification
     self._featureCols = featureCols
     self._labelCol = labelCol
     self._useSigmoidCrossEntropy = useSigmoidCrossEntropy
@@ -103,7 +101,6 @@ class MatrixFactorization:
       numFactors=self._numFactors,
       useGlobalIntercept=self._useGlobalIntercept,
       log=self._log,
-      flipFactorsForIdentification=self._flipFactorsForIdentification,
       model=None,
       featureCols=self._featureCols,
       labelCol=self._labelCol,
@@ -225,7 +222,9 @@ class MatrixFactorization:
         torch.ones(1, 1, dtype=torch.float32) * globalInterceptInit
       )
 
-  def _get_parameters_from_trained_model(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  def _get_parameters_from_trained_model(
+    self, flipFactorsForIdentification: bool = True
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame]: noteIdMap, raterIdMap
@@ -247,7 +246,7 @@ class MatrixFactorization:
         :, i
       ]
 
-    if self._flipFactorsForIdentification:
+    if flipFactorsForIdentification:
       noteParams, raterParams = self._flip_factors_for_identification(noteParams, raterParams)
 
     return noteParams, raterParams
@@ -497,10 +496,12 @@ class MatrixFactorization:
     globalInterceptInit: Optional[float] = None,
     specificNoteId: Optional[int] = None,
     validatePercent: Optional[float] = None,
+    freezeNoteParameters: bool = False,
     freezeRaterParameters: bool = False,
     freezeGlobalParameters: bool = False,
     ratingPerNoteLossRatio: Optional[float] = None,
     ratingPerUserLossRatio: Optional[float] = None,
+    flipFactorsForIdentification: bool = True,
   ):
     """Train matrix factorization model.
 
@@ -546,13 +547,15 @@ class MatrixFactorization:
       self.mf_model._freeze_parameters(set({"user"}))
     if freezeGlobalParameters:
       self.mf_model._freeze_parameters(set({"global"}))
+    if freezeNoteParameters:
+      self.mf_model._freeze_parameters(set({"note"}))
     if specificNoteId is not None:
       self.mf_model.freeze_rater_and_global_parameters()
     self.prepare_features_and_labels(specificNoteId)
 
     train_loss, loss, validate_loss = self._fit_model(validatePercent)
     if self._normalizedLossHyperparameters is not None:
-      _, raterParams = self._get_parameters_from_trained_model()
+      _, raterParams = self._get_parameters_from_trained_model(flipFactorsForIdentification)
       assert self.modelData is not None
       self._lossModule = NormalizedLoss(
         self.criterion,
@@ -575,7 +578,9 @@ class MatrixFactorization:
       if self._log:
         logger.info(f"Global Intercept: {globalIntercept}")
 
-    fitNoteParams, fitRaterParams = self._get_parameters_from_trained_model()
+    fitNoteParams, fitRaterParams = self._get_parameters_from_trained_model(
+      flipFactorsForIdentification
+    )
 
     fitRaterParams.drop(Constants.raterIndexKey, axis=1, inplace=True)
     if validatePercent is None:

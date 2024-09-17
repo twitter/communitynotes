@@ -425,6 +425,7 @@ def _run_scorers(
         for scorer in scorers
       ]
       modelResultsAndTimes = [f.result() for f in futures]
+      logger.info("Got model results from all scorers.")
 
       for shm in shms:
         shm.close()
@@ -1180,7 +1181,7 @@ def run_prescoring(
     ratingsToRescore = ratings[ratings["noteId"].isin(notesToRescoreSet)].copy()
     notesToRescore = notes[notes["noteId"].isin(notesToRescoreSet)].copy()
 
-    scoredNotes, _, _ = run_final_note_scoring(
+    scoredNotes, _, _, _ = run_final_note_scoring(
       notes=notesToRescore,
       ratings=ratingsToRescore,
       noteStatusHistory=noteStatusHistoryToRescore,
@@ -1364,8 +1365,7 @@ def determine_which_notes_to_rescore(
     noteStatusHistory.loc[
       (
         ~noteStatusHistory[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
-        & noteStatusHistory[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
-        > 0
+        & (noteStatusHistory[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0)
       ),
       c.noteIdKey,
     ]
@@ -1418,6 +1418,7 @@ def run_final_note_scoring(
   previousRatingCutoffTimestampMillis: Optional[int] = 0,
   enableNmrDueToMinStableCrhTime: bool = True,
 ):
+  metrics = {}
   with c.time_block("Logging Final Scoring RAM usage"):
     logger.info(get_df_info(notes, "notes"))
     logger.info(get_df_info(ratings, "ratings"))
@@ -1495,6 +1496,7 @@ def run_final_note_scoring(
       logger.info(
         f"Rescoring {len(notesToRescoreSet)} notes, out of {len(notes)} total. Original number of ratings: {len(ratings)}"
       )
+      metrics["num_notes_to_rescore"] = len(notesToRescoreSet)
 
       # Filter all datasets to only contain notes which need to be scored.
       notes = notes[notes[c.noteIdKey].isin(notesToRescoreSet)]
@@ -1505,6 +1507,8 @@ def run_final_note_scoring(
       ]
 
       logger.info(f"Ratings on notes to rescore: {len(ratings)}")
+      metrics["num_ratings_on_notes_to_rescore"] = len(ratings)
+      metrics["latest_rating_created_ms"] = ratings["createdAtMillis"].max()
 
   with c.time_block("Preprocess smaller dataset since we skipped preprocessing at read time"):
     notes, ratings, noteStatusHistory = preprocess_data(notes, ratings, noteStatusHistory)
@@ -1587,7 +1591,7 @@ def run_final_note_scoring(
 
     newNoteStatusHistory = pd.concat([newNoteStatusHistory, noteStatusHistoryPassthrough])
 
-  return scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo
+  return scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo, metrics
 
 
 def post_note_scoring(
@@ -1793,7 +1797,7 @@ def run_scoring(
       )
   logger.info("Starting final scoring")
 
-  scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo = run_final_note_scoring(
+  scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo, _ = run_final_note_scoring(
     notes=notes,
     ratings=ratings,
     noteStatusHistory=noteStatusHistory,

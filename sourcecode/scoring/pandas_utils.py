@@ -56,10 +56,11 @@ def get_df_info(
     .reset_index(drop=False)
     .rename(columns={"index": "column", 0: "RAM"})
   )
+  ramBytes = stats["RAM"].sum()
   if name is not None:
-    lines = [f"""{name} total RAM: {stats["RAM"].sum()}"""]
+    lines = [f"""{name} total RAM: {ramBytes} bytes ({ramBytes * 1e-9:.3f} GB)"""]
   else:
-    lines = [f"""total RAM: {stats["RAM"].sum()}"""]
+    lines = [f"""total RAM: {ramBytes} bytes ({ramBytes * 1e-9:.3f} GB)"""]
   lines.extend(str(stats).split("\n"))
   if counter:
     for col, dtype in zip(stats["column"], stats["dtype"]):
