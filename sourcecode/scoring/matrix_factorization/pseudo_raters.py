@@ -87,7 +87,9 @@ class PseudoRatersRunner:
     (
       noteParamsFromNewModel,
       raterParamsFromNewModel,
-    ) = newMatrixFactorization._get_parameters_from_trained_model()
+    ) = newMatrixFactorization._get_parameters_from_trained_model(
+      flipFactorsForIdentification=False
+    )
     assert (noteParamsFromNewModel == self.noteParams).all().all()
 
   def _make_extreme_raters(self, raterParams: pd.DataFrame, raterIdMap: pd.DataFrame):
@@ -206,7 +208,9 @@ class PseudoRatersRunner:
     if self._checkParamsSame:
       self._check_rater_parameters_same(newExtremeMF)
 
-    fitNoteParams, fitRaterParams = newExtremeMF._get_parameters_from_trained_model()
+    fitNoteParams, fitRaterParams = newExtremeMF._get_parameters_from_trained_model(
+      flipFactorsForIdentification=False
+    )
     return fitNoteParams
 
   def _create_extreme_ratings(self):

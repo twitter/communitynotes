@@ -157,6 +157,10 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
     mergedNote[c.lockedStatusKey] = mergedNote[c.finalRatingStatusKey]
     mergedNote[c.timestampMillisOfStatusLockKey] = currentTimeMillis
 
+  # Clear timestampMillisOfNmrDueToMinStableCrhTimeKey if the note is locked.
+  if pd.notna(mergedNote[c.lockedStatusKey]):
+    mergedNote[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = -1
+
   if pd.isna(mergedNote[c.createdAtMillisKey + newScoredNotesSuffix]):
     # note used to be scored but isn't now; just retain old info
     return mergedNote

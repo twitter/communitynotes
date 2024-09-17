@@ -907,6 +907,7 @@ class MFBaseScorer(Scorer):
     prescoringNoteModelOutput: pd.DataFrame,
     prescoringRaterModelOutput: pd.DataFrame,
     prescoringMetaScorerOutput: c.PrescoringMetaScorerOutput,
+    flipFactorsForIdentification: bool = False,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Run the "final" matrix factorization scoring algorithm.
     Accepts prescoring's output as its input, as well as the new ratings and note status history.
@@ -983,6 +984,7 @@ class MFBaseScorer(Scorer):
         freezeGlobalParameters=True,
         ratingPerNoteLossRatio=prescoringMetaScorerOutput.finalRoundNumRatings
         / prescoringMetaScorerOutput.finalRoundNumNotes,
+        flipFactorsForIdentification=flipFactorsForIdentification,
       )
 
     if self._saveIntermediateState:
@@ -1139,6 +1141,7 @@ class MFBaseScorer(Scorer):
       prescoringNoteModelOutput=prescoringNoteModelOutput,
       prescoringRaterModelOutput=prescoringRaterModelOutput,
       prescoringMetaScorerOutput=prescoringMetaScorerOutput,
+      flipFactorsForIdentification=False,
     )
 
     with self.time_block("Postprocess output"):
