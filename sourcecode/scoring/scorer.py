@@ -169,6 +169,7 @@ class Scorer(ABC):
         userScores: user scoring output from _score_notes_and_users
     """
     if self._captureThreshold is None:
+      logger.info(f"Skipping postprocessing for {self.get_name()}: captureThreshold is None.")
       return noteScores, userScores
     # Identify notes with enough ratings from within the modeling group.
     logger.info(f"Postprocessing output for {self.get_name()}")
@@ -381,6 +382,9 @@ class Scorer(ABC):
       )
       # If there are no ratings left after filtering, then return empty dataframes.
       if len(ratings) == 0:
+        logger.info(
+          f"No rating left after filtering for Scorer {self.get_name()}, returning empty dataframes."
+        )
         return self._return_empty_final_scores()
 
     try:
@@ -392,6 +396,7 @@ class Scorer(ABC):
         prescoringMetaScorerOutput=prescoringMetaScorerOutput,
       )
     except EmptyRatingException:
+      logger.info(f"EmptyRatingException for Scorer {self.get_name()}")
       return self._return_empty_final_scores()
 
     with self.time_block("Postprocess output"):

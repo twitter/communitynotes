@@ -433,6 +433,21 @@ def remove_duplicate_notes(notes: pd.DataFrame) -> pd.DataFrame:
 
   return notes
 
+def compute_helpful_num(ratings: pd.DataFrame):
+  """
+  Populate the "helpfulNum" column.
+    not helpful: 0.0
+    somewhat helpful: 0.5
+    helpful: 1.0
+  """
+  ratings.loc[:, c.helpfulNumKey] = np.nan
+  ratings.loc[ratings[c.helpfulKey] == 1, c.helpfulNumKey] = 1
+  ratings.loc[ratings[c.notHelpfulKey] == 1, c.helpfulNumKey] = 0
+  ratings.loc[ratings[c.helpfulnessLevelKey] == c.notHelpfulValueTsv, c.helpfulNumKey] = 0
+  ratings.loc[ratings[c.helpfulnessLevelKey] == c.somewhatHelpfulValueTsv, c.helpfulNumKey] = 0.5
+  ratings.loc[ratings[c.helpfulnessLevelKey] == c.helpfulValueTsv, c.helpfulNumKey] = 1
+  ratings = ratings.loc[~pd.isna(ratings[c.helpfulNumKey])]
+  return ratings
 
 def preprocess_data(
   notes: pd.DataFrame,

@@ -1,5 +1,6 @@
 import gc
 import logging
+import sys
 from typing import Dict
 
 from . import constants as c
@@ -18,31 +19,42 @@ class PostSelectionSimilarity:
     notes: pd.DataFrame,
     ratings: pd.DataFrame,
     pmiRegularization: int = 500,
-    smoothedNpmiThreshold: float = 0.60,
+    smoothedNpmiThreshold: float = 0.55,
+    minimumRatingProportionThreshold: float = 0.4,
+    minUniquePosts: int = 10,
+    minSimPseudocounts: int = 10,
+    windowMillis: int = 1000 * 60 * 20,
   ):
     self.ratings = _preprocess_ratings(notes, ratings)
-    self.pairCounts = _get_pair_counts(self.ratings)
-    self.pairStatsDf = _make_rater_stats_df(self.pairCounts)
+    with c.time_block("Compute pair counts dict"):
+      self.pairCountsDict = _get_pair_counts_dict(self.ratings, windowMillis=windowMillis)
+
     self.uniqueRatingsOnTweets = self.ratings[
       [c.tweetIdKey, c.raterParticipantIdKey]
     ].drop_duplicates()
-    self.pairStatsDf = _join_rater_totals(self.pairStatsDf, self.uniqueRatingsOnTweets)
-    self.pmiDf = _compute_pmi(self.pairStatsDf, len(self.uniqueRatingsOnTweets), pmiRegularization)
+    raterTotals = self.uniqueRatingsOnTweets[c.raterParticipantIdKey].value_counts()
+    raterTotalsDict = {
+      index: value for index, value in raterTotals.items() if value >= minUniquePosts
+    }
 
-    self.filter_edges_below_threshold(smoothedNpmiThreshold)
-
-  def filter_edges_below_threshold(self, smoothedNpmiThreshold: float = 0.6):
-    graphDf = self.pmiDf[["leftRaterId", "rightRaterId", "smoothedNpmi"]]
-    graphDf.columns = ["source", "target", "weight"]
-    self.graphDf = graphDf[graphDf["weight"] >= smoothedNpmiThreshold]
+    self.pairCountsDict = _join_rater_totals_compute_pmi_and_filter_edges_below_threshold(
+      pairCountsDict=self.pairCountsDict,
+      raterTotalsDict=raterTotalsDict,
+      N=len(self.uniqueRatingsOnTweets),
+      pmiPseudocounts=pmiRegularization,
+      minSimPseudocounts=minSimPseudocounts,
+      smoothedNpmiThreshold=smoothedNpmiThreshold,
+      minimumRatingProportionThreshold=minimumRatingProportionThreshold,
+    )
 
   def get_high_post_selection_similarity_raters(self):
-    highPostSelectionSimilarityRaters = pd.concat(
-      [
-        self.graphDf[["source"]].rename(columns={"source": c.raterParticipantIdKey}),
-        self.graphDf[["target"]].rename(columns={"target": c.raterParticipantIdKey}),
-      ]
-    ).drop_duplicates()
+    uniqueRaters = set()
+    for r1, r2 in self.pairCountsDict.keys():
+      uniqueRaters.add(r1)
+      uniqueRaters.add(r2)
+    highPostSelectionSimilarityRaters = pd.DataFrame(
+      list(uniqueRaters), columns=[c.raterParticipantIdKey]
+    )
     highPostSelectionSimilarityRaters[c.postSelectionValueKey] = 1
     return highPostSelectionSimilarityRaters
 
@@ -51,7 +63,7 @@ class PostSelectionSimilarity:
     Returns dataframe with [raterParticipantId, postSelectionSimilarityValue] columns.
     postSelectionSimilarityValue is None by default.
     """
-    cliqueToUserMap, userToCliqueMap = aggregate_into_cliques(self.graphDf)
+    cliqueToUserMap, userToCliqueMap = aggregate_into_cliques(self.pairCountsDict)
 
     # Convert dict to pandas dataframe
     cliquesDfList = []
@@ -103,6 +115,9 @@ def filter_ratings_by_post_selection_similarity(notes, ratings, postSelectionSim
     subset=[c.noteIdKey, c.postSelectionValueKey], keep="first", inplace=True
   )
 
+  if len(notes) < c.minNumNotesForProdData:
+    return ratings
+
   ratings = pd.concat(
     [ratingsWithPostSelectionSimilarityValue, ratingsWithNoPostSelectionSimilarityValue], axis=0
   )
@@ -127,22 +142,6 @@ def filter_all_ratings_by_post_selection_similarity(ratings, highPostSelectionSi
   return ratings
 
 
-def _compute_pmi(pairStatsDf: pd.DataFrame, N: int, pmiPseudocounts: int = 500) -> pd.DataFrame:
-  """
-  Compute PMI between raters.
-  """
-  numerator = pairStatsDf["pairRatings"] * N
-  denominator = (pairStatsDf["leftTotal"] + pmiPseudocounts) * (
-    pairStatsDf["rightTotal"] + pmiPseudocounts
-  )
-  pairStatsDf["smoothedPmi"] = np.log(numerator / denominator)
-  pairStatsDf["smoothedNpmi"] = pairStatsDf["smoothedPmi"] / -np.log(pairStatsDf["pairRatings"] / N)
-  pairStatsDf["minSim"] = pairStatsDf["pairRatings"] / np.minimum(
-    pairStatsDf["leftTotal"], pairStatsDf["rightTotal"]
-  )
-  return pairStatsDf
-
-
 def _preprocess_ratings(notes: pd.DataFrame, ratings: pd.DataFrame) -> pd.DataFrame:
   """
   Preprocess ratings dataframe.
@@ -156,30 +155,69 @@ def _preprocess_ratings(notes: pd.DataFrame, ratings: pd.DataFrame) -> pd.DataFr
   return ratings
 
 
-def _join_rater_totals(
-  pairStatsDf: pd.DataFrame, uniqueRatingsOnTweets: pd.DataFrame, minRatings: int = 10
+def _join_rater_totals_compute_pmi_and_filter_edges_below_threshold(
+  pairCountsDict: Dict,
+  raterTotalsDict: Dict,
+  N: int,
+  pmiPseudocounts: int,
+  minSimPseudocounts: int,
+  smoothedNpmiThreshold: float,
+  minimumRatingProportionThreshold: float,
 ):
-  raterTotals = uniqueRatingsOnTweets[c.raterParticipantIdKey].value_counts().reset_index()
-  raterTotals.columns = [c.raterParticipantIdKey, "count"]
-  raterTotals = raterTotals[raterTotals["count"] >= minRatings]
-  pairStatsDf = pairStatsDf.merge(
-    raterTotals.rename(columns={c.raterParticipantIdKey: "leftRaterId", "count": "leftTotal"})
+  keys_to_delete = []
+
+  with c.time_block("Compute PMI and minSim"):
+    for leftRaterId, rightRaterId in pairCountsDict:
+      if leftRaterId not in raterTotalsDict or rightRaterId not in raterTotalsDict:
+        keys_to_delete.append((leftRaterId, rightRaterId))
+        continue
+
+      leftTotal = raterTotalsDict[leftRaterId]
+      rightTotal = raterTotalsDict[rightRaterId]
+      coRatings = pairCountsDict[(leftRaterId, rightRaterId)]
+
+      if type(coRatings) != int:
+        # already processed (should only occur when re-running...)
+        continue
+
+      # PMI
+      pmiNumerator = coRatings * N
+      pmiDenominator = (leftTotal + pmiPseudocounts) * (rightTotal + pmiPseudocounts)
+      smoothedPmi = np.log(pmiNumerator / pmiDenominator)
+      smoothedNpmi = smoothedPmi / -np.log(coRatings / N)
+
+      # minSim
+      minTotal = min(leftTotal, rightTotal)
+      minSimRatingProp = coRatings / (minTotal + minSimPseudocounts)
+
+      if (smoothedNpmi >= smoothedNpmiThreshold) or (
+        minSimRatingProp >= minimumRatingProportionThreshold
+      ):
+        pairCountsDict[(leftRaterId, rightRaterId)] = (smoothedNpmi, minSimRatingProp)
+      else:
+        keys_to_delete.append((leftRaterId, rightRaterId))
+
+    print(f"Pairs dict used {sys.getsizeof(pairCountsDict) * 1e-9}GB RAM at max")
+
+  with c.time_block("Delete unneeded pairs from pairCountsDict"):
+    for key in keys_to_delete:
+      del pairCountsDict[key]
+
+  print(
+    f"Pairs dict used {sys.getsizeof(pairCountsDict) * 1e-9}GB RAM after deleted unneeded pairs"
   )
-  pairStatsDf = pairStatsDf.merge(
-    raterTotals.rename(columns={c.raterParticipantIdKey: "rightRaterId", "count": "rightTotal"})
-  )
-  return pairStatsDf
+
+  return pairCountsDict
 
 
-def aggregate_into_cliques(graphDf):
+def aggregate_into_cliques(pairCountsDict):
   with c.time_block("Aggregate into cliques by post selection similarity"):
     userToCliqueMap = dict()
     cliqueToUserMap = dict()
 
     nextNewCliqueId = 1  # start cliqueIdxs from 1
-    for i, row in graphDf.iterrows():
-      sid = row["source"]
-      tid = row["target"]
+
+    for sid, tid in pairCountsDict.keys():
       if sid in userToCliqueMap:
         if tid in userToCliqueMap:
           # both in map. merge if not same clique
@@ -215,59 +253,45 @@ def aggregate_into_cliques(graphDf):
   return cliqueToUserMap, userToCliqueMap
 
 
-def _make_rater_stats_df(pairCounts):
-  with c.time_block("Making rater stats dataframe from pair counts dict"):
-    leftRater, rightRater, pairRatings = [], [], []
-    for i, ((left, right), count) in enumerate(pairCounts.items()):
-      leftRater.append(left)
-      rightRater.append(right)
-      pairRatings.append(count)
-  return pd.DataFrame(
-    {
-      "leftRaterId": np.array(leftRater),
-      "rightRaterId": np.array(rightRater),
-      "pairRatings": np.array(pairRatings),
-    }
-  )
+def _get_pair_counts_dict(ratings, windowMillis):
+  pair_counts = dict()
 
+  # Group by tweetIdKey to process each tweet individually
+  grouped_by_tweet = ratings.groupby(c.tweetIdKey, sort=False)
 
-def _get_pair_counts(ratings: pd.DataFrame, windowMillis: int = 1000 * 60 * 10) -> Dict:
-  """
-  Compute counts of unique posts that were co-rated within windowMillis millis of each other
-  by different users.
+  for _, tweet_group in grouped_by_tweet:
+    # Keep track of pairs we've already counted for this tweetId
+    pairs_counted_in_tweet = set()
 
-  Returns dict: (raterId1, raterId2) => count.
-  """
-  with c.time_block("Computing rating pair counts"):
-    counts = dict()
-    seen = set()
-    ratings = ratings.sort_values([c.noteIdKey, c.createdAtMillisKey])
-    values = ratings[
-      [c.noteIdKey, c.createdAtMillisKey, c.raterParticipantIdKey, c.tweetIdKey]
-    ].values
-    logger.info(len(values))
-    for i in range(len(values)):
-      priorNote, priorTs, priorRater, priorTweet = values[i]
-      if i == 0 or i == 1000 or i == 100000 or i % 5000000 == 0:
-        logger.info(f"get_pair_counts i={i}")
-      j = i + 1
-      while j < len(values):
-        nextNote, nextTs, nextRater, nextTweet = values[j]
-        assert priorNote <= nextNote, (priorNote, nextNote)
-        if nextNote != priorNote:
-          break  # break if we're onto a new note
-        assert priorTweet == nextTweet, (priorTweet, nextTweet)  # tweet should be same
-        assert priorRater != nextRater, (priorRater, nextRater)  # rater should be different
-        assert priorTs <= nextTs, (priorTs, nextTs)
-        if nextTs > (priorTs + windowMillis):
-          break  # break if we're beyond windowMillis
-        raterPairKey = tuple(sorted((priorRater, nextRater)))
-        raterTweetPairKey = (raterPairKey, priorTweet)
-        if raterTweetPairKey in seen:
-          break  # break if we already counted a match on this tweet
-        seen.add(raterTweetPairKey)
-        if raterPairKey not in counts:
-          counts[raterPairKey] = 0
-        counts[raterPairKey] += 1
-        j += 1
-    return counts
+    # Group by noteIdKey within the tweet
+    grouped_by_note = tweet_group.groupby(c.noteIdKey, sort=False)
+
+    for _, note_group in grouped_by_note:
+      note_group.sort_values(c.createdAtMillisKey, inplace=True)
+
+      # Extract relevant columns as numpy arrays for efficient computation
+      times = note_group[c.createdAtMillisKey].values
+      raters = note_group[c.raterParticipantIdKey].values
+
+      n = len(note_group)
+      window_start = 0
+
+      for i in range(n):
+        # Move the window start forward if the time difference exceeds windowMillis
+        while times[i] - times[window_start] > windowMillis:
+          window_start += 1
+
+        # For all indices within the sliding window (excluding the current index)
+        for j in range(window_start, i):
+          if raters[i] != raters[j]:
+            left_rater, right_rater = tuple(sorted((raters[i], raters[j])))
+            pair = (left_rater, right_rater)
+            # Only count this pair once per tweetId
+            if pair not in pairs_counted_in_tweet:
+              pairs_counted_in_tweet.add(pair)
+              # Update the count for this pair
+              if pair not in pair_counts:
+                pair_counts[pair] = 0
+              pair_counts[pair] += 1
+
+  return pair_counts

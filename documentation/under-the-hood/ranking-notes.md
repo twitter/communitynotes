@@ -305,7 +305,7 @@ For not-helpful notes:
 
 ### Prescoring
 
-1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence).
+1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence). Also, coalesce ratings made by raters with high post-selection-similarity.
 2. For each scorer (Core, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
     - Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.
     - Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
@@ -324,8 +324,20 @@ For not-helpful notes:
 
 ## What’s New?
 
+**Sep 17, 2024**
+- Lower threshold for coalescing ratings with high post-selection-similarity.
+
+**Aug 21, 2024**
+
+**Aug 12, 2024**
+- Add a 30min delay for notes that meet the CRH criteria ("NMRDueToStableCRHTime") to ensure they stably meet that criteria across multiple scoring runs before CRHing them
+- Add multi-group models
+
 **July 25, 2024**
 - Only score a subset of notes each time we run final note scoring. This doesn't affect what statuses new notes get, but does cause them to get scored more quickly.
+
+**May 31, 2024**
+- Coalesce ratings on the same note from raters with very high post-selection-similarity.
 
 **May 1, 2024**
 - Modify scoring thresholds for the Expanded Consensus trial to raise the note intercept threshold for Helpful notes, increase tag filtering and require a minimum Core or Expansion intercept for Helpful notes.

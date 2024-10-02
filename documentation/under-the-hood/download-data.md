@@ -157,6 +157,8 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `timestampMillisOfNmrDueToMinStableCrhTime` | Long | The timestamp, in milliseconds since epoch (UTC), of when the note first met the scoring criteria to become CRH, but was set to NMR due to the NmrDueToMinStableCRHTime scoring rule. |
 | `currentMultiGroupStatus` | String | The current status, if any, assigned by the multi-group submodel. | "", "NEEDS_MORE_RATINGS", "CURRENTLY_RATED_HELPFUL", "CURRENTLY_RATED_NOT_HELPFUL" |
 | `currentModelingMultiGroup` | Int | The ID of the multi-modeling group that this note would be scored by, if eligible to be scored by a multi group model (determined by the modeling groups of its raters, from the user enrollment file). 0 is a placeholder for no multi modeling group. | nonnegative int |
+| `timestampMinuteOfFinalScoringOutput` | None | For internal use. Timestamp of scoring run. | None |
+| `timestampMillisOfFirstNmrDueToMinStableCrhTime` | Long | The timestamp, in milliseconds since epoch (UTC), of when the note first met the necessary scoring rules to become CRH, but was set to a final NMR status in order to wait for the minimum amount of stable time before finally CRHing the note. |
 
 
 
