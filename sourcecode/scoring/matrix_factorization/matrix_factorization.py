@@ -31,7 +31,7 @@ class MatrixFactorization:
     useGlobalIntercept=True,
     log=True,
     model: Optional[BiasedMatrixFactorization] = None,
-    featureCols: List[str] = [c.noteIdKey, c.raterParticipantIdKey],
+    featureCols: Optional[List[str]] = None,
     labelCol: str = c.helpfulNumKey,
     useSigmoidCrossEntropy=False,
     posWeight=None,
@@ -44,6 +44,7 @@ class MatrixFactorization:
     normalizedLossHyperparameters=None,
   ) -> None:
     """Configure matrix factorization note ranking."""
+    featureCols = [c.noteIdKey, c.raterParticipantIdKey] if featureCols is None else featureCols
     self._initLearningRate = initLearningRate
     self._noInitLearningRate = noInitLearningRate
     self._convergence = convergence
