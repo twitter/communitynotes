@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """Invoke Community Notes scoring and user contribution algorithms.
 
 Example Usage:
@@ -20,8 +21,11 @@ Example Usage:
     --outdir data
 """
 
+import logging
+
 from scoring.runner import main
 
 
 if __name__ == "__main__":
+  logging.basicConfig(level=logging.DEBUG)
   main()

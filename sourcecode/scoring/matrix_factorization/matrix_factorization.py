@@ -202,13 +202,13 @@ class MatrixFactorization:
         logger.info("initializing users")
       userInit = self.raterIdMap.merge(userInit, on=c.raterParticipantIdKey, how="left")
 
-      userInit[c.internalRaterInterceptKey].fillna(0.0, inplace=True)
+      userInit[c.internalRaterInterceptKey] = userInit[c.internalRaterInterceptKey].fillna(0.0)
       self.mf_model.user_intercepts.weight.data = torch.tensor(
         np.expand_dims(userInit[c.internalRaterInterceptKey].astype(np.float32).values, axis=1)
       )
 
       for i in range(1, self._numFactors + 1):
-        userInit[c.rater_factor_key(i)].fillna(0.0, inplace=True)
+        userInit[c.rater_factor_key(i)] = userInit[c.rater_factor_key(i)].fillna(0.0)
       self.mf_model.user_factors.weight.data = torch.tensor(
         userInit[[c.rater_factor_key(i) for i in range(1, self._numFactors + 1)]]
         .astype(np.float32)
