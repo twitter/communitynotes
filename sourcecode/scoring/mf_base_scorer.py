@@ -13,7 +13,7 @@ from . import (
 from .incorrect_filter import get_user_incorrect_ratio
 from .matrix_factorization.matrix_factorization import MatrixFactorization
 from .matrix_factorization.pseudo_raters import PseudoRatersRunner
-from .pandas_utils import keep_columns
+from .pandas_utils import get_df_fingerprint, keep_columns
 from .reputation_matrix_factorization.diligence_model import (
   fit_low_diligence_model_final,
   fit_low_diligence_model_prescoring,
@@ -513,6 +513,9 @@ class MFBaseScorer(Scorer):
 
     # Removes ratings where either (1) the note did not receive enough ratings, or
     # (2) the rater did not rate enough notes.
+    logger.info(
+      f"ratings summary {self.get_name()}: {get_df_fingerprint(ratings, [c.noteIdKey, c.raterParticipantIdKey])}"
+    )
     with self.time_block("Prepare ratings"):
       ratingsForTraining = self._prepare_data_for_scoring(
         ratings[
@@ -530,6 +533,15 @@ class MFBaseScorer(Scorer):
           ]
         ]
       )
+    logger.info(
+      f"ratingsForTraining summary {self.get_name()}: {get_df_fingerprint(ratingsForTraining, [c.noteIdKey, c.raterParticipantIdKey])}"
+    )
+    logger.info(
+      f"noteStatusHistory summary {self.get_name()}: {get_df_fingerprint(noteStatusHistory, [c.noteIdKey])}"
+    )
+    logger.info(
+      f"userEnrollmentRaw summary {self.get_name()}: {get_df_fingerprint(userEnrollmentRaw, [c.participantIdKey])}"
+    )
     if self._saveIntermediateState:
       self.ratingsForTraining = ratingsForTraining
 
@@ -973,6 +985,9 @@ class MFBaseScorer(Scorer):
       prescoringMetaScorerOutput.finalRoundNumUsers is not None
     ), "Missing final round num users"
 
+    if len(finalRoundRatings) == 0:
+      return pd.DataFrame(), pd.DataFrame()
+
     # Re-runs matrix factorization using only ratings given by helpful raters.
     with self.time_block("Final helpfulness-filtered MF"):
       noteParams, raterParams, globalBias = self._mfRanker.run_mf(
@@ -1143,6 +1158,13 @@ class MFBaseScorer(Scorer):
       prescoringMetaScorerOutput=prescoringMetaScorerOutput,
       flipFactorsForIdentification=False,
     )
+
+    if len(noteScores) == 0 and len(userScores) == 0:
+      logger.info(
+        "No ratings left after filtering that happens in _score_notes_and_users, returning empty "
+        "dataframes"
+      )
+      return self._return_empty_final_scores()
 
     with self.time_block("Postprocess output"):
       # Only some subclasses do any postprocessing.

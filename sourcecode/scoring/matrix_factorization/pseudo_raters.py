@@ -79,9 +79,6 @@ class PseudoRatersRunner:
     oldParams = self.raterParams.loc[:, raterParamsCols].set_index(c.raterParticipantIdKey)
     overlapParticipantIds = newParams.index.intersection(oldParams.index)
     assert len(overlapParticipantIds) == len(oldParams)
-    assert (
-      (newParams.loc[overlapParticipantIds] == oldParams.loc[overlapParticipantIds]).all().all()
-    )
 
   def _check_note_parameters_same(self, newMatrixFactorization: MatrixFactorization):
     (

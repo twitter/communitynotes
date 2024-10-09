@@ -12,6 +12,7 @@ from itertools import chain
 import logging
 import multiprocessing
 from multiprocessing import shared_memory  # type: ignore
+import os
 import time
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
@@ -36,7 +37,8 @@ from .mf_multi_group_scorer import (
   coalesce_multi_group_model_scored_notes,
 )
 from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
-from .pandas_utils import get_df_info, keep_columns
+from .pandas_utils import get_df_fingerprint, get_df_info, keep_columns
+from .pflip_model import LABEL as PFLIP_LABEL, PFlipModel
 from .post_selection_similarity import (
   PostSelectionSimilarity,
   filter_ratings_by_post_selection_similarity,
@@ -648,7 +650,9 @@ def meta_score(
       on=c.noteIdKey,
     )
     scoredNotes = scoredNotes.merge(
-      noteStatusHistory[[c.noteIdKey, c.timestampMillisOfNmrDueToMinStableCrhTimeKey]],
+      noteStatusHistory[
+        [c.noteIdKey, c.timestampMillisOfNmrDueToMinStableCrhTimeKey, c.firstNonNMRLabelKey]
+      ],
       on=c.noteIdKey,
     )
     assert len(scoredNotes) == len(auxiliaryNoteInfo)
@@ -1050,8 +1054,16 @@ def run_prescoring(
   enableNmrDueToMinStableCrhTime: bool = True,
   previousRatingCutoffTimestampMillis: Optional[int] = None,
 ) -> Tuple[
-  pd.DataFrame, pd.DataFrame, sklearn.pipeline.Pipeline, c.PrescoringMetaOutput, pd.DataFrame
+  pd.DataFrame,
+  pd.DataFrame,
+  sklearn.pipeline.Pipeline,
+  PFlipModel,
+  c.PrescoringMetaOutput,
+  pd.DataFrame,
 ]:
+  logger.info("logging environment variables")
+  for k, v in os.environ.items():
+    print(f"{k}: {v}")
   with c.time_block("Logging Prescoring Inputs Initial RAM usage"):
     logger.info(get_df_info(notes, "notes"))
     logger.info(get_df_info(ratings, "ratings"))
@@ -1066,6 +1078,9 @@ def run_prescoring(
       notes, noteTopicClassifierPipe, seedLabels, conflictedTextsForAccuracyEval=conflictedTexts
     )
 
+  logger.info(
+    f"ratings summary before PSS: {get_df_fingerprint(ratings, [c.noteIdKey, c.raterParticipantIdKey])}"
+  )
   with c.time_block("Compute Post Selection Similarity"):
     pss = PostSelectionSimilarity(notes, ratings)
     postSelectionSimilarityValues = pss.get_post_selection_similarity_values()
@@ -1076,6 +1091,9 @@ def run_prescoring(
     logger.info(f"Post Selection Similarity Prescoring: {len(ratings)} ratings remaining.")
     del pss
     gc.collect()
+  logger.info(
+    f"ratings summary after PSS: {get_df_fingerprint(ratings, [c.noteIdKey, c.raterParticipantIdKey])}"
+  )
 
   scorers = _get_scorers(
     seed=seed,
@@ -1169,6 +1187,21 @@ def run_prescoring(
   with c.time_block("Logging Prescoring Results RAM usage (after concatenation)"):
     logger.info(get_df_info(prescoringRaterModelOutput, "prescoringRaterModelOutput"))
 
+  with c.time_block("Fitting pflip model"):
+    logger.info(
+      f"Initial value of OPENBLAS_NUM_THREADS: {os.environ.get('OPENBLAS_NUM_THREADS', None)}"
+    )
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+    logger.info(
+      f"New value of OPENBLAS_NUM_THREADS: {os.environ.get('OPENBLAS_NUM_THREADS', None)}"
+    )
+    pflipModel = PFlipModel(seed=seed)
+    pflipModel.fit(notes, ratings, noteStatusHistory, prescoringRaterModelOutput)
+    del os.environ["OPENBLAS_NUM_THREADS"]
+    logger.info(
+      f"Final value of OPENBLAS_NUM_THREADS: {os.environ.get('OPENBLAS_NUM_THREADS', None)}"
+    )
+
   # Prescoring itself is now done. We will not run final_note_scoring to check note status flips.
   if checkFlips:
     # Rescore a smaller set of notes, since we are only using these note statuses to check for flips.
@@ -1194,6 +1227,7 @@ def run_prescoring(
       prescoringNoteModelOutput=prescoringNoteModelOutput,
       prescoringRaterModelOutput=prescoringRaterModelOutput,
       noteTopicClassifier=noteTopicClassifierPipe,
+      pflipClassifier=pflipModel,
       prescoringMetaOutput=prescoringMetaOutput,
       checkFlips=checkFlips,
       enableNmrDueToMinStableCrhTime=enableNmrDueToMinStableCrhTime,
@@ -1206,6 +1240,7 @@ def run_prescoring(
     prescoringNoteModelOutput,
     prescoringRaterModelOutput,
     noteTopicClassifierPipe,
+    pflipModel,
     prescoringMetaOutput,
     scoredNotes,
   )
@@ -1250,6 +1285,7 @@ def determine_which_notes_to_rescore(
   recentNotesAgeCutoffMillis: Optional[int] = 1000 * 60 * 60 * 24 * 14,  # 14 days,
   scoreRecentlyFlippedNotesMinimumFrequencyMillis: Optional[int] = 1000 * 60 * 60 * 1,  # 1 hour
   recentlyFlippedNoteAgeCutoffMillis: Optional[int] = 1000 * 60 * 60 * 24,  # 1 day
+  lockingRescoreWindowMillis: int = 1000 * 60 * 60 * 24 * 7,  # 7 days
 ) -> Tuple[List[c.NoteSubset], set]:
   notesToRescoreSet = set()
   noteSubsets = []
@@ -1383,6 +1419,46 @@ def determine_which_notes_to_rescore(
     )
   )
 
+  # 6. Rescore recent unlocked notes that are now eligible to lock.
+  lockingEligibleUnlockedNotes = set(
+    noteStatusHistory.loc[
+      (
+        # Note must be currently unlocked.
+        noteStatusHistory[c.lockedStatusKey].isna()
+        # Note must have last been decided by a model that is eligible to lock notes.
+        & (
+          noteStatusHistory[c.currentDecidedByKey].isin(
+            {rule.get_name() for rule in RuleID if rule.value.lockingEnabled}
+          )
+        )
+        # Note must be old enough to lock.
+        & (noteStatusHistory[c.createdAtMillisKey] < (c.epochMillis - c.noteLockMillis))
+        # Note must have been created within a defined limit of the locking window.  This
+        # criteria is present to make sure that when a model is changed to locking status
+        # there is a limit to how far back in time notes can be rescored.  The window should
+        # be large enough that any final scoring outage would not cause notes to fall out
+        # of the window and remain unlocked.
+        & (
+          noteStatusHistory[c.createdAtMillisKey]
+          > (c.epochMillis - c.noteLockMillis - lockingRescoreWindowMillis)
+        )
+      ),
+      c.noteIdKey,
+    ]
+  )
+  logger.info(
+    f"6. Rescore recent unlocked notes that are eligible for locking {len(lockingEligibleUnlockedNotes)}"
+  )
+  notesToRescoreSet.update(lockingEligibleUnlockedNotes)
+  noteSubsets.append(
+    c.NoteSubset(
+      noteSet=lockingEligibleUnlockedNotes,
+      maxNewCrhChurnRate=c.finalUnlockedNotesWithNoNewRatingsMaxCrhChurn,
+      maxOldCrhChurnRate=c.finalUnlockedNotesWithNoNewRatingsMaxCrhChurn,
+      description=c.RescoringRuleID.LOCKING_ELIGIBLE_RECENT_UNLOCKED_NOTES,
+    )
+  )
+
   logger.info(
     f"""----\nNotes to rescore:
         * {len(notesWithNewRatings)} notes with new ratings since last scoring run.
@@ -1390,6 +1466,7 @@ def determine_which_notes_to_rescore(
         * {len(justFlippedNotes)} notes that flipped status in the previous scoring run.
         * {len(recentlyFlippedNotesNotRescoredRecentlyEnough)} notes that flipped status recently and not rescored recently enough.
         * {len(nmrDueToMinStableCrhTimeNotes)} notes that were NMRed due to MinStableCrhTime was not met.
+        * {len(lockingEligibleUnlockedNotes)} recent notes that are eligible to lock but haven't locked yet.
       Overall: {len(notesToRescoreSet)} notes to rescore, out of {len(notes)} total.\n----"""
   )
 
@@ -1404,6 +1481,7 @@ def run_final_note_scoring(
   prescoringNoteModelOutput: pd.DataFrame,
   prescoringRaterModelOutput: pd.DataFrame,
   noteTopicClassifier: sklearn.pipeline.Pipeline,
+  pflipClassifier: PFlipModel,
   prescoringMetaOutput: c.PrescoringMetaOutput,
   seed: Optional[int] = None,
   pseudoraters: Optional[bool] = True,
@@ -1551,6 +1629,13 @@ def run_final_note_scoring(
 
   scoredNotes, auxiliaryNoteInfo = combine_final_scorer_results(modelResults, noteStatusHistory)
 
+  with c.time_block("Obtaining flip predictions"):
+    flipPredictions = pflipClassifier.predict(
+      notes, ratings, noteStatusHistory, prescoringRaterModelOutput
+    )
+    scoredNotes = scoredNotes.merge(flipPredictions, how="left")
+    logger.info(f"flip predictions:\n{scoredNotes[PFLIP_LABEL].value_counts(dropna=False)}")
+
   scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo = post_note_scoring(
     scorers,
     scoredNotes,
@@ -1626,7 +1711,12 @@ def post_note_scoring(
       scoredNotes,
       auxiliaryNoteInfo,
       noteStatusHistory[
-        [c.noteIdKey, c.lockedStatusKey, c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
+        [
+          c.noteIdKey,
+          c.lockedStatusKey,
+          c.timestampMillisOfNmrDueToMinStableCrhTimeKey,
+          c.firstNonNMRLabelKey,
+        ]
       ],
       enabledScorers,
       enableNmrDueToMinStableCrhTime,
@@ -1677,6 +1767,7 @@ def post_note_scoring(
   # Skip validation and selection out output columns if the set of scorers is overridden.
   with c.time_block("Post-scorers: finalize output columns"):
     scoredNotes = _add_deprecated_columns(scoredNotes)
+    scoredNotes = scoredNotes.drop(columns=PFLIP_LABEL)
     if strictColumns:
       (scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo) = _validate_note_scoring_output(
         scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo
@@ -1705,6 +1796,7 @@ def run_scoring(
       [
         pd.DataFrame,
         pd.DataFrame,
+        sklearn.pipeline.Pipeline,
         sklearn.pipeline.Pipeline,
         c.PrescoringMetaOutput,
         Optional[pd.DataFrame],
@@ -1769,6 +1861,7 @@ def run_scoring(
     prescoringNoteModelOutput,
     prescoringRaterModelOutput,
     prescoringNoteTopicClassifier,
+    prescoringPflipClassifier,
     prescoringMetaOutput,
     prescoringScoredNotes,
   ) = run_prescoring(
@@ -1792,6 +1885,7 @@ def run_scoring(
         prescoringNoteModelOutput,
         prescoringRaterModelOutput,
         prescoringNoteTopicClassifier,
+        prescoringPflipClassifier,
         prescoringMetaOutput,
         prescoringScoredNotes,
       )
@@ -1812,6 +1906,7 @@ def run_scoring(
     prescoringNoteModelOutput=prescoringNoteModelOutput,
     prescoringRaterModelOutput=prescoringRaterModelOutput,
     noteTopicClassifier=prescoringNoteTopicClassifier,
+    pflipClassifier=prescoringPflipClassifier,
     prescoringMetaOutput=prescoringMetaOutput,
     checkFlips=checkFlips,
     previousScoredNotes=previousScoredNotes,

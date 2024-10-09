@@ -32,6 +32,10 @@ useCurrentTimeInsteadOfEpochMillisForNoteStatusHistory = True
 # scale unit tests.
 minNumNotesForProdData = 200
 
+# Define limit on how old a note needs to be to lock
+noteLockMillis = 14 * 24 * 60 * 60 * 1000
+
+
 # Explanation Tags
 minRatingsToGetTag = 2
 minTagsNeededForStatus = 2
@@ -49,7 +53,6 @@ finalNotesThatFlippedRecentlyMaxCrhChurn = 1e8
 # TODO(jiansongc): adjust these 2 below
 finalNotesNmrDueToMinStableCrhTimeMaxOldCrhChurn = 1.0
 finalNotesNmrDueToMinStableCrhTimeMaxNewCrhChurn = 1.0
-
 
 # Data Filenames
 scoredNotesOutputPath = "scoredNotes.tsv"
@@ -262,17 +265,25 @@ currentlyRatedNotHelpfulBoolKey = "crnhBool"
 awaitingMoreRatingsBoolKey = "awaitingBool"
 
 helpfulOtherTagKey = "helpfulOther"
+helpfulInformativeTagKey = "helpfulInformative"
+helpfulClearTagKey = "helpfulClear"
+helpfulEmpatheticTagKey = "helpfulEmpathetic"
+helpfulGoodSourcesTagKey = "helpfulGoodSources"
+helpfulUniqueContextTagKey = "helpfulUniqueContext"
+helpfulAddressesClaimTagKey = "helpfulAddressesClaim"
+helpfulImportantContextTagKey = "helpfulImportantContext"
+helpfulUnbiasedLanguageTagKey = "helpfulUnbiasedLanguage"
 
 helpfulTagsAndTieBreakOrder = [
   (0, helpfulOtherTagKey),
-  (8, "helpfulInformative"),
-  (7, "helpfulClear"),
-  (3, "helpfulEmpathetic"),
-  (4, "helpfulGoodSources"),
-  (2, "helpfulUniqueContext"),
-  (5, "helpfulAddressesClaim"),
-  (6, "helpfulImportantContext"),
-  (1, "helpfulUnbiasedLanguage"),
+  (8, helpfulInformativeTagKey),
+  (7, helpfulClearTagKey),
+  (3, helpfulEmpatheticTagKey),
+  (4, helpfulGoodSourcesTagKey),
+  (2, helpfulUniqueContextTagKey),
+  (5, helpfulAddressesClaimTagKey),
+  (6, helpfulImportantContextTagKey),
+  (1, helpfulUnbiasedLanguageTagKey),
 ]
 helpfulTagsTSVOrder = [tag for (tiebreakOrder, tag) in helpfulTagsAndTieBreakOrder]
 helpfulTagBoolsAndTypesTSVOrder = [(tag, pd.Int8Dtype()) for tag in helpfulTagsTSVOrder]
@@ -381,25 +392,44 @@ incorrectFilterColumnsAndTypes = [
 ]
 incorrectFilterColumns = [col for (col, _) in incorrectFilterColumnsAndTypes]
 
+misleadingOtherKey = "misleadingOther"
+misleadingFactualErrorKey = "misleadingFactualError"
+misleadingManipulatedMediaKey = "misleadingManipulatedMedia"
+misleadingOutdatedInformationKey = "misleadingOutdatedInformation"
+misleadingMissingImportantContextKey = "misleadingMissingImportantContext"
+misleadingUnverifiedClaimAsFactKey = "misleadingUnverifiedClaimAsFact"
+misleadingSatireKey = "misleadingSatire"
+
 misleadingTags = [
-  "misleadingOther",
-  "misleadingFactualError",
-  "misleadingManipulatedMedia",
-  "misleadingOutdatedInformation",
-  "misleadingMissingImportantContext",
-  "misleadingUnverifiedClaimAsFact",
-  "misleadingSatire",
+  misleadingOtherKey,
+  misleadingFactualErrorKey,
+  misleadingManipulatedMediaKey,
+  misleadingOutdatedInformationKey,
+  misleadingMissingImportantContextKey,
+  misleadingUnverifiedClaimAsFactKey,
+  misleadingSatireKey,
 ]
 misleadingTagsAndTypes = [(tag, pd.Int8Dtype()) for tag in misleadingTags]
 
+notMisleadingOtherKey = "notMisleadingOther"
+notMisleadingFactuallyCorrectKey = "notMisleadingFactuallyCorrect"
+notMisleadingOutdatedButNotWhenWrittenKey = "notMisleadingOutdatedButNotWhenWritten"
+notMisleadingClearlySatireKey = "notMisleadingClearlySatire"
+notMisleadingPersonalOpinionKey = "notMisleadingPersonalOpinion"
 notMisleadingTags = [
-  "notMisleadingOther",
-  "notMisleadingFactuallyCorrect",
-  "notMisleadingOutdatedButNotWhenWritten",
-  "notMisleadingClearlySatire",
-  "notMisleadingPersonalOpinion",
+  notMisleadingOtherKey,
+  notMisleadingFactuallyCorrectKey,
+  notMisleadingOutdatedButNotWhenWrittenKey,
+  notMisleadingClearlySatireKey,
+  notMisleadingPersonalOpinionKey,
 ]
 notMisleadingTagsAndTypes = [(tag, pd.Int8Dtype()) for tag in notMisleadingTags]
+
+believableKey = "believable"
+harmfulKey = "harmful"
+validationDifficultyKey = "validationDifficulty"
+trustworthySourcesKey = "trustworthySources"
+isMediaNoteKey = "isMediaNote"
 
 noteTSVColumnsAndTypes = (
   [
@@ -408,13 +438,17 @@ noteTSVColumnsAndTypes = (
     (createdAtMillisKey, np.int64),
     (tweetIdKey, np.int64),
     (classificationKey, object),
-    ("believable", "category"),
-    ("harmful", "category"),
-    ("validationDifficulty", "category"),
+    (believableKey, "category"),
+    (harmfulKey, "category"),
+    (validationDifficultyKey, "category"),
   ]
   + misleadingTagsAndTypes
   + notMisleadingTagsAndTypes
-  + [("trustworthySources", pd.Int8Dtype()), (summaryKey, object), ("isMediaNote", pd.Int8Dtype())]
+  + [
+    (trustworthySourcesKey, pd.Int8Dtype()),
+    (summaryKey, object),
+    (isMediaNoteKey, pd.Int8Dtype()),
+  ]
 )
 noteTSVColumns = [col for (col, dtype) in noteTSVColumnsAndTypes]
 noteTSVTypes = [dtype for (col, dtype) in noteTSVColumnsAndTypes]
@@ -936,6 +970,7 @@ class RescoringRuleID(Enum):
   RECENTLY_FLIPPED_NOTES_NOT_RESCORED_RECENTLY_ENOUGH = 5
   NMR_DUE_TO_MIN_STABLE_CRH_TIME = 6
   NOTES_CREATED_SOMEWHAT_RECENTLY = 7
+  LOCKING_ELIGIBLE_RECENT_UNLOCKED_NOTES = 8
 
 
 @dataclass

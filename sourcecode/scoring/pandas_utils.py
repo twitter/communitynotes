@@ -24,6 +24,7 @@ This module should support type-related work in the scorer, including:
 from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
+from hashlib import sha256
 import re
 import sys
 from threading import Lock
@@ -34,6 +35,19 @@ from . import constants as c
 
 import numpy as np
 import pandas as pd
+
+
+def get_df_fingerprint(df, cols):
+  """Fingerprint the order of select column values within a dataframe."""
+  try:
+    strs = [
+      sha256(b"".join(map(lambda v: int(v).to_bytes(8, "big"), df[col]))).hexdigest()
+      for col in cols
+    ]
+    return sha256(",".join(strs).encode("utf-8")).hexdigest()
+  except ValueError:
+    strs = [sha256(",".join(map(str, df[col])).encode("utf-8")).hexdigest() for col in cols]
+    return sha256(",".join(strs).encode("utf-8")).hexdigest()
 
 
 def keep_columns(df: pd.DataFrame, cols: List[str]):
@@ -116,13 +130,16 @@ class TypeExpectation:
 
 
 class PandasPatcher(object):
-  def __init__(self, fail: bool, typeOverrides: Dict[str, TypeExpectation] = dict()):
+  def __init__(
+    self, fail: bool, typeOverrides: Dict[str, TypeExpectation] = dict(), silent: bool = False
+  ):
     """Initialize a PandasPatcher with particular failure and type expectations.
 
     Args:
       fail: Whether to raise errors or log to stderr when expectations are violated.
       expectations: Type expecatations for select columns.
     """
+    self._silent = silent  # Set to True to basically disable
     self._fail = fail
     self._counter = TypeErrorCounter()
     self._origConcat = pd.concat
@@ -149,7 +166,8 @@ class PandasPatcher(object):
     self._counter.log_errors(method, callsite, lines)
     errorLines = "\n".join([f"  PandasTypeError: {l}" for l in lines])
     msg = f"\n{method} ERROR(S) AT: {callsite}\n{errorLines}\n"
-    print(msg, file=sys.stderr)
+    if not self._silent:
+      print(msg, file=sys.stderr)
 
   def _get_check(self, lines: List[str], kwargs: Dict) -> Callable:
     """Return a function which will either assert a condition or append to a list of errors.

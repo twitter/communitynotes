@@ -12,9 +12,6 @@ import pandas as pd
 logger = logging.getLogger("birdwatch.note_status_history")
 logger.setLevel(logging.INFO)
 
-# Delay specifying when to lock note status, currently set to two weeks.
-_noteLockMillis = 14 * 24 * 60 * 60 * 1000
-
 
 def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> pd.DataFrame:
   """Add the creation time and authorId of notes to noteStatusHistory.
@@ -147,7 +144,7 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   # Check whether the note has already been locked.
   notAlreadyLocked = pd.isna(mergedNote[c.lockedStatusKey])
   # Check whether the note is old enough to be eligible for locking.
-  lockEligible = _noteLockMillis < (currentTimeMillis - mergedNote[c.createdAtMillisKey])
+  lockEligible = c.noteLockMillis < (currentTimeMillis - mergedNote[c.createdAtMillisKey])
   # Check whether the note was decided by a rule which displays globally
   trustedRule = mergedNote[c.decidedByKey] in {
     rule.get_name() for rule in RuleID if rule.value.lockingEnabled
