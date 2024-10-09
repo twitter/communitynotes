@@ -41,7 +41,7 @@ class TopicModel(object):
         "zelensky",
         "putin",
       },
-      Topics.GazaConflict: {
+      Topics.GazaOccupation: {
         "israel",
         "palestin",  # intentionally shortened for expanded matching
         "gaza",
