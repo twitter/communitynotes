@@ -90,13 +90,13 @@ Additionally, because the matrix factorization is re-trained from scratch every 
 While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters.
 We take two approaches to model uncertainty:
 
-### Pseudo-rating sensitivity analysis
+#### Pseudo-rating sensitivity analysis
 
 While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are adding. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
 
 We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.04, in addition to the rules on the raw intercept values defined in the previous section.
 
-### Supervised confidence modeling
+#### Supervised confidence modeling
 
 We also employ a supervised model to detect low confidence matrix factorization results.
 If the model predicts that a note will lose Helpful status, then the note will remain in Needs More Ratings status for an additional 30 minutes to allow it to gather a larger set of ratings.
