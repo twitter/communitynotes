@@ -87,9 +87,33 @@ Additionally, because the matrix factorization is re-trained from scratch every 
 
 ## Modeling Uncertainty
 
+While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters.
+We take two approaches to model uncertainty:
+
+### Pseudo-rating sensitivity analysis
+
 While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are adding. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
 
 We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.04, in addition to the rules on the raw intercept values defined in the previous section.
+
+### Supervised confidence modeling
+
+We also employ a supervised model to detect low confidence matrix factorization results.
+If the model predicts that a note will lose Helpful status, then the note will remain in Needs More Ratings status for an additional 30 minutes to allow it to gather a larger set of ratings.
+If after 30 minutes the note still meets Helpful standards based on the matrix factorization scoring, the note will be rated Helpful and shown on X.
+In all cases, the final status of the note is determined by matrix factorization.
+The maximum effect of the supervised model is no more than a 30 minute delay.
+This helps reduce notes briefly showing and then returning to Needs More Rating status.
+
+The training data for the supervised confidence model includes all notes that meet the criteria for Helpful status _at some point in time_.
+Notes that _ultimately lose_ Helpful status are treated and positives, and notes that _retain_ Helpful status are treated as negatives.
+The features employed by the model include:
+- Helpfulness and tag ratings from individual contributors
+- Aggregate ratios of helpful and non-helpful tags across all ratings for a note
+- Statistics summarizing the Helpful ratings for a note (e.g. standard deviation of user factors from Helpful ratings)
+- Bucket counts of Helpful, Somewhat Helpful and Not Helpful ratings, partitioned by user factor $f_u$ as positive ($f_u >.3$), neutral ($-.3 \leq f_u \leq .3$) and negative ($f_u <-.3$)
+
+The model uses logistic regression to predict note status outcomes, and is calibrated to delay Helpful status for no more than 25% of notes that ultimately stabilize to Helpful status.
 
 ## Tag Outlier Filtering
 
@@ -324,10 +348,12 @@ For not-helpful notes:
 
 ## What’s New?
 
+**Oct 7, 2024**
+- Supervised confidence modeling to reduce incidents of notes gaining and losing Helpful status.
+- Additional rescoring logic to guarantee notes are rescored during the status stabilization period.
+
 **Sep 17, 2024**
 - Lower threshold for coalescing ratings with high post-selection-similarity.
-
-**Aug 21, 2024**
 
 **Aug 12, 2024**
 - Add a 30min delay for notes that meet the CRH criteria ("NMRDueToStableCRHTime") to ensure they stably meet that criteria across multiple scoring runs before CRHing them
