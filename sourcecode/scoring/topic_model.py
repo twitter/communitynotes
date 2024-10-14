@@ -18,6 +18,7 @@ from .enums import Topics
 
 import numpy as np
 import pandas as pd
+from scipy.special import expit as sigmoid, softmax
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import balanced_accuracy_score
@@ -29,7 +30,7 @@ logger.setLevel(logging.INFO)
 
 
 class TopicModel(object):
-  def __init__(self):
+  def __init__(self, unassignedThreshold=0.85):
     """Initialize a list of seed terms for each topic."""
     self._seedTerms = {
       Topics.UkraineConflict: {
@@ -52,6 +53,7 @@ class TopicModel(object):
         "ronaldo",
       },
     }
+    self._unassignedThreshold = unassignedThreshold
     self._compiled_regex = self._compile_regex()
 
   def _compile_regex(self):
@@ -121,19 +123,20 @@ class TopicModel(object):
     logger.info(f"  Total identified stopwords: {len(stopWords)}")
     return stopWords
 
-  def _merge_predictions_and_labels(
-    self, predictions: np.ndarray, labels: np.ndarray
-  ) -> np.ndarray:
+  def _merge_predictions_and_labels(self, probs: np.ndarray, labels: np.ndarray) -> np.ndarray:
     """Update predictions based on defined labels when the label is not Unassigned.
 
     Args:
-      predictions: 1D matrix specifying the class label as an int64 assigned to each row.
+      probs: 2D matrix specifying the likelihood of each class
 
     Returns:
       Updated predictions based on keyword matches when available.
     """
+    predictions = np.argmax(probs, axis=1)
     for label in range(1, len(Topics)):
-      predictions[labels == label] = label
+      # Update label if (1) note was assigned based on the labeling heuristic, and (2)
+      # p(Unassigned) is below the required uncertainty threshold.
+      predictions[(labels == label) & (probs[:, 0] <= self._unassignedThreshold)] = label
     return predictions
 
   def _prepare_post_text(self, notes: pd.DataFrame) -> pd.DataFrame:
@@ -226,7 +229,14 @@ class TopicModel(object):
       # training data the model felt were mis-labeled after the training process
       # completed, and generating labels for any posts which were omitted from the
       # original training.
-      pred = pipe.predict(postText[c.summaryKey].values)
+      logits = pipe.decision_function(postText[c.summaryKey].values)
+      # Transform logits to probabilities, handling the case where logits are 1D because
+      # of unit testing with only 2 topics.
+      if len(logits.shape) == 1:
+        probs = sigmoid(logits)
+        probs = np.vstack([1 - probs, probs]).T
+      else:
+        probs = softmax(logits, axis=1)
 
     if seedLabels is None:
       with c.time_block("Get Note Topics: Make Seed Labels"):
@@ -234,19 +244,22 @@ class TopicModel(object):
 
     if conflictedTextsForAccuracyEval is not None:
       self.validate_note_topic_accuracy_on_seed_labels(
-        pred, seedLabels, conflictedTextsForAccuracyEval
+        np.argmax(probs, axis=1), seedLabels, conflictedTextsForAccuracyEval
       )
 
     with c.time_block("Get Note Topics: Merge and assign predictions"):
-      pred = self._merge_predictions_and_labels(pred, seedLabels)
-      logger.info(f"  Topic assignment results: {np.bincount(pred)}")
+      topicAssignments = self._merge_predictions_and_labels(probs, seedLabels)
+      logger.info(f"  Post Topic assignment results: {np.bincount(topicAssignments)}")
 
       # Assign topics to notes based on aggregated note text, and drop any
       # notes on posts that were unassigned.
-      postText[c.noteTopicKey] = [Topics(t).name for t in pred]
+      postText[c.noteTopicKey] = [Topics(t).name for t in topicAssignments]
       postText = postText[postText[c.noteTopicKey] != Topics.Unassigned.name]
       noteTopics = notes[[c.noteIdKey, c.tweetIdKey]].merge(
         postText[[c.tweetIdKey, c.noteTopicKey]]
+      )
+      logger.info(
+        f"  Note Topic assignment results:\n{noteTopics[c.noteTopicKey].value_counts(dropna=False)}"
       )
     return noteTopics.drop(columns=c.tweetIdKey)
 

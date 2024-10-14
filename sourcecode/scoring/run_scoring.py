@@ -1504,6 +1504,14 @@ def run_final_note_scoring(
     logger.info(get_df_info(userEnrollment, "userEnrollment"))
     logger.info(get_df_info(prescoringNoteModelOutput, "prescoringNoteModelOutput"))
     logger.info(get_df_info(prescoringRaterModelOutput, "prescoringRaterModelOutput"))
+
+  with c.time_block("Note Topic Assignment"):
+    # Note that topic assignment must occur *before* notes are pruned for scoring because
+    # the assignment is determined based on the text of *all* notes that appear on the
+    # post, so if the notes are pruned then the topic assignment input is incomplete.
+    topicModel = TopicModel()
+    noteTopics = topicModel.get_note_topics(notes, noteTopicClassifier)
+
   with c.time_block("Determine which notes to score."):
     if previousScoredNotes is None:
       logger.info("No previous scored notes passed; scoring all notes.")
@@ -1591,10 +1599,6 @@ def run_final_note_scoring(
   with c.time_block("Preprocess smaller dataset since we skipped preprocessing at read time"):
     notes, ratings, noteStatusHistory = preprocess_data(notes, ratings, noteStatusHistory)
 
-  with c.time_block("Note Topic Assignment"):
-    topicModel = TopicModel()
-    noteTopics = topicModel.get_note_topics(notes, noteTopicClassifier)
-
   with c.time_block("Post Selection Similarity: Final Scoring"):
     logger.info(f"Post Selection Similarity Final Scoring: begin with {len(ratings)} ratings.")
     ratings = filter_ratings_by_post_selection_similarity(
@@ -1611,7 +1615,7 @@ def run_final_note_scoring(
   modelResults = _run_scorers(
     scorers=list(chain(*scorers.values())),
     scoringArgs=FinalScoringArgs(
-      noteTopics,
+      noteTopics.merge(notes[[c.noteIdKey]]),
       ratings,
       noteStatusHistory,
       userEnrollment,
