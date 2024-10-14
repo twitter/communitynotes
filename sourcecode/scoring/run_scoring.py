@@ -1505,12 +1505,9 @@ def run_final_note_scoring(
     logger.info(get_df_info(prescoringNoteModelOutput, "prescoringNoteModelOutput"))
     logger.info(get_df_info(prescoringRaterModelOutput, "prescoringRaterModelOutput"))
 
-  with c.time_block("Note Topic Assignment"):
-    # Note that topic assignment must occur *before* notes are pruned for scoring because
-    # the assignment is determined based on the text of *all* notes that appear on the
-    # post, so if the notes are pruned then the topic assignment input is incomplete.
-    topicModel = TopicModel()
-    noteTopics = topicModel.get_note_topics(notes, noteTopicClassifier)
+  # Save a reference to the full set of available notes data so that we can later guarantee
+  # the text from all notes are available during topic assignment.
+  notesFull = notes[[c.noteIdKey, c.tweetIdKey, c.summaryKey]]
 
   with c.time_block("Determine which notes to score."):
     if previousScoredNotes is None:
@@ -1598,6 +1595,16 @@ def run_final_note_scoring(
 
   with c.time_block("Preprocess smaller dataset since we skipped preprocessing at read time"):
     notes, ratings, noteStatusHistory = preprocess_data(notes, ratings, noteStatusHistory)
+
+  with c.time_block("Note Topic Assignment"):
+    # Prune notesFull to include all notes on any post that is having a note scored.  Recall that
+    # since a post may have multiple notes, and some notes may be scored while others are not,
+    # topic assignment may include text from notes that are not otherwise scored.  Casting to
+    # np.int64 is necessary since datatypes can be inconsistent in unit tests.
+    scoredTweets = set(notes[c.tweetIdKey].astype(np.int64))
+    notesFull = notesFull[notesFull[c.tweetIdKey].astype(np.int64).isin(scoredTweets)]
+    topicModel = TopicModel()
+    noteTopics = topicModel.get_note_topics(notesFull, noteTopicClassifier)
 
   with c.time_block("Post Selection Similarity: Final Scoring"):
     logger.info(f"Post Selection Similarity Final Scoring: begin with {len(ratings)} ratings.")
