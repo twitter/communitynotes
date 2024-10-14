@@ -213,12 +213,16 @@ The Core, Expansion, ExpansionPlus and Group models described in Multi-Model Not
 Empirically, we have observed that some topics are better represented with narrower modeling that can learn viewpoint representations for a more specific topic.
 Improving the strength of modeling for a topic allows us to better identify notes that are helpful to people from different points of view on the given topic.
 
-[Our initial approach](https://github.com/twitter/communitynotes/blob/main/sourcecode/scoring/topic_model.py) to topic specific modeling contains two phases.
-In the first phase each post with one or more notes is assigned to a predefined set of topics where each topic is specified using a short list of associated seed terms (e.g. “Messi”, “Ronaldo”, etc.).
+[Our approach](https://github.com/twitter/communitynotes/blob/main/sourcecode/scoring/topic_model.py) to topic specific modeling contains two phases.
+In the first phase, each post with one or more notes is assigned to a predefined set of topics where each topic is specified using a short list of associated seed terms (e.g. “Messi”, “Ronaldo”, etc.).
 If any of the notes on a post match a seed term, then the post and all associated notes are assigned to that topic.
 Posts without matches or with multiple matches are unassigned.
-After initial assignment, a multi-class logistic regression model trained on the data labeled with seed terms expands coverage for each topic by classifying unassigned posts.
-Posts that are not confidently labeled by the model remain unassigned and are not included in topic modeling.
+
+Using the assigned topic labels, we train a multi-class logistic regression model to predict post topics.
+We remove any tokens containing a seed term used to assign labels.
+After training, we apply the model to update topic assignment for all posts and associated notes.
+Posts that did not contain a seed term may be assigned to a topic or remain unassigned based on the predictions of the model.
+Posts that did contain a seed term will remain assigned to that topic unless the model predicts the note should remain "unassigned" with a score $>0.85$, in which case the post will be unassigned and excluded from further topic modeling.
 
 In the second phase, we train a _Topic Model_ over all of the notes and ratings which have been assigned to each topic.
 Topic Models share the same architecture and hyperparmeters as the Core Model, but differ in the rating selection process.
@@ -347,6 +351,9 @@ For not-helpful notes:
 5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**Oct 14, 2024**
+- Update topic modeling to allow the learned topic assignment model to override rule-based labels at high confidence levels.
 
 **Oct 7, 2024**
 - Supervised confidence modeling to reduce incidents of notes gaining and losing Helpful status.
