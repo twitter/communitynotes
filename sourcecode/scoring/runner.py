@@ -2,7 +2,6 @@ import argparse
 import logging
 import os
 import sys
-from typing import Optional
 
 from . import constants as c
 from .enums import scorers_from_csv
@@ -213,7 +212,7 @@ def _run_scorer(
     previousScoredNotes = None
     previousAuxiliaryNoteInfo = None
 
-  # Sample ratings to decrease runtime  
+  # Sample ratings to decrease runtime
   if args.sample_ratings:
     origSize = len(ratings)
     ratings = ratings.sample(frac=args.sample_ratings)
