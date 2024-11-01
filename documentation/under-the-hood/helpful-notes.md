@@ -22,4 +22,4 @@ These accounts automatically repost Community Notes that meet the following crit
 - Have been rated Helpful by contributors
 - Have kept their status of Helpful for 6hr+
 - Have a high helpfulness score (0.45+ intercept score)
-- If the note contains terms that contributors have reported as sometimes overwhelming the Helpful Notes timelines ("spam", "scam", "dropship", "drop ship", "promotion") it will have a lower probability of appearing, so as to avoid overwhelming the timeline. This is experimental to determine if it improves follower satisfaction.
+- If the note contains terms that contributors have reported as sometimes overwhelming the Helpful Notes timelines ("spam", "scam", "gambling", "dropship", "drop ship", "promotion") it will have a lower probability of appearing, so as to avoid overwhelming the timeline. This is experimental to determine if it improves follower satisfaction.
