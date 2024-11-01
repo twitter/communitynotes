@@ -47,7 +47,7 @@ A variety of criteria are considered when determining whether to include a note,
 - Current status (e.g. "Needs More Ratings")
 - Current helpfulness score (e.g. not a low helpfulness score, highly rated by initial raters, possibly nearing the threshold to earn status of "Helpful")
 - Does not have a large number of ratings (such that more ratings could change the note's status)
-- If the note contains terms that contributors have reported as sometimes overwhelming the Needs Your Help tab ("spam", "scam", "dropship", "drop ship", "promotion") it will have a lower probability of appearing, so as to avoid overwhelming the tab. This is experimental to determine if it improves contributor satisfaction.
+- If the note contains terms that contributors have reported as sometimes overwhelming the Needs Your Help tab ("spam", "scam", "gambling", "dropship", "drop ship", "promotion") it will have a lower probability of appearing, so as to avoid overwhelming the tab. This is experimental to determine if it improves contributor satisfaction.
 
 In this case of alerts, notifications are sent to a random selection of contributors, excluding the note author and those who have already rated the note. Notifications are also limited by the recipient's notification frequency setting.
 
