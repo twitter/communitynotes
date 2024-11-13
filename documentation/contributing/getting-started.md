@@ -1,7 +1,7 @@
 ---
 title: Getting started
 description: Step-by-step guide for getting started with Community Notes on X.
-navWeight: 1
+navWeight: 10
 ---
 #  Getting started
 
