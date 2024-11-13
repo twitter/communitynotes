@@ -1,7 +1,7 @@
 ---
 title: Notes shown on X
 description: How do Community Notes start showing on X?
-navWeight: 10
+navWeight: 100
 ---
 # Notes shown on X
 
