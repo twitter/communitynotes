@@ -1,7 +1,7 @@
 ---
 title: Rating notes
 description: A step-by-step guide to rating Community Notes
-navWeight: 5
+navWeight: 50
 ---
 # Rating notes
 
