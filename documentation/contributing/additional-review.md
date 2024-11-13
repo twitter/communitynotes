@@ -1,7 +1,7 @@
 ---
 title: Additional review
 description: Request additional review of Community Notes on your posts.
-navWeight: 120
+navWeight: 130
 ---
 # Additional Community review
 
