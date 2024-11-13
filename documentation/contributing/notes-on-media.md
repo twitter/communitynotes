@@ -7,7 +7,7 @@ navWeight: 110
 
 Community Notes are frequently added to posts that feature images or videos. In many cases, these notes can provide valuable context, not just for a single post, but for any post containing the same media.
 
-Contributors with a [Writing Impact score of 2 or above](../under-the-hood/media-match.md) have the option to write notes about the media found within posts, as opposed to focusing on the specific post. Contributors should select this option when they believe the context added would be helpful independently of the post the note is attached to.
+Contributors with a [Writing Impact score of 2 or above](../under-the-hood/media-matching.md) have the option to write notes about the media found within posts, as opposed to focusing on the specific post. Contributors should select this option when they believe the context added would be helpful independently of the post the note is attached to.
 
 ![Note-writing form with option: Is your note about the post or the image?](../images/notes-on-media-01.png)
 
