@@ -1,7 +1,7 @@
 ---
 title: Writing notes
 description: A step-by-step guide on how to write Community Notes on X.
-navWeight: 6
+navWeight: 60
 ---
 # Writing notes
 

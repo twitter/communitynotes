@@ -1,7 +1,7 @@
 ---
 title: Top Contributors
 description: Learn more about top Community Note contributors
-navWeight: 13
+navWeight: 120
 ---
 # Top Writers
 

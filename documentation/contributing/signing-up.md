@@ -1,7 +1,7 @@
 ---
 title: Signing up
 description: Sign up now and become a Community Notes contributor on X
-navWeight: 2
+navWeight: 20
 ---
 # Signing up
 

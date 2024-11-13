@@ -1,7 +1,7 @@
 ---
 title: Notes on Media
 description: Community Notes on posts that contain images or videos
-navWeight: 11
+navWeight: 110
 ---
 # Notes on Media
 

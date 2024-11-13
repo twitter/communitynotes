@@ -1,7 +1,7 @@
 ---
 title: Rating and Writing Impact
 description: The two most important activities in Community Notes are writing notes and rating notes.
-navWeight: 8
+navWeight: 80
 ---
 # Rating and Writing Impact
 

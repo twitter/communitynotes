@@ -1,6 +1,7 @@
 ---
 title: Introduction
 description: Learn everything about Community Notes, X's open-source program to create a better-informed world.
+navWeight: 10
 ---
 
 ![Screenshot of a mobile device showing a post with a Community Note.](../images/help-rate-this-note-expanded.png)
