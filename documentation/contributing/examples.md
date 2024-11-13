@@ -1,7 +1,7 @@
 ---
 title: Note-writing tips
 description: Learn what makes a helpful Community Note.
-navWeight: 11
+navWeight: 110
 ---
 # Examples and note-writing tips
 
