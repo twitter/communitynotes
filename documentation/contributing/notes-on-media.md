@@ -7,7 +7,7 @@ navWeight: 11
 
 Community Notes are frequently added to posts that feature images or videos. In many cases, these notes can provide valuable context, not just for a single post, but for any post containing the same media.
 
-Contributors with a [Writing Impact score of 2 or above](#Earning-the-ability-to-write-notes-on-media) have the option to write notes about the media found within posts, as opposed to focusing on the specific post. Contributors should select this option when they believe the context added would be helpful independently of the post the note is attached to.
+Contributors with a [Writing Impact score of 2 or above](../under-the-hood/media-match.md) have the option to write notes about the media found within posts, as opposed to focusing on the specific post. Contributors should select this option when they believe the context added would be helpful independently of the post the note is attached to.
 
 ![Note-writing form with option: Is your note about the post or the image?](../images/notes-on-media-01.png)
 
@@ -22,9 +22,3 @@ When someone rates a media note, the rating is associated with the post on which
 ![Rating screen with callout: This note is about the image and could be shown on all posts that contain the same image](../images/notes-on-media-03.png)
 
 Currently, this feature supports posts with a single image or single video. We may expand it to cover multiple media and new media types.
-
-## Earning the ability to write notes on media
-
-Contributors can write notes on media if they have sufficient [Writing Impact](writing-and-rating-impact.md):
-* Contributors with 2+ Writing Impact can write notes on media, and their notes get associated with other posts with matching media if there is sufficient agreement from raters that the note will be helpful on all posts with matching media
-* Contributors with 10+ Writing Impact can write notes on media, and their notes are automatically associated with other posts with matching media
