@@ -1,6 +1,7 @@
 ---
 title: Welcome to Community Notes!
 description: Welcome to Community notes · Select an alias · Begin rating notes
+navWeight: 1010
 ---
 # Welcome to Community Notes!
 
