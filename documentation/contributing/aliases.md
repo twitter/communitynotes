@@ -1,7 +1,7 @@
 ---
 title: Community Notes Aliases
 description: Aliases are auto-generated display names that contributors get when they join Community Notes.
-navWeight: 4
+navWeight: 40
 ---
 # Aliases
 
