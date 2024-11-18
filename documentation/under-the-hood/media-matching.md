@@ -20,9 +20,7 @@ When rating a media note, contributors answer this additional question:
 ![Media match rating question](../images/media-note-match-upgrade.png)
 
 Currently, sufficient agreement is defined as:
-* 10+ raters with positive rater factors and 10+ raters with negative rater factors agree the note will be helpful if shown on all posts with matching media
+* 5+ raters with positive rater factors and 5+ raters with negative rater factors agree the note will be helpful if shown on all posts with matching media
 * 80%+ of raters from each factor sign agree the note will be helpful if shown on all posts with matching media
 
 The rater factor used in the calculation is the factor from the [model that determined the note's status](./ranking-notes.md) (e.g. CoreModel, GroupModel01, etc)
-
-We expect to adjust this high initial threshold over time.
