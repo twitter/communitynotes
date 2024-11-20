@@ -9,6 +9,7 @@ from .normalized_loss import NormalizedLoss
 import numpy as np
 import pandas as pd
 import torch
+from scipy.sparse.linalg import svds
 
 
 logger = logging.getLogger("birdwatch.matrix_factorization")
@@ -156,6 +157,26 @@ class MatrixFactorization:
 
     return noteIdMap, raterIdMap, ratingFeaturesAndLabels
 
+  def _form_data_df(self):
+    """
+    Returns: pd.DataFrame, a (number of notes) x (number of raters) df filled with ratings data, 
+    with validation data nan'ed out.
+
+    This takes up a lot of memeory - I avoid ever having multiple of them around by deleting the reference
+    whenever I'm done with it, but one could also store it as attribute of self to trade off that memory for
+    not having to call this multiple times. 
+
+    Currently _form_data_df is only called when a Spectral Initialization occurs. 
+    """
+    data_df = self.ratingFeaturesAndLabels.pivot(index='noteId', columns='raterParticipantId', values='helpfulNum')
+    if self.validateModelData is not None:
+      notes_map_to_id = self.noteIdMap.set_index(Constants.noteIndexKey)[c.noteIdKey]
+      rater_map_to_id = self.raterIdMap.set_index(Constants.raterIndexKey)[c.raterParticipantIdKey]
+      valid_row_pos = data_df.index.get_indexer(pd.Series(self.validateModelData.note_indexes.numpy()).map(notes_map_to_id))    # may need to call detach, but I don't think so since they don't have gradients?
+      valid_col_pos = data_df.columns.get_indexer(pd.Series(self.validateModelData.user_indexes.numpy()).map(rater_map_to_id))
+      data_df.values[valid_row_pos, valid_col_pos] = np.nan
+    return data_df    
+
   def _initialize_parameters(
     self,
     noteInit: Optional[pd.DataFrame] = None,
@@ -180,17 +201,17 @@ class MatrixFactorization:
       noteInit = self.noteIdMap.merge(
         noteInit,
         on=c.noteIdKey,
-        how="left",
-        unsafeAllowed={c.noteIdKey, "noteIndex_y"},
+        how="left" # ,
+        # unsafeAllowed={c.noteIdKey, "noteIndex_y"},    my code wouldn't run with this line and I don't see it in the docs?
       )
 
-      noteInit[c.internalNoteInterceptKey].fillna(0.0, inplace=True)
+      noteInit[c.internalNoteInterceptKey] = noteInit[c.internalNoteInterceptKey].fillna(0.0)    # I had to get rid of these inplace=True's to silence a warning, but I think pandas would make a temporary copy anyway so not sure it saves memory
       self.mf_model.note_intercepts.weight.data = torch.tensor(
         np.expand_dims(noteInit[c.internalNoteInterceptKey].astype(np.float32).values, axis=1)
       )
 
       for i in range(1, self._numFactors + 1):
-        noteInit[c.note_factor_key(i)].fillna(0.0, inplace=True)
+        noteInit[c.note_factor_key(i)] = noteInit[c.note_factor_key(i)].fillna(0.0)
       self.mf_model.note_factors.weight.data = torch.tensor(
         noteInit[[c.note_factor_key(i) for i in range(1, self._numFactors + 1)]]
         .astype(np.float32)
@@ -218,9 +239,7 @@ class MatrixFactorization:
     if globalInterceptInit is not None:
       if self._log:
         logger.info("initialized global intercept")
-      self.mf_model.global_intercept = torch.nn.parameter.Parameter(
-        torch.ones(1, 1, dtype=torch.float32) * globalInterceptInit
-      )
+      self.mf_model.global_intercept.data = torch.ones(1, 1, dtype=torch.float32) * globalInterceptInit
 
   def _get_parameters_from_trained_model(
     self, flipFactorsForIdentification: bool = True
@@ -433,7 +452,8 @@ class MatrixFactorization:
         rating (torch.FloatTensor)
     """
     assert self.mf_model is not None
-    self._create_train_validate_sets(validate_percent)
+    if self.trainModelData is None:
+      self._create_train_validate_sets(validate_percent)
     assert self.trainModelData is not None
 
     prev_loss = 1e10
@@ -494,6 +514,8 @@ class MatrixFactorization:
     noteInit: pd.DataFrame = None,
     userInit: pd.DataFrame = None,
     globalInterceptInit: Optional[float] = None,
+    useSpectralInit: Optional[bool] = False,
+    additonalSpectralInitIters: Optional[int] = 0,
     specificNoteId: Optional[int] = None,
     validatePercent: Optional[float] = None,
     freezeNoteParameters: bool = False,
@@ -512,6 +534,8 @@ class MatrixFactorization:
         noteInit (pd.DataFrame, optional)
         userInit (pd.DataFrame, optional)
         globalInterceptInit (float, optional).
+        useSpectralInit (bool, optional): Whether to use SVD to initialize the factors
+        additionalSpectralInitIters (int, optional): How many times to reinitialize and refit with SVD
         specificNoteId (int, optional) Do approximate analysis to score a particular note
 
     Returns:
@@ -553,7 +577,68 @@ class MatrixFactorization:
       self.mf_model.freeze_rater_and_global_parameters()
     self.prepare_features_and_labels(specificNoteId)
 
+    if useSpectralInit:
+
+      self._create_train_validate_sets(validatePercent)
+      data_df = self._form_data_df()
+      data_matrix = data_df.values
+      # might be worth trying to tune the weights from 1/2-1/2, I didn't see a huge different in limited experiments but don't have the compute to be definative
+      mean_matrix = 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=1), nan=np.nanmean(data_matrix))[:,np.newaxis] \
+                    + 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=0), nan=np.nanmean(data_matrix)) \
+                    - np.nanmean(data_matrix)    # warning can be ignored, I deal with it by wrapping with a nan_to_num
+      filled_matrix = np.where(np.isnan(data_matrix), mean_matrix, data_matrix)
+
+      U, S, Vt = svds(filled_matrix, k=self._numFactors)
+      note_factor_init_vals = np.sqrt(S[0]) * U.T[0]
+      user_factor_init_vals = np.sqrt(S[0]) * Vt[0]
+
+      noteInit = pd.DataFrame({
+        c.noteIdKey: data_df.index,
+        c.note_factor_key(1): note_factor_init_vals, 
+        c.internalNoteInterceptKey: np.zeros(len(note_factor_init_vals))
+      })
+      userInit = pd.DataFrame({
+        c.raterParticipantIdKey: data_df.columns,
+        c.rater_factor_key(1): user_factor_init_vals, 
+        c.internalRaterInterceptKey: np.zeros(len(user_factor_init_vals))
+      })
+      globalInterceptInit = np.nanmean(data_matrix)
+      del data_df, data_matrix   # save lots of memory
+      # to further save memory, one could del data_df as soon as data_matrix is formed, but then would have to retrieve the ordering of ID's again when forming noteInit and userInit
+
+      self._initialize_parameters(noteInit, userInit, globalInterceptInit)
+
     train_loss, loss, validate_loss = self._fit_model(validatePercent)
+
+    if useSpectralInit:
+      for _ in range(additonalSpectralInitIters):
+        data_df = self._form_data_df()
+        data_matrix = data_df.values
+        noteParams, raterParams = self._get_parameters_from_trained_model()
+        intercepts_matrix = np.add.outer(noteParams["internalNoteIntercept"].to_numpy(), raterParams["internalRaterIntercept"].to_numpy())
+        if self._useGlobalIntercept:
+          intercepts_matrix = intercepts_matrix + self.mf_model.global_intercept.item()
+        filled_matrix = np.where(np.isnan(data_matrix), intercepts_matrix, data_matrix)
+
+        U, S, Vt = svds(filled_matrix, k=self._numFactors)
+        note_factor_init_vals = np.sqrt(S[0]) * U.T[0]
+        user_factor_init_vals = np.sqrt(S[0]) * Vt[0]
+
+        noteInit = pd.DataFrame({
+          c.noteIdKey: data_df.index,
+          c.note_factor_key(1): note_factor_init_vals, 
+          c.internalNoteInterceptKey: np.zeros(len(note_factor_init_vals))
+        })
+        userInit = pd.DataFrame({
+          c.raterParticipantIdKey: data_df.columns,
+          c.rater_factor_key(1): user_factor_init_vals, 
+          c.internalRaterInterceptKey: np.zeros(len(user_factor_init_vals))
+        })
+        del data_df, data_matrix
+
+        self._initialize_parameters(noteInit, userInit, None)
+        train_loss, loss, validate_loss = self._fit_model(validatePercent)
+
     if self._normalizedLossHyperparameters is not None:
       _, raterParams = self._get_parameters_from_trained_model(flipFactorsForIdentification)
       assert self.modelData is not None
