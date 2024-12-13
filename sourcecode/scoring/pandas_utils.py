@@ -657,6 +657,7 @@ def patch_pandas(main: Callable) -> Callable:
       clArgs = kwargs["args"]
     else:
       # Handle the following, which expect args as the second positional argument:
+      # birdwatch/scoring/src/main/python/run_post_selection_similarity.py
       # birdwatch/scoring/src/main/python/run_prescoring.py
       # birdwatch/scoring/src/main/python/run_final_scoring.py
       # birdwatch/scoring/src/main/python/run_contributor_scoring.py
