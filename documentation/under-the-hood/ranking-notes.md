@@ -288,10 +288,8 @@ This approach allows us to continue optimizing the ranking algorithm with a focu
 Before a note is two weeks old, the helpfulness status will continue to be updated each time time the ranking algorithm is run.
 After a note turns two weeks old we store the helpfulness status for that note and use the stored status in the future, including for displaying notes on X and calculating user contribution statistics.
 
-While a note may be scored by the Core, Expansion and Group models, we only finalize note status based on the Core model.
-Notes that are only ranked by the Expansion model are not eligible for stabilization since the Expansion model is under development and may be revised to improve quality at any time.
-Similarly, if a note is rated Helpful by a Group model and Needs More Ratings by the Core model, we will allow the note status to remain at Helpful even after the note is two weeks old.
-If at any point both models agree and the Core model scores the note as Helpful or a Group model scores the note as Needs More Ratings, then the status will be finalized in agreement with both models.
+We finalize note status if the status was decided by the Core, Expansion or Group models. 
+Notes that are only ranked by the ExpansionPlus model, or whose status is set to Needs More Ratings by a TopicModel, are not eligible for stabilization since those models are under development and may be revised to improve quality at any time.
 
 ## Determining Note Status Explanation Tags
 
@@ -351,6 +349,9 @@ For not-helpful notes:
 5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**Dec 12, 2024**
+- Begin status stabilization for note statuses decided by the Expansion model.
 
 **Oct 14, 2024**
 - Update topic modeling to allow the learned topic assignment model to override rule-based labels at high confidence levels.
