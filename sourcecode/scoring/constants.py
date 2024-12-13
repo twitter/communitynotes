@@ -78,8 +78,8 @@ defaultIndexKey = "index"
 
 # Scoring Groups
 coreGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 21, 25}
-expansionGroups: Set[int] = {0, 4, 5, 7, 12, 16, 18, 20, 22, 23, 24, 26, 27, 28}
-expansionPlusGroups: Set[int] = {15, 17, 29, 30}
+expansionGroups: Set[int] = {0, 4, 5, 7, 12, 15, 16, 18, 20, 22, 23, 26, 27, 28, 29}
+expansionPlusGroups: Set[int] = {17, 24, 30, 31, 32}
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"

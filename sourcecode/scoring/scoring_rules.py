@@ -40,7 +40,7 @@ class RuleID(Enum):
 
   # Rules used in _meta_score.
   META_INITIAL_NMR = RuleAndVersion("MetaInitialNMR", "1.0", False)
-  EXPANSION_MODEL = RuleAndVersion("ExpansionModel", "1.1", False)
+  EXPANSION_MODEL = RuleAndVersion("ExpansionModel", "1.1", True)
   EXPANSION_PLUS_MODEL = RuleAndVersion("ExpansionPlusModel", "1.1", False)
   CORE_MODEL = RuleAndVersion("CoreModel", "1.1", True)
   COVERAGE_MODEL = RuleAndVersion("CoverageModel", "1.1", False)

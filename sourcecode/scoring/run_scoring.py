@@ -1039,11 +1039,21 @@ def _validate_contributor_scoring_output(helpfulnessScores: pd.DataFrame) -> pd.
   return helpfulnessScores
 
 
+def run_post_selection_similarity(notes: pd.DataFrame, ratings: pd.DataFrame) -> pd.DataFrame:
+  with c.time_block("Compute Post Selection Similarity"):
+    pss = PostSelectionSimilarity(notes, ratings)
+    postSelectionSimilarityValues = pss.get_post_selection_similarity_values()
+    del pss
+    gc.collect()
+  return postSelectionSimilarityValues
+
+
 def run_prescoring(
   notes: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
+  postSelectionSimilarityValues: pd.DataFrame,
   seed: Optional[int] = None,
   enabledScorers: Optional[Set[Scorers]] = None,
   runParallel: bool = True,
@@ -1081,16 +1091,12 @@ def run_prescoring(
   logger.info(
     f"ratings summary before PSS: {get_df_fingerprint(ratings, [c.noteIdKey, c.raterParticipantIdKey])}"
   )
-  with c.time_block("Compute Post Selection Similarity"):
-    pss = PostSelectionSimilarity(notes, ratings)
-    postSelectionSimilarityValues = pss.get_post_selection_similarity_values()
+  with c.time_block("Filter ratings by Post Selection Similarity"):
     logger.info(f"Post Selection Similarity Prescoring: begin with {len(ratings)} ratings.")
     ratings = filter_ratings_by_post_selection_similarity(
       notes, ratings, postSelectionSimilarityValues
     )
     logger.info(f"Post Selection Similarity Prescoring: {len(ratings)} ratings remaining.")
-    del pss
-    gc.collect()
   logger.info(
     f"ratings summary after PSS: {get_df_fingerprint(ratings, [c.noteIdKey, c.raterParticipantIdKey])}"
   )
@@ -1868,6 +1874,8 @@ def run_scoring(
     filterPrescoringInputToSimulateDelayInHours,
   )
 
+  postSelectionSimilarityValues = run_post_selection_similarity(notes=notes, ratings=ratings)
+
   (
     prescoringNoteModelOutput,
     prescoringRaterModelOutput,
@@ -1880,6 +1888,7 @@ def run_scoring(
     ratings=prescoringRatingsInput,
     noteStatusHistory=noteStatusHistory,
     userEnrollment=userEnrollment,
+    postSelectionSimilarityValues=postSelectionSimilarityValues,
     seed=seed,
     enabledScorers=enabledScorers,
     runParallel=runParallel,
