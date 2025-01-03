@@ -9,6 +9,7 @@ from .normalized_loss import NormalizedLoss
 import numpy as np
 import pandas as pd
 import torch
+from scipy.sparse import csc_matrix
 from scipy.sparse.linalg import svds
 
 
@@ -160,25 +161,67 @@ class MatrixFactorization:
 
     return noteIdMap, raterIdMap, ratingFeaturesAndLabels
 
-  def _form_data_df(self):
+  def _form_data_matrix(self, saveMemory=False):
     """
-    Returns: pd.DataFrame, a (number of notes) x (number of raters) df filled with ratings data, 
-    with validation data nan'ed out.
+    Args:
+      saveMemory: If saveMemory is False, the data is stored as a (number of notes) x (number of raters) numpy array
+                  which may be large. However, this allows more manipulation to the array before the svd is taken,
+                  for example the unseen values may be filled with nonzero's.
+                  If saveMemory is True, the data is stored as a scipy csc_matrix, a sparse format similar to the
+                  ratingsFeaturesAndLabels structure. In this case, I demean the filled data, and then set the unseen 
+                  data to 0. 
 
-    This takes up a lot of memeory - I avoid ever having multiple of them around by deleting the reference
+    Returns:
+      Tuple[np.ndarray OR scipy.sparse.csc_matrix, pd.index, pd.index, float]
+      data_matrix: a dense or sparse representation of the notes x raters matrix
+      df_index: the index of the data_matrix; the notes' indices
+      df_columns: the cols of the data_matrix; the raters' indices
+      subtracted_intercept: the mean that was subtracted from the ratings data
+
+    Calls without saveMemory are really large, I avoid ever having multiple of them around by deleting the reference
     whenever I'm done with it, but one could also store it as attribute of self to trade off that memory for
-    not having to call this multiple times. 
+    not having to call this multiple times.
 
     Currently _form_data_df is only called when a Spectral Initialization occurs. 
     """
-    data_df = self.ratingFeaturesAndLabels.pivot(index='noteId', columns='raterParticipantId', values='helpfulNum')
-    if self.validateModelData is not None:
-      notes_map_to_id = self.noteIdMap.set_index(Constants.noteIndexKey)[c.noteIdKey]
-      rater_map_to_id = self.raterIdMap.set_index(Constants.raterIndexKey)[c.raterParticipantIdKey]
-      valid_row_pos = data_df.index.get_indexer(pd.Series(self.validateModelData.note_indexes.numpy()).map(notes_map_to_id))    # may need to call detach, but I don't think so since they don't have gradients?
-      valid_col_pos = data_df.columns.get_indexer(pd.Series(self.validateModelData.user_indexes.numpy()).map(rater_map_to_id))
-      data_df.values[valid_row_pos, valid_col_pos] = np.nan
-    return data_df    
+    if not saveMemory:
+      data_df = self.ratingFeaturesAndLabels.pivot(index='noteId', columns='raterParticipantId', values='helpfulNum')
+      if self.validateModelData is not None:
+        notes_map_to_id = self.noteIdMap.set_index(Constants.noteIndexKey)[c.noteIdKey]
+        rater_map_to_id = self.raterIdMap.set_index(Constants.raterIndexKey)[c.raterParticipantIdKey]
+        valid_row_pos = data_df.index.get_indexer(pd.Series(self.validateModelData.note_indexes.numpy()).map(notes_map_to_id))    # may need to call detach, but I don't think so since they don't have gradients?
+        valid_col_pos = data_df.columns.get_indexer(pd.Series(self.validateModelData.user_indexes.numpy()).map(rater_map_to_id))
+        data_df.values[valid_row_pos, valid_col_pos] = np.nan
+
+      data_matrix = data_df.values
+      mean_matrix = 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=1), nan=np.nanmean(data_matrix))[:,np.newaxis] \
+                      + 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=0), nan=np.nanmean(data_matrix)) \
+                      - np.nanmean(data_matrix)
+      filled_matrix = np.where(np.isnan(data_matrix), mean_matrix, data_matrix)
+
+      return filled_matrix, data_df.index, data_df.columns, np.nanmean(data_matrix)
+          
+    else:
+      if self.trainModelData is None:
+        rating_means = self.ratingFeaturesAndLabels["helpfulNum"].mean()
+        demeaned_ratings = self.ratingFeaturesAndLabels["helpfulNum"] - rating_means
+        data_matrix = csc_matrix((demeaned_ratings,
+                                  (self.ratingFeaturesAndLabels["noteIndex"], self.ratingFeaturesAndLabels["raterIndex"])))
+        
+        rater_map_to_id = self.raterIdMap.set_index(Constants.raterIndexKey)[c.raterParticipantIdKey]
+        notes_map_to_id = self.noteIdMap.set_index(Constants.noteIndexKey)[c.noteIdKey]
+
+      else:
+        rating_means = self.trainModelData.rating_labels.mean()
+        demeaned_ratings = self.trainModelData.rating_labels - rating_means
+        data_matrix = csc_matrix((demeaned_ratings, 
+                                 (self.trainModelData.note_indexes, self.trainModelData.user_indexes)),
+                                 shape = (max(self.ratingFeaturesAndLabels["noteIndex"])+1, max(self.ratingFeaturesAndLabels["raterIndex"])+1))
+        
+        rater_map_to_id = self.raterIdMap.set_index(Constants.raterIndexKey)[c.raterParticipantIdKey]
+        notes_map_to_id = self.noteIdMap.set_index(Constants.noteIndexKey)[c.noteIdKey]
+      
+      return data_matrix, notes_map_to_id.values, rater_map_to_id.values, rating_means
 
   def _initialize_parameters(
     self,
@@ -516,6 +559,7 @@ class MatrixFactorization:
     userInit: pd.DataFrame = None,
     globalInterceptInit: Optional[float] = None,
     useSpectralInit: Optional[bool] = False,
+    saveMemorySVD: bool = False,
     additonalSpectralInitIters: Optional[int] = 0,
     specificNoteId: Optional[int] = None,
     validatePercent: Optional[float] = None,
@@ -534,6 +578,7 @@ class MatrixFactorization:
         userInit (pd.DataFrame, optional)
         globalInterceptInit (float, optional).
         useSpectralInit (bool, optional): Whether to use SVD to initialize the factors
+        saveMemorySVD (bool, optional): When useSpectralInit, whether to use a sparse scipy matrix
         additionalSpectralInitIters (int, optional): How many times to reinitialize and refit with SVD
         specificNoteId (int, optional) Do approximate analysis to score a particular note
 
@@ -577,30 +622,24 @@ class MatrixFactorization:
     if useSpectralInit:
 
       self._create_train_validate_sets(validatePercent)
-      data_df = self._form_data_df()
-      data_matrix = data_df.values
-      # might be worth trying to tune the weights from 1/2-1/2, I didn't see a huge different in limited experiments but don't have the compute to be definative
-      mean_matrix = 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=1), nan=np.nanmean(data_matrix))[:,np.newaxis] \
-                    + 1/2*np.nan_to_num(np.nanmean(data_matrix, axis=0), nan=np.nanmean(data_matrix)) \
-                    - np.nanmean(data_matrix)    # warning can be ignored, I deal with it by wrapping with a nan_to_num
-      filled_matrix = np.where(np.isnan(data_matrix), mean_matrix, data_matrix)
+      data_matrix, data_index, data_cols, subtracted_intercept = self._form_data_matrix(saveMemory=saveMemorySVD)
 
-      U, S, Vt = svds(filled_matrix, k=self._numFactors)
+      U, S, Vt = svds(data_matrix, k=self._numFactors)
       note_factor_init_vals = np.sqrt(S[0]) * U.T[0]
       user_factor_init_vals = np.sqrt(S[0]) * Vt[0]
 
       noteInit = pd.DataFrame({
-        c.noteIdKey: data_df.index,
+        c.noteIdKey: data_index,
         c.note_factor_key(1): note_factor_init_vals, 
         c.internalNoteInterceptKey: np.zeros(len(note_factor_init_vals))
       })
       userInit = pd.DataFrame({
-        c.raterParticipantIdKey: data_df.columns,
+        c.raterParticipantIdKey: data_cols,
         c.rater_factor_key(1): user_factor_init_vals, 
         c.internalRaterInterceptKey: np.zeros(len(user_factor_init_vals))
       })
-      globalInterceptInit = np.nanmean(data_matrix)
-      del data_df, data_matrix   # save lots of memory
+      globalInterceptInit = subtracted_intercept
+      del data_matrix   # save lots of memory if the data_matrix is numpy
       # to further save memory, one could del data_df as soon as data_matrix is formed, but then would have to retrieve the ordering of ID's again when forming noteInit and userInit
 
       self._initialize_parameters(noteInit, userInit, globalInterceptInit)
