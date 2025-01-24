@@ -186,7 +186,7 @@ Similarly, if a note was impacted by tag outlier filter and required note interc
 
 Multi-Model ranking allows Community Notes to run multiple ranking algorithms before reconciling the results to assign final note status.
 We use this ability to test new models, refine current approaches and support expanding the Community Notes contributor base.
-We currently run several variations of the matrix facgtorizaiton approach.
+We currently run several variations of the matrix factorization approach.
 Each variation uses the same modeling logic and parameters, but applies the model to different slices of the ratings data.
 
 - The _Core_ model determines status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
@@ -405,7 +405,7 @@ For not-helpful notes:
 - Introduce note diligence scoring through a novel matrix factorization algorithm incorporating rater weights.
 
 **November 13, 2023**
-- Introduce tag-consensus harassment-abuse note scoring to decrease rater helpfulness for raters who have rated notes as Helpful where there is a consensus of harrassemnt or abuse.
+- Introduce tag-consensus harassment-abuse note scoring to decrease rater helpfulness for raters who have rated notes as Helpful where there is a consensus of harrassement or abuse.
 
 **October 20, 2023**
 - Expand filtering applied to "Incorrect" tags to raise the standard for Helpfulness and reduce risk of potentially incorrect Helpful notes.
