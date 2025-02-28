@@ -63,8 +63,16 @@ def _rater_helpfulness(validRatings: pd.DataFrame) -> pd.DataFrame:
   """
 
   raterCounts = validRatings.groupby(c.raterParticipantIdKey).sum()[
-    [c.ratingAgreesWithNoteStatusKey, c.ratingCountKey]
+    [
+      c.ratingAgreesWithNoteStatusKey,
+      c.successfulRatingNotHelpfulCount,
+      c.successfulRatingHelpfulCount,
+      c.unsuccessfulRatingNotHelpfulCount,
+      c.unsuccessfulRatingHelpfulCount,
+      c.ratingCountKey,
+    ]
   ]
+
   raterCounts[c.raterAgreeRatioKey] = (
     raterCounts[c.ratingAgreesWithNoteStatusKey] / raterCounts[c.ratingCountKey]
   )
@@ -124,6 +132,10 @@ def compute_general_helpfulness_scores(
         # reason we didn't see warnings for ratingCountKey before was that they type may have already
         # been float64 going into the join.
         c.ratingCountKey,
+        c.successfulRatingNotHelpfulCount,
+        c.successfulRatingHelpfulCount,
+        c.unsuccessfulRatingNotHelpfulCount,
+        c.unsuccessfulRatingHelpfulCount,
       },
     )
     .reset_index()
@@ -135,6 +147,10 @@ def compute_general_helpfulness_scores(
         c.raterAgreeRatioKey,
         c.ratingAgreesWithNoteStatusKey,
         c.ratingCountKey,
+        c.successfulRatingNotHelpfulCount,
+        c.successfulRatingHelpfulCount,
+        c.unsuccessfulRatingNotHelpfulCount,
+        c.unsuccessfulRatingHelpfulCount,
       ]
     ]
   )

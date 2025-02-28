@@ -44,8 +44,8 @@ intervalHalfWidth = 0.3
 
 # Max flip rates
 prescoringAllUnlockedNotesMaxCrhChurn = 0.2
-prescoringAllNotesCreatedThreeToThirteenDaysAgoMaxChurn = 0.06
-finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.05
+prescoringAllNotesCreatedThreeToThirteenDaysAgoMaxChurn = 0.09
+finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.075
 finalNotesWithNewRatingsMaxNewCrhChurn = 0.80
 finalNotesWithNewRatingsMaxOldCrhChurn = 0.25
 finalNotesThatJustFlippedStatusMaxCrhChurn = 1e8
@@ -669,6 +669,8 @@ prescoringNoteModelOutputTSVColumnsAndTypes = [
   (lowDiligenceNoteInterceptKey, np.double),
   (lowDiligenceNoteFactor1Key, np.double),
   (lowDiligenceNoteInterceptRound2Key, np.double),
+  (harassmentNoteInterceptKey, np.double),
+  (harassmentNoteFactor1Key, np.double),
 ]
 prescoringNoteModelOutputTSVColumns = [
   col for (col, dtype) in prescoringNoteModelOutputTSVColumnsAndTypes
@@ -767,6 +769,12 @@ prescoringRaterModelOutputTSVColumnsAndTypes = [
   (incorrectTagRatingsMadeByRaterKey, pd.Int64Dtype()),
   (totalRatingsMadeByRaterKey, pd.Int64Dtype()),
   (postSelectionValueKey, pd.Int64Dtype()),
+  (successfulRatingHelpfulCount, pd.Int64Dtype()),
+  (successfulRatingNotHelpfulCount, pd.Int64Dtype()),
+  (unsuccessfulRatingHelpfulCount, pd.Int64Dtype()),
+  (unsuccessfulRatingNotHelpfulCount, pd.Int64Dtype()),
+  (totalHelpfulHarassmentRatingsPenaltyKey, np.double),
+  (raterAgreeRatioWithHarassmentAbusePenaltyKey, np.double),
 ]
 prescoringRaterModelOutputTSVColumns = [
   col for (col, dtype) in prescoringRaterModelOutputTSVColumnsAndTypes
