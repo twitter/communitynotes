@@ -153,6 +153,10 @@ For any given note-rater pair, properties including the note and rater factors (
 When "Incorrect" ratings on a given note are "surprisingly popular" among raters who would be expected to have a low probability of rating the note "Incorrect", the note is held to a higher threshold to achieve Currently Rated Helpful status.
 Depending on the strength of the signal, a note may be blocked from Currently Rated Helpful status entirely.
 
+## Additional Not Helpful Scoring
+To improve the quality of proposed notes that contributors see, the ranking algorithm additionally assigns Currently Rated Not Helpful (CRNH) status to notes that have a substantial ratio of Not Helpful ratings from raters of each factor sign. 
+If a note has a mean helpfulness ratio of 0.4 or less from raters of each factor, at least 3 raters from each factor, and the average of the mean helpfulness ratios among raters with each factor is .3 or less, it will be assigned CRNH status.
+
 ## Tag-Consensus Harassment-Abuse Note Score
 
 After the first round matrix factorization described above, we run another matrix factorization that's similar to the first, but with some changes:
@@ -186,7 +190,7 @@ Similarly, if a note was impacted by tag outlier filter and required note interc
 
 Multi-Model ranking allows Community Notes to run multiple ranking algorithms before reconciling the results to assign final note status.
 We use this ability to test new models, refine current approaches and support expanding the Community Notes contributor base.
-We currently run several variations of the matrix facgtorizaiton approach.
+We currently run several variations of the matrix factorization approach.
 Each variation uses the same modeling logic and parameters, but applies the model to different slices of the ratings data.
 
 - The _Core_ model determines status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
@@ -222,10 +226,10 @@ Using the assigned topic labels, we train a multi-class logistic regression mode
 We remove any tokens containing a seed term used to assign labels.
 After training, we apply the model to update topic assignment for all posts and associated notes.
 Posts that did not contain a seed term may be assigned to a topic or remain unassigned based on the predictions of the model.
-Posts that did contain a seed term will remain assigned to that topic unless the model predicts the note should remain "unassigned" with a score $>0.85$, in which case the post will be unassigned and excluded from further topic modeling.
+Posts that did contain a seed term will remain assigned to that topic unless the model predicts the note should remain "unassigned" with a score $>0.99$, in which case the post will be unassigned and excluded from further topic modeling.
 
 In the second phase, we train a _Topic Model_ over all of the notes and ratings which have been assigned to each topic.
-Topic Models share the same architecture and hyperparmeters as the Core Model, but differ in the rating selection process.
+Topic Models share the same architecture and hyperparameters as the Core Model, but differ in the rating selection process.
 Since the Core Model runs on a larger dataset spanning topics, the Core Model includes two matrix factorizations separated by a step which filters ratings to include raters who have a demonstrated pattern of identifying Helpful notes that bridge perspectives.
 Given that Topic Models are trained on less data, we find that Topic Models perform best without the rating filter, which tends to remove too many ratings for the model to make confident predictions.
 
@@ -349,6 +353,10 @@ For not-helpful notes:
 5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**Feb 28, 2025**
+- Update note assignment to topic threshold, increasing probability that notes with topic seed words are assigned to associated topic.
+- Additional Not Helpful scoring logic (RatioCRNH scoring rule) to identify more notes that are widely rated as Not Helpful.
 
 **Dec 12, 2024**
 - Begin status stabilization for note statuses decided by the Expansion model.
