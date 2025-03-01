@@ -37,7 +37,7 @@ from .mf_multi_group_scorer import (
   coalesce_multi_group_model_scored_notes,
 )
 from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
-from .pandas_utils import get_df_fingerprint, get_df_info, keep_columns
+from .pandas_utils import get_df_fingerprint, get_df_info, keep_columns, patch_pandas
 from .pflip_model import LABEL as PFLIP_LABEL, PFlipModel
 from .post_selection_similarity import (
   PostSelectionSimilarity,
@@ -238,6 +238,27 @@ def _load_data_from_shared_memory_parallelizable(
   return scoringArgs
 
 
+# patch_pandas is needed since we're using 'forkserver' to create new process.
+@patch_pandas
+def _run_scorer_in_parallel(
+  args,
+  scorer: Scorer,
+  scoringArgs: ScoringArgs,
+  dataLoader: Optional[CommunityNotesDataLoader] = None,
+  scoringArgsSharedMemory=None,
+) -> Tuple[ModelResult, float]:
+  return _run_scorer_parallelizable(scorer, True, scoringArgs, dataLoader, scoringArgsSharedMemory)
+
+
+def _run_scorer_in_series(
+  scorer: Scorer,
+  scoringArgs: ScoringArgs,
+  dataLoader: Optional[CommunityNotesDataLoader] = None,
+  scoringArgsSharedMemory=None,
+) -> Tuple[ModelResult, float]:
+  return _run_scorer_parallelizable(scorer, False, scoringArgs, dataLoader, scoringArgsSharedMemory)
+
+
 def _run_scorer_parallelizable(
   scorer: Scorer,
   runParallel: bool,
@@ -378,6 +399,7 @@ def _save_dfs_to_shared_memory(
 
 
 def _run_scorers(
+  args,
   scorers: List[Scorer],
   scoringArgs: ScoringArgs,
   runParallel: bool = True,
@@ -408,7 +430,7 @@ def _run_scorers(
     shms, scoringArgsSharedMemory = _save_dfs_to_shared_memory(scoringArgs)
 
     with concurrent.futures.ProcessPoolExecutor(
-      mp_context=multiprocessing.get_context("fork"),
+      mp_context=multiprocessing.get_context("forkserver"),
       max_workers=maxWorkers,
     ) as executor:
       logger.info(f"Starting parallel scorer execution with {len(scorers)} scorers.")
@@ -417,9 +439,9 @@ def _run_scorers(
       scoringArgs.remove_large_args_for_multiprocessing()
       futures = [
         executor.submit(
-          _run_scorer_parallelizable,
+          _run_scorer_in_parallel,
+          args=args,
           scorer=scorer,
-          runParallel=True,
           scoringArgs=copy.deepcopy(scoringArgs),
           dataLoader=dataLoader,
           scoringArgsSharedMemory=copy.deepcopy(scoringArgsSharedMemory),
@@ -434,9 +456,8 @@ def _run_scorers(
         shm.unlink()  # free the shared memory
   else:
     modelResultsAndTimes = [
-      _run_scorer_parallelizable(
+      _run_scorer_in_series(
         scorer=scorer,
-        runParallel=False,
         scoringArgs=scoringArgs,
       )
       for scorer in scorers
@@ -1049,6 +1070,7 @@ def run_post_selection_similarity(notes: pd.DataFrame, ratings: pd.DataFrame) ->
 
 
 def run_prescoring(
+  args,
   notes: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
@@ -1132,6 +1154,7 @@ def run_prescoring(
     logger.info(get_df_info(noteStatusHistory, "noteStatusHistory"))
     logger.info(get_df_info(userEnrollment, "userEnrollment"))
   prescoringModelResultsFromAllScorers = _run_scorers(
+    args,
     scorers=list(chain(*scorers.values())),
     scoringArgs=PrescoringArgs(
       noteTopics=noteTopics,
@@ -1211,7 +1234,7 @@ def run_prescoring(
   # Prescoring itself is now done. We will not run final_note_scoring to check note status flips.
   if checkFlips:
     # Rescore a smaller set of notes, since we are only using these note statuses to check for flips.
-    # Rescore a only unlocked notes. (In the future, we could randomly sample a subset of these)
+    # Rescore only unlocked notes. (In the future, we could randomly sample a subset of these)
     noteStatusHistoryToRescore = noteStatusHistory[
       noteStatusHistory[c.timestampMillisOfStatusLockKey].isna()
     ]
@@ -1221,6 +1244,7 @@ def run_prescoring(
     notesToRescore = notes[notes["noteId"].isin(notesToRescoreSet)].copy()
 
     scoredNotes, _, _, _ = run_final_note_scoring(
+      args,
       notes=notesToRescore,
       ratings=ratingsToRescore,
       noteStatusHistory=noteStatusHistoryToRescore,
@@ -1480,6 +1504,7 @@ def determine_which_notes_to_rescore(
 
 
 def run_final_note_scoring(
+  args,
   notes: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
@@ -1626,6 +1651,7 @@ def run_final_note_scoring(
   scorers = _get_scorers(seed, pseudoraters, useStableInitialization=useStableInitialization)
 
   modelResults = _run_scorers(
+    args,
     scorers=list(chain(*scorers.values())),
     scoringArgs=FinalScoringArgs(
       noteTopics.merge(notes[[c.noteIdKey]]),
@@ -1761,9 +1787,15 @@ def post_note_scoring(
     scoredNotes = scoredNotes.drop(columns=[c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey])
 
     scoredNotes[c.rescoringActiveRulesKey] = ""
+    failedCheckFlips = False
+    failureDescription = ""
     for noteSubset in noteSubsetsAndMaxFlipRates:
       if checkFlips:
-        note_status_history.check_flips(mergedNoteStatuses, noteSubset=noteSubset)
+        failed, description = note_status_history.check_flips(
+          mergedNoteStatuses, noteSubset=noteSubset
+        )
+        failedCheckFlips = failedCheckFlips or failed
+        failureDescription = failureDescription + "\n" + description
       if noteSubset.noteSet is not None:
         noteInSetMask = scoredNotes[c.noteIdKey].isin(noteSubset.noteSet)
       else:
@@ -1775,7 +1807,7 @@ def post_note_scoring(
         if len(rescoringActiveRules) == 0
         else f"{rescoringActiveRules},{noteSubset.description.name}"
       )
-
+    assert failedCheckFlips == False, f"Failed at least one flip check: {failureDescription}"
     newNoteStatusHistory = note_status_history.update_note_status_history(mergedNoteStatuses)
     assert len(newNoteStatusHistory) == len(
       noteStatusHistory
@@ -1797,6 +1829,7 @@ def post_note_scoring(
 
 
 def run_scoring(
+  args,
   notes: pd.DataFrame,
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
@@ -1884,6 +1917,7 @@ def run_scoring(
     prescoringMetaOutput,
     prescoringScoredNotes,
   ) = run_prescoring(
+    args,
     notes=prescoringNotesInput,
     ratings=prescoringRatingsInput,
     noteStatusHistory=noteStatusHistory,
@@ -1912,6 +1946,7 @@ def run_scoring(
   logger.info("Starting final scoring")
 
   scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo, _ = run_final_note_scoring(
+    args,
     notes=notes,
     ratings=ratings,
     noteStatusHistory=noteStatusHistory,

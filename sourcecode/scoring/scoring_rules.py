@@ -28,6 +28,7 @@ class RuleID(Enum):
   GENERAL_CRH = RuleAndVersion("GeneralCRH", "1.0", False)
   GENERAL_CRNH = RuleAndVersion("GeneralCRNH", "1.0", False)
   UCB_CRNH = RuleAndVersion("UcbCRNH", "1.0", False)
+  RATIO_CRNH = RuleAndVersion("RatioCRNH", "1.0", False)
   TAG_OUTLIER = RuleAndVersion("TagFilter", "1.0", False)
   ELEVATED_CRH = RuleAndVersion("CRHSuperThreshold", "1.0", False)
   NM_CRNH = RuleAndVersion("NmCRNH", "1.0", False)
@@ -459,17 +460,19 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     ruleID: RuleID,
     dependencies: Set[RuleID],
     requiredStableCrhMinutesThreshold: int = 30,
+    maxStableCrhMinutesThreshold: int = 180,
   ):
-    """Make CRH notes NMR if it hasn't been stably CRH >= requiredStableCrhMinutesThreshold.
-
+    """
     Args:
       rule: enum corresponding to a namedtuple defining a rule name and version string for the
       ScoringRule.
       dependencies: Rules which must run before this rule can run.
-      requiredStableCrhMinutesThreshold: threshold for required stable CRH time, in minutes.
+      requiredStableCrhMinutesThreshold: threshold for min required stable CRH time, in minutes.
+      maxStableCrhMinutesThreshold: threshold for max stable CRH time, in minutes.
     """
     super().__init__(ruleID, dependencies)
     self.requiredStableCrhMinutesThreshold = requiredStableCrhMinutesThreshold
+    self.maxStableCrhMinutesThreshold = maxStableCrhMinutesThreshold
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
@@ -480,14 +483,16 @@ class NmrDueToMinStableCrhTime(ScoringRule):
 
     # Identify impacted notes:
     # (1) CRH from current run
-    #     (A) If timestampMillisOfNmrDueToMinStableCrhTime doesn't exist and either the
-    #         pflip model predicts that the note status will flip or note has flipped in
-    #         the past:
+    #     (A) If timestampMillisOfNmrDueToMinStableCrhTime doesn't exist:
     #         Set status to NMR, set timestampMillisOfNmrDueToMinStableCrhTime to now.
-    #     (B) Otherwise:
-    #         (a) If it has been long enough since timestampMillisOfNmrDueToMinStableCrhTime,
-    #             set status to CRH, clear timestampMillisOfNmrDueToMinStableCrhTime
-    #         (b) Otherwise, set status to NMR.
+    #     (B) If timestampMillisOfNmrDueToMinStableCrhTime t exists:
+    #         (a) If (now - t) is larger than maxStableCrhMinutesThreshold, CRH and clear
+    #             timestampMillisOfNmrDueToMinStableCrhTime.
+    #         (b) Else if (now - t) is smaller than requiredStableCrhMinutesThreshold, NMR.
+    #         (c) Else if pflip model predicts that the note status will flip or note has
+    #             flipped in the past, NMR.
+    #         (d) Else, CRH and clear timestampMillisOfNmrDueToMinStableCrhTime.
+    #
     # (2) Non-CRH from current run and timestampMillisOfNmrDueToMinStableCrhTime exists.
     #     Clear timestampMillisOfNmrDueToMinStableCrhTime.
     noteStatusUpdates = noteStats.loc[
@@ -520,69 +525,82 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     noteStatusUpdates[c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey] = noteStatusUpdates[
       c.timestampMillisOfNmrDueToMinStableCrhTimeKey
     ]
-    # (1)-(A): Enter stabilization period if note is trying to go CRH, note is not already in a
-    # stabilization period and either note has a history of flipping or is predicted to flip.
+
+    # (1)-(A): Currently not in stabilization period, enter stabilization period if note is trying
+    # to go CRH.
     notesGoingCrh = noteStatusUpdates[statusColumn] == c.currentlyRatedHelpful
     notesNotAlreadyInStabilization = (
       noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
     ) | (noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] <= 0)
-    notesThatAlreadyFlipped = (
-      # Any note that was not CRH in the last scoring run but exited a stabilization period
-      # must have already flipped.
-      (noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] <= 0)
-      # Also include any note that previously had CRH status (note that it is possible to get
-      # CRH status without entering a stabilization period because pflip could have allowed
-      # the note to bypass stabilization).
-      | (noteStatusUpdates[c.firstNonNMRLabelKey] == c.currentlyRatedHelpful)
+    noteStatusUpdates.loc[
+      notesGoingCrh & notesNotAlreadyInStabilization,
+      [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
+    ] = [c.needsMoreRatings, c.epochMillis]
+
+    # (1)-(B): Currently in stabilization period.
+    notesAlreadyInStabilization = ~notesNotAlreadyInStabilization
+    # (1)-(B)-(a): Exit stabilization period if the note has been in the period for longer than
+    # maxStableCrhMinutesThreshold.
+    inStabilizationLongerThanMax = (
+      c.epochMillis - noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
+      > self.maxStableCrhMinutesThreshold * 60 * 1000
     )
-    pflipCounts = noteStatusUpdates[
-      notesGoingCrh & notesNotAlreadyInStabilization & (~notesThatAlreadyFlipped)
-    ][PFLIP_LABEL].value_counts(dropna=False)
-    logger.info(f"pflip predictions for notes where pflip has an impact: {pflipCounts}")
+
+    noteStatusUpdates.loc[
+      notesGoingCrh & notesAlreadyInStabilization & inStabilizationLongerThanMax,
+      [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
+    ] = [c.currentlyRatedHelpful, -1]
+
+    # (1)-(B)-(b): Remain in stabilization period if the note has been in the period for shorter
+    # than requiredStableCrhMinutesThreshold
+    inStabilizationShorterThanMin = (
+      c.epochMillis - noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
+      < self.requiredStableCrhMinutesThreshold * 60 * 1000
+    )
+
+    noteStatusUpdates.loc[
+      notesGoingCrh & notesAlreadyInStabilization & inStabilizationShorterThanMin, newStatusColumn
+    ] = c.needsMoreRatings
+
+    # (1)-(B)-(c): Remain in stabilization period if the note has been in the period for between
+    # requiredStableCrhMinutesThreshold and maxStableCrhMinutesThreshold, and the note has a history
+    # of flipping or is predicted to flip
+    notesThatAlreadyFlipped = noteStatusUpdates[c.firstNonNMRLabelKey] == c.currentlyRatedHelpful
     notesPredictedToFlip = noteStatusUpdates[PFLIP_LABEL] == FLIP
     noteStatusUpdates.loc[
       notesGoingCrh
-      & notesNotAlreadyInStabilization
-      & (notesThatAlreadyFlipped | notesPredictedToFlip),
-      [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
-    ] = [c.needsMoreRatings, c.epochMillis]
-    # (1)-(B)-(a): Exit a stabilization period if the note is still trying to go CRH, we're
-    # in a stabilization period and we've been in the period long enough.  Set stabilization
-    # period timestamp to -1.
-    noteStatusUpdates.loc[
-      (noteStatusUpdates[statusColumn] == c.currentlyRatedHelpful)
-      & (
-        ~noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
-        & (noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0)
-      )
-      & (
-        c.epochMillis - noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
-        >= self.requiredStableCrhMinutesThreshold * 60 * 1000
-      ),
-      [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
-    ] = [c.currentlyRatedHelpful, -1]
-    # (1)-(B)-(b): Remain in a stabilization period if the note is still trying to go CRH
-    # and we're in a stabilization period but haven't been there long enough to exit.
-    noteStatusUpdates.loc[
-      (noteStatusUpdates[statusColumn] == c.currentlyRatedHelpful)
-      & (
-        ~noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
-        & (noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0)
-      )
-      & (
-        c.epochMillis - noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
-        < self.requiredStableCrhMinutesThreshold * 60 * 1000
-      ),
+      & notesAlreadyInStabilization
+      & (notesThatAlreadyFlipped | notesPredictedToFlip)
+      & ~inStabilizationShorterThanMin
+      & ~inStabilizationLongerThanMax,
       newStatusColumn,
     ] = c.needsMoreRatings
+    pflipCounts = noteStatusUpdates[
+      notesGoingCrh
+      & notesAlreadyInStabilization
+      & (~notesThatAlreadyFlipped)
+      & ~inStabilizationShorterThanMin
+      & ~inStabilizationLongerThanMax
+    ][PFLIP_LABEL].value_counts(dropna=False)
+    logger.info(f"pflip predictions for notes where pflip has an impact: {pflipCounts}")
+
+    # (1)-(B)-(d): Exit stabilization period (CRH) if the note has been in the period for between
+    # requiredStableCrhMinutesThreshold and maxStableCrhMinutesThreshold, and the note doesn't have
+    # a history of flipping or is not predicted to flip
+    noteStatusUpdates.loc[
+      notesGoingCrh
+      & notesAlreadyInStabilization
+      & ~notesThatAlreadyFlipped
+      & ~notesPredictedToFlip
+      & ~inStabilizationShorterThanMin
+      & ~inStabilizationLongerThanMax,
+      [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
+    ] = [c.currentlyRatedHelpful, -1]
+
     # (2): Exit a stabilization period if the note stops trying to go to CRH and we're in
     # a stabilization period.  Set updated timestamp to -1.
     noteStatusUpdates.loc[
-      (noteStatusUpdates[statusColumn] != c.currentlyRatedHelpful)
-      & (
-        ~noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
-        & (noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0)
-      ),
+      ~notesGoingCrh & notesAlreadyInStabilization,
       c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey,
     ] = -1
 

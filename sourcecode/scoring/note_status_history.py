@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Optional
+from typing import Optional, Tuple
 
 from . import constants as c
 from .scoring_rules import RuleID
@@ -193,7 +193,7 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   return mergedNote
 
 
-def check_flips(mergedStatuses: pd.DataFrame, noteSubset: c.NoteSubset) -> None:
+def check_flips(mergedStatuses: pd.DataFrame, noteSubset: c.NoteSubset) -> Tuple[bool, str]:
   """Validate that number of CRH notes remains within an accepted bound.
 
   Assert fails and scoring exits with error if maximum allowable churn is exceeded.
@@ -215,7 +215,13 @@ def check_flips(mergedStatuses: pd.DataFrame, noteSubset: c.NoteSubset) -> None:
     if noteSubset.noteSet is not None:
       mergedStatuses = mergedStatuses[mergedStatuses[c.noteIdKey].isin(noteSubset.noteSet)]
 
-    _check_flips(mergedStatuses, noteSubset.maxNewCrhChurnRate, noteSubset.maxOldCrhChurnRate)
+    return _check_flips(
+      mergedStatuses,
+      noteSubset.maxNewCrhChurnRate,
+      noteSubset.maxOldCrhChurnRate,
+      description=noteSubset.description,
+    )
+  return False, ""
 
 
 def _check_flips(
@@ -223,7 +229,12 @@ def _check_flips(
   maxNewCrhChurn: float,
   maxOldCrhChurn: Optional[float] = None,
   smoothingCount: int = 100,
-) -> None:
+  description: Optional[c.RescoringRuleID] = None,
+  sampleSizeToPrintInFailedAssert: int = 30,
+) -> Tuple[bool, str]:
+  desc = ""
+  failedCheckFlips = False
+
   if maxOldCrhChurn is None:
     maxOldCrhChurn = maxNewCrhChurn
 
@@ -247,13 +258,32 @@ def _check_flips(
       f"Raw old note ratio: {rawOldNoteRatio}, smoothed old note ratio: {smoothedOldNoteRatio}. (newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
     )
 
-    assert (
-      smoothedNewNoteRatio < maxNewCrhChurn
-    ), f"Too many new CRH notes: newCrhNotes={len(newCrhNotes)}, oldCrhNotes={len(oldCrhNotes)}, delta={len(newCrhNotes - oldCrhNotes)}"
+    pd.set_option("display.max_columns", 50)
+    pd.set_option("display.max_rows", max(20, sampleSizeToPrintInFailedAssert))
 
-    assert (
-      smoothedOldNoteRatio < maxOldCrhChurn
-    ), f"Too many notes lost CRH status: oldCrhNotes={len(oldCrhNotes)}, newCrhNotes={len(newCrhNotes)}, delta={len(oldCrhNotes - newCrhNotes)}"
+    if smoothedNewNoteRatio > maxNewCrhChurn:
+      failedCheckFlips = True
+      desc += f"""Too many new CRH notes (rescoringRule: {description}): 
+      smoothedNewNoteRatio={smoothedNewNoteRatio}
+      maxNewCrhChurn={maxNewCrhChurn}
+      newCrhNotes={len(newCrhNotes)}
+      oldCrhNotes={len(oldCrhNotes)}
+      delta={len(newCrhNotes - oldCrhNotes)}
+      Sample Notes: 
+      {mergedStatuses[(mergedStatuses[c.noteIdKey].isin(newCrhNotes - oldCrhNotes))].sample(min(len(newCrhNotes - oldCrhNotes), sampleSizeToPrintInFailedAssert))}"""
+
+    if smoothedOldNoteRatio > maxOldCrhChurn:
+      failedCheckFlips = True
+      desc += f"""Too many notes lost CRH status (rescoringRule: {description}): 
+      smoothedOldNoteRatio={smoothedOldNoteRatio}
+      maxOldCrhChurn={maxOldCrhChurn}
+      oldCrhNotes={len(oldCrhNotes)}
+      newCrhNotes={len(newCrhNotes)}
+      delta={len(oldCrhNotes - newCrhNotes)}
+      Sample Notes: 
+      {mergedStatuses[(mergedStatuses[c.noteIdKey].isin(oldCrhNotes - newCrhNotes))].sample(min(len(oldCrhNotes - newCrhNotes), sampleSizeToPrintInFailedAssert))}"""
+
+  return failedCheckFlips, desc
 
 
 def merge_old_and_new_note_statuses(

@@ -385,6 +385,9 @@ class MFBaseScorer(Scorer):
         c.classificationKey,
         c.numRatingsKey,
         c.noteAuthorParticipantIdKey,
+        c.minSignCountKey,
+        c.negFactorMeanHelpfulNumKey,
+        c.posFactorMeanHelpfulNumKey,
       ]
       + c.helpfulTagsTSVOrder
       + c.notHelpfulTagsTSVOrder
@@ -576,6 +579,12 @@ class MFBaseScorer(Scorer):
           c.meanNoteScoreKey,
           c.raterAgreeRatioKey,
           c.aboveHelpfulnessThresholdKey,
+          c.successfulRatingNotHelpfulCount,
+          c.successfulRatingHelpfulCount,
+          c.unsuccessfulRatingNotHelpfulCount,
+          c.unsuccessfulRatingHelpfulCount,
+          c.totalHelpfulHarassmentRatingsPenaltyKey,
+          c.raterAgreeRatioWithHarassmentAbusePenaltyKey,
         ]
       ] = np.nan
       noteParams = noteParamsUnfiltered
@@ -583,6 +592,8 @@ class MFBaseScorer(Scorer):
       # TODO: delete after we run prescoring diligence properly
       # diligenceGlobalIntercept = None
       finalRoundRatings = ratingsForTraining
+      harassmentAbuseNoteParams = noteParamsUnfiltered[[c.noteIdKey]]
+      harassmentAbuseNoteParams[[c.harassmentNoteInterceptKey, c.harassmentNoteFactor1Key]] = np.nan
     else:
       assert "Topic" not in self.get_name(), f"Unexpected scorer: {self.get_name()}"
       logger.info(f"Performing rep-filtering for {self.get_name()}")
@@ -668,7 +679,15 @@ class MFBaseScorer(Scorer):
               ]
             ],
             validRatings[
-              [c.raterParticipantIdKey, c.ratingAgreesWithNoteStatusKey, c.ratingCountKey]
+              [
+                c.raterParticipantIdKey,
+                c.ratingAgreesWithNoteStatusKey,
+                c.ratingCountKey,
+                c.successfulRatingNotHelpfulCount,
+                c.successfulRatingHelpfulCount,
+                c.unsuccessfulRatingNotHelpfulCount,
+                c.unsuccessfulRatingHelpfulCount,
+              ]
             ],
             self._minMeanNoteScore,
             self._minCRHVsCRNHRatio,
@@ -705,10 +724,12 @@ class MFBaseScorer(Scorer):
 
       with self.time_block("Harassment tag consensus"):
         harassmentAbuseNoteParams, _, _ = tag_consensus.train_tag_model(
-          ratingsHelpfulnessScoreFilteredPreHarassmentFilter,
-          c.notHelpfulSpamHarassmentOrAbuseTagKey,
-          noteParamsUnfiltered[[c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]],
-          raterParamsUnfiltered[
+          ratings=ratingsHelpfulnessScoreFilteredPreHarassmentFilter,
+          tag=c.notHelpfulSpamHarassmentOrAbuseTagKey,
+          helpfulModelNoteParams=noteParamsUnfiltered[
+            [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
+          ],
+          helpfulModelRaterParams=raterParamsUnfiltered[
             [c.raterParticipantIdKey, c.internalRaterInterceptKey, c.internalRaterFactor1Key]
           ],
           name="harassment",
@@ -731,7 +752,15 @@ class MFBaseScorer(Scorer):
             ]
           ],
           validRatings[
-            [c.raterParticipantIdKey, c.ratingAgreesWithNoteStatusKey, c.ratingCountKey]
+            [
+              c.raterParticipantIdKey,
+              c.ratingAgreesWithNoteStatusKey,
+              c.ratingCountKey,
+              c.successfulRatingNotHelpfulCount,
+              c.successfulRatingHelpfulCount,
+              c.unsuccessfulRatingNotHelpfulCount,
+              c.unsuccessfulRatingHelpfulCount,
+            ]
           ],
           self._minMeanNoteScore,
           self._minCRHVsCRNHRatio,
@@ -800,6 +829,14 @@ class MFBaseScorer(Scorer):
         raterInitStateDiligence=raterParamsDiligenceInit,
       )
       noteParams = noteParams.merge(diligenceNoteParams, on=c.noteIdKey)
+
+      noteParams = noteParams.merge(
+        harassmentAbuseNoteParams[
+          [c.noteIdKey, c.harassmentNoteInterceptKey, c.harassmentNoteFactor1Key]
+        ],
+        on=c.noteIdKey,
+        how="left",
+      )
       raterParams = raterParams.merge(diligenceRaterParams, on=c.raterParticipantIdKey)
 
     # Compute scored notes -- currently not returned; only used for downstream computation.
@@ -892,6 +929,12 @@ class MFBaseScorer(Scorer):
           c.meanNoteScoreKey,
           c.raterAgreeRatioKey,
           c.aboveHelpfulnessThresholdKey,
+          c.successfulRatingHelpfulCount,
+          c.successfulRatingNotHelpfulCount,
+          c.unsuccessfulRatingHelpfulCount,
+          c.unsuccessfulRatingNotHelpfulCount,
+          c.totalHelpfulHarassmentRatingsPenaltyKey,
+          c.raterAgreeRatioWithHarassmentAbusePenaltyKey,
         ]
       ],
       on=c.raterParticipantIdKey,

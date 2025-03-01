@@ -220,6 +220,7 @@ def _run_scorer(
 
   # Invoke scoring and user contribution algorithms.
   scoredNotes, helpfulnessScores, newStatus, auxNoteInfo = run_scoring(
+    args,
     notes,
     ratings,
     statusHistory,
