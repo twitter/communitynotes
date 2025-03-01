@@ -385,6 +385,9 @@ class MFBaseScorer(Scorer):
         c.classificationKey,
         c.numRatingsKey,
         c.noteAuthorParticipantIdKey,
+        c.minSignCountKey,
+        c.negFactorMeanHelpfulNumKey,
+        c.posFactorMeanHelpfulNumKey,
       ]
       + c.helpfulTagsTSVOrder
       + c.notHelpfulTagsTSVOrder

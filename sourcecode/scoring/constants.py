@@ -598,6 +598,14 @@ noteParameterUncertaintyTSVMainColumnsAndTypes = [
   (noteInterceptMaxKey, np.double),
   (noteInterceptMinKey, np.double),
 ]
+
+negFactorRatingCountKey = "negFactor_ratingCount"
+posFactorRatingCountKey = "posFactor_ratingCount"
+negFactorMeanHelpfulNumKey = "negFactor_meanHelpfulNum"
+posFactorMeanHelpfulNumKey = "posFactor_meanHelpfulNum"
+minSignCountKey = "minSignCount"
+maxSignCountKey = "maxSignCount"
+
 noteParameterUncertaintyTSVAuxColumnsAndTypes = [
   ("internalNoteFactor1_max", np.double),
   ("internalNoteFactor1_median", np.double),

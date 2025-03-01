@@ -45,6 +45,32 @@ def is_crnh_diamond(
   )
 
 
+def is_crnh_ratio(
+  scoredNotes,
+  minRatingsNeeded,
+  maxHelpfulNumPerSide=0.4,
+  maxAvgHelpfulNumPerSide=0.3,
+  minMinSignCount=3,
+  do=True,
+):
+  if not do:
+    # return all False
+    return (scoredNotes[c.numRatingsKey] < 0) & (scoredNotes[c.numRatingsKey] > 0)
+  return (
+    (scoredNotes[c.numRatingsKey] >= minRatingsNeeded)
+    & (~pd.isna(scoredNotes[c.minSignCountKey]))
+    & (~pd.isna(scoredNotes[c.negFactorMeanHelpfulNumKey]))
+    & (~pd.isna(scoredNotes[c.posFactorMeanHelpfulNumKey]))
+    & (scoredNotes[c.minSignCountKey] >= minMinSignCount)
+    & (scoredNotes[c.negFactorMeanHelpfulNumKey] <= maxHelpfulNumPerSide)
+    & (scoredNotes[c.posFactorMeanHelpfulNumKey] <= maxHelpfulNumPerSide)
+    & (
+      ((scoredNotes[c.negFactorMeanHelpfulNumKey] + scoredNotes[c.posFactorMeanHelpfulNumKey]) / 2)
+      <= maxAvgHelpfulNumPerSide
+    )
+  )
+
+
 def get_ratings_before_note_status_and_public_tsv(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
@@ -356,6 +382,63 @@ def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -
   return noteStats
 
 
+def get_note_counts_by_rater_sign(scoredNotes, raterModelOutput, ratings):
+  raterModelOutput[c.raterParticipantIdKey].astype(ratings[c.raterParticipantIdKey].dtype)
+
+  if c.helpfulNumKey not in ratings.columns:
+    ratings[c.helpfulNumKey] = 0.5
+    ratings.loc[ratings[c.helpfulnessLevelKey] == "HELPFUL", c.helpfulNumKey] = 1.0
+    ratings.loc[ratings[c.helpfulnessLevelKey] == "NOT_HELPFUL", c.helpfulNumKey] = 0.0
+
+  mergedRatings = (
+    ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]]
+    .merge(raterModelOutput, on=c.raterParticipantIdKey)
+    .merge(scoredNotes, on=c.noteIdKey, suffixes=("", "_note"))
+  )
+
+  mergedRatings["raterFactorBucket"] = np.where(
+    mergedRatings[c.internalRaterFactor1Key] < 0, "negFactor", "posFactor"
+  )
+
+  noteCountsByRaterSign = (
+    mergedRatings.groupby([c.noteIdKey, "raterFactorBucket"])
+    .size()
+    .unstack(fill_value=0)
+    .reset_index()
+  ).rename(columns={"negFactor": c.negFactorRatingCountKey, "posFactor": c.posFactorRatingCountKey})
+
+  if c.negFactorRatingCountKey not in noteCountsByRaterSign.columns:
+    noteCountsByRaterSign[c.negFactorRatingCountKey] = 0
+  if "posFactor" not in noteCountsByRaterSign.columns:
+    noteCountsByRaterSign[c.posFactorRatingCountKey] = 0
+
+  noteCountsByRaterSign[c.minSignCountKey] = noteCountsByRaterSign.apply(
+    lambda row: min(row[c.negFactorRatingCountKey], row[c.posFactorRatingCountKey]), axis=1
+  )
+  noteCountsByRaterSign[c.maxSignCountKey] = noteCountsByRaterSign.apply(
+    lambda row: max(row[c.negFactorRatingCountKey], row[c.posFactorRatingCountKey]), axis=1
+  )
+
+  meanHelpfulnessByRaterSign = (
+    mergedRatings.groupby([c.noteIdKey, "raterFactorBucket"])[c.helpfulNumKey]
+    .mean()
+    .unstack()
+    .reset_index()
+  ).rename(
+    columns={"negFactor": c.negFactorMeanHelpfulNumKey, "posFactor": c.posFactorMeanHelpfulNumKey}
+  )
+
+  noteCountsByRaterSign = noteCountsByRaterSign.merge(
+    meanHelpfulnessByRaterSign, on=[c.noteIdKey], how="left", unsafeAllowed=c.minSignCountKey
+  )
+  if c.negFactorMeanHelpfulNumKey not in noteCountsByRaterSign.columns:
+    noteCountsByRaterSign[c.negFactorMeanHelpfulNumKey] = np.nan
+  if c.posFactorMeanHelpfulNumKey not in noteCountsByRaterSign.columns:
+    noteCountsByRaterSign[c.posFactorMeanHelpfulNumKey] = np.nan
+
+  return noteCountsByRaterSign
+
+
 # TODO: compute_scored_notes is only called from matrix_factorization_scorer and the behavior is directly
 # coupled to the matrix_factorization_scorer results.  When we define a model object, this function should
 # become a member of matrix_factorization_scorer and the composure of "rules" should be explicitly factored
@@ -382,6 +465,7 @@ def compute_scored_notes(
   is_crh_function: Callable[..., pd.Series] = is_crh,
   is_crnh_diamond_function: Callable[..., pd.Series] = is_crnh_diamond,
   is_crnh_ucb_function: Callable[..., pd.Series] = is_crnh_ucb,
+  is_crnh_ratio_function: Callable[..., pd.Series] = is_crnh_ratio,
   lowDiligenceThreshold: float = 0.263,
   factorThreshold: float = 0.5,
   firmRejectThreshold: Optional[float] = None,
@@ -416,6 +500,7 @@ def compute_scored_notes(
       is_crh_function: Function specifying default CRH critierai.
       is_crnh_diamond_function: Function specifying default CRNH critierai.
       is_crnh_ucb_function: Function specifying default CRNH critierai, ORed together with previous.
+      is_crnh_ratio_function:
   Returns:
       pd.DataFrame: scoredNotes The scored notes
   """
@@ -426,6 +511,16 @@ def compute_scored_notes(
       c.numRatingsLast28DaysKey,
       c.createdAtMillisKey,
     ]
+  )
+
+  # Get meanHelpfulNum per side and minSignCount for each note
+  noteStats = noteStats.merge(
+    get_note_counts_by_rater_sign(noteStats, raterParams, ratings)[
+      [c.noteIdKey, c.minSignCountKey, c.negFactorMeanHelpfulNumKey, c.posFactorMeanHelpfulNumKey]
+    ],
+    how="left",
+    on=c.noteIdKey,
+    unsafeAllowed=c.minSignCountKey,
   )
 
   # Merge with noteParams as necessary
@@ -467,6 +562,13 @@ def compute_scored_notes(
       lambda noteStats: is_crnh_ucb_function(
         noteStats, minRatingsNeeded, crnhThresholdUCBIntercept
       ),
+      onlyApplyToNotesThatSayTweetIsMisleading=False,
+    ),
+    scoring_rules.RuleFromFunction(
+      RuleID.RATIO_CRNH,
+      {RuleID.INITIAL_NMR},
+      c.currentlyRatedNotHelpful,
+      lambda noteStats: is_crnh_ratio_function(noteStats, minRatingsNeeded, do=finalRound),
       onlyApplyToNotesThatSayTweetIsMisleading=False,
     ),
     scoring_rules.NMtoCRNH(
