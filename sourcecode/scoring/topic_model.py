@@ -30,7 +30,7 @@ logger.setLevel(logging.INFO)
 
 
 class TopicModel(object):
-  def __init__(self, unassignedThreshold=0.85):
+  def __init__(self, unassignedThreshold=0.99):
     """Initialize a list of seed terms for each topic."""
     self._seedTerms = {
       Topics.UkraineConflict: {
@@ -60,6 +60,8 @@ class TopicModel(object):
     """Compile a single regex from all seed terms grouped by topic."""
     regex_patterns = {}
     for topic, patterns in self._seedTerms.items():
+      # require whitespace or start-of-string at the beginning of each match
+      patterns = [f"(?im)(\s|^){pattern}" for pattern in patterns]
       group_name = f"{topic.name}"
       regex_patterns[group_name] = f"(?P<{group_name}>{'|'.join(patterns)})"
 

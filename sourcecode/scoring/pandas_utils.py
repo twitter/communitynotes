@@ -24,6 +24,7 @@ This module should support type-related work in the scorer, including:
 from collections import Counter
 from dataclasses import dataclass
 from enum import Enum
+from functools import wraps
 from hashlib import sha256
 import re
 import sys
@@ -647,6 +648,7 @@ def patch_pandas(main: Callable) -> Callable:
     main: "main" function for program binary
   """
 
+  @wraps(main)
   def _inner(*args, **kwargs) -> Any:
     """Determine patching behavior, apply patch and add logging."""
     print("Patching pandas")
@@ -662,9 +664,11 @@ def patch_pandas(main: Callable) -> Callable:
       # birdwatch/scoring/src/main/python/run_final_scoring.py
       # birdwatch/scoring/src/main/python/run_contributor_scoring.py
       # birdwatch/scoring/src/main/python/run.py
+      # birdwatch/scoring/src/main/python/public/scoring/run_scoring.py
       assert len(args) == 1, f"unexpected 1 positional args, but found {len(args)}"
       assert len(kwargs) == 0, f"expected kwargs to be empty, but found {len(kwargs)}"
       clArgs = args[0]
+
     # Apply patches, configured based on whether types should be enforced or logged
     patcher = PandasPatcher(clArgs.enforce_types)
     pd.concat = patcher.safe_concat()

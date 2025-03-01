@@ -4,6 +4,7 @@ from typing import Optional
 from . import constants as c, process_data
 from .matrix_factorization.matrix_factorization import MatrixFactorization
 
+import numpy as np
 import pandas as pd
 
 
@@ -19,11 +20,36 @@ def train_tag_model(
   useSigmoidCrossEntropy: bool = True,
   name: Optional[str] = None,
 ):
+  def _convert_param_name_from_internal_to_tag(
+    paramName: str,
+    name: Optional[str] = name,
+    tag: str = tag,
+  ) -> str:
+    if name is None:
+      name = tag.split("elpful")[-1]
+    return paramName.replace("internal", name)
+
+  # Prep empty dataframes to return in case we abort training.
+  emptyNoteParams = helpfulModelNoteParams[[c.noteIdKey]]
+  emptyNoteParams[
+    [
+      _convert_param_name_from_internal_to_tag(c.internalNoteInterceptKey),
+      _convert_param_name_from_internal_to_tag(c.internalNoteFactor1Key),
+    ]
+  ] = np.nan
+  emptyRaterParams = helpfulModelRaterParams[[c.raterParticipantIdKey]]
+  emptyRaterParams[
+    [
+      _convert_param_name_from_internal_to_tag(c.internalRaterInterceptKey),
+      _convert_param_name_from_internal_to_tag(c.internalRaterFactor1Key),
+    ]
+  ] = np.nan
+
   logger.info(f"-------------------Training for tag {tag}-------------------")
   ratingDataForTag, labelColName = prepare_tag_data(ratings, tag)
   if ratingDataForTag is None or len(ratingDataForTag) == 0:
     logger.info(f"No valid data for {tag}, returning None and aborting {tag} model training.")
-    return None, None, None
+    return emptyNoteParams, emptyRaterParams, None
 
   posRate = ratingDataForTag[labelColName].sum() / len(ratingDataForTag)
   logger.info(f"{tag} Positive Rate: {posRate}")
@@ -31,7 +57,7 @@ def train_tag_model(
     logger.info(
       f"{tag} tag positive rate is {posRate}: returning None and aborting {tag} model training."
     )
-    return None, None, None
+    return emptyNoteParams, emptyRaterParams, None
 
   if useSigmoidCrossEntropy:
     posWeight = (1 - posRate) / posRate
@@ -69,10 +95,10 @@ def train_tag_model(
     noteInit=helpfulModelNoteParams,
   )
 
-  if name is None:
-    name = tag.split("elpful")[-1]
-  noteParams.columns = [col.replace("internal", name) for col in noteParams.columns]
-  raterParams.columns = [col.replace("internal", name) for col in raterParams.columns]
+  noteParams.columns = [_convert_param_name_from_internal_to_tag(col) for col in noteParams.columns]
+  raterParams.columns = [
+    _convert_param_name_from_internal_to_tag(col) for col in raterParams.columns
+  ]
   return noteParams, raterParams, globalBias
 
 
