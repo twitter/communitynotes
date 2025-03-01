@@ -409,7 +409,7 @@ def get_note_counts_by_rater_sign(scoredNotes, raterModelOutput, ratings):
 
   if c.negFactorRatingCountKey not in noteCountsByRaterSign.columns:
     noteCountsByRaterSign[c.negFactorRatingCountKey] = 0
-  if "posFactor" not in noteCountsByRaterSign.columns:
+  if c.posFactorRatingCountKey not in noteCountsByRaterSign.columns:
     noteCountsByRaterSign[c.posFactorRatingCountKey] = 0
 
   noteCountsByRaterSign[c.minSignCountKey] = noteCountsByRaterSign.apply(

@@ -129,7 +129,7 @@ class PFlipModel(object):
     classWeight: Dict[int, int] = {0: 1000, 1: 1},
     trainSize: float = 0.9,
     seed: Optional[int] = None,
-    crhFpRate: float = 0.25,
+    crhFpRate: float = 0.6,
   ):
     """Configure feature extraction and learning hyperparameters for pflip model.
 
