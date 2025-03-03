@@ -44,7 +44,6 @@ class RuleID(Enum):
   EXPANSION_MODEL = RuleAndVersion("ExpansionModel", "1.1", True)
   EXPANSION_PLUS_MODEL = RuleAndVersion("ExpansionPlusModel", "1.1", False)
   CORE_MODEL = RuleAndVersion("CoreModel", "1.1", True)
-  CORE_WITH_TOPICS_MODEL = RuleAndVersion("CoreWithTopicsModel", "1.1", True)
   COVERAGE_MODEL = RuleAndVersion("CoverageModel", "1.1", False)
   GROUP_MODEL_1 = RuleAndVersion("GroupModel01", "1.1", True)
   GROUP_MODEL_2 = RuleAndVersion("GroupModel02", "1.1", True)
@@ -461,7 +460,7 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     ruleID: RuleID,
     dependencies: Set[RuleID],
     requiredStableCrhMinutesThreshold: int = 30,
-    maxStableCrhMinutesThreshold: int = 120,
+    maxStableCrhMinutesThreshold: int = 180,
   ):
     """
     Args:

@@ -151,7 +151,6 @@ class MFBaseScorer(Scorer):
   def __init__(
     self,
     includedTopics: Set[str] = set(),
-    excludeTopics: bool = False,
     includedGroups: Set[int] = set(),
     includeUnassigned: bool = False,
     captureThreshold: Optional[float] = None,
@@ -197,7 +196,6 @@ class MFBaseScorer(Scorer):
     Args:
       includedGroups: if set, filter ratings and results based on includedGroups
       includedTopics: if set, filter ratings based on includedTopics
-      excludedTopics: if set, filter ratings based on excludedTopics
       seed: if not None, seed value to ensure deterministic execution
       pseudoraters: if True, compute optional pseudorater confidence intervals
       minNumRatingsPerRater: Minimum number of ratings which a rater must produce to be
@@ -232,7 +230,6 @@ class MFBaseScorer(Scorer):
     """
     super().__init__(
       includedTopics=includedTopics,
-      excludeTopics=excludeTopics,
       includedGroups=includedGroups,
       includeUnassigned=includeUnassigned,
       captureThreshold=captureThreshold,
@@ -573,7 +570,7 @@ class MFBaseScorer(Scorer):
     # based on the first round scoring results.  Disabling reputation can be desirable
     # in situations where the overall volume of ratings is lower (e.g. topic models).
     if not self._useReputation:
-      assert "MFTopicScorer" in self.get_name(), f"Unexpected scorer: {self.get_name()}"
+      assert "Topic" in self.get_name(), f"Unexpected scorer: {self.get_name()}"
       logger.info(f"Skipping rep-filtering in prescoring for {self.get_name()}")
       helpfulnessScores = raterParamsUnfiltered[[c.raterParticipantIdKey]]
       helpfulnessScores[
@@ -598,7 +595,7 @@ class MFBaseScorer(Scorer):
       harassmentAbuseNoteParams = noteParamsUnfiltered[[c.noteIdKey]]
       harassmentAbuseNoteParams[[c.harassmentNoteInterceptKey, c.harassmentNoteFactor1Key]] = np.nan
     else:
-      assert "MFTopicScorer" not in self.get_name(), f"Unexpected scorer: {self.get_name()}"
+      assert "Topic" not in self.get_name(), f"Unexpected scorer: {self.get_name()}"
       logger.info(f"Performing rep-filtering for {self.get_name()}")
       # Get a dataframe of scored notes based on the algorithm results above
       with self.time_block("Compute scored notes"):

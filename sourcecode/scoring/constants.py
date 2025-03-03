@@ -168,16 +168,6 @@ coreActiveRulesKey = "coreActiveRules"
 coreNoteInterceptMaxKey = "coreNoteInterceptMax"
 coreNoteInterceptMinKey = "coreNoteInterceptMin"
 coreNumFinalRoundRatingsKey = "coreNumFinalRoundRatings"
-# Core No Topic Model
-coreWithTopicsNoteInterceptKey = "coreWithTopicsNoteIntercept"
-coreWithTopicsNoteFactor1Key = "coreWithTopicsNoteFactor1"
-coreWithTopicsRaterInterceptKey = "coreWithTopicsRaterIntercept"
-coreWithTopicsRaterFactor1Key = "coreWithTopicsRaterFactor1"
-coreWithTopicsRatingStatusKey = "coreWithTopicsRatingStatus"
-coreWithTopicsActiveRulesKey = "coreWithTopicsActiveRules"
-coreWithTopicsNoteInterceptMaxKey = "coreWithTopicsNoteInterceptMax"
-coreWithTopicsNoteInterceptMinKey = "coreWithTopicsNoteInterceptMin"
-coreWithTopicsNumFinalRoundRatingsKey = "coreWithTopicsNumFinalRoundRatings"
 # Expansion Model
 expansionNoteInterceptKey = "expansionNoteIntercept"
 expansionNoteFactor1Key = "expansionNoteFactor1"
@@ -582,7 +572,6 @@ emergingMeanNoteScore = 0.3
 emergingRatingCount = 10
 aggregateRatingReceivedTotal = "aggregateRatingReceivedTotal"
 core = "CORE"
-coreWithTopics = "CORE_WITH_TOPICS"
 expansion = "EXPANSION"
 expansionPlus = "EXPANSION_PLUS"
 topWriterWritingImpact = 10
@@ -760,13 +749,6 @@ noteModelOutputTSVColumnsAndTypes = [
   (modelingMultiGroupKey, np.float64),
   (multiGroupInternalActiveRulesKey, str),
   (multiGroupNumFinalRoundRatingsKey, np.double),  # double because nullable.
-  (coreWithTopicsNoteFactor1Key, np.double),
-  (coreWithTopicsNoteInterceptKey, np.double),
-  (coreWithTopicsRatingStatusKey, "category"),
-  (coreWithTopicsActiveRulesKey, "category"),
-  (coreWithTopicsNumFinalRoundRatingsKey, np.double),  # double because nullable.
-  (coreWithTopicsNoteInterceptMinKey, np.double),
-  (coreWithTopicsNoteInterceptMaxKey, np.double),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
@@ -847,8 +829,6 @@ raterModelOutputTSVColumnsAndTypes = [
   (multiGroupRaterInterceptKey, np.double),
   (multiGroupRaterFactor1Key, np.double),
   (modelingMultiGroupKey, np.float64),
-  (coreWithTopicsRaterInterceptKey, np.double),
-  (coreWithTopicsRaterFactor1Key, np.double),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
