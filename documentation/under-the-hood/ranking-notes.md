@@ -99,10 +99,11 @@ We currently assign notes a "Not Helpful" status if the max (upper confidence bo
 **Supervised confidence modeling**
 
 We also employ a supervised model to detect low confidence matrix factorization results.
-If the model predicts that a note will lose Helpful status, then the note will remain in Needs More Ratings status for an additional 30 minutes to allow it to gather a larger set of ratings.
-If after 30 minutes the note still meets Helpful standards based on the matrix factorization scoring, the note will be rated Helpful and shown on X.
+If the model predicts that a note will lose Helpful status, then the note will remain in Needs More Ratings status for up to an additional 180 minutes to allow it to gather a larger set of ratings.
+If after that time the note still meets Helpful standards based on the matrix factorization scoring, the note will be rated Helpful and shown on X.
 In all cases, the final status of the note is determined by matrix factorization.
-The maximum effect of the supervised model is no more than a 30 minute delay.
+The maximum effect of the supervised model is no more than a 180 minute delay. 
+All notes will receive a 30 minute delay to gather additional ratings. 
 This helps reduce notes briefly showing and then returning to Needs More Rating status.
 
 The training data for the supervised confidence model includes all notes that meet the criteria for Helpful status _at some point in time_.
@@ -113,7 +114,7 @@ The features employed by the model include:
 - Statistics summarizing the Helpful ratings for a note (e.g. standard deviation of user factors from Helpful ratings)
 - Bucket counts of Helpful, Somewhat Helpful and Not Helpful ratings, partitioned by user factor $f_u$ as positive ($f_u >.3$), neutral ($-.3 \leq f_u \leq .3$) and negative ($f_u <-.3$)
 
-The model uses logistic regression to predict note status outcomes, and is calibrated to delay Helpful status for no more than 25% of notes that ultimately stabilize to Helpful status.
+The model uses logistic regression to predict note status outcomes, and is calibrated to delay Helpful status for no more than 60% of notes that ultimately stabilize to Helpful status.
 
 ## Tag Outlier Filtering
 
@@ -354,6 +355,9 @@ For not-helpful notes:
 
 ## What’s New?
 
+**Mar 3, 2025**
+- Update supervised confidence modeling to (1) allow notes with higher flip probability to gather ratings for a longer time before being set to Currently Rated Helpful (CRH), (2) identify more such notes with higher flip probability by adjusting supervised modeling thresholds, and (3) add a minimum delay for all notes that reach CRH criteria to gather more ratings before being set to CRH. Notes are shown as a note preview during that time, to help gather ratings.
+  
 **Feb 28, 2025**
 - Update note assignment to topic threshold, increasing probability that notes with topic seed words are assigned to associated topic.
 - Additional Not Helpful scoring logic (RatioCRNH scoring rule) to identify more notes that are widely rated as Not Helpful.
