@@ -21,7 +21,6 @@ from .constants import FinalScoringArgs, ModelResult, PrescoringArgs, ScoringArg
 from .enums import Scorers, Topics
 from .matrix_factorization.normalized_loss import NormalizedLossHyperparameters
 from .mf_core_scorer import MFCoreScorer
-from .mf_core_with_topics_scorer import MFCoreWithTopicsScorer
 from .mf_expansion_plus_scorer import MFExpansionPlusScorer
 from .mf_expansion_scorer import MFExpansionScorer
 from .mf_group_scorer import (
@@ -74,11 +73,6 @@ def _get_scorers(
     Dict[Scorers, List[Scorer]] containing instantiated Scorer objects for note ranking.
   """
   scorers: Dict[Scorers, List[Scorer]] = dict()
-  scorers[Scorers.MFCoreWithTopicsScorer] = [
-    MFCoreWithTopicsScorer(
-      seed, pseudoraters, useStableInitialization=useStableInitialization, threads=12
-    )
-  ]
   scorers[Scorers.MFCoreScorer] = [
     MFCoreScorer(seed, pseudoraters, useStableInitialization=useStableInitialization, threads=12)
   ]
@@ -708,14 +702,6 @@ def meta_score(
           c.expansionRatingStatusKey,
         )
       )
-    if enabledScorers is None or Scorers.MFCoreWithTopicsScorer in enabledScorers:
-      rules.append(
-        scoring_rules.ApplyModelResult(
-          RuleID.CORE_WITH_TOPICS_MODEL,
-          {RuleID.META_INITIAL_NMR},
-          c.coreWithTopicsRatingStatusKey,
-        )
-      )
     if enabledScorers is None or Scorers.MFCoreScorer in enabledScorers:
       rules.append(
         scoring_rules.ApplyModelResult(
@@ -724,7 +710,6 @@ def meta_score(
           c.coreRatingStatusKey,
         )
       )
-
     if enabledScorers is None or Scorers.MFMultiGroupScorer in enabledScorers:
       rules.append(
         scoring_rules.ApplyModelResult(

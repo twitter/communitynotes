@@ -36,7 +36,6 @@ class Scorer(ABC):
   def __init__(
     self,
     includedTopics: Set[str] = set(),
-    excludeTopics: bool = False,
     includedGroups: Set[int] = set(),
     includeUnassigned: bool = False,
     captureThreshold: Optional[float] = None,
@@ -49,7 +48,6 @@ class Scorer(ABC):
       seed (int, optional): if not None, seed value to ensure deterministic execution
     """
     self._includedTopics = includedTopics
-    self._excludeTopics = excludeTopics
     self._includedGroups = includedGroups
     self._includeUnassigned = includeUnassigned
     self._captureThreshold = captureThreshold
@@ -120,16 +118,11 @@ class Scorer(ABC):
     if (not self._includedGroups) and (not self._includedTopics):
       return ratings, noteStatusHistory
     logger.info(f"Filtering ratings for {self.get_name()}.  Original rating length: {len(ratings)}")
-    # Apply topic filter for topic models
+    # Apply topic filter
     if self._includedTopics:
       notes = noteTopics[noteTopics[c.noteTopicKey].isin(self._includedTopics)][[c.noteIdKey]]
       ratings = ratings.merge(notes)
       noteStatusHistory = noteStatusHistory.merge(notes)
-    if self._excludeTopics:
-      ratings = ratings[~ratings[c.noteIdKey].isin(noteTopics[c.noteIdKey])]
-      noteStatusHistory = noteStatusHistory[
-        ~noteStatusHistory[c.noteIdKey].isin(noteTopics[c.noteIdKey])
-      ]
     logger.info(f"  Ratings after topic filter: {len(ratings)}")
     # Apply group filter
     if self._includedGroups:
