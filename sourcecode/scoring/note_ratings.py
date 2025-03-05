@@ -382,7 +382,7 @@ def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -
   return noteStats
 
 
-def get_note_counts_by_rater_sign(scoredNotes, raterModelOutput, ratings):
+def get_note_counts_by_rater_sign(raterModelOutput, ratings):
   raterModelOutput[c.raterParticipantIdKey].astype(ratings[c.raterParticipantIdKey].dtype)
 
   if c.helpfulNumKey not in ratings.columns:
@@ -390,42 +390,46 @@ def get_note_counts_by_rater_sign(scoredNotes, raterModelOutput, ratings):
     ratings.loc[ratings[c.helpfulnessLevelKey] == "HELPFUL", c.helpfulNumKey] = 1.0
     ratings.loc[ratings[c.helpfulnessLevelKey] == "NOT_HELPFUL", c.helpfulNumKey] = 0.0
 
-  mergedRatings = (
-    ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]]
-    .merge(raterModelOutput, on=c.raterParticipantIdKey)
-    .merge(scoredNotes, on=c.noteIdKey, suffixes=("", "_note"))
+  ratingsToUse = pd.DataFrame(ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]])
+  raterModelOutputToUse = pd.DataFrame(
+    raterModelOutput[[c.raterParticipantIdKey, c.internalRaterFactor1Key]]
   )
 
+  mergedRatings = ratingsToUse.merge(raterModelOutputToUse, on=c.raterParticipantIdKey)
+
+  negFactorKey = "negFactor"
+  posFactorKey = "posFactor"
+  raterFactorBucketKey = "raterFactorBucket"
+
   mergedRatings["raterFactorBucket"] = np.where(
-    mergedRatings[c.internalRaterFactor1Key] < 0, "negFactor", "posFactor"
+    mergedRatings[c.internalRaterFactor1Key] < 0, negFactorKey, posFactorKey
   )
 
   noteCountsByRaterSign = (
-    mergedRatings.groupby([c.noteIdKey, "raterFactorBucket"])
+    mergedRatings.groupby([c.noteIdKey, raterFactorBucketKey])
     .size()
     .unstack(fill_value=0)
     .reset_index()
-  ).rename(columns={"negFactor": c.negFactorRatingCountKey, "posFactor": c.posFactorRatingCountKey})
+  ).rename(
+    columns={negFactorKey: c.negFactorRatingCountKey, posFactorKey: c.posFactorRatingCountKey}
+  )
 
   if c.negFactorRatingCountKey not in noteCountsByRaterSign.columns:
     noteCountsByRaterSign[c.negFactorRatingCountKey] = 0
   if c.posFactorRatingCountKey not in noteCountsByRaterSign.columns:
     noteCountsByRaterSign[c.posFactorRatingCountKey] = 0
 
-  noteCountsByRaterSign[c.minSignCountKey] = noteCountsByRaterSign.apply(
-    lambda row: min(row[c.negFactorRatingCountKey], row[c.posFactorRatingCountKey]), axis=1
-  )
-  noteCountsByRaterSign[c.maxSignCountKey] = noteCountsByRaterSign.apply(
-    lambda row: max(row[c.negFactorRatingCountKey], row[c.posFactorRatingCountKey]), axis=1
-  )
+  noteCountsByRaterSign[c.minSignCountKey] = noteCountsByRaterSign[
+    [c.negFactorRatingCountKey, c.posFactorRatingCountKey]
+  ].min(axis=1)
 
   meanHelpfulnessByRaterSign = (
-    mergedRatings.groupby([c.noteIdKey, "raterFactorBucket"])[c.helpfulNumKey]
+    mergedRatings.groupby([c.noteIdKey, raterFactorBucketKey])[c.helpfulNumKey]
     .mean()
     .unstack()
     .reset_index()
   ).rename(
-    columns={"negFactor": c.negFactorMeanHelpfulNumKey, "posFactor": c.posFactorMeanHelpfulNumKey}
+    columns={negFactorKey: c.negFactorMeanHelpfulNumKey, posFactorKey: c.posFactorMeanHelpfulNumKey}
   )
 
   noteCountsByRaterSign = noteCountsByRaterSign.merge(
@@ -435,6 +439,23 @@ def get_note_counts_by_rater_sign(scoredNotes, raterModelOutput, ratings):
     noteCountsByRaterSign[c.negFactorMeanHelpfulNumKey] = np.nan
   if c.posFactorMeanHelpfulNumKey not in noteCountsByRaterSign.columns:
     noteCountsByRaterSign[c.posFactorMeanHelpfulNumKey] = np.nan
+
+  # Downcast types from 64=>32
+  noteCountsByRaterSign[c.minSignCountKey] = noteCountsByRaterSign[c.minSignCountKey].astype(
+    np.int32
+  )
+  noteCountsByRaterSign[c.negFactorRatingCountKey] = noteCountsByRaterSign[
+    c.negFactorRatingCountKey
+  ].astype(np.int32)
+  noteCountsByRaterSign[c.posFactorRatingCountKey] = noteCountsByRaterSign[
+    c.posFactorRatingCountKey
+  ].astype(np.int32)
+  noteCountsByRaterSign[c.negFactorMeanHelpfulNumKey] = noteCountsByRaterSign[
+    c.negFactorMeanHelpfulNumKey
+  ].astype(np.float32)
+  noteCountsByRaterSign[c.posFactorMeanHelpfulNumKey] = noteCountsByRaterSign[
+    c.posFactorMeanHelpfulNumKey
+  ].astype(np.float32)
 
   return noteCountsByRaterSign
 
@@ -515,13 +536,14 @@ def compute_scored_notes(
 
   # Get meanHelpfulNum per side and minSignCount for each note
   noteStats = noteStats.merge(
-    get_note_counts_by_rater_sign(noteStats, raterParams, ratings)[
+    get_note_counts_by_rater_sign(raterParams, ratings)[
       [c.noteIdKey, c.minSignCountKey, c.negFactorMeanHelpfulNumKey, c.posFactorMeanHelpfulNumKey]
     ],
     how="left",
     on=c.noteIdKey,
     unsafeAllowed=c.minSignCountKey,
   )
+  noteStats[[c.minSignCountKey]] = noteStats[[c.minSignCountKey]].fillna(0).astype(np.int32)
 
   # Merge with noteParams as necessary
   noteParamsColsToKeep = [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
@@ -687,5 +709,9 @@ def compute_scored_notes(
   # Discard the locked status column since it is captured in noteStatusHistory and
   # not necessary for the rest of scoring.
   scoredNotes = scoredNotes.drop(columns=[c.lockedStatusKey])
+  # Discard extra columns related to the RatioCRNH rule that are no longer needed for the rest of scoring.
+  scoredNotes = scoredNotes.drop(
+    columns=[c.minSignCountKey, c.negFactorMeanHelpfulNumKey, c.posFactorMeanHelpfulNumKey]
+  )
 
   return scoredNotes
