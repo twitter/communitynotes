@@ -22,6 +22,7 @@ class MFCoreScorer(MFBaseScorer):
       threads: number of threads to use for intra-op parallelism in pytorch
     """
     super().__init__(
+      excludeTopics=True,
       includedGroups=c.coreGroups,
       includeUnassigned=True,
       captureThreshold=0.5,
