@@ -194,10 +194,12 @@ We use this ability to test new models, refine current approaches and support ex
 We currently run several variations of the matrix factorization approach.
 Each variation uses the same modeling logic and parameters, but applies the model to different slices of the ratings data.
 
-- The _Core_ model determines status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas.
+- The _Core_ model determines status for notes with most ratings from geographical areas where Community Notes is well established (e.g. the US, where Community Notes has been available for multiple years).  We refer to established areas as _Core_ areas and areas where Community Notes has recently launched as _Expansion_ areas. The Core model includes ratings from users in Core areas on notes where the majority of ratings also came from users in Core areas. The Core model does not include notes that are assigned to Topics — those are included in _CoreWithTopics_ described below.
+
 - The _Expansion_ model runs the same ranking algorithm with the same parameters as the Core model, with the difference that the Expansion model includes all notes with all ratings across Core and Expansion areas.
 - The _ExpansionPlus_ model functions similarity to the _Expansion_ model, extending the reach of Community Notes to additional areas.
 - The _Group_ models operate on smaller segments of the data to specifically improve note ranking in non-English speaking communities.  Users are assigned to modeling groups (e.g. based on region, country or language) and then we run a separate matrix factorization for each group.  The matrix factorization includes all ratings from users in the modeling group, but the scoring results only impact notes which were written by a member of the modeling group and have at least 80% of ratings from within the modeling group.  We initially launched with 12 Group models and plan to monitor and adjust as Community Notes continues to grow.
+- The _CoreWithTopics_ model is a variant of the _Core_ model that includes all notes assigned to a Topic, and their associated ratings. It produces the initial candidate status for topically-related notes that would otherwise be in _Core_, and the final status of those notes is then determined by combining the results from TopicModels.
 
 In cases where a note is ranked by both the Core and Expansion models the Core model is always authoritative.
 This approach allows us to grow Community Notes as quickly as possible in experimental Expansion areas without the risk of compromising quality in Core areas where Community Notes is well established.
@@ -214,7 +216,7 @@ It might list one of the following models:
 
 ## Topic Modeling
 
-The Core, Expansion, ExpansionPlus and Group models described in Multi-Model Note Ranking learn latent representations for notes and users that are generally effective at modeling viewpoints across a wide range of notes.
+The Core, CoreWithTopics, Expansion, ExpansionPlus and Group models described in Multi-Model Note Ranking learn latent representations for notes and users that are generally effective at modeling viewpoints across a wide range of notes.
 Empirically, we have observed that some topics are better represented with narrower modeling that can learn viewpoint representations for a more specific topic.
 Improving the strength of modeling for a topic allows us to better identify notes that are helpful to people from different points of view on the given topic.
 
@@ -337,7 +339,7 @@ For not-helpful notes:
 **Prescoring**
 
 1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence). Also, coalesce ratings made by raters with high post-selection-similarity.
-2. For each scorer (Core, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
+2. For each scorer (Core, CoreWithTopics, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
     - Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.
     - Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
     - Fit the harassment-abuse tag-consensus matrix factorization model on the helpfulness-score filtered ratings, then update Author and Rater Helpfulness scores using the output of the tag-consensus model.
@@ -345,7 +347,7 @@ For not-helpful notes:
 **Scoring**
 
 1. Load the output of step 2 above from prescoring, but re-run step 1 on the newest available notes and ratings data.
-2. For each scorer (Core, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
+2. For each scorer (Core, CoreWithTopics, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
     - Re-fit the matrix factorization model on ratings data that’s been filtered by user helpfulness scores in step 3.
     - Fit the note diligence matrix factorization model.
     - Compute upper and lower confidence bounds on each note's intercept by adding pseudo-ratings and re-fitting the model with them.
@@ -354,6 +356,9 @@ For not-helpful notes:
 5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**Mar 5, 2025**
+- Remove topic notes and ratings from Core and add new CoreWithTopics model to improve Core rater factor precision.
 
 **Mar 3, 2025**
 - Update supervised confidence modeling to (1) allow notes with higher flip probability to gather ratings for a longer time before being set to Currently Rated Helpful (CRH), (2) identify more such notes with higher flip probability by adjusting supervised modeling thresholds, and (3) add a minimum delay for all notes that reach CRH criteria to gather more ratings before being set to CRH. Notes are shown as a note preview during that time, to help gather ratings.
