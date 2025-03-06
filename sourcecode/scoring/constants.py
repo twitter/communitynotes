@@ -43,13 +43,13 @@ tagPercentileForNormalization = 40
 intervalHalfWidth = 0.3
 
 # Max flip rates
-prescoringAllUnlockedNotesMaxCrhChurn = 0.2
-prescoringAllNotesCreatedThreeToThirteenDaysAgoMaxChurn = 0.09
-finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.075
-finalNotesWithNewRatingsMaxNewCrhChurn = 0.80
-finalNotesWithNewRatingsMaxOldCrhChurn = 0.25
-finalNotesThatJustFlippedStatusMaxCrhChurn = 1e8
-finalNotesThatFlippedRecentlyMaxCrhChurn = 1e8
+prescoringAllUnlockedNotesMaxCrhChurn = 0.3
+prescoringAllNotesCreatedThreeToThirteenDaysAgoMaxChurn = 0.15
+finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.12
+finalNotesWithNewRatingsMaxNewCrhChurn = 1.2
+finalNotesWithNewRatingsMaxOldCrhChurn = 0.4
+finalNotesThatJustFlippedStatusMaxCrhChurn = 1e7
+finalNotesThatFlippedRecentlyMaxCrhChurn = 1e7
 # TODO(jiansongc): adjust these 2 below
 finalNotesNmrDueToMinStableCrhTimeMaxOldCrhChurn = 1.0
 finalNotesNmrDueToMinStableCrhTimeMaxNewCrhChurn = 1.0
@@ -78,7 +78,7 @@ defaultIndexKey = "index"
 
 # Scoring Groups
 coreGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 21, 25}
-expansionGroups: Set[int] = {0, 4, 5, 7, 12, 15, 16, 18, 20, 22, 23, 26, 27, 28, 29}
+expansionGroups: Set[int] = {0, 4, 5, 7, 12, 15, 16, 18, 20, 22, 23, 26, 27, 28, 29, 33}
 expansionPlusGroups: Set[int] = {17, 24, 30, 31, 32}
 
 # TSV Values

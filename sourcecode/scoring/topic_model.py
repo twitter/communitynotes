@@ -61,12 +61,12 @@ class TopicModel(object):
     regex_patterns = {}
     for topic, patterns in self._seedTerms.items():
       # require whitespace or start-of-string at the beginning of each match
-      patterns = [f"(?im)(\s|^){pattern}" for pattern in patterns]
+      patterns = [f"(\s|^){pattern}" for pattern in patterns]
       group_name = f"{topic.name}"
       regex_patterns[group_name] = f"(?P<{group_name}>{'|'.join(patterns)})"
 
     combined_regex = "|".join(regex_patterns.values())
-    return re.compile(combined_regex, re.IGNORECASE)
+    return re.compile(combined_regex, re.IGNORECASE | re.MULTILINE)
 
   def _make_seed_labels(self, texts: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Produce a label vector based on seed terms.
