@@ -239,6 +239,7 @@ Given that Topic Models are trained on less data, we find that Topic Models perf
 At present, the Topic Models function to uphold a high standard of helpfulness across viewpoints by preventing some notes from receiving Helpful status if the note is not found Helpful across the space of topic representations or if the note is too aligned with a single perspective.
 If topic modeling assigns an intercept below 0.24 or a factor magnitude greater than 0.51, then the note will only be eligible for Needs More Ratings or Not Helpful status.
 Note that to ensure Topic Model factors and intercepts reflect sufficient underlying signal, Topic Models only update note status if the note has 5 or more raters with both positive and negative factors in the Topic Model.
+If a note is assigned to a Topic Model, and the note meets the criteria to receive Helpful status, but does not yet meet this rating count threshold, the note will remain in Needs More Ratings status for up to an additional 180 minutes to allow it to gather a larger set of ratings.
 
 ## Expanded Consensus Trial
 
@@ -357,6 +358,9 @@ For not-helpful notes:
 
 ## What’s New?
 
+**Mar 17, 2025**
+- Update topic modeling to give a note more time to gather ratings if it is assigned to a topic, meets Currently Rated Helpful (CRH) criteria, but the topic model does not yet have enough ratings to be confident.
+  
 **Mar 5, 2025**
 - Remove topic notes and ratings from Core and add new CoreWithTopics model to improve Core rater factor precision.
 
