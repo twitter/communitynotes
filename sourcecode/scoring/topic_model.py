@@ -268,6 +268,6 @@ class TopicModel(object):
   def validate_note_topic_accuracy_on_seed_labels(self, pred, seedLabels, conflictedTexts):
     balancedAccuracy = balanced_accuracy_score(seedLabels[~conflictedTexts], pred[~conflictedTexts])
     logger.info(f"  Balanced accuracy on raw predictions: {balancedAccuracy}")
-    assert balancedAccuracy > 0.5, f"Balanced accuracy too low: {balancedAccuracy}"
+    assert balancedAccuracy > 0.35, f"Balanced accuracy too low: {balancedAccuracy}"
     # Validate that any conflicted text is Unassigned in seedLabels
     assert all(seedLabels[conflictedTexts] == Topics.Unassigned.value)

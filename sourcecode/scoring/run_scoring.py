@@ -30,6 +30,7 @@ from .mf_group_scorer import (
   coalesce_group_model_scored_notes,
   groupScorerCount,
   groupScorerParalleism,
+  nmrScoringGroup,
   trialScoringGroup,
 )
 from .mf_multi_group_scorer import (
@@ -39,7 +40,7 @@ from .mf_multi_group_scorer import (
 )
 from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
 from .pandas_utils import get_df_fingerprint, get_df_info, keep_columns, patch_pandas
-from .pflip_model import LABEL as PFLIP_LABEL, PFlipModel
+from .pflip_plus_model import LABEL as PFLIP_LABEL, PFlipPlusModel
 from .post_selection_similarity import (
   PostSelectionSimilarity,
   filter_ratings_by_post_selection_similarity,
@@ -130,6 +131,15 @@ def _get_scorers(
       tagConsensusHarassmentHelpfulRatingPenalty=10,
       tagFilterPercentile=90,
       incorrectFilterThreshold=1.5,
+    )
+  )
+  scorers[Scorers.MFGroupScorer].append(
+    MFGroupScorer(
+      includedGroups={nmrScoringGroup},
+      groupId=nmrScoringGroup,
+      threads=groupScorerParalleism.get(nmrScoringGroup, 4),
+      seed=seed,
+      crhThreshold=0.3,
     )
   )
   scorers[Scorers.MFTopicScorer] = [
@@ -745,6 +755,7 @@ def meta_score(
       assert isinstance(expansionScorer, MFExpansionScorer)
       coreCrhThreshold = coreScorer.get_crh_threshold()
       expansionCrhThreshold = expansionScorer.get_crh_threshold()
+      # consecutive group scorers
       for i in range(1, groupScorerCount + 1):
         if i != trialScoringGroup:
           rules.append(
@@ -767,6 +778,14 @@ def meta_score(
               minSafeguardThreshold=0.25,
             )
           )
+      # nmr group scorer
+      rules.append(
+        scoring_rules.ApplyNMRGroupModelResult(
+          RuleID[f"GROUP_MODEL_{nmrScoringGroup}"],
+          {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+          nmrScoringGroup,
+        )
+      )
     if enabledScorers is None or Scorers.MFTopicScorer in enabledScorers:
       for topic in Topics:
         if topic == Topics.Unassigned:
@@ -1104,7 +1123,7 @@ def run_prescoring(
   pd.DataFrame,
   pd.DataFrame,
   sklearn.pipeline.Pipeline,
-  PFlipModel,
+  PFlipPlusModel,
   c.PrescoringMetaOutput,
   pd.DataFrame,
 ]:
@@ -1232,19 +1251,8 @@ def run_prescoring(
     logger.info(get_df_info(prescoringRaterModelOutput, "prescoringRaterModelOutput"))
 
   with c.time_block("Fitting pflip model"):
-    logger.info(
-      f"Initial value of OPENBLAS_NUM_THREADS: {os.environ.get('OPENBLAS_NUM_THREADS', None)}"
-    )
-    os.environ["OPENBLAS_NUM_THREADS"] = "1"
-    logger.info(
-      f"New value of OPENBLAS_NUM_THREADS: {os.environ.get('OPENBLAS_NUM_THREADS', None)}"
-    )
-    pflipModel = PFlipModel(seed=seed)
-    pflipModel.fit(notes, ratings, noteStatusHistory, prescoringRaterModelOutput)
-    del os.environ["OPENBLAS_NUM_THREADS"]
-    logger.info(
-      f"Final value of OPENBLAS_NUM_THREADS: {os.environ.get('OPENBLAS_NUM_THREADS', None)}"
-    )
+    pflipPlusModel = PFlipPlusModel(seed=seed)
+    pflipPlusModel.fit(notes, ratings, noteStatusHistory, prescoringRaterModelOutput)
 
   # Prescoring itself is now done. We will not run final_note_scoring to check note status flips.
   if checkFlips:
@@ -1272,7 +1280,7 @@ def run_prescoring(
       prescoringNoteModelOutput=prescoringNoteModelOutput,
       prescoringRaterModelOutput=prescoringRaterModelOutput,
       noteTopicClassifier=noteTopicClassifierPipe,
-      pflipClassifier=pflipModel,
+      pflipClassifier=pflipPlusModel,
       prescoringMetaOutput=prescoringMetaOutput,
       checkFlips=checkFlips,
       enableNmrDueToMinStableCrhTime=enableNmrDueToMinStableCrhTime,
@@ -1285,7 +1293,7 @@ def run_prescoring(
     prescoringNoteModelOutput,
     prescoringRaterModelOutput,
     noteTopicClassifierPipe,
-    pflipModel,
+    pflipPlusModel,
     prescoringMetaOutput,
     scoredNotes,
   )
@@ -1527,7 +1535,7 @@ def run_final_note_scoring(
   prescoringNoteModelOutput: pd.DataFrame,
   prescoringRaterModelOutput: pd.DataFrame,
   noteTopicClassifier: sklearn.pipeline.Pipeline,
-  pflipClassifier: PFlipModel,
+  pflipClassifier: PFlipPlusModel,
   prescoringMetaOutput: c.PrescoringMetaOutput,
   seed: Optional[int] = None,
   pseudoraters: Optional[bool] = True,
@@ -1554,6 +1562,43 @@ def run_final_note_scoring(
   # Save a reference to the full set of available notes data so that we can later guarantee
   # the text from all notes are available during topic assignment.
   notesFull = notes[[c.noteIdKey, c.tweetIdKey, c.summaryKey]]
+
+  # Since pflip requires access to all notes and ratings colocated on the same post as
+  # any note scored by pflip, we  compute pflip predictions before pruning the notes and
+  # ratings datasets.
+  with c.time_block("Computing pflip scores."):
+    # Identify set of adjacent notes to scope notes and ratings datasets.
+    pflipNoteIds = noteStatusHistory[
+      noteStatusHistory[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0
+    ][[c.noteIdKey]]  # Compute pflip for any note currently in stabilization.
+    logger.info(f"computing pflip for {len(pflipNoteIds)} notes in stabilization")
+    assert len(pflipNoteIds) == pflipNoteIds[c.noteIdKey].nunique()
+    pflipTweetIds = (
+      notes[[c.noteIdKey, c.tweetIdKey]].merge(pflipNoteIds)[[c.tweetIdKey]].drop_duplicates()
+    )
+    pflipAdjacentNoteIds = notes[[c.noteIdKey, c.tweetIdKey]].merge(pflipTweetIds)[[c.noteIdKey]]
+    assert len(pflipAdjacentNoteIds) == pflipAdjacentNoteIds[c.noteIdKey].nunique()
+    # Prune notes and ratings to adjacent notes
+    pflipNotes = notes.merge(pflipAdjacentNoteIds)
+    pflipRatings = ratings.merge(pflipAdjacentNoteIds)
+    pflipNoteStatusHistory = noteStatusHistory.merge(pflipAdjacentNoteIds)
+    # Apply preprocessing updates
+    pflipNotes, pflipRatings, pflipNoteStatusHistory = preprocess_data(
+      pflipNotes, pflipRatings, pflipNoteStatusHistory
+    )
+    # Apply PSS filtering
+    pflipRatings = filter_ratings_by_post_selection_similarity(
+      pflipNotes,
+      pflipRatings,
+      prescoringRaterModelOutput[prescoringRaterModelOutput[c.postSelectionValueKey] >= 1][
+        [c.raterParticipantIdKey, c.postSelectionValueKey]
+      ],
+    )
+    # Compute pflip scores
+    pflipPredictions = pflipClassifier.predict(
+      pflipNotes, pflipRatings, pflipNoteStatusHistory, prescoringRaterModelOutput
+    )
+    logger.info(f"pflip prediction summary:\n{pflipPredictions[PFLIP_LABEL].value_counts()}")
 
   with c.time_block("Determine which notes to score."):
     if previousScoredNotes is None:
@@ -1686,14 +1731,7 @@ def run_final_note_scoring(
   )
 
   scoredNotes, auxiliaryNoteInfo = combine_final_scorer_results(modelResults, noteStatusHistory)
-
-  with c.time_block("Obtaining flip predictions"):
-    flipPredictions = pflipClassifier.predict(
-      notes, ratings, noteStatusHistory, prescoringRaterModelOutput
-    )
-    scoredNotes = scoredNotes.merge(flipPredictions, how="left")
-    logger.info(f"flip predictions:\n{scoredNotes[PFLIP_LABEL].value_counts(dropna=False)}")
-
+  scoredNotes = scoredNotes.merge(pflipPredictions, how="left")
   scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo = post_note_scoring(
     scorers,
     scoredNotes,

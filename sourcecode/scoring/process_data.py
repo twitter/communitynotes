@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 
 from . import constants as c, note_status_history
 from .pandas_utils import get_df_info
-from .pflip_model import PFlipModel
+from .pflip_plus_model import PFlipPlusModel
 
 import joblib
 import numpy as np
@@ -422,8 +422,9 @@ def preprocess_data(
         f"Timestamp of latest note in data: {pd.to_datetime(notes[c.createdAtMillisKey], unit='ms').max()}",
       )
 
-  ratings = remove_duplicate_ratings(ratings)
-  ratings = compute_helpful_num(ratings)
+  if len(ratings) > 0:
+    ratings = remove_duplicate_ratings(ratings)
+    ratings = compute_helpful_num(ratings)
 
   if ratingsOnly:
     return pd.DataFrame(), ratings, pd.DataFrame()
@@ -500,7 +501,7 @@ def write_prescoring_output(
   prescoringNoteModelOutput: pd.DataFrame,
   prescoringRaterModelOutput: pd.DataFrame,
   noteTopicClassifier: Pipeline,
-  pflipClassifier: PFlipModel,
+  pflipClassifier: PFlipPlusModel,
   prescoringMetaOutput: c.PrescoringMetaOutput,
   prescoringScoredNotesOutput: Optional[pd.DataFrame],
   noteModelOutputPath: str,
@@ -643,7 +644,7 @@ class LocalDataLoader(CommunityNotesDataLoader):
 
   def get_prescoring_model_output(
     self,
-  ) -> Tuple[pd.DataFrame, pd.DataFrame, Pipeline, PFlipModel, c.PrescoringMetaOutput]:
+  ) -> Tuple[pd.DataFrame, pd.DataFrame, Pipeline, PFlipPlusModel, c.PrescoringMetaOutput]:
     logger.info(
       f"Attempting to read prescoring model output from {self.prescoringNoteModelOutputPath}, {self.prescoringRaterModelOutputPath}, {self.prescoringNoteTopicClassifierPath}, {self.prescoringMetaOutputPath}"
     )
@@ -689,7 +690,7 @@ class LocalDataLoader(CommunityNotesDataLoader):
       prescoringPflipClassifier = None
     else:
       prescoringPflipClassifier = joblib.load(self.prescoringPflipClassifierPath)
-    assert type(prescoringPflipClassifier) == PFlipModel
+    assert type(prescoringPflipClassifier) == PFlipPlusModel
 
     if self.prescoringMetaOutputPath is None:
       prescoringMetaOutput = None
