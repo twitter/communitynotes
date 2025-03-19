@@ -366,6 +366,9 @@ For not-helpful notes:
 
 ## What’s New?
 
+**Mar 18, 2025**
+- Update supervised confidence modeling to include features derived from peer notes co-located on the same post.
+  
 **Mar 17, 2025**
 - Update topic modeling to give a note more time to gather ratings if it is assigned to a topic, meets Currently Rated Helpful (CRH) criteria, but the topic model does not yet have enough ratings to be confident.
   
