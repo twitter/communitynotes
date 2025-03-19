@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from . import constants as c
 from .enums import Topics
 from .explanation_tags import get_top_two_tags_for_note
-from .pflip_model import FLIP, LABEL as PFLIP_LABEL
+from .pflip_plus_model import CRH, LABEL as PFLIP_LABEL
 
 import numpy as np
 import pandas as pd
@@ -60,6 +60,7 @@ class RuleID(Enum):
   GROUP_MODEL_12 = RuleAndVersion("GroupModel12", "1.1", True)
   GROUP_MODEL_13 = RuleAndVersion("GroupModel13", "1.1", True)
   GROUP_MODEL_14 = RuleAndVersion("GroupModel14", "1.1", True)
+  GROUP_MODEL_33 = RuleAndVersion("GroupModel33", "1.1", True)
   TOPIC_MODEL_1 = RuleAndVersion("TopicModel01", "1.0", False)
   TOPIC_MODEL_2 = RuleAndVersion("TopicModel02", "1.0", False)
   TOPIC_MODEL_3 = RuleAndVersion("TopicModel03", "1.0", False)
@@ -490,9 +491,11 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     #         (a) If (now - t) is larger than maxStableCrhMinutesThreshold, CRH and clear
     #             timestampMillisOfNmrDueToMinStableCrhTime.
     #         (b) Else if (now - t) is smaller than requiredStableCrhMinutesThreshold, NMR.
-    #         (c) Else if pflip model predicts that the note status will flip or note has
+    #         (c) Else if the note is being scored by a TopicModel but TopicModel is not confident,
+    #             NMR.
+    #         (d) Else if pflip model predicts that the note status will flip or note has
     #             flipped in the past, NMR.
-    #         (d) Else, CRH and clear timestampMillisOfNmrDueToMinStableCrhTime.
+    #         (e) Else, CRH and clear timestampMillisOfNmrDueToMinStableCrhTime.
     #
     # (2) Non-CRH from current run and timestampMillisOfNmrDueToMinStableCrhTime exists.
     #     Clear timestampMillisOfNmrDueToMinStableCrhTime.
@@ -514,6 +517,8 @@ class NmrDueToMinStableCrhTime(ScoringRule):
         c.noteIdKey,
         c.timestampMillisOfNmrDueToMinStableCrhTimeKey,
         c.firstNonNMRLabelKey,
+        c.noteTopicKey,
+        c.topicNoteConfidentKey,
         statusColumn,
         PFLIP_LABEL,
       ]
@@ -564,13 +569,31 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     ] = c.needsMoreRatings
 
     # (1)-(B)-(c): Remain in stabilization period if the note has been in the period for between
-    # requiredStableCrhMinutesThreshold and maxStableCrhMinutesThreshold, and the note has a history
-    # of flipping or is predicted to flip
-    notesThatAlreadyFlipped = noteStatusUpdates[c.firstNonNMRLabelKey] == c.currentlyRatedHelpful
-    notesPredictedToFlip = noteStatusUpdates[PFLIP_LABEL] == FLIP
+    # requiredStableCrhMinutesThreshold and maxStableCrhMinutesThreshold, and the note is being
+    # scored by a TopicModel but TopicModel is not confident
+    notesScoredByTopicButNotConfident = (
+      (~noteStatusUpdates[c.noteTopicKey].isna())
+      & (~noteStatusUpdates[c.topicNoteConfidentKey].isna())
+      & (~(noteStatusUpdates[c.topicNoteConfidentKey].astype(pd.BooleanDtype())))
+    )
     noteStatusUpdates.loc[
       notesGoingCrh
       & notesAlreadyInStabilization
+      & notesScoredByTopicButNotConfident
+      & ~inStabilizationShorterThanMin
+      & ~inStabilizationLongerThanMax,
+      newStatusColumn,
+    ] = c.needsMoreRatings
+
+    # (1)-(B)-(d): Remain in stabilization period if the note has been in the period for between
+    # requiredStableCrhMinutesThreshold and maxStableCrhMinutesThreshold, and the note has a history
+    # of flipping or is predicted to flip
+    notesThatAlreadyFlipped = noteStatusUpdates[c.firstNonNMRLabelKey] == c.currentlyRatedHelpful
+    notesPredictedToFlip = noteStatusUpdates[PFLIP_LABEL] != CRH
+    noteStatusUpdates.loc[
+      notesGoingCrh
+      & notesAlreadyInStabilization
+      & ~notesScoredByTopicButNotConfident
       & (notesThatAlreadyFlipped | notesPredictedToFlip)
       & ~inStabilizationShorterThanMin
       & ~inStabilizationLongerThanMax,
@@ -585,12 +608,13 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     ][PFLIP_LABEL].value_counts(dropna=False)
     logger.info(f"pflip predictions for notes where pflip has an impact: {pflipCounts}")
 
-    # (1)-(B)-(d): Exit stabilization period (CRH) if the note has been in the period for between
+    # (1)-(B)-(e): Exit stabilization period (CRH) if the note has been in the period for between
     # requiredStableCrhMinutesThreshold and maxStableCrhMinutesThreshold, and the note doesn't have
     # a history of flipping or is not predicted to flip
     noteStatusUpdates.loc[
       notesGoingCrh
       & notesAlreadyInStabilization
+      & ~notesScoredByTopicButNotConfident
       & ~notesThatAlreadyFlipped
       & ~notesPredictedToFlip
       & ~inStabilizationShorterThanMin
@@ -760,6 +784,50 @@ class ApplyGroupModelResult(ScoringRule):
 
     # Set note status and return
     noteStatusUpdates[statusColumn] = c.currentlyRatedHelpful
+
+    return (noteStatusUpdates, None)
+
+
+class ApplyNMRGroupModelResult(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    groupNumber: int,
+  ):
+    """Set NMR status based on a modeling group result.
+
+    This rule sets NMR note status based on group models subject to several criteria:
+      * The note must have NMR status from the group model.
+      * The note must currently be scored as CRH.  This criteria guarantees that (1) this group
+        model strictly reduces coverage
+
+    Args:
+      ruleID: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
+      dependencies: Rules which must run before this rule can run.
+      groupNumber: modeling group index which this instance of ApplyGroupModelResult should act on.
+    """
+    super().__init__(ruleID, dependencies)
+    self._groupNumber = groupNumber
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
+    """Flip notes from CRH to NMR based on group models."""
+    # Generate the set of note status updates
+    probationaryNMRNotes = noteStats[
+      (noteStats[c.groupRatingStatusKey].isin({c.needsMoreRatings, c.currentlyRatedNotHelpful}))
+      & (noteStats[c.modelingGroupKey] == self._groupNumber)
+    ][[c.noteIdKey]]
+    # Identify notes which are currently CRH.
+    currentCRHNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][
+      [c.noteIdKey]
+    ]
+    # Identify candidate note status updates
+    noteStatusUpdates = probationaryNMRNotes.merge(currentCRHNotes, on=c.noteIdKey, how="inner")
+
+    # Set note status and return
+    noteStatusUpdates[statusColumn] = c.needsMoreRatings
 
     return (noteStatusUpdates, None)
 

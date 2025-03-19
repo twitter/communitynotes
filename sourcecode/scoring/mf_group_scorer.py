@@ -6,11 +6,16 @@ from .mf_base_scorer import MFBaseScorer, coalesce_columns
 import pandas as pd
 
 
-# Number of MFGroupScorer objects we expect to instantiate
+# Number of consecutive MFGroupScorer objects we expect to instantiate,
+# this does not include the NMR group scorer
 groupScorerCount = 14
 
 # Group ID assigned to trial scoring algorithm
 trialScoringGroup = 14
+
+# Group ID assigned to NMR group scorer
+nmrScoringGroup = 33
+
 
 # Mapping of how many threads to assign to each group scorer
 groupScorerParalleism = {
