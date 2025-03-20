@@ -99,11 +99,11 @@ We currently assign notes a "Not Helpful" status if the max (upper confidence bo
 **Supervised confidence modeling**
 
 We also employ a supervised model to detect low confidence matrix factorization results.
-If the model predicts that a note will lose Helpful status, then the note will remain in Needs More Ratings status for up to an additional 180 minutes to allow it to gather a larger set of ratings.
+If the model predicts that a note will lose Helpful status, then the note will remain in Needs More Ratings status for up to an additional 180 minutes or until the supervised model predicts the note will remain rated Helpful.
+The additional time in Needs More Ratings status allows the note to gather a larger set of ratings.
 If after that time the note still meets Helpful standards based on the matrix factorization scoring, the note will be rated Helpful and shown on X.
 In all cases, the final status of the note is determined by matrix factorization.
-The maximum effect of the supervised model is no more than a 180 minute delay. 
-All notes will receive a 30 minute delay to gather additional ratings. 
+The maximum effect of the supervised model is no more than a 180 minute delay, and all notes will receive a minimum 30 minute delay to gather additional ratings. 
 This helps reduce notes briefly showing and then returning to Needs More Rating status.
 
 The training data for the supervised confidence model includes all notes that meet the criteria for Helpful status _at some point in time_.
@@ -113,8 +113,16 @@ The features employed by the model include:
 - Aggregate ratios of helpful and non-helpful tags across all ratings for a note
 - Statistics summarizing the Helpful ratings for a note (e.g. standard deviation of user factors from Helpful ratings)
 - Bucket counts of Helpful, Somewhat Helpful and Not Helpful ratings, partitioned by user factor $f_u$ as positive ($f_u >.3$), neutral ($-.3 \leq f_u \leq .3$) and negative ($f_u <-.3$)
+- Burstiness of ratings associated with the note
 
-The model uses logistic regression to predict note status outcomes, and is calibrated to delay Helpful status for no more than 60% of notes that ultimately stabilize to Helpful status.
+Since ratings are often a reflection of both a note _and the associated post_, we also include ratings from _other notes on the same post_.
+We refer to other notes on the same post as _peer notes_.
+For example, if a note already has many peer notes that have been frequently assigned the Note Not Needed tag, the tag may reflect the associated post and all proposed notes may experience similar rating outcomes.
+During feature extraction, we vectorize features for peer notes suggesting the post is misleading and not-misleading separately since the meaning of the rating changes depending on agreement between the note and the post.
+
+The model uses logistic regression to predict note status outcomes.
+The feature vectorization process involves both discretization and feature crosses, yielding a sparse representation and allowing the model to learn non-linear relationships.
+The model is calibrated to delay Helpful status for no more than 60% of notes that ultimately stabilize to Helpful status.
 
 ## Tag Outlier Filtering
 
@@ -358,6 +366,9 @@ For not-helpful notes:
 
 ## What’s New?
 
+**Mar 18, 2025**
+- Update supervised confidence modeling to include features derived from ratings and scoring outcomes for peer notes located on the same post, as well as rating burstiness features.
+  
 **Mar 17, 2025**
 - Update topic modeling to give a note more time to gather ratings if it is assigned to a topic, meets Currently Rated Helpful (CRH) criteria, but the topic model does not yet have enough ratings to be confident.
   
