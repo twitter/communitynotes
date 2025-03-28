@@ -13,7 +13,7 @@ Community Notes participants are able to see a tab of notes that could use their
 
 This tab is only visible to contributors. It is designed to increase the likelihood that people from diverse perspectives rate each note, so that Community Notes can elevate notes that people from a wide range of perspectives will find helpful. It gives contributors an easy way to have immediate impact.
 
-It contains a set of 10 posts that have notes that need more ratings (although there may be fewer than 10 posts if there are fewer that meet the [criteria](#criteria-for-needs-your-help-tab-alerts-and-note-proposal-previews) to appear). The tab is updated as new notes that meet the criteria are written.
+It contains a set of 15 posts that have notes that need more ratings (although there may be fewer than 15 posts if there are fewer that meet the [criteria](#criteria-for-needs-your-help-tab-alerts-and-note-proposal-previews) to appear). The tab is updated as new notes that meet the criteria are written.
 
 ### Proposed note previews
 
@@ -47,6 +47,7 @@ A variety of criteria are considered when determining whether to include a note,
 - Current status (e.g. "Needs More Ratings")
 - Current helpfulness score (e.g. not a low helpfulness score, highly rated by initial raters, possibly nearing the threshold to earn status of "Helpful")
 - Does not have a large number of ratings (such that more ratings could change the note's status)
+- Is in [Status Stabilization state](./ranking-notes#status-stabilization) and has either a small number of ratings from raters of one factor (e.g. <5) or has lopsided rating volumes from raters of different factors (e.g. number of ratings from one factor sign < 20% of that from the other)
 - If the note contains terms that contributors have reported as sometimes overwhelming the Needs Your Help tab ("spam", "scam", "gambling", "dropship", "drop ship", "promotion") it will have a lower probability of appearing, so as to avoid overwhelming the tab. This is experimental to determine if it improves contributor satisfaction.
 
 In this case of alerts, notifications are sent to a random selection of contributors, excluding the note author and those who have already rated the note. Notifications are also limited by the recipient's notification frequency setting.
