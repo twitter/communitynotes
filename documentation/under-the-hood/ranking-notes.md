@@ -85,6 +85,16 @@ Note: for now, to avoid overfitting on our very small dataset, we only use 1-dim
 
 Additionally, because the matrix factorization is re-trained from scratch every hour, we have added additional logic to detect if the loss is more than expected (currently by detecting if the loss is above a hard threshold of 0.09) that may have resulted from an unlucky initialization and local mode, and then re-fit the model if so.
 
+## Rating Minimums for Helpful Status
+
+Matrix factorization identifies notes that are liked by people who normally disagree by assigning high intercepts to notes when users with different factors rate the note Helpful.
+In cases where there are few ratings available from a given part of the factor space, matrix factorization is forced to estimate the note intercept based on the limited data available.
+Unfortunately, acting based on limited rating signal can result in volatility in the note intercept as new ratings arrive, leading to note status changes.
+
+To reduce the likelihood that notes are shown to users as Helpful and then change status, we require notes to have at least 5 ratings from positive factor users and 5 ratings from negative factor users before a model can assign Helpful status to a note.
+Notes that otherwise meet the Helpful standard but do not have enough ratings are highlighted to contributors with a special note preview UI treatment to encourage more ratings.
+Once the note has enough ratings and meets all other Helpful status criteria, the model will rate the note as Helpful.
+
 ## Modeling Uncertainty
 
 While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters.
@@ -366,6 +376,9 @@ For not-helpful notes:
 
 ## What’s New?
 
+**Mar 27, 2025**
+- Require at least 5 positive factor users and 5 negative factor users rate a note as Helpful before the note can receive Helpful status.
+  
 **Mar 18, 2025**
 - Update supervised confidence modeling to include features derived from ratings and scoring outcomes for peer notes located on the same post, as well as rating burstiness features.
   
