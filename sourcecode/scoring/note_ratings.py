@@ -490,6 +490,7 @@ def compute_scored_notes(
   lowDiligenceThreshold: float = 0.263,
   factorThreshold: float = 0.5,
   firmRejectThreshold: Optional[float] = None,
+  minMinorityRaters: Optional[int] = None,
 ) -> pd.DataFrame:
   """
   Merges note status history, ratings, and model output. It annotes the data frame with
@@ -701,6 +702,15 @@ def compute_scored_notes(
           {RuleID.LARGE_FACTOR},
           c.firmReject,
           firmRejectThreshold,
+        )
+      )
+    if minMinorityRaters is not None:
+      rules.append(
+        scoring_rules.RequireMinMinorityRaters(
+          RuleID.MIN_MINORITY_RATERS,
+          {RuleID.LARGE_FACTOR},
+          c.needsYourHelp,
+          minMinorityRaters,
         )
       )
   scoredNotes = scoring_rules.apply_scoring_rules(

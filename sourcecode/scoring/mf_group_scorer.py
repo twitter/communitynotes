@@ -90,6 +90,7 @@ class MFGroupScorer(MFBaseScorer):
     tagFilterPercentile: int = 95,
     incorrectFilterThreshold: float = 2.5,
     threads: int = 4,
+    minMinorityRaters: Optional[int] = 5,
   ) -> None:
     """Configure MFGroupScorer object.
 
@@ -138,6 +139,7 @@ class MFGroupScorer(MFBaseScorer):
       tagConsensusHarassmentHelpfulRatingPenalty=tagConsensusHarassmentHelpfulRatingPenalty,
       tagFilterPercentile=tagFilterPercentile,
       incorrectFilterThreshold=incorrectFilterThreshold,
+      minMinorityRaters=minMinorityRaters,
     )
     assert groupId > 0, "groupNumber must be positive.  0 is reserved for unassigned."
     self._groupId = groupId

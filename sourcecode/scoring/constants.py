@@ -268,6 +268,9 @@ needsMoreRatings = "NEEDS_MORE_RATINGS"
 # FIRM_REJECT is set by individual scorers to indicate downstream scorers should not CRH
 # a note, but is never set as the finalRatingStatus of a note.
 firmReject = "FIRM_REJECT"
+# NEEDS_YOUR_HELP is set by individual scorers to indicate that the note should show as
+# a NYH pivot if the note has not exceeded the maximum stabilization time.
+needsYourHelp = "NEEDS_YOUR_HELP"
 
 # Boolean Note Status Labels
 currentlyRatedHelpfulBoolKey = "crhBool"
