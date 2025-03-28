@@ -11,6 +11,7 @@ class MFExpansionPlusScorer(MFBaseScorer):
     useStableInitialization: bool = True,
     saveIntermediateState: bool = False,
     threads: int = c.defaultNumThreads,
+    minMinorityRaters: Optional[int] = 5,
   ) -> None:
     """Configure MFExpansionPlusScorer object.
 
@@ -26,6 +27,7 @@ class MFExpansionPlusScorer(MFBaseScorer):
       useStableInitialization=useStableInitialization,
       saveIntermediateState=saveIntermediateState,
       threads=threads,
+      minMinorityRaters=minMinorityRaters,
     )
 
   def get_name(self):

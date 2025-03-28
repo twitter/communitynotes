@@ -191,6 +191,7 @@ class MFBaseScorer(Scorer):
     tagFilterPercentile: int = 95,
     incorrectFilterThreshold: float = 2.5,
     firmRejectThreshold: Optional[float] = None,
+    minMinorityRaters: Optional[int] = None,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -266,6 +267,7 @@ class MFBaseScorer(Scorer):
     self._tagFilterPercentile = tagFilterPercentile
     self._incorrectFilterThreshold = incorrectFilterThreshold
     self._firmRejectThreshold = firmRejectThreshold
+    self._minMinorityRaters = minMinorityRaters
     mfArgs = dict(
       [
         pair
@@ -1123,6 +1125,7 @@ class MFBaseScorer(Scorer):
         finalRound=True,
         factorThreshold=self._factorThreshold,
         firmRejectThreshold=self._firmRejectThreshold,
+        minMinorityRaters=self._minMinorityRaters,
       )
       logger.info(f"sn cols: {scoredNotes.columns}")
 

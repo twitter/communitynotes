@@ -38,6 +38,7 @@ class RuleID(Enum):
   LOW_DILIGENCE = RuleAndVersion("FilterLowDiligence", "1.0", False)
   LARGE_FACTOR = RuleAndVersion("FilterLargeFactor", "1.0", False)
   LOW_INTERCEPT = RuleAndVersion("RejectLowIntercept", "1.0", False)
+  MIN_MINORITY_RATERS = RuleAndVersion("MinMinorityRaters", "1.0", False)
 
   # Rules used in _meta_score.
   META_INITIAL_NMR = RuleAndVersion("MetaInitialNMR", "1.0", False)
@@ -217,7 +218,8 @@ class ApplyModelResult(ScoringRule):
         {c.firmReject, c.currentlyRatedNotHelpful}
       )
       crhBlocked = coreRejects | (noteStats[c.coreRatingStatusKey].isna() & expansionRejects)
-      crhNotes = noteStats[self._sourceColumn] == c.currentlyRatedHelpful
+      # FIRM_REJECT from upstream models should block both CRH and NYH status
+      crhNotes = noteStats[self._sourceColumn].isin({c.currentlyRatedHelpful, c.needsYourHelp})
       noteStats = noteStats[~(crhBlocked & crhNotes)]
     # If necessary, prune noteStatus based on filter column pairs
     if self._filterColumnPairs:
@@ -234,9 +236,11 @@ class ApplyModelResult(ScoringRule):
     ] = c.needsMoreRatings
     assert (
       noteStatusUpdates[statusColumn]
-      .isin({c.currentlyRatedHelpful, c.currentlyRatedNotHelpful, c.needsMoreRatings})
+      .isin(
+        {c.currentlyRatedHelpful, c.currentlyRatedNotHelpful, c.needsMoreRatings, c.needsYourHelp}
+      )
       .all()
-    ), "status must be set to CRH, CRNH or NMR"
+    ), "status must be set to CRH, CRNH, NMR or NYH"
     return (noteStatusUpdates, None)
 
 
@@ -456,6 +460,51 @@ class FilterLargeFactor(ScoringRule):
     return (noteStatusUpdates, None)
 
 
+class RequireMinMinorityRaters(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    status: str,
+    minMinorityRaters: int,
+  ):
+    """Set notes to NYH that haven't reached the minimum required number of minority raters.
+
+    Args:
+      rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
+      dependencies: Rules which must run before this rule can run.
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
+      minMinorityRaters: minimum number of minority raters required for CRH status.
+    """
+    super().__init__(ruleID, dependencies)
+    self._status = status
+    self._minMinorityRaters = minMinorityRaters
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Returns notes on track for CRH with a high low diligence intercept."""
+    # Prune noteStats to only include notes that are on track to be CRH
+    candidateNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][
+      [c.noteIdKey]
+    ]
+    noteStats = noteStats.merge(candidateNotes, on=c.noteIdKey, how="inner")
+
+    # Identify impacted notes.
+    noteStatusUpdates = noteStats.loc[noteStats[c.minSignCountKey] < self._minMinorityRaters][
+      [c.noteIdKey]
+    ]
+
+    pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
+
+    logger.info(
+      f"Total notes impacted by minimum minority rater requirement: {len(noteStatusUpdates)}"
+    )
+    noteStatusUpdates[statusColumn] = self._status
+
+    return (noteStatusUpdates, None)
+
+
 class NmrDueToMinStableCrhTime(ScoringRule):
   def __init__(
     self,
@@ -479,37 +528,66 @@ class NmrDueToMinStableCrhTime(ScoringRule):
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    # Prune noteStats to exclude CRH notes (CRHed before current scoring run).
-    noteStats = noteStats[noteStats[c.currentLabelKey] != c.currentlyRatedHelpful]
+    # For any notes that were CRH in the previous scoring run, the only possible status update
+    # from this scoring rule would be to switch a NYH status to CRH.  Notes that are CRH, NMR
+    # or CRNH in the current scoring round require no action.
     noteStats = noteStats.merge(currentLabels, on=c.noteIdKey, how="inner")
+    nyhToCrhUpdates = noteStats[
+      (noteStats[c.currentLabelKey] == c.currentlyRatedHelpful)
+      & (noteStats[statusColumn] == c.needsYourHelp)
+    ][[c.noteIdKey, c.timestampMillisOfNmrDueToMinStableCrhTimeKey]]
+    nyhToCrhUpdates[statusColumn] = c.currentlyRatedHelpful
+    nyhToCrhUpdates = nyhToCrhUpdates.rename(
+      columns={
+        c.timestampMillisOfNmrDueToMinStableCrhTimeKey: c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey
+      }
+    )
+    # Since we have identified the notes that require a NYH->CRH status change, we now drop all
+    # notes that were CRH before the current scoring run.
+    noteStats = noteStats[noteStats[c.currentLabelKey] != c.currentlyRatedHelpful]
 
     # Identify impacted notes:
-    # (1) CRH from current run
-    #     (A) If timestampMillisOfNmrDueToMinStableCrhTime doesn't exist:
+    # (1) CRH or NYH from current run
+    #     (A) If timestampMillisOfNmrDueToMinStableCrhTime is NaN:
     #         Set status to NMR, set timestampMillisOfNmrDueToMinStableCrhTime to now.
-    #     (B) If timestampMillisOfNmrDueToMinStableCrhTime t exists:
-    #         (a) If (now - t) is larger than maxStableCrhMinutesThreshold, CRH and clear
-    #             timestampMillisOfNmrDueToMinStableCrhTime.
-    #         (b) Else if (now - t) is smaller than requiredStableCrhMinutesThreshold, NMR.
-    #         (c) Else if the note is being scored by a TopicModel but TopicModel is not confident,
+    #     (B) If timestampMillisOfNmrDueToMinStableCrhTime is -1:
+    #         (a) If note was CRH in current run, set status to NMR and set
+    #             timestampMillisOfNmrDueToMinStableCrhTime to now.
+    #         (b) If note was NYH in current run, set status to NMR and leave
+    #             timestampMillisOfNmrDueToMinStableCrhTime as -1.
+    #     (C) If timestampMillisOfNmrDueToMinStableCrhTime t is >0:
+    #         -- Start with cases where we know we're leaving stabilization because the time
+    #         -- limit has been exceeded.
+    #         (a) If (now - t) is larger than maxStableCrhMinutesThreshold and current run is CRH,
+    #             set CRH and clear timestampMillisOfNmrDueToMinStableCrhTime.
+    #         (b) If (now - t) is larger than maxStableCrhMinutesThreshold and current run is NYH,
+    #             set NMR and clear timestampMillisOfNmrDueToMinStableCrhTime.
+    #         -- Next, handle cases where we know we're staying in stabilization because the
+    #         -- criteria to leave to CRH has not been met.
+    #         (c) Else if (now - t) is smaller than requiredStableCrhMinutesThreshold, NMR.
+    #         (d) Else if the note is being scored by a TopicModel but TopicModel is not confident,
     #             NMR.
-    #         (d) Else if pflip model predicts that the note status will flip or note has
+    #         (e) Else if pflip model predicts that the note status will flip or note has
     #             flipped in the past, NMR.
-    #         (e) Else, CRH and clear timestampMillisOfNmrDueToMinStableCrhTime.
+    #         -- Lastly, if the time limit hasn't been met and there is no criteria that requires
+    #         -- the note to remain in stabilization, the status depends on the scoring status.
+    #         (f) Else if current status is NYH, set NMR.
+    #         (g) Else, current status must be CRH, so set CRH and clear
+    #             timestampMillisOfNmrDueToMinStableCrhTime.
     #
-    # (2) Non-CRH from current run and timestampMillisOfNmrDueToMinStableCrhTime exists.
+    # (2) NMR or CRNH from current run and timestampMillisOfNmrDueToMinStableCrhTime is >0.
     #     Clear timestampMillisOfNmrDueToMinStableCrhTime.
     noteStatusUpdates = noteStats.loc[
       # Notice that this rule is scoped to notes that were not CRH in the last scoring run
-      # (see above), and are either trying to switch to CRH now OR are already in a stabilization
+      # (see above), and are either trying to switch to CRH/NYH now OR are already in a stabilization
       # period.
-      (noteStats[statusColumn] == c.currentlyRatedHelpful)
+      (noteStats[statusColumn].isin({c.currentlyRatedHelpful, c.needsYourHelp}))
       | (
         # Note that timestampMillisOfNmrDueToMinStableCrhTimeKey is NaN if a note has
         # never entered a stabilization period, >0 if a note is in a stabilization period, and -1
         # if a note has exited a stabilization period for any reason (whether set to CRH or
         # reverted to NMR before the period ended).
-        ~noteStats[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
+        noteStats[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].notna()
         & (noteStats[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0)
       )
     ][
@@ -532,21 +610,39 @@ class NmrDueToMinStableCrhTime(ScoringRule):
       c.timestampMillisOfNmrDueToMinStableCrhTimeKey
     ]
 
-    # (1)-(A): Currently not in stabilization period, enter stabilization period if note is trying
-    # to go CRH.
+    # (1)-(A): Never in a stabilization period. Enter stabilization period if note is trying
+    # to go CRH or NYH.
     notesGoingCrh = noteStatusUpdates[statusColumn] == c.currentlyRatedHelpful
-    notesNotAlreadyInStabilization = (
-      noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey].isna()
-    ) | (noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] <= 0)
+    notesGoingNyh = noteStatusUpdates[statusColumn] == c.needsYourHelp
+    notesNeverInStabilization = noteStatusUpdates[
+      c.timestampMillisOfNmrDueToMinStableCrhTimeKey
+    ].isna()
     noteStatusUpdates.loc[
-      notesGoingCrh & notesNotAlreadyInStabilization,
+      (notesGoingCrh | notesGoingNyh) & notesNeverInStabilization,
       [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
     ] = [c.needsMoreRatings, c.epochMillis]
 
-    # (1)-(B): Currently in stabilization period.
-    notesAlreadyInStabilization = ~notesNotAlreadyInStabilization
-    # (1)-(B)-(a): Exit stabilization period if the note has been in the period for longer than
-    # maxStableCrhMinutesThreshold.
+    # (1)-(B): Notes that have previously exited a stabilization period.
+    notesPreviouslyInStabilization = (
+      noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] < 0
+    )
+    # (1)-(B)-(a): If the note was CRH in the current run, allow the note to enter stabilization
+    noteStatusUpdates.loc[
+      notesGoingCrh & notesPreviouslyInStabilization,
+      [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
+    ] = [c.needsMoreRatings, c.epochMillis]
+
+    # (1)-(B)-(b): If the note was NYH in the current run, do not allow the note to enter stabilization.
+    noteStatusUpdates.loc[
+      notesGoingNyh & notesPreviouslyInStabilization, newStatusColumn
+    ] = c.needsMoreRatings
+
+    # (1)-(C): Currently in stabilization period.
+    notesAlreadyInStabilization = (
+      noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0
+    )
+    # (1)-(C)-(a): Exit stabilization period to CRH if the note has been in the period for
+    # longer than maxStableCrhMinutesThreshold and the note is currently scored CRH.
     inStabilizationLongerThanMax = (
       c.epochMillis - noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
       > self.maxStableCrhMinutesThreshold * 60 * 1000
@@ -557,7 +653,14 @@ class NmrDueToMinStableCrhTime(ScoringRule):
       [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
     ] = [c.currentlyRatedHelpful, -1]
 
-    # (1)-(B)-(b): Remain in stabilization period if the note has been in the period for shorter
+    # (1)-(C)-(b): Exit stabilization period to NMR if the note has been in the period for
+    # longer than maxStableCrhMinutesThreshold and the note is currently scored NYH.
+    noteStatusUpdates.loc[
+      notesGoingNyh & notesAlreadyInStabilization & inStabilizationLongerThanMax,
+      [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
+    ] = [c.needsMoreRatings, -1]
+
+    # (1)-(C)-(c): Remain in stabilization period if the note has been in the period for shorter
     # than requiredStableCrhMinutesThreshold
     inStabilizationShorterThanMin = (
       c.epochMillis - noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
@@ -565,10 +668,11 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     )
 
     noteStatusUpdates.loc[
-      notesGoingCrh & notesAlreadyInStabilization & inStabilizationShorterThanMin, newStatusColumn
+      (notesGoingCrh | notesGoingNyh) & notesAlreadyInStabilization & inStabilizationShorterThanMin,
+      newStatusColumn,
     ] = c.needsMoreRatings
 
-    # (1)-(B)-(c): Remain in stabilization period if the note has been in the period for between
+    # (1)-(C)-(d): Remain in stabilization period if the note has been in the period for between
     # requiredStableCrhMinutesThreshold and maxStableCrhMinutesThreshold, and the note is being
     # scored by a TopicModel but TopicModel is not confident
     notesScoredByTopicButNotConfident = (
@@ -577,7 +681,7 @@ class NmrDueToMinStableCrhTime(ScoringRule):
       & (~(noteStatusUpdates[c.topicNoteConfidentKey].astype(pd.BooleanDtype())))
     )
     noteStatusUpdates.loc[
-      notesGoingCrh
+      (notesGoingCrh | notesGoingNyh)
       & notesAlreadyInStabilization
       & notesScoredByTopicButNotConfident
       & ~inStabilizationShorterThanMin
@@ -585,13 +689,13 @@ class NmrDueToMinStableCrhTime(ScoringRule):
       newStatusColumn,
     ] = c.needsMoreRatings
 
-    # (1)-(B)-(d): Remain in stabilization period if the note has been in the period for between
+    # (1)-(C)-(e): Remain in stabilization period if the note has been in the period for between
     # requiredStableCrhMinutesThreshold and maxStableCrhMinutesThreshold, and the note has a history
     # of flipping or is predicted to flip
     notesThatAlreadyFlipped = noteStatusUpdates[c.firstNonNMRLabelKey] == c.currentlyRatedHelpful
     notesPredictedToFlip = noteStatusUpdates[PFLIP_LABEL] != CRH
     noteStatusUpdates.loc[
-      notesGoingCrh
+      (notesGoingCrh | notesGoingNyh)
       & notesAlreadyInStabilization
       & ~notesScoredByTopicButNotConfident
       & (notesThatAlreadyFlipped | notesPredictedToFlip)
@@ -600,7 +704,7 @@ class NmrDueToMinStableCrhTime(ScoringRule):
       newStatusColumn,
     ] = c.needsMoreRatings
     pflipCounts = noteStatusUpdates[
-      notesGoingCrh
+      (notesGoingCrh | notesGoingNyh)
       & notesAlreadyInStabilization
       & (~notesThatAlreadyFlipped)
       & ~inStabilizationShorterThanMin
@@ -608,9 +712,22 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     ][PFLIP_LABEL].value_counts(dropna=False)
     logger.info(f"pflip predictions for notes where pflip has an impact: {pflipCounts}")
 
-    # (1)-(B)-(e): Exit stabilization period (CRH) if the note has been in the period for between
+    # (1)-(C)-(f): Remain in stabilization if the note was scored as NYH and hasn't already met a
+    # criteria that required it to either leave or remain in stabilization.
+    noteStatusUpdates.loc[
+      notesGoingNyh
+      & notesAlreadyInStabilization
+      & ~notesScoredByTopicButNotConfident
+      & ~notesThatAlreadyFlipped
+      & ~notesPredictedToFlip
+      & ~inStabilizationShorterThanMin
+      & ~inStabilizationLongerThanMax,
+      newStatusColumn,
+    ] = c.needsMoreRatings
+
+    # (1)-(C)-(g): Exit stabilization period to CRH if the note has been in the period for between
     # requiredStableCrhMinutesThreshold and maxStableCrhMinutesThreshold, and the note doesn't have
-    # a history of flipping or is not predicted to flip
+    # a history of flipping or is not predicted to flip, and the note is currently scored CRH
     noteStatusUpdates.loc[
       notesGoingCrh
       & notesAlreadyInStabilization
@@ -622,21 +739,34 @@ class NmrDueToMinStableCrhTime(ScoringRule):
       [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
     ] = [c.currentlyRatedHelpful, -1]
 
-    # (2): Exit a stabilization period if the note stops trying to go to CRH and we're in
+    # (2): Exit a stabilization period if the note stops trying to go to CRH or NMR and we're in
     # a stabilization period.  Set updated timestamp to -1.
     noteStatusUpdates.loc[
-      ~notesGoingCrh & notesAlreadyInStabilization,
+      (~notesGoingCrh) & (~notesGoingNyh) & notesAlreadyInStabilization,
       c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey,
     ] = -1
 
+    # Identify rows within noteStatusUpdates that actually have a status change.
     noteStatusUpdatesWithStatusChange = noteStatusUpdates.loc[
-      (noteStatusUpdates[statusColumn] == c.currentlyRatedHelpful)
-      & (noteStatusUpdates[newStatusColumn] == c.needsMoreRatings)
+      (noteStatusUpdates[newStatusColumn].notna())
+      & (noteStatusUpdates[statusColumn] != noteStatusUpdates[newStatusColumn])
     ][[c.noteIdKey, newStatusColumn]]
     noteStatusUpdatesWithStatusChange.rename(columns={newStatusColumn: statusColumn}, inplace=True)
 
+    # Augment noteStatusUpdates and noteStatusUpdatesWithStatusChange to include notes that were
+    # previously CRH but were NYH in this scoring run.
+    noteStatusUpdatesWithStatusChange = pd.concat(
+      [noteStatusUpdatesWithStatusChange, nyhToCrhUpdates[[c.noteIdKey, statusColumn]]]
+    )
+    noteStatusUpdates = pd.concat(
+      [
+        noteStatusUpdates[[c.noteIdKey, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey]],
+        nyhToCrhUpdates[[c.noteIdKey, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey]],
+      ]
+    )
+
     logger.info(
-      f"Total notes impacted (CRH->NMR) by NmrDueToMinStableCrhTime: "
+      f"Total notes impacted by NmrDueToMinStableCrhTime: "
       f"{len(noteStatusUpdatesWithStatusChange)}"
     )
 
@@ -734,16 +864,23 @@ class ApplyGroupModelResult(ScoringRule):
     blocked = coreRejects | (noteStats[c.coreRatingStatusKey].isna() & expansionRejects)
     noteStats = noteStats[~blocked]
     # Generate the set of note status updates
-    probationaryCRHNotes = noteStats[
-      (noteStats[c.groupRatingStatusKey] == c.currentlyRatedHelpful)
+    probationaryCRHOrNYHNotes = noteStats[
+      (noteStats[c.groupRatingStatusKey].isin({c.currentlyRatedHelpful, c.needsYourHelp}))
       & (noteStats[c.modelingGroupKey] == self._groupNumber)
-    ][[c.noteIdKey]]
-    # Identify notes which are currently NMR.
-    currentNMRNotes = currentLabels[currentLabels[statusColumn] == c.needsMoreRatings][
-      [c.noteIdKey]
-    ]
-    # Identify candidate note status updates
-    noteStatusUpdates = probationaryCRHNotes.merge(currentNMRNotes, on=c.noteIdKey, how="inner")
+    ][[c.noteIdKey, c.groupRatingStatusKey]]
+    # Identify notes which are currently NMR or NYH.
+    currentNMROrNYHNotes = currentLabels[
+      currentLabels[statusColumn].isin({c.needsMoreRatings, c.needsYourHelp})
+    ][[c.noteIdKey, statusColumn]]
+    # Identify candidate note status updates.  This requires pruning to notes that have a NMR->NYH, NMR->CRH
+    # or NYH->CRH transition - in other words dropping NYH->NYH transitions.
+    noteStatusUpdates = probationaryCRHOrNYHNotes.merge(
+      currentNMROrNYHNotes, on=c.noteIdKey, how="inner"
+    )
+    noteStatusUpdates = noteStatusUpdates[
+      (noteStatusUpdates[c.groupRatingStatusKey] != c.needsYourHelp)
+      | (noteStatusUpdates[statusColumn] != c.needsYourHelp)
+    ][[c.noteIdKey, c.groupRatingStatusKey]]
     # If necessary, identify notes which pass score bound checks for expansion and core models.
     # Apply min and max threhsolds to core and expansion intercepts
     noteStats = noteStats[[c.noteIdKey, c.coreNoteInterceptKey, c.expansionNoteInterceptKey]].copy()
@@ -783,7 +920,7 @@ class ApplyGroupModelResult(ScoringRule):
     noteStatusUpdates = noteStatusUpdates.merge(actionableNotes, on=c.noteIdKey, how="inner")
 
     # Set note status and return
-    noteStatusUpdates[statusColumn] = c.currentlyRatedHelpful
+    noteStatusUpdates = noteStatusUpdates.rename(columns={c.groupRatingStatusKey: statusColumn})
 
     return (noteStatusUpdates, None)
 
@@ -819,10 +956,10 @@ class ApplyNMRGroupModelResult(ScoringRule):
       (noteStats[c.groupRatingStatusKey].isin({c.needsMoreRatings, c.currentlyRatedNotHelpful}))
       & (noteStats[c.modelingGroupKey] == self._groupNumber)
     ][[c.noteIdKey]]
-    # Identify notes which are currently CRH.
-    currentCRHNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][
-      [c.noteIdKey]
-    ]
+    # Identify notes which are currently CRH or NYH.
+    currentCRHNotes = currentLabels[
+      currentLabels[statusColumn].isin({c.currentlyRatedHelpful, c.needsYourHelp})
+    ][[c.noteIdKey]]
     # Identify candidate note status updates
     noteStatusUpdates = probationaryNMRNotes.merge(currentCRHNotes, on=c.noteIdKey, how="inner")
 
@@ -1089,10 +1226,10 @@ class ApplyTopicModelResult(ScoringRule):
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Flip notes from CRH to NMR based on the topic model results."""
-    # Identify notes which are currently CRH.
-    currentCRHNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][
-      [c.noteIdKey]
-    ]
+    # Identify notes which are currently CRH or NYH.
+    currentCRHNotes = currentLabels[
+      currentLabels[statusColumn].isin({c.currentlyRatedHelpful, c.needsYourHelp})
+    ][[c.noteIdKey]]
     # Identify notes which are below threshld from the applicable topic model.
     topicLowNotes = noteStats[
       (
