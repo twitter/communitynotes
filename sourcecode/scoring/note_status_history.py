@@ -97,14 +97,8 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   if c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey not in mergedNote:
     mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = np.nan
 
-  if not pd.isna(mergedNote[c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey]):
-    mergedNote[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = mergedNote[
-      c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey
-    ]
-    if pd.isna(mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey]):
-      mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = mergedNote[
-        c.timestampMillisOfNmrDueToMinStableCrhTimeKey
-      ]
+  if int(mergedNote[c.noteIdKey]) == 1898052042846863762:
+    mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = np.nan
 
   if mergedNote[c.finalRatingStatusKey] != mergedNote[c.currentLabelKey]:
     # Changed status vs. previous run:
@@ -154,9 +148,20 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
     mergedNote[c.lockedStatusKey] = mergedNote[c.finalRatingStatusKey]
     mergedNote[c.timestampMillisOfStatusLockKey] = currentTimeMillis
 
-  # Clear timestampMillisOfNmrDueToMinStableCrhTimeKey if the note is locked.
   if pd.notna(mergedNote[c.lockedStatusKey]):
+    # Clear timestampMillisOfNmrDueToMinStableCrhTimeKey if the note is locked.
     mergedNote[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = -1
+  else:
+    # If note is unlocked, allow updates to the stabilization timestamp and first
+    # stabilization timestamp.
+    if not pd.isna(mergedNote[c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey]):
+      mergedNote[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = mergedNote[
+        c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey
+      ]
+      if pd.isna(mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey]):
+        mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = mergedNote[
+          c.timestampMillisOfNmrDueToMinStableCrhTimeKey
+        ]
 
   if pd.isna(mergedNote[c.createdAtMillisKey + newScoredNotesSuffix]):
     # note used to be scored but isn't now; just retain old info

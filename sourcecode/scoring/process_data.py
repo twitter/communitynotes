@@ -35,7 +35,10 @@ def read_from_strings(
     StringIO(notesStr), sep="\t", names=c.noteTSVColumns, dtype=c.noteTSVTypeMapping
   )
   ratings = pd.read_csv(
-    StringIO(ratingsStr), sep="\t", names=c.ratingTSVColumns, dtype=c.ratingTSVTypeMapping
+    StringIO(ratingsStr),
+    sep="\t",
+    names=c.ratingTSVColumns,
+    dtype=c.ratingTSVTypeMapping,
   )
   noteStatusHistory = pd.read_csv(
     StringIO(noteStatusHistoryStr),
@@ -106,7 +109,13 @@ def tsv_parser(
       for colname, coltype in mapping.items():
         # check if coltype is pd.BooleanDtype
         if coltype in set(
-          [pd.StringDtype(), pd.BooleanDtype(), pd.Int64Dtype(), pd.Int32Dtype(), "boolean"]
+          [
+            pd.StringDtype(),
+            pd.BooleanDtype(),
+            pd.Int64Dtype(),
+            pd.Int32Dtype(),
+            "boolean",
+          ]
         ):
           data[colname] = data[colname].astype(object)
           data.loc[pd.isna(data[colname]), colname] = None
@@ -171,7 +180,11 @@ def read_from_tsv(
     notes = None
   else:
     notes = tsv_reader(
-      notesPath, c.noteTSVTypeMapping, c.noteTSVColumns, header=headers, convertNAToNone=False
+      notesPath,
+      c.noteTSVTypeMapping,
+      c.noteTSVColumns,
+      header=headers,
+      convertNAToNone=False,
     )
     assert len(notes.columns) == len(c.noteTSVColumns) and all(notes.columns == c.noteTSVColumns), (
       f"note columns don't match: \n{[col for col in notes.columns if not col in c.noteTSVColumns]} are extra columns, "
@@ -182,7 +195,11 @@ def read_from_tsv(
     ratings = None
   else:
     ratings = tsv_reader(
-      ratingsPath, c.ratingTSVTypeMapping, c.ratingTSVColumns, header=headers, convertNAToNone=False
+      ratingsPath,
+      c.ratingTSVTypeMapping,
+      c.ratingTSVColumns,
+      header=headers,
+      convertNAToNone=False,
     )
     assert len(ratings.columns.values) == len(c.ratingTSVColumns) and all(
       ratings.columns == c.ratingTSVColumns

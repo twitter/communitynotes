@@ -52,7 +52,28 @@ class TopicModel(object):
         "messi\s",  # intentional whitespace to prevent prefix matches
         "ronaldo",
       },
+      Topics.Scams: {
+        "scam",
+        "undisclosed\sad",  # intentional whitespace
+        "terms\sof\sservice",  # intentional whitespace
+        "help\.x\.com",
+        "x\.com/tos",
+        "engagement\sfarm",  # intentional whitespace
+        "spam",
+        "gambling",
+        "apostas",
+        "apuestas",
+        "dropship",
+        "drop\sship",  # intentional whitespace
+        "promotion",
+      },
     }
+    self._seedTermsWithPeriods = []
+    for terms in self._seedTerms.values():
+      for term in terms:
+        if "\." in term:
+          self._seedTermsWithPeriods.append(term)
+
     self._unassignedThreshold = unassignedThreshold
     self._compiled_regex = self._compile_regex()
 
@@ -60,13 +81,18 @@ class TopicModel(object):
     """Compile a single regex from all seed terms grouped by topic."""
     regex_patterns = {}
     for topic, patterns in self._seedTerms.items():
-      # require whitespace or start-of-string at the beginning of each match
-      patterns = [f"(\s|^){pattern}" for pattern in patterns]
+      mod_patterns = []
+      for pattern in patterns:
+        # If the pattern contains an escaped period (i.e. it's a URL), don't enforce the preceding whitespace or start-of-string.
+        if "\\." in pattern:
+          mod_patterns.append(pattern)
+        else:
+          mod_patterns.append(f"(\s|^){pattern}")
       group_name = f"{topic.name}"
-      regex_patterns[group_name] = f"(?P<{group_name}>{'|'.join(patterns)})"
-
-    combined_regex = "|".join(regex_patterns.values())
-    return re.compile(combined_regex, re.IGNORECASE | re.MULTILINE)
+      regex_patterns[group_name] = f"(?P<{group_name}>{'|'.join(mod_patterns)})"
+    # Combine all groups into a single regex
+    full_regex = "|".join(regex_patterns.values())
+    return re.compile(full_regex)
 
   def _make_seed_labels(self, texts: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Produce a label vector based on seed terms.
@@ -97,6 +123,31 @@ class TopicModel(object):
     logger.info(f"  Notes unassigned due to multiple matches: {unassigned_count}")
     return labels, conflictedTexts
 
+  def custom_tokenizer(self, text):
+    # This pattern captures help.x.com or x.com/tos even if preceded by http(s):// and with optional trailing paths,
+    # otherwise falls back to matching words of at least 2 characters.
+    default_preprocessor = CountVectorizer(
+      strip_accents="unicode", lowercase=True
+    ).build_preprocessor()
+    text = default_preprocessor(text)
+
+    seed_patterns = [
+      r"(?:https?://)?(" + term + r")(?:/[^\s]+)?|" for term in self._seedTermsWithPeriods
+    ]
+    pattern_string = r"(?i)" + "".join(seed_patterns + [r"\b\w\w+\b"])
+    pattern = re.compile(pattern_string)
+
+    # For any match groups (e.g. URLs), return just the group. Else return whole word.
+    tokens = []
+    for match in pattern.finditer(text):
+      # Look for the first non-None seed term group in the match groups.
+      seed_term = next((g for g in match.groups() if g is not None), None)
+      if seed_term is not None:
+        tokens.append(seed_term)
+      else:
+        tokens.append(match.group(0))
+    return tokens
+
   def _get_stop_words(self, texts: np.ndarray) -> List[str]:
     """Identify tokens in the extracted vocabulary that contain seed terms.
 
@@ -111,15 +162,17 @@ class TopicModel(object):
       List specifying which tokens to exclude from the features.
     """
     # Extract vocabulary
-    cv = CountVectorizer(strip_accents="unicode")
+    cv = CountVectorizer(tokenizer=self.custom_tokenizer, token_pattern=None)
     cv.fit(texts)
     rawVocabulary = cv.vocabulary_.keys()
     logger.info(f"  Initial vocabulary length: {len(rawVocabulary)}")
     # Identify stop words
     blockedTokens = set()
     for terms in self._seedTerms.values():
-      # Remove whitespace and any escaped characters from terms
-      blockedTokens |= {re.sub(r"\\.", "", t.strip()) for t in terms}
+      # Remove whitespace and any escaped whitespace characters from seed terms
+      blockedTokens |= {re.sub(r"\\s", "", t.strip()) for t in terms}
+      # Convert escaped periods to periods
+      blockedTokens |= {re.sub(r"\\.", ".", t.strip()) for t in terms}
     logger.info(f"  Total tokens to filter: {len(blockedTokens)}")
     stopWords = [v for v in rawVocabulary if any(t in v for t in blockedTokens)]
     logger.info(f"  Total identified stopwords: {len(stopWords)}")
@@ -185,6 +238,8 @@ class TopicModel(object):
           (
             "UnigramEncoder",
             CountVectorizer(
+              tokenizer=self.custom_tokenizer,
+              token_pattern=None,
               strip_accents="unicode",
               stop_words=stopWords,
               min_df=25,
