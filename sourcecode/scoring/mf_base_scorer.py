@@ -521,6 +521,7 @@ class MFBaseScorer(Scorer):
     logger.info(
       f"ratings summary {self.get_name()}: {get_df_fingerprint(ratings, [c.noteIdKey, c.raterParticipantIdKey])}"
     )
+
     with self.time_block("Prepare ratings"):
       ratingsForTraining = self._prepare_data_for_scoring(
         ratings[

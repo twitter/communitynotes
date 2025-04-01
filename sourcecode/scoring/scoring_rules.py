@@ -65,6 +65,7 @@ class RuleID(Enum):
   TOPIC_MODEL_1 = RuleAndVersion("TopicModel01", "1.0", False)
   TOPIC_MODEL_2 = RuleAndVersion("TopicModel02", "1.0", False)
   TOPIC_MODEL_3 = RuleAndVersion("TopicModel03", "1.0", False)
+  TOPIC_MODEL_4 = RuleAndVersion("TopicModel04", "1.0", False)
   MULTI_GROUP_MODEL_1 = RuleAndVersion("MultiGroupModel01", "1.0", True)
   INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
   SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
@@ -535,13 +536,9 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     nyhToCrhUpdates = noteStats[
       (noteStats[c.currentLabelKey] == c.currentlyRatedHelpful)
       & (noteStats[statusColumn] == c.needsYourHelp)
-    ][[c.noteIdKey, c.timestampMillisOfNmrDueToMinStableCrhTimeKey]]
+    ][[c.noteIdKey]]
     nyhToCrhUpdates[statusColumn] = c.currentlyRatedHelpful
-    nyhToCrhUpdates = nyhToCrhUpdates.rename(
-      columns={
-        c.timestampMillisOfNmrDueToMinStableCrhTimeKey: c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey
-      }
-    )
+
     # Since we have identified the notes that require a NYH->CRH status change, we now drop all
     # notes that were CRH before the current scoring run.
     noteStats = noteStats[noteStats[c.currentLabelKey] != c.currentlyRatedHelpful]
@@ -753,16 +750,10 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     ][[c.noteIdKey, newStatusColumn]]
     noteStatusUpdatesWithStatusChange.rename(columns={newStatusColumn: statusColumn}, inplace=True)
 
-    # Augment noteStatusUpdates and noteStatusUpdatesWithStatusChange to include notes that were
-    # previously CRH but were NYH in this scoring run.
+    # Augment noteStatusUpdatesWithStatusChange to include notes that were previously CRH but were
+    # NYH in this scoring run.
     noteStatusUpdatesWithStatusChange = pd.concat(
       [noteStatusUpdatesWithStatusChange, nyhToCrhUpdates[[c.noteIdKey, statusColumn]]]
-    )
-    noteStatusUpdates = pd.concat(
-      [
-        noteStatusUpdates[[c.noteIdKey, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey]],
-        nyhToCrhUpdates[[c.noteIdKey, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey]],
-      ]
     )
 
     logger.info(

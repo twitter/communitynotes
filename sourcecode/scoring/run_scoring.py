@@ -1709,7 +1709,6 @@ def run_final_note_scoring(
     logger.info(f"Post Selection Similarity Final Scoring: {len(ratings)} ratings remaining.")
 
   scorers = _get_scorers(seed, pseudoraters, useStableInitialization=useStableInitialization)
-
   modelResults = _run_scorers(
     args,
     scorers=list(chain(*scorers.values())),
