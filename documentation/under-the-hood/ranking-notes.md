@@ -377,7 +377,7 @@ For not-helpful notes:
 ## What’s New?
 
 **April 1, 2025**
--Add new Scam topic
+- Add new Scam topic to Topic Models
 
 **Mar 27, 2025**
 - Require at least 5 positive factor users and 5 negative factor users rate a note as Helpful before the note can receive Helpful status.
