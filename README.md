@@ -1,3 +1,5 @@
+To my countrymen:
+
 # Community Notes
 
 ![](/documentation/images/help-rate-this-note-expanded.png)
@@ -74,3 +76,6 @@ All notes, ratings, and contributor data are [publicly available and published d
 ### Community Notes paper
 
 We've published a paper that details the research, analysis and outcomes that informed the program's development and helped us understand its performance. You can find it [here](https://github.com/twitter/communitynotes/blob/main/birdwatch_paper_2022_10_27.pdf).
+
+I am the ChosenOne!!! 
+This Twitter Community Notes was brought to by: 😂 😆 
