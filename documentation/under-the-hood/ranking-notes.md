@@ -85,15 +85,21 @@ Note: for now, to avoid overfitting on our very small dataset, we only use 1-dim
 
 Additionally, because the matrix factorization is re-trained from scratch every hour, we have added additional logic to detect if the loss is more than expected (currently by detecting if the loss is above a hard threshold of 0.09) that may have resulted from an unlucky initialization and local mode, and then re-fit the model if so.
 
-## Rating Minimums for Helpful Status
+## Net Helpful Minimums
 
 Matrix factorization identifies notes that are liked by people who normally disagree by assigning high intercepts to notes when users with different factors rate the note Helpful.
 In cases where there are few ratings available from a given part of the factor space, matrix factorization is forced to estimate the note intercept based on the limited data available.
 Unfortunately, acting based on limited rating signal can result in volatility in the note intercept as new ratings arrive, leading to note status changes.
 
-To reduce the likelihood that notes are shown to users as Helpful and then change status, we require notes to have at least 5 ratings from positive factor users and 5 ratings from negative factor users before a model can assign Helpful status to a note.
-Notes that otherwise meet the Helpful standard but do not have enough ratings are highlighted to contributors with a special note preview UI treatment to encourage more ratings.
-Once the note has enough ratings and meets all other Helpful status criteria, the model will rate the note as Helpful.
+To reduce the likelihood that notes are shown to users as Helpful and then change status, we impose requirements on the available ratings before notes can be issued Helpful status.
+We define the _Net Helpful Ratings_ as the number of Helpful ratings minus the number of Not Helpful ratings, and compute the Net Helpful Ratings separately for users with positive and negative factors.
+We define the _Net Helpful Ratio_ as the Net Helpful Ratings divided by the total number of ratings combined over users with positive and negative factors.
+For a model to rate a note as Helpful, we require that either:
+* The note has a Net Helpful Ratings of 10 or greater from both positive and negative factor raters, or
+* The note has a Net Helpful Ratings of 4 or greater and a Net Helpful Ratio of 0.05 or greater from both positive and negative factor raters.
+
+Notes that otherwise meet the Helpful standard but fail either the Net Helpful Ratings or Net Helpful Ratio requirements are highlighted to contributors with a special note preview UI treatment to encourage more ratings.
+Once the note meets Net Helpful minimums and all other Helpful status criteria, the model will rate the note as Helpful.
 
 ## Modeling Uncertainty
 
@@ -375,6 +381,9 @@ For not-helpful notes:
 5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**April 8, 2025**
+- Introduce Net Helpful Ratings and Net Helpful Ratio thresholds.
 
 **April 1, 2025**
 - Add new Scam topic to Topic Models
