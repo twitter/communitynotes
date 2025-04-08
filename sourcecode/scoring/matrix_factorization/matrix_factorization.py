@@ -42,6 +42,7 @@ class MatrixFactorization:
     globalInterceptLambda=0.03 * 5,
     diamondLambda=0,
     normalizedLossHyperparameters=None,
+    seed: Optional[int] = None,
   ) -> None:
     """Configure matrix factorization note ranking."""
     self._initLearningRate = initLearningRate
@@ -62,6 +63,7 @@ class MatrixFactorization:
     self._diamondLambda = diamondLambda
     self._normalizedLossHyperparameters = normalizedLossHyperparameters
     self._lossModule: Optional[NormalizedLoss] = None
+    self._seed = seed
 
     if self._useSigmoidCrossEntropy:
       if self._posWeight:
@@ -292,6 +294,7 @@ class MatrixFactorization:
       use_global_intercept=self._useGlobalIntercept,
       n_factors=self._numFactors,
       log=self._log,
+      seed=self._seed,
     )
     if self._log:
       logger.info("------------------")

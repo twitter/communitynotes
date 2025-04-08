@@ -29,51 +29,57 @@ logger = logging.getLogger("birdwatch.topic_model")
 logger.setLevel(logging.INFO)
 
 
+seedTerms = {
+  Topics.UkraineConflict: {
+    "ukrain",  # intentionally shortened for expanded matching
+    "russia",
+    "kiev",
+    "kyiv",
+    "moscow",
+    "zelensky",
+    "putin",
+  },
+  Topics.GazaConflict: {
+    "israel",
+    "palestin",  # intentionally shortened for expanded matching
+    "gaza",
+    "jerusalem",
+  },
+  Topics.MessiRonaldo: {
+    "messi\s",  # intentional whitespace to prevent prefix matches
+    "ronaldo",
+  },
+  Topics.Scams: {
+    "scam",
+    "undisclosed\sad",  # intentional whitespace
+    "terms\sof\sservice",  # intentional whitespace
+    "help\.x\.com",
+    "x\.com/tos",
+    "engagement\sfarm",  # intentional whitespace
+    "spam",
+    "gambling",
+    "apostas",
+    "apuestas",
+    "dropship",
+    "drop\sship",  # intentional whitespace
+    "promotion",
+  },
+}
+
+
+def get_seed_term_with_periods():
+  seedTermsWithPeriods = []
+  for terms in seedTerms.values():
+    for term in terms:
+      if "\." in term:
+        seedTermsWithPeriods.append(term)
+  return seedTermsWithPeriods
+
+
 class TopicModel(object):
   def __init__(self, unassignedThreshold=0.99):
     """Initialize a list of seed terms for each topic."""
-    self._seedTerms = {
-      Topics.UkraineConflict: {
-        "ukrain",  # intentionally shortened for expanded matching
-        "russia",
-        "kiev",
-        "kyiv",
-        "moscow",
-        "zelensky",
-        "putin",
-      },
-      Topics.GazaConflict: {
-        "israel",
-        "palestin",  # intentionally shortened for expanded matching
-        "gaza",
-        "jerusalem",
-      },
-      Topics.MessiRonaldo: {
-        "messi\s",  # intentional whitespace to prevent prefix matches
-        "ronaldo",
-      },
-      Topics.Scams: {
-        "scam",
-        "undisclosed\sad",  # intentional whitespace
-        "terms\sof\sservice",  # intentional whitespace
-        "help\.x\.com",
-        "x\.com/tos",
-        "engagement\sfarm",  # intentional whitespace
-        "spam",
-        "gambling",
-        "apostas",
-        "apuestas",
-        "dropship",
-        "drop\sship",  # intentional whitespace
-        "promotion",
-      },
-    }
-    self._seedTermsWithPeriods = []
-    for terms in self._seedTerms.values():
-      for term in terms:
-        if "\." in term:
-          self._seedTermsWithPeriods.append(term)
-
+    self._seedTerms = seedTerms
     self._unassignedThreshold = unassignedThreshold
     self._compiled_regex = self._compile_regex()
 
@@ -132,7 +138,7 @@ class TopicModel(object):
     text = default_preprocessor(text)
 
     seed_patterns = [
-      r"(?:https?://)?(" + term + r")(?:/[^\s]+)?|" for term in self._seedTermsWithPeriods
+      r"(?:https?://)?(" + term + r")(?:/[^\s]+)?|" for term in get_seed_term_with_periods()
     ]
     pattern_string = r"(?i)" + "".join(seed_patterns + [r"\b\w\w+\b"])
     pattern = re.compile(pattern_string)

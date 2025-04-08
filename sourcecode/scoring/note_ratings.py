@@ -396,6 +396,11 @@ def get_note_counts_by_rater_sign(raterModelOutput, ratings):
   )
 
   mergedRatings = ratingsToUse.merge(raterModelOutputToUse, on=c.raterParticipantIdKey)
+  origLength = len(mergedRatings)
+  mergedRatings = mergedRatings[mergedRatings[c.internalRaterFactor1Key].notna()]
+  logger.info(
+    f"dropped {origLength - len(mergedRatings)} out of {origLength} ratings due to NaN factor."
+  )
 
   negFactorKey = "negFactor"
   posFactorKey = "posFactor"
@@ -440,10 +445,50 @@ def get_note_counts_by_rater_sign(raterModelOutput, ratings):
   if c.posFactorMeanHelpfulNumKey not in noteCountsByRaterSign.columns:
     noteCountsByRaterSign[c.posFactorMeanHelpfulNumKey] = np.nan
 
+  # Merge in net minority helpfulness
+  counts = mergedRatings[[c.noteIdKey, raterFactorBucketKey, c.helpfulNumKey]]
+  counts = pd.crosstab(
+    index=counts[c.noteIdKey], columns=[counts[raterFactorBucketKey], counts[c.helpfulNumKey]]
+  )
+  counts.columns = [f"{col1}_{col2}" for col1, col2 in counts.columns]
+  counts = counts.reset_index(drop=False)
+  for bucket in [negFactorKey, posFactorKey]:
+    for level in [0.0, 0.5, 1.0]:
+      col = f"{bucket}_{level}"
+      if col not in counts:
+        counts[col] = 0
+  counts[f"{negFactorKey}_{c.netMinHelpfulKey}"] = (
+    counts[f"{negFactorKey}_1.0"] - counts[f"{negFactorKey}_0.0"]
+  )
+  counts[f"{posFactorKey}_{c.netMinHelpfulKey}"] = (
+    counts[f"{posFactorKey}_1.0"] - counts[f"{posFactorKey}_0.0"]
+  )
+  counts[c.netMinHelpfulKey] = (
+    counts[[f"{negFactorKey}_{c.netMinHelpfulKey}", f"{posFactorKey}_{c.netMinHelpfulKey}"]]
+    .min(axis=1)
+    .clip(lower=0)
+  )
+  counts = counts.merge(
+    mergedRatings[[c.noteIdKey]]
+    .value_counts()
+    .reset_index(drop=False)
+    .rename(columns={"count": "total"})
+  )
+  counts[c.netMinHelpfulRatioKey] = counts[c.netMinHelpfulKey] / counts["total"]
+  noteCountsByRaterSign = noteCountsByRaterSign.merge(
+    counts[[c.noteIdKey, c.netMinHelpfulKey, c.netMinHelpfulRatioKey]]
+  )
+
   # Downcast types from 64=>32
   noteCountsByRaterSign[c.minSignCountKey] = noteCountsByRaterSign[c.minSignCountKey].astype(
     np.int32
   )
+  noteCountsByRaterSign[c.netMinHelpfulKey] = noteCountsByRaterSign[c.netMinHelpfulKey].astype(
+    np.int32
+  )
+  noteCountsByRaterSign[c.netMinHelpfulRatioKey] = noteCountsByRaterSign[
+    c.netMinHelpfulRatioKey
+  ].astype(np.float32)
   noteCountsByRaterSign[c.negFactorRatingCountKey] = noteCountsByRaterSign[
     c.negFactorRatingCountKey
   ].astype(np.int32)
@@ -457,7 +502,16 @@ def get_note_counts_by_rater_sign(raterModelOutput, ratings):
     c.posFactorMeanHelpfulNumKey
   ].astype(np.float32)
 
-  return noteCountsByRaterSign
+  return noteCountsByRaterSign[
+    [
+      c.noteIdKey,
+      c.minSignCountKey,
+      c.negFactorMeanHelpfulNumKey,
+      c.posFactorMeanHelpfulNumKey,
+      c.netMinHelpfulKey,
+      c.netMinHelpfulRatioKey,
+    ]
+  ].rename_axis(None, axis=1)
 
 
 # TODO: compute_scored_notes is only called from matrix_factorization_scorer and the behavior is directly
@@ -490,7 +544,8 @@ def compute_scored_notes(
   lowDiligenceThreshold: float = 0.263,
   factorThreshold: float = 0.5,
   firmRejectThreshold: Optional[float] = None,
-  minMinorityRaters: Optional[int] = None,
+  minMinorityNetHelpfulRatings: Optional[int] = None,
+  minMinorityNetHelpfulRatio: Optional[float] = None,
 ) -> pd.DataFrame:
   """
   Merges note status history, ratings, and model output. It annotes the data frame with
@@ -537,14 +592,16 @@ def compute_scored_notes(
 
   # Get meanHelpfulNum per side and minSignCount for each note
   noteStats = noteStats.merge(
-    get_note_counts_by_rater_sign(raterParams, ratings)[
-      [c.noteIdKey, c.minSignCountKey, c.negFactorMeanHelpfulNumKey, c.posFactorMeanHelpfulNumKey]
-    ],
+    get_note_counts_by_rater_sign(raterParams, ratings),
     how="left",
     on=c.noteIdKey,
-    unsafeAllowed=c.minSignCountKey,
+    unsafeAllowed={c.minSignCountKey, c.netMinHelpfulKey},
   )
   noteStats[[c.minSignCountKey]] = noteStats[[c.minSignCountKey]].fillna(0).astype(np.int32)
+  noteStats[[c.netMinHelpfulKey]] = noteStats[[c.netMinHelpfulKey]].fillna(0).astype(np.int32)
+  noteStats[[c.netMinHelpfulRatioKey]] = (
+    noteStats[[c.netMinHelpfulRatioKey]].fillna(0.0).astype(np.float32)
+  )
 
   # Merge with noteParams as necessary
   noteParamsColsToKeep = [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
@@ -704,13 +761,22 @@ def compute_scored_notes(
           firmRejectThreshold,
         )
       )
-    if minMinorityRaters is not None:
+    if minMinorityNetHelpfulRatings is not None:
       rules.append(
         scoring_rules.RequireMinMinorityRaters(
           RuleID.MIN_MINORITY_RATERS,
           {RuleID.LARGE_FACTOR},
           c.needsYourHelp,
-          minMinorityRaters,
+          minMinorityNetHelpfulRatings,
+        )
+      )
+    if minMinorityNetHelpfulRatio is not None:
+      rules.append(
+        scoring_rules.RequireRaterBalance(
+          RuleID.RATER_BALANCE,
+          {RuleID.MIN_MINORITY_RATERS},
+          c.needsYourHelp,
+          minMinorityNetHelpfulRatio,
         )
       )
   scoredNotes = scoring_rules.apply_scoring_rules(
@@ -721,7 +787,13 @@ def compute_scored_notes(
   scoredNotes = scoredNotes.drop(columns=[c.lockedStatusKey])
   # Discard extra columns related to the RatioCRNH rule that are no longer needed for the rest of scoring.
   scoredNotes = scoredNotes.drop(
-    columns=[c.minSignCountKey, c.negFactorMeanHelpfulNumKey, c.posFactorMeanHelpfulNumKey]
+    columns=[
+      c.minSignCountKey,
+      c.negFactorMeanHelpfulNumKey,
+      c.posFactorMeanHelpfulNumKey,
+      c.netMinHelpfulKey,
+      c.netMinHelpfulRatioKey,
+    ]
   )
 
   return scoredNotes
