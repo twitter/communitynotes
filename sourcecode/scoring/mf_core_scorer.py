@@ -13,7 +13,8 @@ class MFCoreScorer(MFBaseScorer):
     saveIntermediateState: bool = False,
     threads: int = c.defaultNumThreads,
     firmRejectThreshold: Optional[float] = 0.3,
-    minMinorityRaters: Optional[int] = 5,
+    minMinorityNetHelpfulRatings: Optional[int] = 4,
+    minMinorityNetHelpfulRatio: Optional[float] = 0.05,
   ) -> None:
     """Configure MFCoreScorer object.
 
@@ -33,7 +34,8 @@ class MFCoreScorer(MFBaseScorer):
       saveIntermediateState=saveIntermediateState,
       threads=threads,
       firmRejectThreshold=firmRejectThreshold,
-      minMinorityRaters=minMinorityRaters,
+      minMinorityNetHelpfulRatings=minMinorityNetHelpfulRatings,
+      minMinorityNetHelpfulRatio=minMinorityNetHelpfulRatio,
     )
 
   def get_name(self):

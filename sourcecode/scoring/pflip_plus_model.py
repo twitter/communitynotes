@@ -163,7 +163,7 @@ class PFlipPlusModel(object):
   def __init__(
     self,
     ratingRecencyCutoffMinutes: int = 15,
-    helpfulnessRaterMin: int = 0,
+    helpfulnessRaterMin: int = 1,
     tagRaterMin: int = 5,
     helpfulTagPercentile: int = 10,
     notHelpfulTagPercentile: int = 50,

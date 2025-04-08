@@ -13,7 +13,8 @@ class MFCoreWithTopicsScorer(MFBaseScorer):
     saveIntermediateState: bool = False,
     threads: int = c.defaultNumThreads,
     firmRejectThreshold: Optional[float] = None,
-    minMinorityRaters: Optional[int] = 5,
+    minMinorityNetHelpfulRatings: Optional[int] = 4,
+    minMinorityNetHelpfulRatio: Optional[float] = 0.05,
   ) -> None:
     """Configure MFCoreWithTopicsScorer object.
 
@@ -32,7 +33,8 @@ class MFCoreWithTopicsScorer(MFBaseScorer):
       saveIntermediateState=saveIntermediateState,
       threads=threads,
       firmRejectThreshold=firmRejectThreshold,
-      minMinorityRaters=minMinorityRaters,
+      minMinorityNetHelpfulRatings=minMinorityNetHelpfulRatings,
+      minMinorityNetHelpfulRatio=minMinorityNetHelpfulRatio,
     )
 
   def get_name(self):

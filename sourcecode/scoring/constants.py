@@ -122,6 +122,7 @@ notesAwaitingMoreRatings = "notesAwaitingMoreRatings"
 # Meta Scoring Columns
 finalRatingStatusKey = "finalRatingStatus"
 unlockedRatingStatusKey = "unlockedRatingStatus"
+preStabilizationRatingStatusKey = "preStabilizationRatingStatus"
 metaScorerActiveRulesKey = "metaScorerActiveRules"
 decidedByKey = "decidedBy"
 rescoringActiveRulesKey = "rescoringActiveRules"
@@ -619,6 +620,8 @@ negFactorMeanHelpfulNumKey = "negFactor_meanHelpfulNum"
 posFactorMeanHelpfulNumKey = "posFactor_meanHelpfulNum"
 minSignCountKey = "minSignCount"
 maxSignCountKey = "maxSignCount"
+netMinHelpfulKey = "netMinHelpful"
+netMinHelpfulRatioKey = "netMinHelpfulRatio"
 
 noteParameterUncertaintyTSVAuxColumnsAndTypes = [
   ("internalNoteFactor1_max", np.double),
@@ -662,6 +665,7 @@ auxiliaryScoredNotesTSVColumnsAndTypes = (
     (currentlyRatedHelpfulBoolKey, np.int8),
     (currentlyRatedNotHelpfulBoolKey, np.int8),
     (unlockedRatingStatusKey, str),
+    (preStabilizationRatingStatusKey, str),
   ]
   + helpfulTagCountsAndTypesTSVOrder
   + notHelpfulTagCountsAndTypesTSVOrder
@@ -770,6 +774,7 @@ noteModelOutputTSVColumnsAndTypes = [
   (coreWithTopicsNumFinalRoundRatingsKey, np.double),  # double because nullable.
   (coreWithTopicsNoteInterceptMinKey, np.double),
   (coreWithTopicsNoteInterceptMaxKey, np.double),
+  (timestampMillisOfNmrDueToMinStableCrhTimeKey, np.double),  # double because nullable.
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
