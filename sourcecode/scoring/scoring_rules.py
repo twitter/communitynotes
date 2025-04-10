@@ -63,6 +63,7 @@ class RuleID(Enum):
   GROUP_MODEL_13 = RuleAndVersion("GroupModel13", "1.1", True)
   GROUP_MODEL_14 = RuleAndVersion("GroupModel14", "1.1", True)
   GROUP_MODEL_33 = RuleAndVersion("GroupModel33", "1.1", True)
+  GROUP_MODEL_33_NMR = RuleAndVersion("GroupModel33NMR", "1.1", True)
   TOPIC_MODEL_1 = RuleAndVersion("TopicModel01", "1.0", False)
   TOPIC_MODEL_2 = RuleAndVersion("TopicModel02", "1.0", False)
   TOPIC_MODEL_3 = RuleAndVersion("TopicModel03", "1.0", False)
