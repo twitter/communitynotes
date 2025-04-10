@@ -64,6 +64,7 @@ class MFGroupScorer(MFBaseScorer):
     self,
     includedGroups: Set[int],
     groupId: int,
+    strictInclusion: bool = False,
     seed: Optional[int] = None,
     groupThreshold: float = 0.8,
     saveIntermediateState: bool = False,
@@ -111,6 +112,7 @@ class MFGroupScorer(MFBaseScorer):
     """
     super().__init__(
       includedGroups=includedGroups,
+      strictInclusion=strictInclusion,
       includeUnassigned=False,
       captureThreshold=groupThreshold,
       seed=seed,
