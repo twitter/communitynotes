@@ -136,10 +136,11 @@ def _get_scorers(
   scorers[Scorers.MFGroupScorer].append(
     MFGroupScorer(
       includedGroups={nmrScoringGroup},
+      strictInclusion=True,
+      groupThreshold=0.8,
       groupId=nmrScoringGroup,
       threads=groupScorerParalleism.get(nmrScoringGroup, 4),
       seed=seed,
-      crhThreshold=0.3,
     )
   )
   scorers[Scorers.MFTopicScorer] = [
@@ -778,10 +779,20 @@ def meta_score(
               minSafeguardThreshold=0.25,
             )
           )
+      rules.append(
+        scoring_rules.ApplyGroupModelResult(
+          RuleID[f"GROUP_MODEL_{nmrScoringGroup}"],
+          {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+          nmrScoringGroup,
+          None,
+          None,
+          minSafeguardThreshold=0.25,
+        )
+      )
       # nmr group scorer
       rules.append(
         scoring_rules.ApplyNMRGroupModelResult(
-          RuleID[f"GROUP_MODEL_{nmrScoringGroup}"],
+          RuleID[f"GROUP_MODEL_{nmrScoringGroup}_NMR"],
           {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
           nmrScoringGroup,
         )
@@ -837,6 +848,7 @@ def meta_score(
     )
     if not enableNmrDueToMinStableCrhTime:
       scoringResult[c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey] = np.nan
+      scoringResult[c.preStabilizationRatingStatusKey] = np.nan
     # Validate that nothing that was a FIRM_REJECT or CRNH from Core or Expansion is rated CRH
     coreRejects = scoringResult[c.coreRatingStatusKey].isin(
       {c.firmReject, c.currentlyRatedNotHelpful}
@@ -871,6 +883,7 @@ def meta_score(
         c.currentlyRatedNotHelpfulBoolKey,
         c.awaitingMoreRatingsBoolKey,
         c.unlockedRatingStatusKey,
+        c.preStabilizationRatingStatusKey,
       ]
     ]
   return scoredNotesCols, auxiliaryNoteInfoCols
@@ -1867,6 +1880,9 @@ def post_note_scoring(
 
   # Skip validation and selection out output columns if the set of scorers is overridden.
   with c.time_block("Post-scorers: finalize output columns"):
+    scoredNotes[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = newNoteStatusHistory[
+      c.timestampMillisOfNmrDueToMinStableCrhTimeKey
+    ]
     scoredNotes = _add_deprecated_columns(scoredNotes)
     scoredNotes = scoredNotes.drop(columns=PFLIP_LABEL)
     if strictColumns:

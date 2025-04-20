@@ -26,6 +26,7 @@ class BiasedMatrixFactorization(torch.nn.Module):
     n_factors: int = 1,
     use_global_intercept: bool = True,
     log: bool = True,
+    seed: Optional[int] = None,
   ) -> None:
     """Initialize matrix factorization model using xavier_uniform for factors
     and zeros for intercepts.
@@ -48,6 +49,8 @@ class BiasedMatrixFactorization(torch.nn.Module):
 
     self.use_global_intercept = use_global_intercept
     self.global_intercept = torch.nn.parameter.Parameter(torch.zeros(1, 1, dtype=torch.float32))
+    if seed is not None:
+      torch.manual_seed(seed)
     torch.nn.init.xavier_uniform_(self.user_factors.weight)
     torch.nn.init.xavier_uniform_(self.note_factors.weight)
     self.user_intercepts.weight.data.fill_(0.0)

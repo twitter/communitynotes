@@ -93,13 +93,6 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   # This TS will be set by run_combine_scoring_outputs.
   mergedNote[c.timestampMinuteOfFinalScoringOutput] = np.nan
 
-  # TODO(jiansongc): remove after new column is in prod.
-  if c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey not in mergedNote:
-    mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = np.nan
-
-  if int(mergedNote[c.noteIdKey]) == 1898052042846863762:
-    mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = np.nan
-
   if mergedNote[c.finalRatingStatusKey] != mergedNote[c.currentLabelKey]:
     # Changed status vs. previous run:
     mergedNote[c.timestampMillisOfMostRecentStatusChangeKey] = currentTimeMillis

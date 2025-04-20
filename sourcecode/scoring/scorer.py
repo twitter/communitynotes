@@ -39,6 +39,7 @@ class Scorer(ABC):
     excludeTopics: bool = False,
     includedGroups: Set[int] = set(),
     includeUnassigned: bool = False,
+    strictInclusion: bool = False,
     captureThreshold: Optional[float] = None,
     seed: Optional[int] = None,
     threads: int = c.defaultNumThreads,
@@ -53,6 +54,7 @@ class Scorer(ABC):
     self._includedGroups = includedGroups
     self._includeUnassigned = includeUnassigned
     self._captureThreshold = captureThreshold
+    self._strictInclusion = strictInclusion
     self._seed = seed
     self._threads = threads
 
@@ -143,6 +145,12 @@ class Scorer(ABC):
         userEnrollment[[c.raterParticipantIdKey, _IN_GROUP]], on=c.raterParticipantIdKey, how="left"
       )
       logger.info(f"  Ratings without assigned group: {ratings[_IN_GROUP].isna().sum()}")
+
+      ratings = ratings.fillna({_IN_GROUP: self._includeUnassigned})
+      if self._strictInclusion:
+        print("Excluding ratings outside of group")
+        ratios = ratings[[c.noteIdKey, _IN_GROUP]].groupby(c.noteIdKey).mean().reset_index()
+        ratings = ratings.merge(ratios[ratios[_IN_GROUP] >= self._captureThreshold][[c.noteIdKey]])
       ratings = ratings.fillna({_IN_GROUP: self._includeUnassigned})
       ratings = ratings[ratings[_IN_GROUP]].drop(columns=[_IN_GROUP])
     logger.info(f"  Ratings after group filter: {len(ratings)}")

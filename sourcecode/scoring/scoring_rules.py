@@ -39,6 +39,7 @@ class RuleID(Enum):
   LARGE_FACTOR = RuleAndVersion("FilterLargeFactor", "1.0", False)
   LOW_INTERCEPT = RuleAndVersion("RejectLowIntercept", "1.0", False)
   MIN_MINORITY_RATERS = RuleAndVersion("MinMinorityRaters", "1.0", False)
+  RATER_BALANCE = RuleAndVersion("RaterBalance", "1.0", False)
 
   # Rules used in _meta_score.
   META_INITIAL_NMR = RuleAndVersion("MetaInitialNMR", "1.0", False)
@@ -62,6 +63,7 @@ class RuleID(Enum):
   GROUP_MODEL_13 = RuleAndVersion("GroupModel13", "1.1", True)
   GROUP_MODEL_14 = RuleAndVersion("GroupModel14", "1.1", True)
   GROUP_MODEL_33 = RuleAndVersion("GroupModel33", "1.1", True)
+  GROUP_MODEL_33_NMR = RuleAndVersion("GroupModel33NMR", "1.1", True)
   TOPIC_MODEL_1 = RuleAndVersion("TopicModel01", "1.0", False)
   TOPIC_MODEL_2 = RuleAndVersion("TopicModel02", "1.0", False)
   TOPIC_MODEL_3 = RuleAndVersion("TopicModel03", "1.0", False)
@@ -467,7 +469,7 @@ class RequireMinMinorityRaters(ScoringRule):
     ruleID: RuleID,
     dependencies: Set[RuleID],
     status: str,
-    minMinorityRaters: int,
+    minMinorityNetHelpfulRatings: int,
   ):
     """Set notes to NYH that haven't reached the minimum required number of minority raters.
 
@@ -475,11 +477,12 @@ class RequireMinMinorityRaters(ScoringRule):
       rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
       dependencies: Rules which must run before this rule can run.
       status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
-      minMinorityRaters: minimum number of minority raters required for CRH status.
+      minMinorityNetHelpfulRatings: minimum number of net helpful minority ratings
+        required for CRH status.
     """
     super().__init__(ruleID, dependencies)
     self._status = status
-    self._minMinorityRaters = minMinorityRaters
+    self._minMinorityNetHelpfulRatings = minMinorityNetHelpfulRatings
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
@@ -492,14 +495,69 @@ class RequireMinMinorityRaters(ScoringRule):
     noteStats = noteStats.merge(candidateNotes, on=c.noteIdKey, how="inner")
 
     # Identify impacted notes.
-    noteStatusUpdates = noteStats.loc[noteStats[c.minSignCountKey] < self._minMinorityRaters][
-      [c.noteIdKey]
-    ]
+    noteStatusUpdates = noteStats.loc[
+      noteStats[c.netMinHelpfulKey] < self._minMinorityNetHelpfulRatings
+    ][[c.noteIdKey]]
 
     pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
 
     logger.info(
       f"Total notes impacted by minimum minority rater requirement: {len(noteStatusUpdates)}"
+    )
+    noteStatusUpdates[statusColumn] = self._status
+
+    return (noteStatusUpdates, None)
+
+
+class RequireRaterBalance(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    status: str,
+    minNetBalance: float,
+    minMinorityNetHelpfulRatings: int = 4,
+    maxMinorityNetHelpfulRatings: int = 10,
+  ):
+    """Set notes to NYH that haven't reached the minimum required number of minority raters.
+
+    Args:
+      rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
+      dependencies: Rules which must run before this rule can run.
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
+      minNetBalance: minimum level of net balance
+      minMinorityNetHelpfulRatings: rule only applies when there are at least this many minority
+        net helpful ratings.
+      maxMinorityNetHelpfulRatings: rule only applies when there are less than this many minority
+        net helpful ratings.
+    """
+    super().__init__(ruleID, dependencies)
+    self._status = status
+    self._minNetBalance = minNetBalance
+    self._minMinorityNetHelpfulRatings = minMinorityNetHelpfulRatings
+    self._maxMinorityNetHelpfulRatings = maxMinorityNetHelpfulRatings
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Returns notes on track for CRH with a high low diligence intercept."""
+    # Prune noteStats to only include notes that are on track to be CRH
+    candidateNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][
+      [c.noteIdKey]
+    ]
+    noteStats = noteStats.merge(candidateNotes, on=c.noteIdKey, how="inner")
+
+    # Identify impacted notes.
+    noteStatusUpdates = noteStats.loc[
+      (noteStats[c.netMinHelpfulKey] >= self._minMinorityNetHelpfulRatings)
+      & (noteStats[c.netMinHelpfulKey] < self._maxMinorityNetHelpfulRatings)
+      & (noteStats[c.netMinHelpfulRatioKey] < self._minNetBalance)
+    ][[c.noteIdKey]]
+
+    pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
+
+    logger.info(
+      f"Total notes impacted by minimum rater balance requirement: {len(noteStatusUpdates)}"
     )
     noteStatusUpdates[statusColumn] = self._status
 
@@ -513,6 +571,7 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     dependencies: Set[RuleID],
     requiredStableCrhMinutesThreshold: int = 30,
     maxStableCrhMinutesThreshold: int = 180,
+    maxNyhMinutesThreshold: int = 360,
   ):
     """
     Args:
@@ -521,10 +580,12 @@ class NmrDueToMinStableCrhTime(ScoringRule):
       dependencies: Rules which must run before this rule can run.
       requiredStableCrhMinutesThreshold: threshold for min required stable CRH time, in minutes.
       maxStableCrhMinutesThreshold: threshold for max stable CRH time, in minutes.
+      maxNyhMinutesThreshold: threshold for NYH time, in minutes
     """
     super().__init__(ruleID, dependencies)
     self.requiredStableCrhMinutesThreshold = requiredStableCrhMinutesThreshold
     self.maxStableCrhMinutesThreshold = maxStableCrhMinutesThreshold
+    self.maxNyhMinutesThreshold = maxNyhMinutesThreshold
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
@@ -532,6 +593,7 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     # For any notes that were CRH in the previous scoring run, the only possible status update
     # from this scoring rule would be to switch a NYH status to CRH.  Notes that are CRH, NMR
     # or CRNH in the current scoring round require no action.
+
     noteStats = noteStats.merge(currentLabels, on=c.noteIdKey, how="inner")
     nyhToCrhUpdates = noteStats[
       (noteStats[c.currentLabelKey] == c.currentlyRatedHelpful)
@@ -557,7 +619,7 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     #         -- limit has been exceeded.
     #         (a) If (now - t) is larger than maxStableCrhMinutesThreshold and current run is CRH,
     #             set CRH and clear timestampMillisOfNmrDueToMinStableCrhTime.
-    #         (b) If (now - t) is larger than maxStableCrhMinutesThreshold and current run is NYH,
+    #         (b) If (now - t) is larger than maxNyhMinutesThreshold and current run is NYH,
     #             set NMR and clear timestampMillisOfNmrDueToMinStableCrhTime.
     #         -- Next, handle cases where we know we're staying in stabilization because the
     #         -- criteria to leave to CRH has not been met.
@@ -640,22 +702,34 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     )
     # (1)-(C)-(a): Exit stabilization period to CRH if the note has been in the period for
     # longer than maxStableCrhMinutesThreshold and the note is currently scored CRH.
-    inStabilizationLongerThanMax = (
+    inStabilizationLongerThanCrhMax = (
       c.epochMillis - noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
       > self.maxStableCrhMinutesThreshold * 60 * 1000
     )
 
     noteStatusUpdates.loc[
-      notesGoingCrh & notesAlreadyInStabilization & inStabilizationLongerThanMax,
+      notesGoingCrh & notesAlreadyInStabilization & inStabilizationLongerThanCrhMax,
       [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
     ] = [c.currentlyRatedHelpful, -1]
 
     # (1)-(C)-(b): Exit stabilization period to NMR if the note has been in the period for
-    # longer than maxStableCrhMinutesThreshold and the note is currently scored NYH.
+    # longer than maxNyhMinutesThreshold and the note is currently scored NYH.
+    inStabilizationLongerThanNyhMax = (
+      c.epochMillis - noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
+      > self.maxNyhMinutesThreshold * 60 * 1000
+    )
+
     noteStatusUpdates.loc[
-      notesGoingNyh & notesAlreadyInStabilization & inStabilizationLongerThanMax,
+      notesGoingNyh & notesAlreadyInStabilization & inStabilizationLongerThanNyhMax,
       [newStatusColumn, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey],
     ] = [c.needsMoreRatings, -1]
+
+    # Set inStabilizationLongerThanMax such that it reflect any note  that has been in stabilization
+    # longer than allowed given the limit for the status of that particular note.  This vector will be
+    # used below to avoid overwriting status updates for these notes.
+    inStabilizationLongerThanMax = (
+      notesGoingCrh & notesAlreadyInStabilization & inStabilizationLongerThanCrhMax
+    ) | (notesGoingNyh & notesAlreadyInStabilization & inStabilizationLongerThanNyhMax)
 
     # (1)-(C)-(c): Remain in stabilization period if the note has been in the period for shorter
     # than requiredStableCrhMinutesThreshold
@@ -761,9 +835,23 @@ class NmrDueToMinStableCrhTime(ScoringRule):
       f"{len(noteStatusUpdatesWithStatusChange)}"
     )
 
+    # return pre-stabilization statuses (also before insufficient explanation and scoring drift guard)
+    noteStatusUpdates = noteStatusUpdates.merge(
+      currentLabels[[c.noteIdKey, statusColumn]].rename(
+        columns={statusColumn: c.preStabilizationRatingStatusKey}
+      ),
+      on=c.noteIdKey,
+      how="outer",
+    )
     return (
       noteStatusUpdatesWithStatusChange,
-      noteStatusUpdates[[c.noteIdKey, c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey]],
+      noteStatusUpdates[
+        [
+          c.noteIdKey,
+          c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey,
+          c.preStabilizationRatingStatusKey,
+        ]
+      ],
     )
 
 

@@ -154,6 +154,7 @@ class MFBaseScorer(Scorer):
     excludeTopics: bool = False,
     includedGroups: Set[int] = set(),
     includeUnassigned: bool = False,
+    strictInclusion: bool = False,
     captureThreshold: Optional[float] = None,
     seed: Optional[int] = None,
     pseudoraters: Optional[bool] = True,
@@ -191,7 +192,8 @@ class MFBaseScorer(Scorer):
     tagFilterPercentile: int = 95,
     incorrectFilterThreshold: float = 2.5,
     firmRejectThreshold: Optional[float] = None,
-    minMinorityRaters: Optional[int] = None,
+    minMinorityNetHelpfulRatings: Optional[int] = None,
+    minMinorityNetHelpfulRatio: Optional[float] = None,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -235,6 +237,7 @@ class MFBaseScorer(Scorer):
       includedTopics=includedTopics,
       excludeTopics=excludeTopics,
       includedGroups=includedGroups,
+      strictInclusion=strictInclusion,
       includeUnassigned=includeUnassigned,
       captureThreshold=captureThreshold,
       seed=seed,
@@ -267,7 +270,8 @@ class MFBaseScorer(Scorer):
     self._tagFilterPercentile = tagFilterPercentile
     self._incorrectFilterThreshold = incorrectFilterThreshold
     self._firmRejectThreshold = firmRejectThreshold
-    self._minMinorityRaters = minMinorityRaters
+    self._minMinorityNetHelpfulRatings = minMinorityNetHelpfulRatings
+    self._minMinorityNetHelpfulRatio = minMinorityNetHelpfulRatio
     mfArgs = dict(
       [
         pair
@@ -285,6 +289,7 @@ class MFBaseScorer(Scorer):
           else None,
           ("initLearningRate", 0.02 if normalizedLossHyperparameters is not None else 0.2),
           ("noInitLearningRate", 0.02 if normalizedLossHyperparameters is not None else 1.0),
+          ("seed", seed) if seed is not None else None,
         ]
         if pair is not None
       ]
@@ -1126,7 +1131,8 @@ class MFBaseScorer(Scorer):
         finalRound=True,
         factorThreshold=self._factorThreshold,
         firmRejectThreshold=self._firmRejectThreshold,
-        minMinorityRaters=self._minMinorityRaters,
+        minMinorityNetHelpfulRatings=self._minMinorityNetHelpfulRatings,
+        minMinorityNetHelpfulRatio=self._minMinorityNetHelpfulRatio,
       )
       logger.info(f"sn cols: {scoredNotes.columns}")
 
