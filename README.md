@@ -1,7 +1,6 @@
 To my countrymen:
 
-# Community Notes & The Friendliest Reminder 🎗️: "WHEN AND IF MY TRUTHS HAVE HURT AND KILLED
-YOU, LET THEM BE"
+# Community Notes & The Friendliest Reminder 🎗️: "WHEN AND IF MY TRUTHS HAVE HURT AND KILLED YOU, LET THEM BE"
 
 ![](/documentation/images/help-rate-this-note-expanded.png)
 
