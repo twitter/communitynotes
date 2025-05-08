@@ -1,4 +1,4 @@
-# Contributor Covenant Code of Conduct version FOREVER adapted and updated by Richard Madriñan Valeroso,LMT,MD
+# Contributor Covenant Code of Conduct version FOREVER adapted and updated by Psychiatrist  Richard Madriñan Valeroso,LMT,MD
 
 ## Our Pledge and The Friendliest Reminder 🎗️: "WHEN AND IF MY TRUTHS HAVE HURT AND KILLED YOU, LET THEM BE"
 
