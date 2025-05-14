@@ -431,7 +431,7 @@ class MFBaseScorer(Scorer):
         raterParams (pd.DataFrame)
         globalIntercept (float)
     """
-    return self._mfRanker.run_mf(ratingsForTraining)
+    return self._mfRanker.run_mf(ratingsForTraining, run_name=f"{self.get_name()}/regular_mf")
 
   def _run_stable_matrix_factorization(
     self,
@@ -460,13 +460,15 @@ class MFBaseScorer(Scorer):
 
     with self.time_block("Prepare data for stable initialization"):
       ratingsForStableInitialization = get_ratings_for_stable_init(
-        ratingsForTraining, userEnrollmentRaw, self._modelingGroupToInitializeForStability
+        ratingsForTraining,
+        userEnrollmentRaw,
+        self._modelingGroupToInitializeForStability,
       )
 
     with self.time_block("MF on stable-initialization subset"):
       initializationMF = self._mfRanker.get_new_mf_with_same_args()
       noteParamsInit, raterParamsInit, globalInterceptInit = initializationMF.run_mf(
-        ratingsForStableInitialization
+        ratingsForStableInitialization, run_name=f"{self.get_name()}/stable_init"
       )
 
     with self.time_block("First full MF (initializated with stable-initialization)"):
@@ -475,6 +477,7 @@ class MFBaseScorer(Scorer):
         noteInit=noteParamsInit,
         userInit=raterParamsInit,
         globalInterceptInit=globalInterceptInit,
+        run_name=f"{self.get_name()}/full_init",
       )
     return modelResult
 
@@ -496,7 +499,10 @@ class MFBaseScorer(Scorer):
     return thresholds
 
   def _prescore_notes_and_users(
-    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
+    self,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    userEnrollmentRaw: pd.DataFrame,
   ) -> Tuple[pd.DataFrame, pd.DataFrame, c.PrescoringMetaScorerOutput]:
     """
     Fit initial matrix factorization model(s) on the ratings data in order to generate
@@ -609,7 +615,12 @@ class MFBaseScorer(Scorer):
       with self.time_block("Compute scored notes"):
         scoredNotes = note_ratings.compute_scored_notes(
           ratings[
-            [c.noteIdKey, c.raterParticipantIdKey, c.helpfulnessLevelKey, c.createdAtMillisKey]
+            [
+              c.noteIdKey,
+              c.raterParticipantIdKey,
+              c.helpfulnessLevelKey,
+              c.createdAtMillisKey,
+            ]
             + c.notHelpfulTagsTSVOrder
             + c.helpfulTagsTSVOrder
           ],
@@ -657,9 +668,20 @@ class MFBaseScorer(Scorer):
       # Determine "valid" ratings
       with self.time_block("Compute valid ratings"):
         validRatings = note_ratings.get_valid_ratings(
-          ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey, c.createdAtMillisKey]],
+          ratings[
+            [
+              c.noteIdKey,
+              c.raterParticipantIdKey,
+              c.helpfulNumKey,
+              c.createdAtMillisKey,
+            ]
+          ],
           noteStatusHistory[
-            [c.noteIdKey, c.createdAtMillisKey, c.timestampMillisOfNoteMostRecentNonNMRLabelKey]
+            [
+              c.noteIdKey,
+              c.createdAtMillisKey,
+              c.timestampMillisOfNoteMostRecentNonNMRLabelKey,
+            ]
           ],
           scoredNotes[
             [
@@ -738,7 +760,11 @@ class MFBaseScorer(Scorer):
             [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
           ],
           helpfulModelRaterParams=raterParamsUnfiltered[
-            [c.raterParticipantIdKey, c.internalRaterInterceptKey, c.internalRaterFactor1Key]
+            [
+              c.raterParticipantIdKey,
+              c.internalRaterInterceptKey,
+              c.internalRaterFactor1Key,
+            ]
           ],
           name="harassment",
         )
@@ -807,8 +833,13 @@ class MFBaseScorer(Scorer):
             [c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]
           ],
           userInit=raterParamsUnfiltered[
-            [c.raterParticipantIdKey, c.internalRaterInterceptKey, c.internalRaterFactor1Key]
+            [
+              c.raterParticipantIdKey,
+              c.internalRaterInterceptKey,
+              c.internalRaterFactor1Key,
+            ]
           ],
+          run_name=f"{self.get_name()}/final_round_mf",
         )
 
     # Run Diligence MF Prescoring, based on the final MF
@@ -850,7 +881,12 @@ class MFBaseScorer(Scorer):
     # Compute scored notes -- currently not returned; only used for downstream computation.
     scoredNotes = note_ratings.compute_scored_notes(
       ratings[
-        [c.noteIdKey, c.raterParticipantIdKey, c.helpfulnessLevelKey, c.createdAtMillisKey]
+        [
+          c.noteIdKey,
+          c.raterParticipantIdKey,
+          c.helpfulnessLevelKey,
+          c.createdAtMillisKey,
+        ]
         + c.notHelpfulTagsTSVOrder
         + c.helpfulTagsTSVOrder
       ],
@@ -1051,6 +1087,7 @@ class MFBaseScorer(Scorer):
         ratingPerNoteLossRatio=prescoringMetaScorerOutput.finalRoundNumRatings
         / prescoringMetaScorerOutput.finalRoundNumNotes,
         flipFactorsForIdentification=flipFactorsForIdentification,
+        run_name=f"{self.get_name()}/final_helpfulness_filtered_mf",
       )
 
     if self._saveIntermediateState:
@@ -1103,7 +1140,11 @@ class MFBaseScorer(Scorer):
 
     raterParamsWithRatingCounts = raterParams.merge(
       prescoringRaterModelOutput[
-        [c.raterParticipantIdKey, c.incorrectTagRatingsMadeByRaterKey, c.totalRatingsMadeByRaterKey]
+        [
+          c.raterParticipantIdKey,
+          c.incorrectTagRatingsMadeByRaterKey,
+          c.totalRatingsMadeByRaterKey,
+        ]
       ],
       on=c.raterParticipantIdKey,
     )

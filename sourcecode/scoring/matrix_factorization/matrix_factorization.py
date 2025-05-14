@@ -1,10 +1,12 @@
 import dataclasses
 import logging
+import time
 from typing import List, Optional, Tuple
 
 from .. import constants as c
 from .model import BiasedMatrixFactorization, ModelData
 from .normalized_loss import NormalizedLoss
+from .wandb_utils import wandb
 
 import numpy as np
 import pandas as pd
@@ -117,9 +119,11 @@ class MatrixFactorization:
     self,
     ratings: pd.DataFrame,
   ) -> None:
-    self.noteIdMap, self.raterIdMap, self.ratingFeaturesAndLabels = self.get_note_and_rater_id_maps(
-      ratings
-    )
+    (
+      self.noteIdMap,
+      self.raterIdMap,
+      self.ratingFeaturesAndLabels,
+    ) = self.get_note_and_rater_id_maps(ratings)
 
   def get_note_and_rater_id_maps(
     self,
@@ -304,17 +308,26 @@ class MatrixFactorization:
     self,
     loss_value: float,
     epoch: int,
+    run_name: str = "",
     final: bool = False,
   ) -> Tuple[float, float, Optional[float]]:
     assert self.mf_model is not None
     assert self.trainModelData is not None
+
     y_pred = self.mf_model(self.trainModelData)
     train_loss_value = self.criterion(y_pred, self.trainModelData.rating_labels).mean().item()
+
+    metrics = {
+      f"{run_name}Loss/train_fit": train_loss_value,
+      f"{run_name}Loss/regularized": loss_value,
+    }
+
     if self.validateModelData is not None:
       y_pred_validate = self.mf_model(self.validateModelData)
       validate_loss_value = (
         self.criterion(y_pred_validate, self.validateModelData.rating_labels).mean().item()
       )
+      metrics[f"{run_name}Loss/validate_fit"] = validate_loss_value
     else:
       validate_loss_value = None
 
@@ -324,9 +337,30 @@ class MatrixFactorization:
       if validate_loss_value is not None:
         logger.info(f"VALIDATE FIT LOSS: {validate_loss_value}")
 
-      if final == True:
-        self.test_errors.append(loss_value)
-        self.train_errors.append(train_loss_value)
+    wandb.log(metrics, step=epoch, commit=False)
+
+    if final == True:
+      self.test_errors.append(loss_value)
+      self.train_errors.append(train_loss_value)
+
+      if wandb._enabled:
+        # Log min, max, mean, delta, and histogram of the parameters with adaptive handling
+        log_dict = {}
+        for name, param in self.mf_model.named_parameters():
+          param_array = param.data.cpu().clone().numpy()
+          param_range = param_array.max() - param_array.min()
+          key = f"{run_name}Parameters/{name}"
+
+          log_dict[f"{key}_min"] = param_array.min()
+          log_dict[f"{key}_max"] = param_array.max()
+          log_dict[f"{key}_mean"] = param_array.mean()
+          log_dict[f"{key}_delta"] = param_range
+
+          if param_range > 1e-6:  # Threshold for meaningful histograms
+            log_dict[key] = wandb.Histogram(sequence=param_array, num_bins=10)
+          elif self._log:
+            logger.info(f"Skipping histogram for {key}: range {param_range} too small")
+        wandb.run.summary.update(log_dict)
 
     return train_loss_value, loss_value, validate_loss_value
 
@@ -424,6 +458,7 @@ class MatrixFactorization:
     self,
     validate_percent: Optional[float] = None,
     print_interval: int = 20,
+    run_name: str = "",
   ) -> Tuple[float, float, Optional[float]]:
     """Run gradient descent to train the model.
 
@@ -461,13 +496,14 @@ class MatrixFactorization:
       loss = self._get_loss(epoch=epoch)
 
       if epoch % print_interval == 0:
-        self._compute_and_print_loss(loss.item(), epoch, final=False)
+        self._compute_and_print_loss(loss.item(), epoch, run_name=run_name, final=False)
+        # Log histograms with adaptive handling
 
       epoch += 1
 
     if self._log:
-      logger.info("Num epochs: {epoch}")
-    return self._compute_and_print_loss(loss.item(), epoch, final=True)
+      logger.info(f"Num epochs: {epoch}")
+    return self._compute_and_print_loss(loss.item(), epoch, run_name=run_name, final=True)
 
   def prepare_features_and_labels(
     self,
@@ -505,6 +541,7 @@ class MatrixFactorization:
     ratingPerNoteLossRatio: Optional[float] = None,
     ratingPerUserLossRatio: Optional[float] = None,
     flipFactorsForIdentification: bool = True,
+    run_name: str = "",
   ):
     """Train matrix factorization model.
 
@@ -523,6 +560,37 @@ class MatrixFactorization:
           raterParams: contains one row per rating, including raterId and learned rater parameters
           globalIntercept: learned global intercept parameter
     """
+    if run_name:
+      unique_run_id = f"{run_name}_{int(time.time())}"
+      run_name += "/"
+    else:
+      unique_run_id = f"mf_run_{int(time.time())}"
+
+    # Store hyperparameters in wandb config
+    config = {
+      "initLearningRate": self._initLearningRate,
+      "noInitLearningRate": self._noInitLearningRate,
+      "convergence": self._convergence,
+      "numFactors": self._numFactors,
+      "useGlobalIntercept": self._useGlobalIntercept,
+      "useSigmoidCrossEntropy": self._useSigmoidCrossEntropy,
+      "posWeight": self._posWeight,
+      "userFactorLambda": self._userFactorLambda,
+      "noteFactorLambda": self._noteFactorLambda,
+      "userInterceptLambda": self._userInterceptLambda,
+      "noteInterceptLambda": self._noteInterceptLambda,
+      "globalInterceptLambda": self._globalInterceptLambda,
+      "diamondLambda": self._diamondLambda,
+      "ratingPerNoteLossRatio": ratingPerNoteLossRatio,
+      "ratingPerUserLossRatio": ratingPerUserLossRatio,
+      "freezeNoteParameters": freezeNoteParameters,
+      "freezeRaterParameters": freezeRaterParameters,
+      "freezeGlobalParameters": freezeGlobalParameters,
+      "validatePercent": validatePercent,
+      "flipFactorsForIdentification": flipFactorsForIdentification,
+    }
+    logger.info(f"Reinitializing wandb run with enabled state: {wandb._enabled}")
+    wandb.reinitialize(unique_run_id, config=config)
     self._ratingPerNoteLossRatio = ratingPerNoteLossRatio
     self._ratingPerUserLossRatio = ratingPerUserLossRatio
 
@@ -556,7 +624,7 @@ class MatrixFactorization:
       self.mf_model.freeze_rater_and_global_parameters()
     self.prepare_features_and_labels(specificNoteId)
 
-    train_loss, loss, validate_loss = self._fit_model(validatePercent)
+    train_loss, loss, validate_loss = self._fit_model(validatePercent, run_name=run_name)
     if self._normalizedLossHyperparameters is not None:
       _, raterParams = self._get_parameters_from_trained_model(flipFactorsForIdentification)
       assert self.modelData is not None
@@ -570,7 +638,7 @@ class MatrixFactorization:
         device=self.mf_model.device,
       )
       self._create_mf_model(None, userInit, None)
-      train_loss, loss, validate_loss = self._fit_model(validatePercent)
+      train_loss, loss, validate_loss = self._fit_model(validatePercent, run_name=run_name)
       self._lossModule = None
 
     assert self.mf_model.note_factors.weight.data.cpu().numpy().shape[0] == self.noteIdMap.shape[0]
@@ -585,11 +653,20 @@ class MatrixFactorization:
       flipFactorsForIdentification
     )
 
+    wandb.finish()
+
     fitRaterParams.drop(Constants.raterIndexKey, axis=1, inplace=True)
     if validatePercent is None:
       return fitNoteParams, fitRaterParams, globalIntercept
     else:
-      return fitNoteParams, fitRaterParams, globalIntercept, train_loss, loss, validate_loss
+      return (
+        fitNoteParams,
+        fitRaterParams,
+        globalIntercept,
+        train_loss,
+        loss,
+        validate_loss,
+      )
 
   def _flip_factors_for_identification(
     self, noteParams: pd.DataFrame, raterParams: pd.DataFrame

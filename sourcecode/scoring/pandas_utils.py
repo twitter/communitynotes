@@ -57,7 +57,10 @@ def keep_columns(df: pd.DataFrame, cols: List[str]):
 
 
 def get_df_info(
-  df: pd.DataFrame, name: Optional[str] = None, deep: bool = False, counter: bool = False
+  df: pd.DataFrame,
+  name: Optional[str] = None,
+  deep: bool = False,
+  counter: bool = False,
 ) -> str:
   """Log dtype and RAM usage stats for each input DataFrame."""
   stats = (
@@ -132,7 +135,10 @@ class TypeExpectation:
 
 class PandasPatcher(object):
   def __init__(
-    self, fail: bool, typeOverrides: Dict[str, TypeExpectation] = dict(), silent: bool = False
+    self,
+    fail: bool,
+    typeOverrides: Dict[str, TypeExpectation] = dict(),
+    silent: bool = False,
   ):
     """Initialize a PandasPatcher with particular failure and type expectations.
 
@@ -166,7 +172,7 @@ class PandasPatcher(object):
       return
     self._counter.log_errors(method, callsite, lines)
     errorLines = "\n".join([f"  PandasTypeError: {l}" for l in lines])
-    msg = f"\n{method} ERROR(S) AT: {callsite}\n{errorLines}\n"
+    msg = f"\n{method} WARNING(S) AT: {callsite}\n{errorLines}\n"
     if not self._silent:
       print(msg, file=sys.stderr)
 
@@ -211,29 +217,59 @@ class PandasPatcher(object):
 
   def _get_callsite(self) -> str:
     """Return the file, function, line numer and pandas API call on a single line."""
-    for line in traceback.format_stack()[::-1]:
-      path = line.split(",")[0]
-      if "/pandas_utils.py" in path:
-        continue
-      if "/pandas/" in path:
-        continue
-      break
-    # Handle paths resulting from bazel invocation
-    match = re.match(r'^  File ".*?/site-packages(/.*?)", (.*?), (.*?)\n    (.*)\n$', line)
-    if match:
-      return f"{match.group(1)}, {match.group(3)}, at {match.group(2)}: {match.group(4)}"
-    # Handle paths fresulting from pytest invocation
-    match = re.match(r'^  File ".*?/src/(test|main)/python(/.*?)", (.*?), (.*?)\n    (.*)\n$', line)
-    if match:
-      return f"{match.group(2)}, {match.group(4)}, at {match.group(3)}: {match.group(5)}"
-    # Handle other paths (e.g. notebook, public code)
-    match = re.match(r'^  File "(.*?)", (.*?), (.*?)\n    (.*)\n$', line)
-    if match:
-      return f"{match.group(1)}, {match.group(3)}, at {match.group(2)}: {match.group(4)}"
-    else:
-      stack = "\n\n".join(traceback.format_stack()[::-1])
-      print(f"parsing error:\n{stack}", file=sys.stderr)
-      return "parsing error. callsite unknown."
+    try:
+      # Find the first relevant frame (not in pandas_utils.py or pandas)
+      relevant_frame = None
+      for line in traceback.format_stack()[::-1]:
+        path = line.split(",")[0]
+        if "/pandas_utils.py" in path:
+          continue
+        if "/pandas/" in path:
+          continue
+        relevant_frame = line
+        break
+
+      if not relevant_frame:
+        return "callsite unknown (no relevant frame found)"
+
+      # Handle paths resulting from bazel invocation
+      match = re.match(
+        r'^  File ".*?/site-packages(/.*?)", (.*?), (.*?)\n    (.*)\n$', relevant_frame
+      )
+      if match:
+        return f"{match.group(1)}, {match.group(3)}, at {match.group(2)}: {match.group(4)}"
+      # Handle paths fresulting from pytest invocation
+      match = re.match(
+        r'^  File ".*?/src/(test|main)/python(/.*?)", (.*?), (.*?)\n    (.*)\n$',
+        relevant_frame,
+      )
+      if match:
+        return f"{match.group(2)}, {match.group(4)}, at {match.group(3)}: {match.group(5)}"
+      # Handle other paths (e.g. notebook, public code)
+      match = re.match(r'^  File "(.*?)", (.*?), (.*?)\n    (.*)\n$', relevant_frame)
+      if match:
+        return f"{match.group(1)}, {match.group(3)}, at {match.group(2)}: {match.group(4)}"
+      # Handle multiprocessing and other non-standard stack frames
+      match = re.match(r'^  File "([^"]+)", line (\d+), in (.+)', relevant_frame)
+      if match:
+        file_path = match.group(1)
+        line_num = match.group(2)
+        func_name = match.group(3).strip()
+        # Extract code if available
+        code = ""
+        if "\n" in relevant_frame:
+          code_part = (
+            relevant_frame.split("\n")[1].strip() if len(relevant_frame.split("\n")) > 1 else ""
+          )
+          if code_part:
+            code = code_part
+        return f"{file_path}, line {line_num}, in {func_name}: {code}"
+
+      # Last resort: just return the frame without the full stack
+      return f"callsite unknown: {relevant_frame.strip()}"
+    except Exception as e:
+      # If anything goes wrong, return a simple message without printing the stack
+      return f"callsite unknown (error: {str(e)})"
 
   def _check_dtype(self, dtype: Any, expected: type) -> bool:
     """Return True IFF dtype corresponds to expected.
@@ -346,7 +382,11 @@ class PandasPatcher(object):
         else:
           # If Series, validate that all series were same type and return
           seriesTypes = set(obj.dtype for obj in objs)
-          check(None, len(seriesTypes) == 1, f"More than 1 unique Series type: {seriesTypes}")
+          check(
+            None,
+            len(seriesTypes) == 1,
+            f"More than 1 unique Series type: {seriesTypes}",
+          )
           result = self._origConcat(*args, **kwargs)
       else:
         # If DataFrame, validate that all input columns with matching names have the same type

@@ -810,6 +810,7 @@ prescoringRaterModelOutputTSVColumnsAndTypes = [
   (totalHelpfulHarassmentRatingsPenaltyKey, np.double),
   (raterAgreeRatioWithHarassmentAbusePenaltyKey, np.double),
 ]
+
 prescoringRaterModelOutputTSVColumns = [
   col for (col, dtype) in prescoringRaterModelOutputTSVColumnsAndTypes
 ]

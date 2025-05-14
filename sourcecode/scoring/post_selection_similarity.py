@@ -25,6 +25,12 @@ class PostSelectionSimilarity:
     minSimPseudocounts: int = 10,
     windowMillis: int = 1000 * 60 * 20,
   ):
+    # Compute rater affinity and writer coverage.  Apply thresholds to identify linked pairs.
+    helpfulRatings = ratings[ratings[c.helpfulnessLevelKey] == c.helpfulValueTsv]
+    self.affinityAndCoverage = self.compute_affinity_and_coverage(helpfulRatings, notes, [1, 5, 20])
+    self.suspectPairs = self.get_suspect_pairs(self.affinityAndCoverage)
+
+    # Compute MinSim and NPMI
     self.ratings = _preprocess_ratings(notes, ratings)
     with c.time_block("Compute pair counts dict"):
       self.pairCountsDict = _get_pair_counts_dict(self.ratings, windowMillis=windowMillis)
@@ -46,24 +52,125 @@ class PostSelectionSimilarity:
       smoothedNpmiThreshold=smoothedNpmiThreshold,
       minimumRatingProportionThreshold=minimumRatingProportionThreshold,
     )
+    self.suspectPairs = set(self.suspectPairs + list(self.pairCountsDict.keys()))
 
-  def get_high_post_selection_similarity_raters(self):
-    uniqueRaters = set()
-    for r1, r2 in self.pairCountsDict.keys():
-      uniqueRaters.add(r1)
-      uniqueRaters.add(r2)
-    highPostSelectionSimilarityRaters = pd.DataFrame(
-      list(uniqueRaters), columns=[c.raterParticipantIdKey]
+  # Define helper to get affinity and coverage for a pair over a time window
+  def _compute_affinity_and_coverage(self, ratings, notes, latencyMins, minDenom):
+    # Identify ratings subset
+    ratings = ratings[[c.raterParticipantIdKey, c.noteIdKey, c.createdAtMillisKey]].rename(
+      columns={c.createdAtMillisKey: "ratingMillis"}
     )
-    highPostSelectionSimilarityRaters[c.postSelectionValueKey] = 1
-    return highPostSelectionSimilarityRaters
+    notes = notes[[c.noteAuthorParticipantIdKey, c.noteIdKey, c.createdAtMillisKey]].rename(
+      columns={c.createdAtMillisKey: "noteMillis"}
+    )
+    ratings = ratings.merge(notes)
+    ratings["latency"] = ratings["ratingMillis"] - ratings["noteMillis"]
+    ratings = ratings[ratings["latency"] <= (1000 * 60 * latencyMins)]
+    # Compute note and rating totals
+    writerTotals = (
+      notes[c.noteAuthorParticipantIdKey]
+      .value_counts()
+      .to_frame()
+      .reset_index(drop=False)
+      .rename(columns={"count": "writerTotal"})
+    )
+    raterTotals = (
+      ratings[c.raterParticipantIdKey]
+      .value_counts()
+      .to_frame()
+      .reset_index(drop=False)
+      .rename(columns={"count": f"raterTotal{latencyMins}m"})
+    )
+    ratingTotals = (
+      ratings[[c.noteAuthorParticipantIdKey, c.raterParticipantIdKey]]
+      .value_counts()
+      .reset_index(drop=False)
+      .rename(columns={"count": f"pairTotal{latencyMins}m"})
+    )
+    ratingTotals = ratingTotals.merge(writerTotals, how="left")
+    ratingTotals = ratingTotals.merge(raterTotals, how="left")
+    # Compute ratios
+    ratingTotals[f"raterAffinity{latencyMins}m"] = (
+      ratingTotals[f"pairTotal{latencyMins}m"] / ratingTotals[f"raterTotal{latencyMins}m"]
+    )
+    ratingTotals[f"writerCoverage{latencyMins}m"] = (
+      ratingTotals[f"pairTotal{latencyMins}m"] / ratingTotals["writerTotal"]
+    )
+    ratingTotals.loc[
+      ratingTotals[f"raterTotal{latencyMins}m"] < minDenom, f"raterAffinity{latencyMins}m"
+    ] = pd.NA
+    ratingTotals.loc[
+      ratingTotals["writerTotal"] < minDenom, f"writerCoverage{latencyMins}m"
+    ] = pd.NA
+    return ratingTotals[
+      [
+        c.noteAuthorParticipantIdKey,
+        c.raterParticipantIdKey,
+        "writerTotal",
+        f"raterTotal{latencyMins}m",
+        f"pairTotal{latencyMins}m",
+        f"raterAffinity{latencyMins}m",
+        f"writerCoverage{latencyMins}m",
+      ]
+    ].astype(
+      {
+        f"raterTotal{latencyMins}m": pd.Int64Dtype(),
+        f"pairTotal{latencyMins}m": pd.Int64Dtype(),
+      }
+    )
+
+  def compute_affinity_and_coverage(self, ratings, notes, latencyMins, minDenom=10):
+    latencyMins = sorted(latencyMins, reverse=True)
+    df = self._compute_affinity_and_coverage(ratings, notes, latencyMins[0], minDenom)
+    origLen = len(df)
+    for latency in latencyMins[1:]:
+      df = df.merge(
+        self._compute_affinity_and_coverage(ratings, notes, latency, minDenom),
+        on=[c.noteAuthorParticipantIdKey, c.raterParticipantIdKey, "writerTotal"],
+        how="left",
+      )
+      assert len(df) == origLen
+    cols = [c.noteAuthorParticipantIdKey, c.raterParticipantIdKey, "writerTotal"]
+    for latency in sorted(latencyMins):
+      cols.extend(
+        [
+          f"raterTotal{latency}m",
+          f"pairTotal{latency}m",
+          f"raterAffinity{latency}m",
+          f"writerCoverage{latency}m",
+        ]
+      )
+    return df[cols]
+
+  def get_suspect_pairs(self, affinityAndCoverage):
+    thresholds = [
+      ("writerCoverage1m", 0.2),
+      ("writerCoverage5m", 0.3),
+      ("writerCoverage20m", 0.4),
+      ("raterAffinity1m", 0.2),
+      ("raterAffinity5m", 0.45),
+      ("raterAffinity20m", 0.7),
+    ]
+    suspectPairsDF = []
+    for col, value in thresholds:
+      tmp = affinityAndCoverage[affinityAndCoverage[col] >= value][
+        [c.noteAuthorParticipantIdKey, c.raterParticipantIdKey]
+      ].copy()
+      suspectPairsDF.append(tmp)
+    suspectPairsDF = pd.concat(suspectPairsDF)
+    suspectPairs = []
+    for author, rater in suspectPairsDF[
+      [c.noteAuthorParticipantIdKey, c.raterParticipantIdKey]
+    ].values:
+      suspectPairs.append(tuple(sorted((author, rater))))
+    return suspectPairs
 
   def get_post_selection_similarity_values(self):
     """
     Returns dataframe with [raterParticipantId, postSelectionSimilarityValue] columns.
     postSelectionSimilarityValue is None by default.
     """
-    cliqueToUserMap, userToCliqueMap = aggregate_into_cliques(self.pairCountsDict)
+    cliqueToUserMap, userToCliqueMap = aggregate_into_cliques(self.suspectPairs)
 
     # Convert dict to pandas dataframe
     cliquesDfList = []
@@ -210,14 +317,14 @@ def _join_rater_totals_compute_pmi_and_filter_edges_below_threshold(
   return pairCountsDict
 
 
-def aggregate_into_cliques(pairCountsDict):
+def aggregate_into_cliques(suspectPairs):
   with c.time_block("Aggregate into cliques by post selection similarity"):
     userToCliqueMap = dict()
     cliqueToUserMap = dict()
 
     nextNewCliqueId = 1  # start cliqueIdxs from 1
 
-    for sid, tid in pairCountsDict.keys():
+    for sid, tid in suspectPairs:
       if sid in userToCliqueMap:
         if tid in userToCliqueMap:
           # both in map. merge if not same clique

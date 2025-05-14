@@ -107,7 +107,10 @@ class ReputationScorer(Scorer):
     }
 
   def _prescore_notes_and_users(
-    self, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame, userEnrollmentRaw: pd.DataFrame
+    self,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    userEnrollmentRaw: pd.DataFrame,
   ) -> Tuple[pd.DataFrame, pd.DataFrame, c.PrescoringMetaScorerOutput]:
     if self._seed is not None:
       logger.info(f"seeding with {self._seed}")
@@ -121,14 +124,20 @@ class ReputationScorer(Scorer):
         ratings, userEnrollmentRaw, self._modelingGroupToInitializeForStability
       )
       mfRanker = MatrixFactorization()
-      noteParamsInit, raterParamsInit, _ = mfRanker.run_mf(ratingsForStableInitialization)
+      noteParamsInit, raterParamsInit, _ = mfRanker.run_mf(
+        ratingsForStableInitialization, run_name=f"{self.get_name()}/stable_init"
+      )
 
       # We only want to use factors to initialize, not intercepts
       noteParamsInit = noteParamsInit[[c.noteIdKey, c.internalNoteFactor1Key]]
       raterParamsInit = raterParamsInit[[c.raterParticipantIdKey, c.internalRaterFactor1Key]]
 
     # Fit multi-phase prescoring for reputation model
-    noteStats, raterStats, globalIntercept = get_helpfulness_reputation_results_prescoring(
+    (
+      noteStats,
+      raterStats,
+      globalIntercept,
+    ) = get_helpfulness_reputation_results_prescoring(
       ratings, noteInitState=noteParamsInit, raterInitState=raterParamsInit
     )
     # Fill in NaN values for any missing notes
@@ -181,7 +190,8 @@ class ReputationScorer(Scorer):
     # Assign rating status
     noteStats[c.coverageRatingStatusKey] = c.needsMoreRatings
     noteStats.loc[
-      noteStats[c.coverageNoteInterceptKey] > self._crhThreshold, c.coverageRatingStatusKey
+      noteStats[c.coverageNoteInterceptKey] > self._crhThreshold,
+      c.coverageRatingStatusKey,
     ] = c.currentlyRatedHelpful
     # Fill in NaN values for any missing notes
     noteStats = noteStats.merge(noteStatusHistory[[c.noteIdKey]].drop_duplicates(), how="outer")

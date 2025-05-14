@@ -75,7 +75,10 @@ def parse_args():
     "--previous-aux-note-info", default=None, help="previous aux note info dataset path"
   )
   parser.add_argument(
-    "--previous-rating-cutoff-millis", default=None, type=int, help="previous rating cutoff millis"
+    "--previous-rating-cutoff-millis",
+    default=None,
+    type=int,
+    help="previous rating cutoff millis",
   )
   parser.add_argument("-o", "--outdir", default=".", help="directory for output files")
   parser.add_argument(
@@ -93,13 +96,19 @@ def parse_args():
   parser.set_defaults(pseudoraters=True)
   parser.add_argument("-r", "--ratings", default=c.ratingsInputPath, help="rating dataset")
   parser.add_argument(
-    "--scorers", default=None, type=scorers_from_csv, help="CSV list of scorers to enable."
+    "--scorers",
+    default=None,
+    type=scorers_from_csv,
+    help="CSV list of scorers to enable.",
   )
   parser.add_argument(
     "--seed", default=None, type=int, help="set to an int to seed matrix factorization"
   )
   parser.add_argument(
-    "-s", "--status", default=c.noteStatusHistoryInputPath, help="note status history dataset"
+    "-s",
+    "--status",
+    default=c.noteStatusHistoryInputPath,
+    help="note status history dataset",
   )
   parser.add_argument(
     "--strict-columns",
