@@ -224,7 +224,10 @@ def _load_data_with_data_loader_parallelizable(
   scoringArgs.noteStatusHistory = noteStatusHistory
   scoringArgs.userEnrollment = userEnrollment
   if type(scoringArgs) == FinalScoringArgs:
-    prescoringNoteModelOutput, prescoringRaterParams = dataLoader.get_prescoring_model_output()
+    (
+      prescoringNoteModelOutput,
+      prescoringRaterParams,
+    ) = dataLoader.get_prescoring_model_output()
     scoringArgs.prescoringNoteModelOutput = prescoringNoteModelOutput
     scoringArgs.prescoringRaterModelOutput = prescoringRaterParams
   return scoringArgs
@@ -357,7 +360,9 @@ def save_df_to_shared_memory(df: pd.DataFrame, shms: List) -> c.SharedMemoryData
   )
 
 
-def get_df_from_shared_memory(sharedMemoryDfInfo: c.SharedMemoryDataframeInfo) -> pd.DataFrame:
+def get_df_from_shared_memory(
+  sharedMemoryDfInfo: c.SharedMemoryDataframeInfo,
+) -> pd.DataFrame:
   """
   Intended to be called from a process within a multiprocessing pool in parallel.
   Read a dataframe from shared memory and return it.
@@ -468,9 +473,12 @@ def _run_scorers(
       modelResultsAndTimes = [f.result() for f in futures]
       logger.info("Got model results from all scorers.")
 
-      for shm in shms:
+      for i, shm in enumerate(shms):
+        logger.info(f"Closing shared memory segment {i}/{len(shms)}")
         shm.close()
-        shm.unlink()  # free the shared memory
+        logger.info(f"Unlinking shared memory segment {i}/{len(shms)}")
+        shm.unlink()
+      logger.info("All shared memory segments cleaned up")
   else:
     modelResultsAndTimes = [
       _run_scorer_in_series(
@@ -689,7 +697,11 @@ def meta_score(
     )
     scoredNotes = scoredNotes.merge(
       noteStatusHistory[
-        [c.noteIdKey, c.timestampMillisOfNmrDueToMinStableCrhTimeKey, c.firstNonNMRLabelKey]
+        [
+          c.noteIdKey,
+          c.timestampMillisOfNmrDueToMinStableCrhTimeKey,
+          c.firstNonNMRLabelKey,
+        ]
       ],
       on=c.noteIdKey,
     )
@@ -1099,7 +1111,9 @@ def _validate_note_scoring_output(
   return (scoredNotes, noteStatusHistory, auxiliaryNoteInfo)
 
 
-def _validate_contributor_scoring_output(helpfulnessScores: pd.DataFrame) -> pd.DataFrame:
+def _validate_contributor_scoring_output(
+  helpfulnessScores: pd.DataFrame,
+) -> pd.DataFrame:
   assert set(helpfulnessScores.columns) == set(
     c.raterModelOutputTSVColumns
   ), f"Got {sorted(helpfulnessScores.columns)}, expected {sorted(c.raterModelOutputTSVColumns)}"
@@ -1150,11 +1164,16 @@ def run_prescoring(
     logger.info(get_df_info(userEnrollment, "userEnrollment"))
   with c.time_block("Note Topic Assignment"):
     topicModel = TopicModel()
-    noteTopicClassifierPipe, seedLabels, conflictedTexts = topicModel.train_note_topic_classifier(
-      notes
-    )
+    (
+      noteTopicClassifierPipe,
+      seedLabels,
+      conflictedTexts,
+    ) = topicModel.train_note_topic_classifier(notes)
     noteTopics = topicModel.get_note_topics(
-      notes, noteTopicClassifierPipe, seedLabels, conflictedTextsForAccuracyEval=conflictedTexts
+      notes,
+      noteTopicClassifierPipe,
+      seedLabels,
+      conflictedTextsForAccuracyEval=conflictedTexts,
     )
 
   logger.info(
@@ -1722,6 +1741,7 @@ def run_final_note_scoring(
     logger.info(f"Post Selection Similarity Final Scoring: {len(ratings)} ratings remaining.")
 
   scorers = _get_scorers(seed, pseudoraters, useStableInitialization=useStableInitialization)
+
   modelResults = _run_scorers(
     args,
     scorers=list(chain(*scorers.values())),
@@ -1886,9 +1906,11 @@ def post_note_scoring(
     scoredNotes = _add_deprecated_columns(scoredNotes)
     scoredNotes = scoredNotes.drop(columns=PFLIP_LABEL)
     if strictColumns:
-      (scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo) = _validate_note_scoring_output(
-        scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo
-      )
+      (
+        scoredNotes,
+        newNoteStatusHistory,
+        auxiliaryNoteInfo,
+      ) = _validate_note_scoring_output(scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo)
 
   logger.info(
     f"Meta scoring elapsed time: {((time.time() - postScoringStartTime)/60.0):.2f} minutes."

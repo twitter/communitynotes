@@ -199,7 +199,7 @@ class PseudoRatersRunner:
       ratingFeaturesAndLabelsWithExtremeRatings
     )
     newExtremeMF.prepare_features_and_labels()
-    newExtremeMF._fit_model()
+    newExtremeMF._fit_model(run_name="PseudoRaters/fit_all_notes_with_raters_constant")
 
     # Double check that we kept rater parameters fixed during re-training of note parameters.
     if self._checkParamsSame:

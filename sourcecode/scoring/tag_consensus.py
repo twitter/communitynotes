@@ -93,6 +93,7 @@ def train_tag_model(
     ratingDataForTag,
     userInit=helpfulModelRaterParams,
     noteInit=helpfulModelNoteParams,
+    run_name="tag_consensus",
   )
 
   noteParams.columns = [_convert_param_name_from_internal_to_tag(col) for col in noteParams.columns]
