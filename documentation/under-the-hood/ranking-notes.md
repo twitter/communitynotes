@@ -85,6 +85,11 @@ Note: for now, to avoid overfitting on our very small dataset, we only use 1-dim
 
 Additionally, because the matrix factorization is re-trained from scratch every hour, we have added additional logic to detect if the loss is more than expected (currently by detecting if the loss is above a hard threshold of 0.09) that may have resulted from an unlucky initialization and local mode, and then re-fit the model if so.
 
+## Post Selection Similarity
+The Community Notes ranking algorithm includes mechanisms to detect similarities in the notes and posts that contributors engage with.
+If the algorithm detects an anomalous correlation, the associated contributors are treated as a single contributor to address any potential impacts on note ranking outcomes.
+Like the rest of ranking, this system follows Community Notes principles and works entirely on open and public data with open and public effects.
+
 ## Net Helpful Minimums
 
 Matrix factorization identifies notes that are liked by people who normally disagree by assigning high intercepts to notes when users with different factors rate the note Helpful.
@@ -363,7 +368,7 @@ For not-helpful notes:
 
 **Prescoring**
 
-1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence). Also, coalesce ratings made by raters with high post-selection-similarity.
+1. Pre-filter the data: to address sparsity issues, only raters with at least 10 ratings and notes with at least 5 ratings are included (although we don’t recursively filter until convergence). Also, coalesce ratings made by raters with high post selection similarity.
 2. For each scorer (Core, CoreWithTopics, Expansion, ExpansionPlus, and multiple Group and Topic scorers):
     - Fit matrix factorization model, then assign intermediate note status labels for notes whose intercept terms (scores) are above or below thresholds.
     - Compute Author and Rater Helpfulness Scores based on the results of the first matrix factorization, then filter out raters with low helpfulness scores from the ratings data as described in [Filtering Ratings Based on Helpfulness Scores](./contributor-scores.md).
@@ -381,6 +386,9 @@ For not-helpful notes:
 5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**May 15, 2025**
+- Expand mechanisms included in post selection similarity.
 
 **April 8, 2025**
 - Introduce Net Helpful Ratings and Net Helpful Ratio thresholds.
@@ -418,7 +426,7 @@ For not-helpful notes:
 - Additional rescoring logic to guarantee notes are rescored during the status stabilization period.
 
 **Sep 17, 2024**
-- Lower threshold for coalescing ratings with high post-selection-similarity.
+- Lower threshold for coalescing ratings with high post selection similarity.
 
 **Aug 12, 2024**
 - Add a 30min delay for notes that meet the CRH criteria ("NMRDueToStableCRHTime") to ensure they stably meet that criteria across multiple scoring runs before CRHing them
@@ -428,7 +436,7 @@ For not-helpful notes:
 - Only score a subset of notes each time we run final note scoring. This doesn't affect what statuses new notes get, but does cause them to get scored more quickly.
 
 **May 31, 2024**
-- Coalesce ratings on the same note from raters with very high post-selection-similarity.
+- Coalesce ratings on the same note from raters with very high post selection similarity.
 
 **May 1, 2024**
 - Modify scoring thresholds for the Expanded Consensus trial to raise the note intercept threshold for Helpful notes, increase tag filtering and require a minimum Core or Expansion intercept for Helpful notes.
