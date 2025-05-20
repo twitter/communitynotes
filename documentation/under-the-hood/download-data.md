@@ -17,18 +17,19 @@ If you have questions or feedback about the Community Notes public data or would
 
 ### Data snapshots
 
-The [Community Notes data](https://x.com/i/communitynotes/download-data) is released as four separate files:
+The [Community Notes data](https://x.com/i/communitynotes/download-data) is released as five separate files:
 
 - **Notes:** Contains a table representing all notes
 - **Ratings:** Contains a table representing all ratings
 - **Note Status History:** Contains a table with metadata about notes including what statuses they received and when.
 - **User Enrollment:** Contains a table with metadata about each user's enrollment state.
+- **Note Requests:** Contains a table representing all requests for a Community Note, which can be submitted by any account on X.
 
-These tables can be joined on the noteId field to create a combined dataset with information about users, notes, and their ratings. The data is released in separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model).
+Note-related tables can be joined on the noteId field to create a combined dataset with information about users, notes, and their ratings. The data is released in separate tables/files to reduce the dataset size by avoiding data duplication (this is known as a normalized data model).
 
-Currently, we release one cumulative file each for notes, notes status history, note ratings, and user enrollment. However, in the future, if the data ever grows too large, we will split the data into multiple files as needed.
+Currently, we release a cumulative file each for Notes, Note Status History, Note Ratings, User Enrollment and Note Requests. Where the data is large, it gets split the data into multiple files as needed.
 
-A new snapshot of the Community Notes public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshots are cumulative files, but only contain notes and ratings that were created as of 48 hours before the dataset release time. When notes and ratings are deleted, they will no longer be released in any future versions of the data downloads, although the note status history dataset will continue to contain metadata about all scored notes even after they’ve been deleted, which includes noteId, creation time, the hashed participant ID of the note’s author, and a history of which statuses each notes received and when; however, all the content of the note itself e.g. the note’s text will no longer be available.
+A new snapshot of the Community Notes public data is released daily, on a best-effort basis, and technical difficulties may occur and delay the data release until the next day. We are not able to provide guarantees about when this may happen. The snapshots are cumulative files, but only contain notes and ratings that were created as of 48 hours before the dataset release time. When notes and ratings are deleted, they will no longer be released in any future versions of the data downloads, although the Note Status History dataset will continue to contain metadata about all scored notes even after they’ve been deleted, which includes noteId, creation time, the hashed participant ID of the note’s author, and a history of which statuses each notes received and when; however, all the content of the note itself e.g. the note’s text will no longer be available.
 
 The [data download page in Community Notes](https://x.com/i/communitynotes/download-data) displays a date stamp indicating the most recent date of data included in the downloadable files.
 
@@ -41,6 +42,12 @@ Each data snapshot table is stored in tsv (tab-separated values) file format wit
 As we iterate and improve Community Notes, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms, or additional metadata shared about notes and rating. When we do this, some question fields / columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and other updates we have made to the data, as well as when those changes were made.
 
 {% accordionSection %}
+{% accordionItem title="2025-05-20 - New User Request dataset "  %}
+
+- New dataset with “Requests for a Community Note.” Anyone on X can make a request. As of January 22, 2025, people can also include a link to a source (in the form of an X post) in their request. [More details](./note-requests.md)
+
+{% /accordionItem %}
+
 {% accordionItem title="2022-11-25 - New User Enrollment dataset "  %}
 
 - New dataset with user enrollment states. These states define what actions users can take in the system (eg. rating, writing).
@@ -209,3 +216,12 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `timestampOfLastEarnOut`         | Long   | The timestamp, in milliseconds since epoch (UTC), of the most recent time the user earned-out. If the user never earned out, its value will be 1                                   |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `modelingPopulation`             | String | Indicates which modeling population the user is, and therefore which models will score the user's ratings:.                                                                  | "CORE" or "EXPANSION"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `modelingGroup` | Int | The ID of the user's modeling group (used for group model scorers). | 0-13 |
+
+### Note Requests
+
+| Field                                 | Type   | Description                                                                                                                                                                                                                                                                                                                                                                                           | Response values                                                                |
+| ------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `userId`|String|A hashed user identifier of the user who requested a note. This id remains stable even if the user changes their username/handle.||
+| `tweetId`|Long|The tweetId number for the post on which the user is requesting a note.||
+| `createdAtMillis`|Long|Time the note was created, in milliseconds since epoch (UTC).||
+| `sourceLink`|String|A link to an X post, which note requestors are optionally allowed to include as of January 22, 2025.|User-entered X post URL. Can be empty if not included.|
