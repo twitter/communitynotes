@@ -42,7 +42,7 @@ Each data snapshot table is stored in tsv (tab-separated values) file format wit
 As we iterate and improve Community Notes, we will occasionally make changes to the questions we ask contributors in the note writing and note rating forms, or additional metadata shared about notes and rating. When we do this, some question fields / columns in our public data will be deprecated (no longer populated), and others will be added. Below we will keep a change log of changes we have made to the contribution form questions and other updates we have made to the data, as well as when those changes were made.
 
 {% accordionSection %}
-{% accordionItem title="2025-05-21 - New User Request dataset "  %}
+{% accordionItem title="2025-05-20 - New User Request dataset "  %}
 
 - New dataset with “Requests for a Community Note.” Anyone on X can make a request. As of January 22, 2025, people can also include a link to a source (in the form of an X post) in their request. [More details](./note-requests.md)
 
