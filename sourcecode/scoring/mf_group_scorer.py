@@ -40,6 +40,7 @@ def coalesce_group_model_scored_notes(scoredNotes: pd.DataFrame) -> pd.DataFrame
     c.modelingGroupKey,
     c.groupInternalActiveRulesKey,
     c.groupNumFinalRoundRatingsKey,
+    c.groupNoteInterceptNoHighVolKey,
   ]:
     scoredNotes = coalesce_columns(scoredNotes, col)
 
@@ -83,6 +84,7 @@ class MFGroupScorer(MFBaseScorer):
     crnhThresholdNoteFactorMultiplier: float = -0.8,
     crnhThresholdNMIntercept: float = -0.15,
     crhSuperThreshold: Optional[float] = 0.5,
+    crhThresholdNoHighVol: float = 0.37,
     lowDiligenceThreshold: float = 0.263,
     factorThreshold: float = 0.5,
     multiplyPenaltyByHarassmentScore: bool = True,
@@ -135,6 +137,7 @@ class MFGroupScorer(MFBaseScorer):
       crnhThresholdNoteFactorMultiplier=crnhThresholdNoteFactorMultiplier,
       crnhThresholdNMIntercept=crnhThresholdNMIntercept,
       crhSuperThreshold=crhSuperThreshold,
+      crhThresholdNoHighVol=crhThresholdNoHighVol,
       lowDiligenceThreshold=lowDiligenceThreshold,
       factorThreshold=factorThreshold,
       multiplyPenaltyByHarassmentScore=multiplyPenaltyByHarassmentScore,
@@ -159,6 +162,7 @@ class MFGroupScorer(MFBaseScorer):
     self._groupRaterInterceptKey = f"{c.groupRaterInterceptKey}_{self._groupId}"
     self._groupRaterFactor1Key = f"{c.groupRaterFactor1Key}_{self._groupId}"
     self._modelingGroupKey = f"{c.modelingGroupKey}_{self._groupId}"
+    self._groupNoteInterceptNoHighVolKey = f"{c.groupNoteInterceptNoHighVolKey}_{self._groupId}"
 
   def get_name(self):
     return f"MFGroupScorer_{self._groupId}"
@@ -172,6 +176,7 @@ class MFGroupScorer(MFBaseScorer):
       c.internalActiveRulesKey: self._groupInternalActiveRulesKey,
       c.numFinalRoundRatingsKey: self._groupNumFinalRoundRatingsKey,
       c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey,
+      c.internalNoteInterceptNoHighVolKey: self._groupNoteInterceptNoHighVolKey,
     }
 
   def _get_user_col_mapping(self) -> Dict[str, str]:
@@ -191,6 +196,7 @@ class MFGroupScorer(MFBaseScorer):
       self._groupInternalActiveRulesKey,
       self._modelingGroupKey,
       self._groupNumFinalRoundRatingsKey,
+      self._groupNoteInterceptNoHighVolKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:

@@ -170,6 +170,7 @@ class MFBaseScorer(Scorer):
     crnhThresholdNMIntercept: float = -0.15,
     crnhThresholdUCBIntercept: float = -0.04,
     crhSuperThreshold: Optional[float] = 0.5,
+    crhThresholdNoHighVol: float = 0.37,
     lowDiligenceThreshold: float = 0.263,
     factorThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
@@ -256,6 +257,7 @@ class MFBaseScorer(Scorer):
     self._crnhThresholdNMIntercept = crnhThresholdNMIntercept
     self._crnhThresholdUCBIntercept = crnhThresholdUCBIntercept
     self._crhSuperThreshold = crhSuperThreshold
+    self._crhThresholdNoHighVol = crhThresholdNoHighVol
     self._inertiaDelta = inertiaDelta
     self._modelingGroupToInitializeForStability = 13 if useStableInitialization else None
     self._saveIntermediateState = saveIntermediateState
@@ -328,6 +330,7 @@ class MFBaseScorer(Scorer):
       c.noteInterceptMaxKey,
       c.noteInterceptMinKey,
       c.numFinalRoundRatingsKey,
+      c.internalNoteInterceptNoHighVolKey,
     ]
 
   def get_internal_scored_notes_cols(self) -> List[str]:
@@ -1007,6 +1010,7 @@ class MFBaseScorer(Scorer):
     prescoringRaterModelOutput: pd.DataFrame,
     prescoringMetaScorerOutput: c.PrescoringMetaScorerOutput,
     flipFactorsForIdentification: bool = False,
+    noteScoresNoHighVol: Optional[pd.DataFrame] = None,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Run the "final" matrix factorization scoring algorithm.
     Accepts prescoring's output as its input, as well as the new ratings and note status history.
@@ -1149,10 +1153,18 @@ class MFBaseScorer(Scorer):
       on=c.raterParticipantIdKey,
     )
 
+    # Merge in intercept and status without high volume raters
+    if noteScoresNoHighVol is not None:
+      noteParams = noteParams.merge(noteScoresNoHighVol, on=c.noteIdKey, how="left")
+
     # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
     # and ML output.
     with self.time_block("Final compute scored notes"):
       logger.info(f"About to call compute_scored_notes with {self.get_name()}")
+      if noteScoresNoHighVol is not None:
+        crhThresholdNoHighVol = self._crhThresholdNoHighVol
+      else:
+        crhThresholdNoHighVol = None
       scoredNotes = note_ratings.compute_scored_notes(
         ratings,
         noteParams,
@@ -1174,6 +1186,7 @@ class MFBaseScorer(Scorer):
         firmRejectThreshold=self._firmRejectThreshold,
         minMinorityNetHelpfulRatings=self._minMinorityNetHelpfulRatings,
         minMinorityNetHelpfulRatio=self._minMinorityNetHelpfulRatio,
+        crhThresholdNoHighVol=crhThresholdNoHighVol,
       )
       logger.info(f"sn cols: {scoredNotes.columns}")
 
@@ -1244,6 +1257,41 @@ class MFBaseScorer(Scorer):
       if len(ratings) == 0:
         return self._return_empty_final_scores()
 
+    # Separate low and high volume ratings.  Note that we rely on the ratings dataframe being sorted and
+    # partition the sorted dataframe to avoid creating a copy of ratings (instead we use a view that spans
+    # the first N rows).
+    highVolCount = ratings[c.highVolumeRaterKey].sum()
+    lowVolCount = len(ratings) - highVolCount
+    logger.info(
+      f"count debugging: {highVolCount}, {lowVolCount}, {ratings.iloc[:lowVolCount][c.highVolumeRaterKey].sum()}, {ratings.iloc[lowVolCount:][c.highVolumeRaterKey].sum()}"
+    )
+    assert ratings.iloc[:lowVolCount][c.highVolumeRaterKey].sum() == 0
+    assert ratings.iloc[lowVolCount:][c.highVolumeRaterKey].sum() == highVolCount
+    logger.info(
+      f"Total Ratings vs Low Vol Ratings ({self.get_name()}): {len(ratings)} vs {lowVolCount}"
+    )
+    noteScoresNoHighVol, _ = self._score_notes_and_users(
+      ratings=ratings.iloc[:lowVolCount],
+      noteStatusHistory=noteStatusHistory,
+      prescoringNoteModelOutput=prescoringNoteModelOutput,
+      prescoringRaterModelOutput=prescoringRaterModelOutput,
+      prescoringMetaScorerOutput=prescoringMetaScorerOutput,
+    )
+    logger.info(
+      f"noteScoresNoHighVol Summary {self.get_name()}: length ({len(noteScoresNoHighVol)}), cols ({', '.join(noteScoresNoHighVol.columns)})"
+    )
+    if len(noteScoresNoHighVol) > 0:
+      noteScoresNoHighVol = noteScoresNoHighVol[[c.noteIdKey, c.internalNoteInterceptKey]].rename(
+        columns={
+          c.internalNoteInterceptKey: c.internalNoteInterceptNoHighVolKey,
+        }
+      )
+    else:
+      # Incase of low volumes, ensure that the dataframe contains the expected columns downstream
+      logger.info(f"Imputing expected columns ({self.get_name()})")
+      noteScoresNoHighVol[c.noteIdKey] = []
+      noteScoresNoHighVol[c.internalNoteInterceptNoHighVolKey] = []
+
     noteScores, userScores = self._score_notes_and_users(
       ratings=ratings,
       noteStatusHistory=noteStatusHistory,
@@ -1251,6 +1299,10 @@ class MFBaseScorer(Scorer):
       prescoringRaterModelOutput=prescoringRaterModelOutput,
       prescoringMetaScorerOutput=prescoringMetaScorerOutput,
       flipFactorsForIdentification=False,
+      noteScoresNoHighVol=noteScoresNoHighVol,
+    )
+    logger.info(
+      f"noteScores Summary {self.get_name()}: length ({len(noteScores)}), cols ({', '.join(noteScores.columns)})"
     )
 
     if len(noteScores) == 0 and len(userScores) == 0:

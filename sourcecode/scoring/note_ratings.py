@@ -546,6 +546,7 @@ def compute_scored_notes(
   firmRejectThreshold: Optional[float] = None,
   minMinorityNetHelpfulRatings: Optional[int] = None,
   minMinorityNetHelpfulRatio: Optional[float] = None,
+  crhThresholdNoHighVol: Optional[float] = None,
 ) -> pd.DataFrame:
   """
   Merges note status history, ratings, and model output. It annotes the data frame with
@@ -610,6 +611,8 @@ def compute_scored_notes(
   for col in c.noteParameterUncertaintyTSVColumns:
     if col in noteParams.columns:
       noteParamsColsToKeep.append(col)
+  if crhThresholdNoHighVol is not None:
+    noteParamsColsToKeep.append(c.internalNoteInterceptNoHighVolKey)
   noteStats = noteStats.merge(
     noteParams[noteParamsColsToKeep],
     on=c.noteIdKey,
@@ -777,6 +780,15 @@ def compute_scored_notes(
           {RuleID.MIN_MINORITY_RATERS},
           c.needsYourHelp,
           minMinorityNetHelpfulRatio,
+        )
+      )
+    if crhThresholdNoHighVol is not None:
+      rules.append(
+        scoring_rules.NoHighVolIntercept(
+          RuleID.NO_HIGH_VOL_INTERCEPT,
+          {RuleID.LARGE_FACTOR},
+          c.needsYourHelp,
+          crhThresholdNoHighVol,
         )
       )
   scoredNotes = scoring_rules.apply_scoring_rules(

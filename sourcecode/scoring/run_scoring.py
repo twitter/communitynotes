@@ -124,6 +124,7 @@ def _get_scorers(
       crnhThresholdIntercept=-0.01,
       crnhThresholdNoteFactorMultiplier=0,
       crnhThresholdNMIntercept=-0.02,
+      crhThresholdNoHighVol=0.12,
       lowDiligenceThreshold=1000,
       factorThreshold=0.4,
       multiplyPenaltyByHarassmentScore=False,
@@ -220,7 +221,7 @@ def _load_data_with_data_loader_parallelizable(
   """
   _, ratings, noteStatusHistory, userEnrollment = dataLoader.get_data()
 
-  scoringArgs.ratings = ratings
+  scoringArgs.ratings = ratings.sort_values(c.highVolumeRaterKey, ascending=True)
   scoringArgs.noteStatusHistory = noteStatusHistory
   scoringArgs.userEnrollment = userEnrollment
   if type(scoringArgs) == FinalScoringArgs:
@@ -381,15 +382,19 @@ def _save_dfs_to_shared_memory(
   """
   shms: List[shared_memory.SharedMemory] = []
   noteTopics = save_df_to_shared_memory(scoringArgs.noteTopics, shms)
+  # Order ratings by highVolumeRaterKey so that later we can split ratings
+  # to remove ratings from high volume users without having to make a copy.
+  sortedRatings = scoringArgs.ratings.sort_values(c.highVolumeRaterKey, ascending=True)
   ratings = save_df_to_shared_memory(
     keep_columns(
-      scoringArgs.ratings,
+      sortedRatings,
       [
         c.noteIdKey,
         c.raterParticipantIdKey,
         c.helpfulNumKey,
         c.helpfulnessLevelKey,
         c.createdAtMillisKey,
+        c.highVolumeRaterKey,
       ]
       + c.notHelpfulTagsTSVOrder
       + c.helpfulTagsTSVOrder,
@@ -1171,9 +1176,9 @@ def run_prescoring(
     ) = topicModel.train_note_topic_classifier(notes)
     noteTopics = topicModel.get_note_topics(
       notes,
-      noteTopicClassifierPipe,
-      seedLabels,
-      conflictedTextsForAccuracyEval=conflictedTexts,
+      [noteTopicClassifierPipe],
+      [seedLabels],
+      conflictedTextSetsForAccuracyEval=[conflictedTexts],
     )
 
   logger.info(
@@ -1727,7 +1732,7 @@ def run_final_note_scoring(
     scoredTweets = set(notes[c.tweetIdKey].astype(np.int64))
     notesFull = notesFull[notesFull[c.tweetIdKey].astype(np.int64).isin(scoredTweets)]
     topicModel = TopicModel()
-    noteTopics = topicModel.get_note_topics(notesFull, noteTopicClassifier)
+    noteTopics = topicModel.get_note_topics(notesFull, noteTopicClassifiers=[noteTopicClassifier])
 
   with c.time_block("Post Selection Similarity: Final Scoring"):
     logger.info(f"Post Selection Similarity Final Scoring: begin with {len(ratings)} ratings.")

@@ -28,6 +28,7 @@ def coalesce_topic_models(scoredNotes: pd.DataFrame) -> pd.DataFrame:
     c.noteTopicKey,
     c.topicInternalActiveRulesKey,
     c.topicNumFinalRoundRatingsKey,
+    c.topicNoteInterceptNoHighVolKey,
   ]:
     scoredNotes = coalesce_columns(scoredNotes, col)
 
@@ -56,6 +57,7 @@ class MFTopicScorer(MFBaseScorer):
     crnhThresholdNoteFactorMultiplier: float = -0.8,
     crnhThresholdNMIntercept: float = -0.15,
     crhSuperThreshold: float = 0.5,
+    crhThresholdNoHighVol: float = 0.37,
     lowDiligenceThreshold: float = 0.263,
     factorThreshold: float = 0.5,
     multiplyPenaltyByHarassmentScore: bool = True,
@@ -98,6 +100,7 @@ class MFTopicScorer(MFBaseScorer):
       crnhThresholdNoteFactorMultiplier=crnhThresholdNoteFactorMultiplier,
       crnhThresholdNMIntercept=crnhThresholdNMIntercept,
       crhSuperThreshold=crhSuperThreshold,
+      crhThresholdNoHighVol=crhThresholdNoHighVol,
       lowDiligenceThreshold=lowDiligenceThreshold,
       factorThreshold=factorThreshold,
       multiplyPenaltyByHarassmentScore=multiplyPenaltyByHarassmentScore,
@@ -113,6 +116,7 @@ class MFTopicScorer(MFBaseScorer):
     self._topicNumFinalRoundRatingsKey = f"{c.topicNumFinalRoundRatingsKey}_{self._topicName}"
     self._noteTopicKey = f"{c.noteTopicKey}_{self._topicName}"
     self._noteTopicConfidentKey = f"{c.topicNoteConfidentKey}_{self._topicName}"
+    self._topicNoteInterceptNoHighVolKey = f"{c.topicNoteInterceptNoHighVolKey}_{self._topicName}"
 
   def get_name(self):
     return f"MFTopicScorer_{self._topicName}"
@@ -126,6 +130,7 @@ class MFTopicScorer(MFBaseScorer):
       c.internalActiveRulesKey: self._topicInternalActiveRulesKey,
       c.numFinalRoundRatingsKey: self._topicNumFinalRoundRatingsKey,
       c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey,
+      c.internalNoteInterceptNoHighVolKey: self._topicNoteInterceptNoHighVolKey,
     }
 
   def get_scored_notes_cols(self) -> List[str]:
@@ -139,6 +144,7 @@ class MFTopicScorer(MFBaseScorer):
       self._noteTopicConfidentKey,
       self._topicInternalActiveRulesKey,
       self._topicNumFinalRoundRatingsKey,
+      self._topicNoteInterceptNoHighVolKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:

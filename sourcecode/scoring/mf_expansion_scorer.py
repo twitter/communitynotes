@@ -52,6 +52,7 @@ class MFExpansionScorer(MFBaseScorer):
       c.internalActiveRulesKey: c.expansionInternalActiveRulesKey,
       c.numFinalRoundRatingsKey: c.expansionNumFinalRoundRatingsKey,
       c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey,
+      c.internalNoteInterceptNoHighVolKey: c.expansionNoteInterceptNoHighVolKey,
     }
 
   def _get_user_col_mapping(self) -> Dict[str, str]:
@@ -72,6 +73,7 @@ class MFExpansionScorer(MFBaseScorer):
       c.expansionNoteInterceptMaxKey,
       c.expansionInternalActiveRulesKey,
       c.expansionNumFinalRoundRatingsKey,
+      c.expansionNoteInterceptNoHighVolKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:
