@@ -403,6 +403,41 @@ def compute_helpful_num(ratings: pd.DataFrame):
   return ratings
 
 
+def tag_high_volume_raters(ratings: pd.DataFrame, quantile=0.999):
+  """Set field indicating whether a rating came from a high volume rater."""
+  # Include all ratings if running on test data
+  if ratings[c.noteIdKey].nunique() < c.minNumNotesForProdData:
+    ratings[c.highVolumeRaterKey] = False
+    return ratings
+
+  # Identify high volume raters over last 1, 7 and 28 days
+  raters = ratings[[c.raterParticipantIdKey]].drop_duplicates()
+  logger.info(f"Total raters: {len(raters)}")
+  highVolRaters = set()
+  logger.info("Identifying high volume raters")
+  logger.info(f"Total ratings: {len(ratings)}")
+  for numDays in [7, 28]:
+    cutoff = ratings[c.createdAtMillisKey].max() - (numDays * 1000 * 60 * 60 * 24)
+    counts = raters.merge(
+      ratings[ratings[c.createdAtMillisKey] > cutoff][c.raterParticipantIdKey]
+      .value_counts()
+      .to_frame()
+      .reset_index(drop=False)
+      .astype({"count": pd.Int64Dtype()})
+    )
+    highVolThrehsold = counts["count"].quantile(quantile)
+    logger.info(f"High volume threshold for {numDays} days: {highVolThrehsold}")
+    highVolRaters |= set(counts[counts["count"] > highVolThrehsold][c.raterParticipantIdKey])
+    logger.info(
+      f"High volume raters for {numDays} days: {(counts['count'] > highVolThrehsold).sum()}"
+    )
+  ratings[c.highVolumeRaterKey] = ratings[c.raterParticipantIdKey].isin(highVolRaters)
+  logger.info(f"Total high volume raters: {len(highVolRaters)}")
+  logger.info(f"Total ratings: {len(ratings)}")
+  logger.info(f"Total ratings from high volume raters: {ratings[c.highVolumeRaterKey].sum()}")
+  return ratings
+
+
 def preprocess_data(
   notes: pd.DataFrame,
   ratings: pd.DataFrame,
@@ -442,6 +477,7 @@ def preprocess_data(
   if len(ratings) > 0:
     ratings = remove_duplicate_ratings(ratings)
     ratings = compute_helpful_num(ratings)
+    ratings = tag_high_volume_raters(ratings)
 
   if ratingsOnly:
     return pd.DataFrame(), ratings, pd.DataFrame()

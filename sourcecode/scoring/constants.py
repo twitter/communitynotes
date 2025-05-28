@@ -45,7 +45,8 @@ intervalHalfWidth = 0.3
 # Max flip rates
 prescoringAllUnlockedNotesMaxCrhChurn = 0.3
 prescoringAllNotesCreatedThreeToThirteenDaysAgoMaxChurn = 0.15
-finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.12
+# TODO(bradm): Restore threhsold to 0.12 after 5/28/25
+finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.14
 finalNotesWithNewRatingsMaxNewCrhChurn = 1.2
 finalNotesWithNewRatingsMaxOldCrhChurn = 0.4
 finalNotesThatJustFlippedStatusMaxCrhChurn = 1e7
@@ -75,6 +76,7 @@ modelingGroupKey = "modelingGroup"
 modelingMultiGroupKey = "modelingMultiGroup"
 numberOfTimesEarnedOutKey = "numberOfTimesEarnedOut"
 defaultIndexKey = "index"
+highVolumeRaterKey = "highVolumeRater"
 
 # Scoring Groups
 coreGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 21, 25}
@@ -143,6 +145,7 @@ internalRaterFactorKeyBase = "internalRaterFactor"
 internalRatingStatusKey = "internalRatingStatus"
 internalActiveRulesKey = "internalActiveRules"
 internalRaterReputationKey = "internalRaterReputation"
+internalNoteInterceptNoHighVolKey = "internalNoteInterceptNoHighVol"
 
 scorerNameKey = "scorerName"
 
@@ -169,6 +172,7 @@ coreActiveRulesKey = "coreActiveRules"
 coreNoteInterceptMaxKey = "coreNoteInterceptMax"
 coreNoteInterceptMinKey = "coreNoteInterceptMin"
 coreNumFinalRoundRatingsKey = "coreNumFinalRoundRatings"
+coreNoteInterceptNoHighVolKey = "coreNoteInterceptNoHighVol"
 # Core No Topic Model
 coreWithTopicsNoteInterceptKey = "coreWithTopicsNoteIntercept"
 coreWithTopicsNoteFactor1Key = "coreWithTopicsNoteFactor1"
@@ -179,6 +183,7 @@ coreWithTopicsActiveRulesKey = "coreWithTopicsActiveRules"
 coreWithTopicsNoteInterceptMaxKey = "coreWithTopicsNoteInterceptMax"
 coreWithTopicsNoteInterceptMinKey = "coreWithTopicsNoteInterceptMin"
 coreWithTopicsNumFinalRoundRatingsKey = "coreWithTopicsNumFinalRoundRatings"
+coreWithTopicsNoteInterceptNoHighVolKey = "coreWithTopicsNoteInterceptNoHighVol"
 # Expansion Model
 expansionNoteInterceptKey = "expansionNoteIntercept"
 expansionNoteFactor1Key = "expansionNoteFactor1"
@@ -189,6 +194,7 @@ expansionInternalActiveRulesKey = "expansionActiveRules"
 expansionNumFinalRoundRatingsKey = "expansionNumFinalRoundRatings"
 expansionRaterFactor1Key = "expansionRaterFactor1"
 expansionRaterInterceptKey = "expansionRaterIntercept"
+expansionNoteInterceptNoHighVolKey = "expansionNoteInterceptNoHighVol"
 # ExpansionPlus Model
 expansionPlusNoteInterceptKey = "expansionPlusNoteIntercept"
 expansionPlusNoteFactor1Key = "expansionPlusNoteFactor1"
@@ -197,6 +203,7 @@ expansionPlusInternalActiveRulesKey = "expansionPlusActiveRules"
 expansionPlusNumFinalRoundRatingsKey = "expansionPlusNumFinalRoundRatings"
 expansionPlusRaterFactor1Key = "expansionPlusRaterFactor1"
 expansionPlusRaterInterceptKey = "expansionPlusRaterIntercept"
+expansionPlusNoteInterceptNoHighVolKey = "expansionPlusNoteInterceptNoHighVol"
 # Coverage / Helpfulness Reputation Model
 coverageNoteInterceptKey = "coverageNoteIntercept"
 coverageNoteFactor1Key = "coverageNoteFactor1"
@@ -214,6 +221,7 @@ groupRaterInterceptKey = "groupRaterIntercept"
 groupRaterFactor1Key = "groupRaterFactor1"
 groupInternalActiveRulesKey = "groupActiveRules"
 groupNumFinalRoundRatingsKey = "groupNumFinalRoundRatings"
+groupNoteInterceptNoHighVolKey = "groupNoteInterceptNoHighVol"
 # MultiGroup Model
 multiGroupNoteInterceptKey = "multiGroupNoteIntercept"
 multiGroupNoteFactor1Key = "multiGroupNoteFactor1"
@@ -222,6 +230,7 @@ multiGroupRaterInterceptKey = "multiGroupRaterIntercept"
 multiGroupRaterFactor1Key = "multiGroupRaterFactor1"
 multiGroupInternalActiveRulesKey = "multiGroupActiveRules"
 multiGroupNumFinalRoundRatingsKey = "multiGroupNumFinalRoundRatings"
+multiGroupNoteInterceptNoHighVolKey = "multiGroupNoteInterceptNoHighVol"
 # Topic Model
 topicNoteInterceptKey = "topicNoteIntercept"
 topicNoteFactor1Key = "topicNoteFactor1"
@@ -229,6 +238,7 @@ topicRatingStatusKey = "topicRatingStatus"
 topicNoteConfidentKey = "topicNoteConfident"
 topicInternalActiveRulesKey = "topicActiveRules"
 topicNumFinalRoundRatingsKey = "topicNumFinalRoundRatings"
+topicNoteInterceptNoHighVolKey = "topicNoteInterceptNoHighVol"
 # Harassment/Abuse Tag
 harassmentNoteInterceptKey = "harassmentNoteIntercept"
 harassmentNoteFactor1Key = "harassmentNoteFactor1"
@@ -775,6 +785,13 @@ noteModelOutputTSVColumnsAndTypes = [
   (coreWithTopicsNoteInterceptMinKey, np.double),
   (coreWithTopicsNoteInterceptMaxKey, np.double),
   (timestampMillisOfNmrDueToMinStableCrhTimeKey, np.double),  # double because nullable.
+  (coreNoteInterceptNoHighVolKey, "category"),
+  (coreWithTopicsNoteInterceptNoHighVolKey, "category"),
+  (expansionNoteInterceptNoHighVolKey, "category"),
+  (expansionPlusNoteInterceptNoHighVolKey, "category"),
+  (groupNoteInterceptNoHighVolKey, "category"),
+  (multiGroupNoteInterceptNoHighVolKey, "category"),
+  (topicNoteInterceptNoHighVolKey, "category"),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}

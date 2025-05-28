@@ -9,6 +9,7 @@ This approach represents a prelimiary approach to topic assignment while Communi
 evaluates the efficacy of per-topic note scoring.
 """
 
+from itertools import product
 import logging
 import re
 from typing import List, Optional, Tuple
@@ -44,6 +45,7 @@ seedTerms = {
     "palestin",  # intentionally shortened for expanded matching
     "gaza",
     "jerusalem",
+    "\shamas\s",
   },
   Topics.MessiRonaldo: {
     "messi\s",  # intentional whitespace to prevent prefix matches
@@ -224,13 +226,9 @@ class TopicModel(object):
     ]
     return postNoteText
 
-  def train_note_topic_classifier(
-    self, notes: pd.DataFrame
+  def train_individual_note_topic_classifier(
+    self, postText: pd.DataFrame
   ) -> Tuple[Pipeline, np.ndarray, np.ndarray]:
-    # Obtain aggregate post text, seed labels and stop words
-    with c.time_block("Get Note Topics: Prepare Post Text"):
-      postText = self._prepare_post_text(notes)
-
     with c.time_block("Get Note Topics: Make Seed Labels"):
       seedLabels, conflictedTexts = self._make_seed_labels(postText[c.summaryKey].values)
 
@@ -262,15 +260,73 @@ class TopicModel(object):
         postText[c.summaryKey].values[~conflictedTexts],
         seedLabels[~conflictedTexts],
       )
-
     return pipe, seedLabels, conflictedTexts
+
+  def train_note_topic_classifier(
+    self, notes: pd.DataFrame
+  ) -> Tuple[Pipeline, np.ndarray, np.ndarray]:
+    # Obtain aggregate post text, seed labels and stop words
+    with c.time_block("Get Note Topics: Prepare Post Text"):
+      postText = self._prepare_post_text(notes)
+    pipe, seedLabels, conflictedTexts = self.train_individual_note_topic_classifier(postText)
+    return pipe, seedLabels, conflictedTexts
+
+  def train_bootstrapped_note_topic_classifier(
+    self,
+    notes: pd.DataFrame,
+  ) -> Tuple[List[Pipeline], List[np.ndarray], List[np.ndarray]]:
+    # Obtain aggregate post text, seed labels and stop words
+    pipes = []
+    seedLabelSets = []
+    conflictedTextSetsForAccuracyEval = []
+    with c.time_block("Get Note Topics: Prepare Post Text"):
+      postText = self._prepare_post_text(notes)
+    pipe, seedLabels, conflictedTextsForAccuracyEval = self.train_individual_note_topic_classifier(
+      postText
+    )
+    pipes.append(pipe)
+    seedLabelSets.append(seedLabels)
+    conflictedTextSetsForAccuracyEval.append(conflictedTextsForAccuracyEval)
+    # train and append additional ablated seed word sets for all combos for topics 1 and 2,
+    # plus 3 and 4 individually
+    gazaUkrCombinations = list(
+      product(list(seedTerms[Topics.UkraineConflict]), list(seedTerms[Topics.GazaConflict]))
+    )
+    for i in range(len(gazaUkrCombinations)):
+      bootstrappedSeedTerms = {}
+      bootstrappedSeedTerms[Topics.UkraineConflict] = seedTerms[Topics.UkraineConflict].copy()
+      bootstrappedSeedTerms[Topics.UkraineConflict].remove(gazaUkrCombinations[i][0])
+      bootstrappedSeedTerms[Topics.GazaConflict] = seedTerms[Topics.GazaConflict].copy()
+      bootstrappedSeedTerms[Topics.GazaConflict].remove(gazaUkrCombinations[i][1])
+      bootstrappedSeedTerms[Topics.MessiRonaldo] = seedTerms[Topics.MessiRonaldo].copy()
+      bootstrappedSeedTerms[Topics.MessiRonaldo].remove(
+        np.random.choice(list(seedTerms[Topics.MessiRonaldo]), 1)[0]
+      )
+      bootstrappedSeedTerms[Topics.Scams] = seedTerms[Topics.Scams].copy()
+      bootstrappedSeedTerms[Topics.Scams].remove(
+        np.random.choice(list(seedTerms[Topics.Scams]), 1)[0]
+      )
+      self._seedTerms = bootstrappedSeedTerms
+      (
+        pipe,
+        seedLabels,
+        conflictedTextsForAccuracyEval,
+      ) = self.train_individual_note_topic_classifier(postText)
+      pipes.append(pipe)
+      seedLabelSets.append(seedLabels)
+      conflictedTextSetsForAccuracyEval.append(conflictedTextsForAccuracyEval)
+    self._seedTerms = seedTerms
+    return pipes, seedLabelSets, conflictedTextSetsForAccuracyEval
 
   def get_note_topics(
     self,
     notes: pd.DataFrame,
-    noteTopicClassifier: Optional[Pipeline] = None,
-    seedLabels: Optional[np.ndarray] = None,
-    conflictedTextsForAccuracyEval: Optional[np.ndarray] = None,
+    noteTopicClassifiers: Optional[List[Pipeline]] = None,
+    seedLabelSets: Optional[List[np.ndarray]] = None,
+    conflictedTextSetsForAccuracyEval: Optional[List[np.ndarray]] = None,
+    bootstrapped: Optional[bool] = False,
+    assignConflicted: Optional[bool] = False,
+    exitOnLowAccuracy: Optional[bool] = True,
   ) -> pd.DataFrame:
     """Return a DataFrame specifying each {note, topic} pair.
 
@@ -280,55 +336,119 @@ class TopicModel(object):
       notes: DF containing all notes to potentially assign to a topic
     """
     logger.info("Assigning notes to topics:")
-    if noteTopicClassifier is not None:
-      pipe = noteTopicClassifier
+    if noteTopicClassifiers is not None:
+      pipes = noteTopicClassifiers
     else:
       logger.info("Training note topic classifier")
-      pipe, seedLabels, conflictedTextsForAccuracyEval = self.train_note_topic_classifier(notes)
-    postText = self._prepare_post_text(notes)
+      if bootstrapped:
+        (
+          pipes,
+          seedLabelSets,
+          conflictedTextSetsForAccuracyEval,
+        ) = self.train_bootstrapped_note_topic_classifier(notes)
+      else:
+        (
+          pipe,
+          seedLabelSet,
+          conflictedTextForAccuracyEval,
+        ) = self.train_note_topic_classifier(notes)
+        pipes, seedLabelSets, conflictedTextSetsForAccuracyEval = (
+          [pipe],
+          [seedLabelSet],
+          [conflictedTextForAccuracyEval],
+        )
+    with c.time_block("Get Note Topics: Prepare Post Text"):
+      postText = self._prepare_post_text(notes)
+
+    labelSets = []
+    if seedLabelSets is None:
+      seedLabelSets = [None for i in range(len(pipes))]
+    if conflictedTextSetsForAccuracyEval is None:
+      conflictedTextSetsForAccuracyEval = [None for i in range(len(pipes))]
 
     with c.time_block("Get Note Topics: Predict"):
       # Predict notes.  Notice that in effect we are looking to see which notes in the
       # training data the model felt were mis-labeled after the training process
       # completed, and generating labels for any posts which were omitted from the
       # original training.
-      logits = pipe.decision_function(postText[c.summaryKey].values)
-      # Transform logits to probabilities, handling the case where logits are 1D because
-      # of unit testing with only 2 topics.
-      if len(logits.shape) == 1:
-        probs = sigmoid(logits)
-        probs = np.vstack([1 - probs, probs]).T
+      for i, pipe in enumerate(pipes):
+        assert type(pipe) == Pipeline, "unsupported classifier"
+        logits = pipe.decision_function(postText[c.summaryKey].values)
+        # Transform logits to probabilities, handling the case where logits are 1D because
+        # of unit testing with only 2 topics.
+        if len(logits.shape) == 1:
+          probs = sigmoid(logits)
+          probs = np.vstack([1 - probs, probs]).T
+        else:
+          probs = softmax(logits, axis=1)
+
+        if seedLabelSets[i] is None:
+          with c.time_block("Get Note Topics: Make Seed Labels"):
+            seedLabelSets[i], _ = self._make_seed_labels(postText[c.summaryKey].values)
+
+        if conflictedTextSetsForAccuracyEval[i] is not None:
+          self.validate_note_topic_accuracy_on_seed_labels(
+            np.argmax(probs, axis=1),
+            seedLabelSets[i],
+            conflictedTextSetsForAccuracyEval[i],
+            exitOnLowAccuracy,
+          )
+
+        with c.time_block("Get Note Topics: Merge and assign predictions"):
+          topicAssignments = self._merge_predictions_and_labels(probs, seedLabelSets[i])
+          logger.info(f"  Post Topic assignment results: {np.bincount(topicAssignments)}")
+
+          # Assign topics to notes based on aggregated note text, and drop any
+          # notes on posts that were unassigned.
+          postTextCopy = postText.copy()
+          postTextCopy[c.noteTopicKey] = [Topics(t).name for t in topicAssignments]
+          postTextCopy = postTextCopy[postTextCopy[c.noteTopicKey] != Topics.Unassigned.name]
+          noteTopics = notes[[c.noteIdKey, c.tweetIdKey]].merge(
+            postTextCopy[[c.tweetIdKey, c.noteTopicKey]]
+          )
+          print(noteTopics.shape)
+          labelSets.append(noteTopics.drop(columns=c.tweetIdKey))
+        logger.info(
+          f"  Note Topic assignment results:\n{noteTopics[c.noteTopicKey].value_counts(dropna=False)}"
+        )
+    if len(labelSets) == 1:
+      return noteTopics.drop(columns=c.tweetIdKey)
+    else:
+      noteTopics = pd.concat(labelSets)
+      noteTopics["cnt"] = 1
+      numTopics = (
+        noteTopics[[c.noteIdKey, c.noteTopicKey]]
+        .drop_duplicates()
+        .groupby([c.noteIdKey])
+        .agg("count")
+        .reset_index()
+      )
+      conflicted = numTopics.loc[numTopics[c.noteTopicKey] > 1]
+      if assignConflicted == True:
+        # assign to most common result
+        return (
+          noteTopics.groupby([c.noteIdKey, c.noteTopicKey])
+          .agg("count")
+          .reset_index()
+          .sort_values("cnt", ascending=False)
+          .groupby(c.noteIdKey)
+          .head(1)
+          .drop(columns="cnt")
+        )
       else:
-        probs = softmax(logits, axis=1)
+        return (
+          noteTopics.loc[~(noteTopics[c.noteIdKey].isin(conflicted[c.noteIdKey].values))]
+          .groupby([c.noteIdKey, c.noteTopicKey])
+          .head(1)
+          .drop(columns="cnt")
+        )
 
-    if seedLabels is None:
-      with c.time_block("Get Note Topics: Make Seed Labels"):
-        seedLabels, _ = self._make_seed_labels(postText[c.summaryKey].values)
-
-    if conflictedTextsForAccuracyEval is not None:
-      self.validate_note_topic_accuracy_on_seed_labels(
-        np.argmax(probs, axis=1), seedLabels, conflictedTextsForAccuracyEval
-      )
-
-    with c.time_block("Get Note Topics: Merge and assign predictions"):
-      topicAssignments = self._merge_predictions_and_labels(probs, seedLabels)
-      logger.info(f"  Post Topic assignment results: {np.bincount(topicAssignments)}")
-
-      # Assign topics to notes based on aggregated note text, and drop any
-      # notes on posts that were unassigned.
-      postText[c.noteTopicKey] = [Topics(t).name for t in topicAssignments]
-      postText = postText[postText[c.noteTopicKey] != Topics.Unassigned.name]
-      noteTopics = notes[[c.noteIdKey, c.tweetIdKey]].merge(
-        postText[[c.tweetIdKey, c.noteTopicKey]]
-      )
-      logger.info(
-        f"  Note Topic assignment results:\n{noteTopics[c.noteTopicKey].value_counts(dropna=False)}"
-      )
-    return noteTopics.drop(columns=c.tweetIdKey)
-
-  def validate_note_topic_accuracy_on_seed_labels(self, pred, seedLabels, conflictedTexts):
+  def validate_note_topic_accuracy_on_seed_labels(
+    self, pred, seedLabels, conflictedTexts, exitOnLowAccuracy=True
+  ):
     balancedAccuracy = balanced_accuracy_score(seedLabels[~conflictedTexts], pred[~conflictedTexts])
     logger.info(f"  Balanced accuracy on raw predictions: {balancedAccuracy}")
-    assert balancedAccuracy > 0.35, f"Balanced accuracy too low: {balancedAccuracy}"
+    if exitOnLowAccuracy:
+      assert balancedAccuracy > 0.35, f"Balanced accuracy too low: {balancedAccuracy}"
     # Validate that any conflicted text is Unassigned in seedLabels
     assert all(seedLabels[conflictedTexts] == Topics.Unassigned.value)

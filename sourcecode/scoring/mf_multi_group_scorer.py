@@ -20,6 +20,7 @@ def coalesce_multi_group_model_scored_notes(scoredNotes: pd.DataFrame) -> pd.Dat
     c.modelingMultiGroupKey,
     c.multiGroupInternalActiveRulesKey,
     c.multiGroupNumFinalRoundRatingsKey,
+    c.multiGroupNoteInterceptNoHighVolKey,
   ]:
     scoredNotes = coalesce_columns(scoredNotes, col)
 
@@ -49,6 +50,9 @@ class MFMultiGroupScorer(MFGroupScorer):
     self._groupRaterInterceptKey = f"{c.multiGroupRaterInterceptKey}_{self._groupId}"
     self._groupRaterFactor1Key = f"{c.multiGroupRaterFactor1Key}_{self._groupId}"
     self._modelingGroupKey = f"{c.modelingMultiGroupKey}_{self._groupId}"
+    self._groupNoteInterceptNoHighVolKey = (
+      f"{c.multiGroupNoteInterceptNoHighVolKey}_{self._groupId}"
+    )
 
   def get_name(self):
     return f"MFMultiGroupScorer_{self._groupId}"
