@@ -3,6 +3,7 @@ title: Notes on Media & Links
 description: Community Notes on posts that contain images or videos
 navWeight: 110
 ---
+
 # Notes on Media & Links
 
 Community Notes are frequently added to posts that feature images, videos or links. In many cases, these notes can provide valuable context, not just for a single post, but for any post containing the same media.
@@ -11,7 +12,7 @@ Contributors with a [Writing Impact score of 2 or above](../under-the-hood/media
 
 Contributors can select one of these options when they believe the context added would be helpful independent of the post the note is attached to.
 
-![Note-writing form with option: Is your note about the post, the image/videdo, or the link?](../images/notes-on-media-01.png)
+![Note-writing form with option: Is your note about the post, the image/video, or the link?](../images/notes-on-media-01.png)
 
 Tagging notes as “about the image” (or video, or link) makes them visible on all posts that our system identifies as containing a matching image, video or link. These notes, when deemed Helpful, accumulate view counts from all the posts they appear in, but only count as one Writing and Rating Impact for the author and raters.
 
