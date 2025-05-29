@@ -106,6 +106,12 @@ For a model to rate a note as Helpful, we require that either:
 Notes that otherwise meet the Helpful standard but fail either the Net Helpful Ratings or Net Helpful Ratio requirements are highlighted to contributors with a special note preview UI treatment to encourage more ratings.
 Once the note meets Net Helpful minimums and all other Helpful status criteria, the model will rate the note as Helpful.
 
+## Baseline Engagement Intercept
+
+The Community Notes ranking algorithm leverages contributor ratings to identify notes that are found helpful by people from different perspectives.  Since contributor usage patterns can vary, the ranking algorithm includes a _baseline intercept_ to validate that contributors at all activity levels find notes helpful, including both the most occasional and most active contributors.
+
+The baseline intercept is computed by omitting ratings from contributors in the top 0.1% of rating volume among active raters over the last 7d or 28d.  Similar to Net Helpful Minimums, if a note otherwise meets Helpful criteria but the baseline intercept is below 0.37, the note will be highlighted to contributors with a special note preview UI treatment to encourage more ratings. Once the baseline intercept and all other Helpful status criteria are met, the model will rate the note as Helpful.
+
 ## Modeling Uncertainty
 
 While the matrix factorization approach above has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters.
@@ -386,6 +392,9 @@ For not-helpful notes:
 5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**May 28, 2025**
+- Introduce baseline engagement intercept to for consensus across the most occasional and most active contributors.
 
 **May 15, 2025**
 - Expand mechanisms included in post selection similarity.
