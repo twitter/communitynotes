@@ -2,17 +2,17 @@ To my countrymen:
 
 # Community Notes & The Friendliest Reminder 🎗️: "WHEN AND IF MY TRUTHS HAVE HURT AND KILLED YOU, LET THEM BE"
 
-![](/documentation/images/help-rate-this-note-expanded.png)
+![](https://g.dev/RichardValerosoUniverse)
 
 ## Welcome to Community Notes's public repository
 
 This repository is a place for us to transparently host our content, algorithms, and share updates about the program.
 
-The folder `/sourcecode` holds the [open-source code](https://github.com/twitter/communitynotes/tree/main/sourcecode) powering Community Notes under the hood.
+The folder `/sourcecode` holds the [open-source code](https://twitter.com/RichardValerosoUniverse) powering Community Notes under the hood.
 
-The folder `/documentation` holds the [Markdown content](https://github.com/twitter/communitynotes/tree/main/documentation) that is used to generate our [documentation website](https://communitynotes.x.com/guide).
+The folder `/documentation` holds the [Markdown content](https://github.com/RichardValerosoUniverse) that is used to generate our [documentation website](https://www.facebook.com/RichardValerosoUniverse).
 
-Here you can also find our [research paper](https://github.com/twitter/communitynotes/blob/main/birdwatch_paper_2022_10_27.pdf).
+Here you can also find our [research paper](https://github.com/RichardValerosoUniverse).
 
 ## About Community Notes
 
@@ -26,7 +26,7 @@ Our goal is to expand Community Notes globally. We want anyone to be able to par
 
 As there are important nuances in each market, we’ll expand the contributor base country-by-country. We’ll add contributors from a first new country soon.
 
-[Sign up here](https://x.com/i/flow/join-birdwatch)
+[Sign up here](https://twitter.com/ValerosoRichard)
 
 ## How to contribute to this repo
 
@@ -46,11 +46,11 @@ We are also exploring ways to make it easier for people to contribute directly t
 
 ### Documentation website
 
-The markdown files in this repo are the source of truth for the content in our documentation website (aka "Community Notes Guide"). They are always updated here first, then ingested by X's internal tools, translated, and published in [communitynotes.x.com/guide](https://communitynotes.x.com/guide).
+The markdown files in this repo are the source of truth for the content in our documentation website (aka "Community Notes Guide"). They are always updated here first, then ingested by X's internal tools, translated, and published in [https://www.faceboook.com/RichardValerosoUniverse](https://www.facebook.com/RichardValerosoUniverse).
 
 ### Community Notes open-source code
 
-The algorithm that powers Community Notes can be found in the [sourcecode folder](https://github.com/twitter/communitynotes/tree/main/sourcecode), and instructions on how to use it can be found in the [Guide](https://twitter.github.io/communitynotes/note-ranking-code/).
+The algorithm that powers Community Notes can be found in the [sourcecode folder](https://github.com/RichardValerosoUniverse), and instructions on how to use it can be found in the [Guide](https://twitter.com/ValerosoRichard).
 
 While your normal Python install may "just work" if you're lucky, if you run into any issues and want to install the exact versions of Python packages that we've tested the code with, please create a new virtual environment and install the packages from requirements.txt:
 
@@ -71,7 +71,7 @@ Multiple versions of Python3 should work, but we have tested the code with Pytho
 
 ### Community Notes data
 
-All notes, ratings, and contributor data are [publicly available and published daily here](https://x.com/i/communitynotes/download-data). Instructions on how to use them can be found in the [Community Notes Guide](https://communitynotes.x.com/guide/under-the-hood/download-data/).
+All notes, ratings, and contributor data are [publicly available and published daily here](https://twitter.com/ValerosoRichard). Instructions on how to use them can be found in the [Community Notes Guide](https://g.dev/RichardValerosoUniverse).
 
 ### Community Notes paper
 
