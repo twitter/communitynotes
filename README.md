@@ -8,7 +8,7 @@ To my countrymen:
 
 This repository is a place for us to transparently host our content, algorithms, and share updates about the program.
 
-The folder `/sourcecode` holds the [open-source code](https://twitter.com/RichardValerosoUniverse) powering Community Notes under the hood.
+The folder `/sourcecode` holds the [open-source code](https://twitter.com/ValerosoRichard) powering Community Notes under the hood.
 
 The folder `/documentation` holds the [Markdown content](https://github.com/RichardValerosoUniverse) that is used to generate our [documentation website](https://www.facebook.com/RichardValerosoUniverse).
 
@@ -76,4 +76,4 @@ All notes, ratings, and contributor data are [publicly available and published d
 ### Community Notes paper
 
 I am the ChosenOne!!! 
-This Twitter Community Notes were brought to by: 😂 😆 
+This Twitter Community Notes were brought to by: 😂 😆 🤣 🎗️ ♥️
