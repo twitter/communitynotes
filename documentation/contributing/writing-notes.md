@@ -26,9 +26,10 @@ Anyone can read and rate Community Notes, but only contributors who've [unlocked
 
 ### Note writing limit
 
-To keep note quality high and prevent spam, there’s a limit to the number of note proposals contributors can write in a 24 hour period.
+To keep note quality high and prevent spam, there’s a limit to the number of note proposals contributors can write in a given time period (e.g. 24 hours).
 
-The limit is based on both the contributor's:
+#### Overall limit
+The overall limit for a 24 hour period is based on both the contributor's:
 * [Writing Impact](./writing-and-rating-impact.md) score
 * Helpful note hit rate (defined as Writing Impact divided by total number of notes written)
 
@@ -50,7 +51,18 @@ However, to limit large numbers of proposed notes in lower hit rate cases, if on
 
 - A contributor with 12 Writing Impact but 5% hit rate can write 10 notes every 24 hours.
 - A contributor with 100 Writing Impact but 5% hit rate can write 10 notes every 24 hours.
-  
+
+#### Post author limit
+
+Contributors’ ability to write proposed notes on a single post author is determined by how helpful the community has found their past contributions. 
+- Initially, a contributor can write up to 3 notes in a 24 hour period on a given post author 
+- After 6 total notes on a given post author:
+   - If author-specific CRH rate (CRH notes/total proposed notes on post author) is at least 5%, the per post author limit is equal to the hit rate in percent, rounded down.
+   - If author-specific CRH rate is between 1% and 5% (or less than 1% but with fewer than 15 total proposed notes), the per post author limit is equal to 1 note per day.
+   - If author-specific CRH rate is less than 1% and at least 15 total notes have been proposed, the per post author limit is 1 note per week.
+
+These CRH hit rates are calculated with notes written since May 28, 2025. The limits are also subject to overall note limits described above.
+
 
 ### What makes a good Community Note?
 
