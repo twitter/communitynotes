@@ -23,7 +23,7 @@ Contributors who have earned [Top Writer status](../contributing/top-contributor
 These contributors can also go to their [Community Notes tab](https://x.com/i/communitynotes) to see a feed on posts with note requests.
 
 During the note request pilot:
-- Requests will show on a post if the number of requests on the post is greater than or equal to MAX(5, number of views on post / 25000)
+- Requests will show on a post if the number of requests on the post is greater than or equal to MAX(4, number of views on post / 25000)
 - Requests will show for 24 hours
 - For a post to show up in the Note Requests timeline, the post must be recent (less than 24 hours old)
 
