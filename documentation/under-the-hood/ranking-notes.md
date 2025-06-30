@@ -89,12 +89,12 @@ Additionally, because the matrix factorization is re-trained from scratch every 
 
 The core Matrix Factorization approach for detecting contributor agreement has been extended with several safeguards as outlined below.
 
-### Post Selection Similarity
+**Post Selection Similarity**
 The Community Notes ranking algorithm includes mechanisms to detect similarities in the notes and posts that contributors engage with.
 If the algorithm detects an anomalous correlation, the associated contributors are treated as a single contributor to address any potential impacts on note ranking outcomes.
 Like the rest of ranking, this system follows Community Notes principles and works entirely on open and public data with open and public effects.
 
-### Net Helpful Minimums
+**Net Helpful Minimums**
 
 Matrix factorization identifies notes that are liked by people who normally disagree by assigning high intercepts to notes when users with different factors rate the note Helpful.
 In cases where there are few ratings available from a given part of the factor space, matrix factorization is forced to estimate the note intercept based on the limited data available.
@@ -110,13 +110,13 @@ For a model to rate a note as Helpful, we require that either:
 Notes that otherwise meet the Helpful standard but fail either the Net Helpful Ratings or Net Helpful Ratio requirements are highlighted to contributors with a special note preview UI treatment to encourage more ratings.
 Once the note meets Net Helpful minimums and all other Helpful status criteria, the model will rate the note as Helpful.
 
-### Baseline Intercept: Rater Engagement
+**Baseline Intercept: Rater Engagement**
 
 The Community Notes ranking algorithm leverages contributor ratings to identify notes that are found helpful by people from different perspectives.  Since contributor usage patterns can vary, the ranking algorithm includes a _baseline intercept_ to validate that contributors at all activity levels find notes helpful, including both the most occasional and most active contributors.
 
 The baseline intercept is computed by omitting ratings from contributors in the top 0.1% of rating volume among active raters over the last 7d or 28d.  Similar to Net Helpful Minimums, if a note otherwise meets Helpful criteria but the baseline intercept is below 0.37, the note will be highlighted to contributors with a special note preview UI treatment to encourage more ratings. Once the baseline intercept and all other Helpful status criteria are met, the model will rate the note as Helpful.
 
-### Baseline Intercept: Rater Independence
+**Baseline Intercept: Rater Independence**
 The Rater Independence intercept has some conceptual similarity to both the Rater Engagement intercept and Post Selection Similarity (PSS).
 Like Rater Engagement, Rater Independence re-runs the matrix factorization to compute a safeguard intercept that helps identify notes found helpful by people from different perspectives.
 Like PSS, the safeguard mechanism involves identifying groups of raters with similar engagement patterns.
@@ -127,13 +127,13 @@ Each dense subgraph is defined by a list of raters and posts, and each node (whe
 Similar to Net Helpful Minimums and the Rater Engagement Intercept, if a note otherwise meets Helpful criteria but the Rater Independence intercept is below 0.37, the note will be highlighted to contributors with a special note preview UI treatment to encourage more ratings.
 Once the baseline intercept and all other Helpful status criteria are met, the model will rate the note as Helpful.
 
-### Pseudo-rating Sensitivity Analysis
+**Pseudo-rating Sensitivity Analysis**
 
 While the matrix factorization approach has many nice properties, it doesn't give us a natural built-in way to estimate the uncertainty of its parameters. One approach that we use to help quantify the uncertainty in our parameter estimates is by adding in "extreme" ratings from "pseudo-raters", and measuring the maximum and minimum possible values that each note's intercept and factor parameters take on after all possible pseudo-ratings are adding. We add both helpful and not-helpful ratings, from pseudo-raters with the max and min possible rater intercepts, and with the max and min possible factors (as well as 0, since 0-factor raters can often have outsized impact on note intercepts). This approach is similar in spirit to the idea of pseudocounts in Bayesian modeling, or to Shapley values.
 
 We currently assign notes a "Not Helpful" status if the max (upper confidence bound) of their intercept is less than -0.04, in addition to the rules on the raw intercept values defined in the previous section.
 
-### Supervised Confidence Modeling
+**Supervised Confidence Modeling**
 
 We also employ a supervised model to detect low confidence matrix factorization results.
 If the model predicts that a note will lose Helpful status, then the note will remain in Needs More Ratings status for up to an additional 180 minutes or until the supervised model predicts the note will remain rated Helpful.
