@@ -183,11 +183,36 @@ class PostSelectionSimilarity:
     return cliquesDf
 
 
-def filter_ratings_by_post_selection_similarity(notes, ratings, postSelectionSimilarityValues):
+def apply_post_selection_similarity(notes, ratings, postSelectionSimilarityValues):
   """
   Filters out ratings after the first on each note from raters who have high post selection similarity,
   or filters all if the note is authored by a user with the same post selection similarity value.
   """
+  # Summarize input
+  logger.info(f"Total ratings prior to applying post selection similarity: {len(ratings)}")
+  logger.info(
+    f"Total unique ratings before: {len(ratings[[c.noteIdKey, c.raterParticipantIdKey]].drop_duplicates())}"
+  )
+  pssSummary = (
+    postSelectionSimilarityValues[[c.postSelectionValueKey, c.quasiCliqueValueKey]] > 0
+  ).sum()
+  logger.info(f"Summary of postSelectionSimilarityValues: \n{pssSummary}")
+  # Add additional column with bit flagging correlated raters
+  correlatedRaters = set(
+    postSelectionSimilarityValues[postSelectionSimilarityValues[c.quasiCliqueValueKey] >= 1][
+      c.raterParticipantIdKey
+    ]
+  )
+  ratings[c.correlatedRaterKey] = ratings[c.raterParticipantIdKey].isin(correlatedRaters)
+  logger.info(
+    f"correlatedRater set on {ratings[c.correlatedRaterKey].sum()} ratings from {len(correlatedRaters)} unique raters"
+  )
+  # Trim correlated raters out of PSS dataframe and remove drop ratings flagged by NPMI/MinSim
+  postSelectionSimilarityValues = (
+    postSelectionSimilarityValues[[c.raterParticipantIdKey, c.postSelectionValueKey]]
+    .dropna()
+    .drop_duplicates()
+  )
   ratingsWithPostSelectionSimilarity = (
     ratings.merge(
       postSelectionSimilarityValues,
@@ -233,19 +258,10 @@ def filter_ratings_by_post_selection_similarity(notes, ratings, postSelectionSim
     errors="ignore",
     inplace=True,
   )
-  return ratings
-
-
-def filter_all_ratings_by_post_selection_similarity(ratings, highPostSelectionSimilarityRaters):
-  """
-  Deprecated.
-  Filters out all ratings from raters who have high post selection similarity.
-  """
-  ratings = ratings.merge(
-    highPostSelectionSimilarityRaters, on=c.raterParticipantIdKey, how="left", indicator=True
+  logger.info(f"Total ratings after to applying post selection similarity: {len(ratings)}")
+  logger.info(
+    f"Total unique ratings after: {len(ratings[[c.noteIdKey, c.raterParticipantIdKey]].drop_duplicates())}"
   )
-  ratings = ratings[ratings["_merge"] == "left_only"]
-  ratings = ratings.drop(columns=["_merge"])
   return ratings
 
 

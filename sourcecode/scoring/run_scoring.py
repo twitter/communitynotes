@@ -41,11 +41,9 @@ from .mf_multi_group_scorer import (
 from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
 from .pandas_utils import get_df_fingerprint, get_df_info, keep_columns, patch_pandas
 from .pflip_plus_model import LABEL as PFLIP_LABEL, PFlipPlusModel
-from .post_selection_similarity import (
-  PostSelectionSimilarity,
-  filter_ratings_by_post_selection_similarity,
-)
+from .post_selection_similarity import PostSelectionSimilarity, apply_post_selection_similarity
 from .process_data import CommunityNotesDataLoader, filter_input_data_for_testing, preprocess_data
+from .quasi_clique_detection import QuasiCliqueDetection
 from .reputation_scorer import ReputationScorer
 from .scorer import Scorer
 from .scoring_rules import RuleID
@@ -125,6 +123,7 @@ def _get_scorers(
       crnhThresholdNoteFactorMultiplier=0,
       crnhThresholdNMIntercept=-0.02,
       crhThresholdNoHighVol=0.12,
+      crhThresholdNoCorrelated=0.12,
       lowDiligenceThreshold=1000,
       factorThreshold=0.4,
       multiplyPenaltyByHarassmentScore=False,
@@ -221,7 +220,9 @@ def _load_data_with_data_loader_parallelizable(
   """
   _, ratings, noteStatusHistory, userEnrollment = dataLoader.get_data()
 
-  scoringArgs.ratings = ratings.sort_values(c.highVolumeRaterKey, ascending=True)
+  scoringArgs.ratings = ratings.sort_values(
+    [c.highVolumeRaterKey, c.correlatedRaterKey], ascending=True
+  )
   scoringArgs.noteStatusHistory = noteStatusHistory
   scoringArgs.userEnrollment = userEnrollment
   if type(scoringArgs) == FinalScoringArgs:
@@ -384,7 +385,9 @@ def _save_dfs_to_shared_memory(
   noteTopics = save_df_to_shared_memory(scoringArgs.noteTopics, shms)
   # Order ratings by highVolumeRaterKey so that later we can split ratings
   # to remove ratings from high volume users without having to make a copy.
-  sortedRatings = scoringArgs.ratings.sort_values(c.highVolumeRaterKey, ascending=True)
+  sortedRatings = scoringArgs.ratings.sort_values(
+    [c.highVolumeRaterKey, c.correlatedRaterKey], ascending=True
+  )
   ratings = save_df_to_shared_memory(
     keep_columns(
       sortedRatings,
@@ -395,6 +398,7 @@ def _save_dfs_to_shared_memory(
         c.helpfulnessLevelKey,
         c.createdAtMillisKey,
         c.highVolumeRaterKey,
+        c.correlatedRaterKey,
       ]
       + c.notHelpfulTagsTSVOrder
       + c.helpfulTagsTSVOrder,
@@ -1126,13 +1130,19 @@ def _validate_contributor_scoring_output(
   return helpfulnessScores
 
 
-def run_post_selection_similarity(notes: pd.DataFrame, ratings: pd.DataFrame) -> pd.DataFrame:
+def run_rater_clustering(notes: pd.DataFrame, ratings: pd.DataFrame) -> pd.DataFrame:
   with c.time_block("Compute Post Selection Similarity"):
     pss = PostSelectionSimilarity(notes, ratings)
     postSelectionSimilarityValues = pss.get_post_selection_similarity_values()
     del pss
     gc.collect()
-  return postSelectionSimilarityValues
+  with c.time_block("Compute Quasi-Cliques"):
+    qcd = QuasiCliqueDetection()
+    quasiCliques = qcd.get_quasi_cliques(notes, ratings)
+    del qcd
+    gc.collect()
+  # Return combined dataframe
+  return postSelectionSimilarityValues.merge(quasiCliques, how="outer")
 
 
 def run_prescoring(
@@ -1186,9 +1196,7 @@ def run_prescoring(
   )
   with c.time_block("Filter ratings by Post Selection Similarity"):
     logger.info(f"Post Selection Similarity Prescoring: begin with {len(ratings)} ratings.")
-    ratings = filter_ratings_by_post_selection_similarity(
-      notes, ratings, postSelectionSimilarityValues
-    )
+    ratings = apply_post_selection_similarity(notes, ratings, postSelectionSimilarityValues)
     logger.info(f"Post Selection Similarity Prescoring: {len(ratings)} ratings remaining.")
   logger.info(
     f"ratings summary after PSS: {get_df_fingerprint(ratings, [c.noteIdKey, c.raterParticipantIdKey])}"
@@ -1624,12 +1632,12 @@ def run_final_note_scoring(
       pflipNotes, pflipRatings, pflipNoteStatusHistory
     )
     # Apply PSS filtering
-    pflipRatings = filter_ratings_by_post_selection_similarity(
+    pflipRatings = apply_post_selection_similarity(
       pflipNotes,
       pflipRatings,
-      prescoringRaterModelOutput[prescoringRaterModelOutput[c.postSelectionValueKey] >= 1][
-        [c.raterParticipantIdKey, c.postSelectionValueKey]
-      ],
+      prescoringRaterModelOutput[
+        [c.raterParticipantIdKey, c.postSelectionValueKey, c.quasiCliqueValueKey]
+      ].dropna(),
     )
     # Compute pflip scores
     pflipPredictions = pflipClassifier.predict(
@@ -1736,17 +1744,23 @@ def run_final_note_scoring(
 
   with c.time_block("Post Selection Similarity: Final Scoring"):
     logger.info(f"Post Selection Similarity Final Scoring: begin with {len(ratings)} ratings.")
-    ratings = filter_ratings_by_post_selection_similarity(
+    ratings = apply_post_selection_similarity(
       notes,
       ratings,
-      prescoringRaterModelOutput[prescoringRaterModelOutput[c.postSelectionValueKey] >= 1][
-        [c.raterParticipantIdKey, c.postSelectionValueKey]
-      ],
+      prescoringRaterModelOutput[
+        [c.raterParticipantIdKey, c.postSelectionValueKey, c.quasiCliqueValueKey]
+      ].dropna(),
     )
     logger.info(f"Post Selection Similarity Final Scoring: {len(ratings)} ratings remaining.")
 
   scorers = _get_scorers(seed, pseudoraters, useStableInitialization=useStableInitialization)
 
+  # Restrict parallelism to 6 processes.  Memory usage scales linearly with the number of
+  # processes and 6 is enough that the limiting factor continues to be the longest running
+  # scorer (i.e. we would not finish faster with >6 worker processes.).  Note that only
+  # system tests run with full scale data and previousScoredNotes=None.
+  maxWorkers = 4 if previousScoredNotes is None else 6
+  logger.info(f"Number of concurrent scoring workers: {maxWorkers}")
   modelResults = _run_scorers(
     args,
     scorers=list(chain(*scorers.values())),
@@ -1761,10 +1775,7 @@ def run_final_note_scoring(
     ),
     runParallel=runParallel,
     dataLoader=dataLoader,
-    # Restrict parallelism to 6 processes.  Memory usage scales linearly with the number of
-    # processes and 6 is enough that the limiting factor continues to be the longest running
-    # scorer (i.e. we would not finish faster with >6 worker processes.)
-    maxWorkers=6,
+    maxWorkers=maxWorkers,
   )
 
   scoredNotes, auxiliaryNoteInfo = combine_final_scorer_results(modelResults, noteStatusHistory)
@@ -2002,7 +2013,7 @@ def run_scoring(
     filterPrescoringInputToSimulateDelayInHours,
   )
 
-  postSelectionSimilarityValues = run_post_selection_similarity(notes=notes, ratings=ratings)
+  postSelectionSimilarityValues = run_rater_clustering(notes=notes, ratings=ratings)
 
   (
     prescoringNoteModelOutput,

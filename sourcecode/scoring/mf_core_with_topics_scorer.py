@@ -52,6 +52,7 @@ class MFCoreWithTopicsScorer(MFBaseScorer):
       c.numFinalRoundRatingsKey: c.coreWithTopicsNumFinalRoundRatingsKey,
       c.lowDiligenceNoteInterceptKey: c.lowDiligenceLegacyNoteInterceptKey,
       c.internalNoteInterceptNoHighVolKey: c.coreWithTopicsNoteInterceptNoHighVolKey,
+      c.internalNoteInterceptNoCorrelatedKey: c.coreWithTopicsNoteInterceptNoCorrelatedKey,
     }
 
   def _get_user_col_mapping(self) -> Dict[str, str]:
@@ -73,6 +74,7 @@ class MFCoreWithTopicsScorer(MFBaseScorer):
       c.coreWithTopicsNoteInterceptMaxKey,
       c.coreWithTopicsNumFinalRoundRatingsKey,
       c.coreWithTopicsNoteInterceptNoHighVolKey,
+      c.coreWithTopicsNoteInterceptNoCorrelatedKey,
     ]
 
   def get_helpfulness_scores_cols(self) -> List[str]:

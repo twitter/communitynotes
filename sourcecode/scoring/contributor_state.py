@@ -11,6 +11,20 @@ logger = logging.getLogger("birdwatch.contributor_state")
 logger.setLevel(logging.INFO)
 
 
+def is_not_api_user(contributorScoresWithEnrollment: pd.DataFrame):
+  """
+  Check if a contributor is not an api user.
+
+  Args:
+    contributorScoresWithEnrollment: Scored Notes + User Enrollment status
+  """
+  return (
+    (contributorScoresWithEnrollment[c.enrollmentState] != c.apiTestUser)
+    & (contributorScoresWithEnrollment[c.enrollmentState] != c.apiEarnedIn)
+    & (contributorScoresWithEnrollment[c.enrollmentState] != c.apiEarnedOut)
+  )
+
+
 def should_earn_in(contributorScoresWithEnrollment: pd.DataFrame):
   """
   The participant should earn in when they are in the earnedOutAcknowledged, earnedoutNoAck and newUser state.
@@ -26,6 +40,7 @@ def should_earn_in(contributorScoresWithEnrollment: pd.DataFrame):
     (contributorScoresWithEnrollment[c.enrollmentState] != c.removed)
     & (contributorScoresWithEnrollment[c.enrollmentState] != c.earnedIn)
     & (contributorScoresWithEnrollment[c.enrollmentState] != c.atRisk)
+    & (is_not_api_user(contributorScoresWithEnrollment))
     & (
       contributorScoresWithEnrollment[c.ratingImpact]
       >= contributorScoresWithEnrollment[c.successfulRatingNeededToEarnIn]
@@ -48,6 +63,7 @@ def newly_at_risk(authorEnrollmentCounts: pd.DataFrame):
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutNoAcknowledge)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
     & (authorEnrollmentCounts[c.enrollmentState] != c.atRisk)
+    & (is_not_api_user(authorEnrollmentCounts))
     & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] == c.isAtRiskCRNHCount)
   )
 
@@ -66,6 +82,7 @@ def is_earned_out(authorEnrollmentCounts: pd.DataFrame):
     (authorEnrollmentCounts[c.enrollmentState] != c.removed)
     & (authorEnrollmentCounts[c.enrollmentState] != c.newUser)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
+    & (is_not_api_user(authorEnrollmentCounts))
     & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] > c.isAtRiskCRNHCount)
   )
 
@@ -85,6 +102,7 @@ def newly_earned_in(authorEnrollmentCounts):
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutAcknowledged)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedOutNoAcknowledge)
     & (authorEnrollmentCounts[c.enrollmentState] != c.earnedIn)
+    & (is_not_api_user(authorEnrollmentCounts))
     & (authorEnrollmentCounts[c.notesCurrentlyRatedNotHelpful] < c.isAtRiskCRNHCount)
   )
 

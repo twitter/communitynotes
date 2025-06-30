@@ -41,6 +41,7 @@ class RuleID(Enum):
   MIN_MINORITY_RATERS = RuleAndVersion("MinMinorityRaters", "1.0", False)
   RATER_BALANCE = RuleAndVersion("RaterBalance", "1.0", False)
   NO_HIGH_VOL_INTERCEPT = RuleAndVersion("NoHighVolIntercept", "1.0", False)
+  NO_CORRELATED_INTERCEPT = RuleAndVersion("NoCorrelatedIntercept", "1.0", False)
 
   # Rules used in _meta_score.
   META_INITIAL_NMR = RuleAndVersion("MetaInitialNMR", "1.0", False)
@@ -549,6 +550,51 @@ class NoHighVolIntercept(ScoringRule):
 
     logger.info(
       f"Total notes impacted by NoHighVol intercept requirement: {len(noteStatusUpdates)}"
+    )
+    noteStatusUpdates[statusColumn] = self._status
+
+    return (noteStatusUpdates, None)
+
+
+class NoCorrelatedIntercept(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    status: str,
+    crhThresholdNoCorrelated: float,
+  ):
+    """Set notes to NYH when the intercept drops too low if correlated raters are excluded.
+
+    Args:
+      rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
+      dependencies: Rules which must run before this rule can run.
+      status: the status which each note should be set to (e.g. CRH, CRNH, NMR)
+      crhThresholdNoCorrelated: minimum note intercept when omitting correlated raters.
+    """
+    super().__init__(ruleID, dependencies)
+    self._status = status
+    self._crhThresholdNoCorrelated = crhThresholdNoCorrelated
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Returns notes on track for CRH with a low intercept when omitting correlated raters."""
+    # Prune noteStats to only include notes that are on track to be CRH
+    candidateNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][
+      [c.noteIdKey]
+    ]
+    noteStats = noteStats.merge(candidateNotes, on=c.noteIdKey, how="inner")
+
+    # Identify impacted notes.
+    noteStatusUpdates = noteStats.loc[
+      noteStats[c.internalNoteInterceptNoCorrelatedKey] < self._crhThresholdNoCorrelated
+    ][[c.noteIdKey]]
+
+    pd.testing.assert_frame_equal(noteStatusUpdates, noteStatusUpdates.drop_duplicates())
+
+    logger.info(
+      f"Total notes impacted by NoCorrelated intercept requirement: {len(noteStatusUpdates)}"
     )
     noteStatusUpdates[statusColumn] = self._status
 
