@@ -90,6 +90,7 @@ Additionally, because the matrix factorization is re-trained from scratch every 
 The core Matrix Factorization approach for detecting contributor agreement has been extended with several safeguards as outlined below.
 
 **Post Selection Similarity**
+
 The Community Notes ranking algorithm includes mechanisms to detect similarities in the notes and posts that contributors engage with.
 If the algorithm detects an anomalous correlation, the associated contributors are treated as a single contributor to address any potential impacts on note ranking outcomes.
 Like the rest of ranking, this system follows Community Notes principles and works entirely on open and public data with open and public effects.
@@ -117,6 +118,7 @@ The Community Notes ranking algorithm leverages contributor ratings to identify 
 The baseline intercept is computed by omitting ratings from contributors in the top 0.1% of rating volume among active raters over the last 7d or 28d.  Similar to Net Helpful Minimums, if a note otherwise meets Helpful criteria but the baseline intercept is below 0.37, the note will be highlighted to contributors with a special note preview UI treatment to encourage more ratings. Once the baseline intercept and all other Helpful status criteria are met, the model will rate the note as Helpful.
 
 **Baseline Intercept: Rater Independence**
+
 The Rater Independence intercept has some conceptual similarity to both the Rater Engagement intercept and Post Selection Similarity (PSS).
 Like Rater Engagement, Rater Independence re-runs the matrix factorization to compute a safeguard intercept that helps identify notes found helpful by people from different perspectives.
 Like PSS, the safeguard mechanism involves identifying groups of raters with similar engagement patterns.
