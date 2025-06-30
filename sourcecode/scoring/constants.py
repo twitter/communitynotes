@@ -45,8 +45,7 @@ intervalHalfWidth = 0.3
 # Max flip rates
 prescoringAllUnlockedNotesMaxCrhChurn = 0.3
 prescoringAllNotesCreatedThreeToThirteenDaysAgoMaxChurn = 0.15
-# TODO(bradm): Restore threhsold to 0.12 after 5/28/25
-finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.14
+finalUnlockedNotesWithNoNewRatingsMaxCrhChurn = 0.12
 finalNotesWithNewRatingsMaxNewCrhChurn = 1.2
 finalNotesWithNewRatingsMaxOldCrhChurn = 0.4
 finalNotesThatJustFlippedStatusMaxCrhChurn = 1e7
@@ -77,6 +76,7 @@ modelingMultiGroupKey = "modelingMultiGroup"
 numberOfTimesEarnedOutKey = "numberOfTimesEarnedOut"
 defaultIndexKey = "index"
 highVolumeRaterKey = "highVolumeRater"
+correlatedRaterKey = "correlatedRater"
 
 # Scoring Groups
 coreGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 21, 25}
@@ -146,6 +146,7 @@ internalRatingStatusKey = "internalRatingStatus"
 internalActiveRulesKey = "internalActiveRules"
 internalRaterReputationKey = "internalRaterReputation"
 internalNoteInterceptNoHighVolKey = "internalNoteInterceptNoHighVol"
+internalNoteInterceptNoCorrelatedKey = "internalNoteInterceptNoCorrelated"
 
 scorerNameKey = "scorerName"
 
@@ -173,6 +174,7 @@ coreNoteInterceptMaxKey = "coreNoteInterceptMax"
 coreNoteInterceptMinKey = "coreNoteInterceptMin"
 coreNumFinalRoundRatingsKey = "coreNumFinalRoundRatings"
 coreNoteInterceptNoHighVolKey = "coreNoteInterceptNoHighVol"
+coreNoteInterceptNoCorrelatedKey = "coreNoteInterceptNoCorrelated"
 # Core No Topic Model
 coreWithTopicsNoteInterceptKey = "coreWithTopicsNoteIntercept"
 coreWithTopicsNoteFactor1Key = "coreWithTopicsNoteFactor1"
@@ -184,6 +186,7 @@ coreWithTopicsNoteInterceptMaxKey = "coreWithTopicsNoteInterceptMax"
 coreWithTopicsNoteInterceptMinKey = "coreWithTopicsNoteInterceptMin"
 coreWithTopicsNumFinalRoundRatingsKey = "coreWithTopicsNumFinalRoundRatings"
 coreWithTopicsNoteInterceptNoHighVolKey = "coreWithTopicsNoteInterceptNoHighVol"
+coreWithTopicsNoteInterceptNoCorrelatedKey = "coreWithTopicsNoteInterceptNoCorrelated"
 # Expansion Model
 expansionNoteInterceptKey = "expansionNoteIntercept"
 expansionNoteFactor1Key = "expansionNoteFactor1"
@@ -195,6 +198,7 @@ expansionNumFinalRoundRatingsKey = "expansionNumFinalRoundRatings"
 expansionRaterFactor1Key = "expansionRaterFactor1"
 expansionRaterInterceptKey = "expansionRaterIntercept"
 expansionNoteInterceptNoHighVolKey = "expansionNoteInterceptNoHighVol"
+expansionNoteInterceptNoCorrelatedKey = "expansionNoteInterceptNoCorrelated"
 # ExpansionPlus Model
 expansionPlusNoteInterceptKey = "expansionPlusNoteIntercept"
 expansionPlusNoteFactor1Key = "expansionPlusNoteFactor1"
@@ -204,6 +208,7 @@ expansionPlusNumFinalRoundRatingsKey = "expansionPlusNumFinalRoundRatings"
 expansionPlusRaterFactor1Key = "expansionPlusRaterFactor1"
 expansionPlusRaterInterceptKey = "expansionPlusRaterIntercept"
 expansionPlusNoteInterceptNoHighVolKey = "expansionPlusNoteInterceptNoHighVol"
+expansionPlusNoteInterceptNoCorrelatedKey = "expansionPlusNoteInterceptNoCorrelated"
 # Coverage / Helpfulness Reputation Model
 coverageNoteInterceptKey = "coverageNoteIntercept"
 coverageNoteFactor1Key = "coverageNoteFactor1"
@@ -222,6 +227,7 @@ groupRaterFactor1Key = "groupRaterFactor1"
 groupInternalActiveRulesKey = "groupActiveRules"
 groupNumFinalRoundRatingsKey = "groupNumFinalRoundRatings"
 groupNoteInterceptNoHighVolKey = "groupNoteInterceptNoHighVol"
+groupNoteInterceptNoCorrelatedKey = "groupNoteInterceptNoCorrelated"
 # MultiGroup Model
 multiGroupNoteInterceptKey = "multiGroupNoteIntercept"
 multiGroupNoteFactor1Key = "multiGroupNoteFactor1"
@@ -231,6 +237,7 @@ multiGroupRaterFactor1Key = "multiGroupRaterFactor1"
 multiGroupInternalActiveRulesKey = "multiGroupActiveRules"
 multiGroupNumFinalRoundRatingsKey = "multiGroupNumFinalRoundRatings"
 multiGroupNoteInterceptNoHighVolKey = "multiGroupNoteInterceptNoHighVol"
+multiGroupNoteInterceptNoCorrelatedKey = "multiGroupNoteInterceptNoCorrelated"
 # Topic Model
 topicNoteInterceptKey = "topicNoteIntercept"
 topicNoteFactor1Key = "topicNoteFactor1"
@@ -239,6 +246,7 @@ topicNoteConfidentKey = "topicNoteConfident"
 topicInternalActiveRulesKey = "topicActiveRules"
 topicNumFinalRoundRatingsKey = "topicNumFinalRoundRatings"
 topicNoteInterceptNoHighVolKey = "topicNoteInterceptNoHighVol"
+topicNoteInterceptNoCorrelatedKey = "topicNoteInterceptNoCorrelated"
 # Harassment/Abuse Tag
 harassmentNoteInterceptKey = "harassmentNoteIntercept"
 harassmentNoteFactor1Key = "harassmentNoteFactor1"
@@ -579,6 +587,9 @@ earnedOutNoAcknowledge = "earnedOutNoAcknowledge"
 earnedOutAcknowledged = "earnedOutAcknowledged"
 newUser = "newUser"
 removed = "removed"
+apiTestUser = "apiTestUser"
+apiEarnedIn = "apiEarnedIn"
+apiEarnedOut = "apiEarnedOut"
 isAtRiskCRNHCount = 2
 ratingImpactForEarnIn = 5
 ratingImpact = "ratingImpact"
@@ -589,6 +600,9 @@ enrollmentStateToThrift = {
   earnedOutAcknowledged: 3,
   newUser: 4,
   removed: 5,
+  apiTestUser: 6,
+  apiEarnedIn: 7,
+  apiEarnedOut: 8,
 }
 emergingWriterDays = 28
 isEmergingWriterKey = "isEmergingWriter"
@@ -792,6 +806,13 @@ noteModelOutputTSVColumnsAndTypes = [
   (groupNoteInterceptNoHighVolKey, "category"),
   (multiGroupNoteInterceptNoHighVolKey, "category"),
   (topicNoteInterceptNoHighVolKey, "category"),
+  (coreNoteInterceptNoCorrelatedKey, "category"),
+  (coreWithTopicsNoteInterceptNoCorrelatedKey, "category"),
+  (expansionNoteInterceptNoCorrelatedKey, "category"),
+  (expansionPlusNoteInterceptNoCorrelatedKey, "category"),
+  (groupNoteInterceptNoCorrelatedKey, "category"),
+  (multiGroupNoteInterceptNoCorrelatedKey, "category"),
+  (topicNoteInterceptNoCorrelatedKey, "category"),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
@@ -802,6 +823,7 @@ deprecatedNoteModelOutputTSVColumnsAndTypes = [
 ]
 
 postSelectionValueKey = "postSelectionValue"
+quasiCliqueValueKey = "quasiCliqueValue"
 
 prescoringRaterModelOutputTSVColumnsAndTypes = [
   (raterParticipantIdKey, object),
@@ -826,6 +848,7 @@ prescoringRaterModelOutputTSVColumnsAndTypes = [
   (unsuccessfulRatingNotHelpfulCount, pd.Int64Dtype()),
   (totalHelpfulHarassmentRatingsPenaltyKey, np.double),
   (raterAgreeRatioWithHarassmentAbusePenaltyKey, np.double),
+  (quasiCliqueValueKey, pd.Int64Dtype()),
 ]
 
 prescoringRaterModelOutputTSVColumns = [

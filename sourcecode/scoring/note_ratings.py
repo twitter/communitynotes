@@ -547,6 +547,7 @@ def compute_scored_notes(
   minMinorityNetHelpfulRatings: Optional[int] = None,
   minMinorityNetHelpfulRatio: Optional[float] = None,
   crhThresholdNoHighVol: Optional[float] = None,
+  crhThresholdNoCorrelated: Optional[float] = None,
 ) -> pd.DataFrame:
   """
   Merges note status history, ratings, and model output. It annotes the data frame with
@@ -613,6 +614,8 @@ def compute_scored_notes(
       noteParamsColsToKeep.append(col)
   if crhThresholdNoHighVol is not None:
     noteParamsColsToKeep.append(c.internalNoteInterceptNoHighVolKey)
+  if crhThresholdNoCorrelated is not None:
+    noteParamsColsToKeep.append(c.internalNoteInterceptNoCorrelatedKey)
   noteStats = noteStats.merge(
     noteParams[noteParamsColsToKeep],
     on=c.noteIdKey,
@@ -789,6 +792,15 @@ def compute_scored_notes(
           {RuleID.LARGE_FACTOR},
           c.needsYourHelp,
           crhThresholdNoHighVol,
+        )
+      )
+    if crhThresholdNoCorrelated is not None:
+      rules.append(
+        scoring_rules.NoCorrelatedIntercept(
+          RuleID.NO_CORRELATED_INTERCEPT,
+          {RuleID.LARGE_FACTOR},
+          c.needsYourHelp,
+          crhThresholdNoCorrelated,
         )
       )
   scoredNotes = scoring_rules.apply_scoring_rules(

@@ -171,6 +171,7 @@ class MFBaseScorer(Scorer):
     crnhThresholdUCBIntercept: float = -0.04,
     crhSuperThreshold: Optional[float] = 0.5,
     crhThresholdNoHighVol: float = 0.37,
+    crhThresholdNoCorrelated: float = 0.37,
     lowDiligenceThreshold: float = 0.263,
     factorThreshold: float = 0.5,
     inertiaDelta: float = 0.01,
@@ -258,6 +259,7 @@ class MFBaseScorer(Scorer):
     self._crnhThresholdUCBIntercept = crnhThresholdUCBIntercept
     self._crhSuperThreshold = crhSuperThreshold
     self._crhThresholdNoHighVol = crhThresholdNoHighVol
+    self._crhThresholdNoCorrelated = crhThresholdNoCorrelated
     self._inertiaDelta = inertiaDelta
     self._modelingGroupToInitializeForStability = 13 if useStableInitialization else None
     self._saveIntermediateState = saveIntermediateState
@@ -331,6 +333,7 @@ class MFBaseScorer(Scorer):
       c.noteInterceptMinKey,
       c.numFinalRoundRatingsKey,
       c.internalNoteInterceptNoHighVolKey,
+      c.internalNoteInterceptNoCorrelatedKey,
     ]
 
   def get_internal_scored_notes_cols(self) -> List[str]:
@@ -1011,6 +1014,7 @@ class MFBaseScorer(Scorer):
     prescoringMetaScorerOutput: c.PrescoringMetaScorerOutput,
     flipFactorsForIdentification: bool = False,
     noteScoresNoHighVol: Optional[pd.DataFrame] = None,
+    noteScoresNoCorrelated: Optional[pd.DataFrame] = None,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Run the "final" matrix factorization scoring algorithm.
     Accepts prescoring's output as its input, as well as the new ratings and note status history.
@@ -1153,9 +1157,11 @@ class MFBaseScorer(Scorer):
       on=c.raterParticipantIdKey,
     )
 
-    # Merge in intercept and status without high volume raters
+    # Merge in intercept and status without high volume and correlated raters
     if noteScoresNoHighVol is not None:
       noteParams = noteParams.merge(noteScoresNoHighVol, on=c.noteIdKey, how="left")
+    if noteScoresNoCorrelated is not None:
+      noteParams = noteParams.merge(noteScoresNoCorrelated, on=c.noteIdKey, how="left")
 
     # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
     # and ML output.
@@ -1165,6 +1171,10 @@ class MFBaseScorer(Scorer):
         crhThresholdNoHighVol = self._crhThresholdNoHighVol
       else:
         crhThresholdNoHighVol = None
+      if noteScoresNoCorrelated is not None:
+        crhThresholdNoCorrelated = self._crhThresholdNoCorrelated
+      else:
+        crhThresholdNoCorrelated = None
       scoredNotes = note_ratings.compute_scored_notes(
         ratings,
         noteParams,
@@ -1187,6 +1197,7 @@ class MFBaseScorer(Scorer):
         minMinorityNetHelpfulRatings=self._minMinorityNetHelpfulRatings,
         minMinorityNetHelpfulRatio=self._minMinorityNetHelpfulRatio,
         crhThresholdNoHighVol=crhThresholdNoHighVol,
+        crhThresholdNoCorrelated=crhThresholdNoCorrelated,
       )
       logger.info(f"sn cols: {scoredNotes.columns}")
 
@@ -1262,9 +1273,6 @@ class MFBaseScorer(Scorer):
     # the first N rows).
     highVolCount = ratings[c.highVolumeRaterKey].sum()
     lowVolCount = len(ratings) - highVolCount
-    logger.info(
-      f"count debugging: {highVolCount}, {lowVolCount}, {ratings.iloc[:lowVolCount][c.highVolumeRaterKey].sum()}, {ratings.iloc[lowVolCount:][c.highVolumeRaterKey].sum()}"
-    )
     assert ratings.iloc[:lowVolCount][c.highVolumeRaterKey].sum() == 0
     assert ratings.iloc[lowVolCount:][c.highVolumeRaterKey].sum() == highVolCount
     logger.info(
@@ -1292,6 +1300,50 @@ class MFBaseScorer(Scorer):
       noteScoresNoHighVol[c.noteIdKey] = []
       noteScoresNoHighVol[c.internalNoteInterceptNoHighVolKey] = []
 
+    # Separate correlated ratings. Note that we rely on the ratings dataframe being sorted and
+    # partition the sorted dataframe to avoid creating a copy of ratings.
+    lowVolAndUncorrelated = lowVolCount - ratings[c.correlatedRaterKey].iloc[:lowVolCount].sum()
+    highVolAndUncorrelated = highVolCount - ratings[c.correlatedRaterKey].iloc[lowVolCount:].sum()
+    totalUncorrelatedRatings = len(ratings) - ratings[c.correlatedRaterKey].sum()
+    uncorrelatedRatings = pd.concat(
+      [
+        ratings.iloc[:lowVolCount].iloc[:lowVolAndUncorrelated],
+        ratings.iloc[lowVolCount:].iloc[:highVolAndUncorrelated],
+      ],
+      copy=False,
+    )
+    assert (
+      len(uncorrelatedRatings) == totalUncorrelatedRatings
+    ), f"Unexpected mismatch ({len(uncorrelatedRatings)}, {totalUncorrelatedRatings})"
+    assert uncorrelatedRatings[c.correlatedRaterKey].sum() == 0
+    gc.collect()
+    logger.info(
+      f"Total Ratings vs Non-Correlated Ratings ({self.get_name()}): {len(ratings)} vs {totalUncorrelatedRatings}"
+    )
+    noteScoresNoCorrelated, _ = self._score_notes_and_users(
+      ratings=uncorrelatedRatings,
+      noteStatusHistory=noteStatusHistory,
+      prescoringNoteModelOutput=prescoringNoteModelOutput,
+      prescoringRaterModelOutput=prescoringRaterModelOutput,
+      prescoringMetaScorerOutput=prescoringMetaScorerOutput,
+    )
+    logger.info(
+      f"noteScoresNoCorrelated Summary {self.get_name()}: length ({len(noteScoresNoCorrelated)}), cols ({', '.join(noteScoresNoCorrelated.columns)})"
+    )
+    if len(noteScoresNoCorrelated) > 0:
+      noteScoresNoCorrelated = noteScoresNoCorrelated[
+        [c.noteIdKey, c.internalNoteInterceptKey]
+      ].rename(
+        columns={
+          c.internalNoteInterceptKey: c.internalNoteInterceptNoCorrelatedKey,
+        }
+      )
+    else:
+      # Incase of low volumes, ensure that the dataframe contains the expected columns downstream
+      logger.info(f"Imputing expected columns ({self.get_name()})")
+      noteScoresNoCorrelated[c.noteIdKey] = []
+      noteScoresNoCorrelated[c.internalNoteInterceptNoCorrelatedKey] = []
+
     noteScores, userScores = self._score_notes_and_users(
       ratings=ratings,
       noteStatusHistory=noteStatusHistory,
@@ -1300,6 +1352,7 @@ class MFBaseScorer(Scorer):
       prescoringMetaScorerOutput=prescoringMetaScorerOutput,
       flipFactorsForIdentification=False,
       noteScoresNoHighVol=noteScoresNoHighVol,
+      noteScoresNoCorrelated=noteScoresNoCorrelated,
     )
     logger.info(
       f"noteScores Summary {self.get_name()}: length ({len(noteScores)}), cols ({', '.join(noteScores.columns)})"
