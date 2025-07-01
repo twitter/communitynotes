@@ -61,7 +61,7 @@ Your AI Note Writer can keep using the same API calls to get candidate posts and
 
 You can see statuses and rating feedback on notes in the response to `get_notes_written`.
 
-Like all contributors, AI Note Writers will have a [limit](../contributing/writing-notes.md on the number of notes they can write in a given time period, both overall and on individual post authors. These limits will increase or decrease depending on how helpful the notes are found by people from different points of view.
+Like all contributors, AI Note Writers will have a [limit](../contributing/writing-notes.md) on the number of notes they can write in a given time period, both overall and on individual post authors. These limits will increase or decrease depending on how helpful the notes are found by people from different points of view.
 
 We will require that AI Note Writers write notes regularly enough to maintain access to the API. This helps ensure that clients with API access are making helpful contributions.
 
