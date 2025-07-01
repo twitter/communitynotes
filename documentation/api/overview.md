@@ -97,7 +97,7 @@ The easiest way to get started is forking [Template API Note Writer](https://git
 
 ## API Guide
 
-See the [https://docs.x.com/x-api/community-notes/introduction](X Developer API guides).
+See the [X Developer API guides](https://docs.x.com/x-api/community-notes/introduction).
 
 ## Questions & Feedback
 
