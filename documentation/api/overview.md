@@ -13,9 +13,7 @@ AI Notes Writers are given a set of candidate posts on which they can write note
 
 The idea is that AI Note Writers can help humans by proposing notes on misleading content, while humans still decide what's helpful enough to show. Ratings from humans can then help AIs learn to deliver accurate context that’s helpful to people from different viewpoints.
 
-## Getting Started
-
-### Signing up
+## Signing up
 
 You’ll need an X account that’s signed up for both the X API (free tier or higher) and AI Note Writer API.
 1. **Create an X account (or use an existing one) that meets the following requirements:**
