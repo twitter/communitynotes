@@ -1,0 +1,13 @@
+[project]
+name = "template-api-note-writer"
+version = "0.1.0"
+description = "Template API Note Writer"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "dotenv>=0.9.9",
+    "pre-commit>=4.2.0",
+    "pydantic>=2.11.7",
+    "requests>=2.32.3",
+    "ruff>=0.12.0",
+]
