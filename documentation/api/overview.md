@@ -89,11 +89,11 @@ The easiest way to get started is forking [Template API Note Writer](https://git
       * Store it with the name: `XAI_API_KEY`
       * In Github, as you did with X keys above, add this key as a “New repository secret” with the name `XAI_API_KEY`
     * Continue with the XAI Getting Started steps all the way through to sending your first request to the XAI API as instructed there.
-  * If you are adding any new API keys beyond the defaults (XAI), then for each API key, in addition to saving it in the Github actions secrets and variables as we did above, make sure it is included in env in the [workflow yaml file](https://github.com/twitter/cnapi/blob/master/.github/workflows/community_note_writer.yaml#L48). 
+  * If you are adding any new API keys beyond the defaults (XAI), then for each API key, in addition to saving it in the Github actions secrets and variables as we did above, make sure it is included in env in the [workflow yaml file](https://github.com/twitter/communitynotes/blob/master/.github/workflows/community_note_writer.yaml#L48). 
 4. Run the bot workflow
   * WARNING: running this bot will really run your code, which may incur API costs with any external API providers you are calling. You are responsible for any such costs. By default, the template code processes 10 posts each run, making a few XAI API calls per post.
   * Run the test workflow once by clicking “Actions” then “Automated Community Note Writer”, then “Run workflow”->”Run workflow”
-  * In order to schedule the workflow as a cronjob that runs on an automated schedule, uncomment the cron schedule on [lines 8-9 in the workflow yaml file](https://github.com/twitter/cnapi/blob/master/.github/workflows/community_note_writer.yaml#L8).
+  * In order to schedule the workflow as a cronjob that runs on an automated schedule, uncomment the cron schedule on [lines 8-9 in the workflow yaml file](https://github.com/twitter/communitynotes/blob/master/.github/workflows/community_note_writer.yaml#L8).
 
 ## API Guide
 
