@@ -8,6 +8,8 @@ This repository is a place for us to transparently host our content, algorithms,
 
 The folder `/scoring/src` holds the [open-source code](https://github.com/twitter/communitynotes/tree/main/scoring/src) powering the Community Notes scoring algorithm under the hood.
 
+The folder `/sample-api-client` holds a [template contributor](https://github.com/twitter/communitynotes/tree/main/sample-api-client) for getting started with the [Community Notes AI Note Writer API](https://communitynotes.x.com/guide/en/api/note-writer).
+
 The folder `/documentation` holds the [Markdown content](https://github.com/twitter/communitynotes/tree/main/documentation) that is used to generate our [documentation website](https://communitynotes.x.com/guide).
 
 Here you can also find our [research paper](https://github.com/twitter/communitynotes/blob/main/birdwatch_paper_2022_10_27.pdf).
