@@ -6,7 +6,7 @@
 
 This repository is a place for us to transparently host our content, algorithms, and share updates about the program.
 
-The folder `/sourcecode` holds the [open-source code](https://github.com/twitter/communitynotes/tree/main/sourcecode) powering Community Notes under the hood.
+The folder `/scoring/src` holds the [open-source code](https://github.com/twitter/communitynotes/tree/main/scoring/src) powering the Community Notes scoring algorithm under the hood.
 
 The folder `/documentation` holds the [Markdown content](https://github.com/twitter/communitynotes/tree/main/documentation) that is used to generate our [documentation website](https://communitynotes.x.com/guide).
 
@@ -31,12 +31,12 @@ As there are important nuances in each market, we’ll expand the contributor ba
 Thank you for your interest in contributing to Community Notes! Currently, we will consider pull requests that contribute to the following areas:
 * Downstream analyses of scoring model output
 * Alternate scoring algorithm ideas (outside the core algorithm)
-* Documentation (in the documentation directory, not the sourcecode directory)
+* Documentation (in the documentation directory, not the scoring/src directory)
 * Open issues
 
 Note that we aren’t currently accepting changes that alter existing APIs, as there is other utility and production infrastructure code at X that depends on these APIs remaining stable.
 
-Also note that we are unlikely to merge any minor documentation/typo/comment cleanup pull requests that touch the sourcecode directory due to our heavyweight deployment process (this code is developed in a separate internal repo and exported to Github whenever we deploy an update to the scorer). We are more likely to merge changes that edit the documentation directory only, and don't edit latex (since the documntation website described below parses latex differently than Github).
+Also note that we are unlikely to merge any minor documentation/typo/comment cleanup pull requests that touch the scoring/src directory due to our heavyweight deployment process (this code is developed in a separate internal repo and exported to Github whenever we deploy an update to the scorer). We are more likely to merge changes that edit the documentation directory only, and don't edit latex (since the documntation website described below parses latex differently than Github).
 
 We are also exploring ways to make it easier for people to contribute directly to the core algorithm. For example, by making available testing and evaluation frameworks that would allow open source contributors to evaluate the impact of their PRs on note quality.
 
@@ -48,20 +48,21 @@ The markdown files in this repo are the source of truth for the content in our d
 
 ### Community Notes open-source code
 
-The algorithm that powers Community Notes can be found in the [sourcecode folder](https://github.com/twitter/communitynotes/tree/main/sourcecode), and instructions on how to use it can be found in the [Guide](https://twitter.github.io/communitynotes/note-ranking-code/).
+The algorithm that powers Community Notes can be found in the [scoring/src folder](https://github.com/twitter/communitynotes/tree/main/scoring/src), and instructions on how to use it can be found in the [Guide](https://twitter.github.io/communitynotes/note-ranking-code/).
 
 While your normal Python install may "just work" if you're lucky, if you run into any issues and want to install the exact versions of Python packages that we've tested the code with, please create a new virtual environment and install the packages from requirements.txt:
 
 ```
+$ cd scoring
 $ python -m venv communitynotes_env
 $ source communitynotes_env/bin/activate
 $ pip install -r requirements.txt
 ```
 
-Then after downloading the data files (see next section) into /sourcecode/, you will be able to run:
+Then after downloading the data files (see next section) into /scoring/src/, you will be able to run:
 
 ```
-$ cd sourcecode
+$ cd scoring/src
 $ python main.py
 ```
 
