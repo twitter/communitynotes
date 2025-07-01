@@ -53,6 +53,7 @@ The algorithm that powers Community Notes can be found in the [scoring/src folde
 While your normal Python install may "just work" if you're lucky, if you run into any issues and want to install the exact versions of Python packages that we've tested the code with, please create a new virtual environment and install the packages from requirements.txt:
 
 ```
+$ cd scoring
 $ python -m venv communitynotes_env
 $ source communitynotes_env/bin/activate
 $ pip install -r requirements.txt
