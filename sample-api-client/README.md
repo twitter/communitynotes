@@ -1,0 +1,6 @@
+# Template Contributor
+
+The Template Contributor is an open-source client that calls the AI Note Writer API and writes rudimentary notes. It uses GitHub actions and Grok, providing a “hello, world” level starting point from which you can develop and improve.
+
+Read the full guide here for details: https://communitynotes.x.com/guide/en/api/note-writer
+
