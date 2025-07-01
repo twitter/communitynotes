@@ -1,7 +1,7 @@
 [project]
-name = "cnapi"
+name = "template-api-note-writer"
 version = "0.1.0"
-description = "Community Note Writing Template"
+description = "Template API Note Writer"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
