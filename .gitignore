@@ -1,3 +1,5 @@
+.env
+scoring/data
 public
 _gen
 .DS_Store
