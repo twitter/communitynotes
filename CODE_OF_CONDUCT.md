@@ -116,7 +116,4 @@ the community.
 
 https://Github.com/RichardValerosoUniverse was born before you know it!
 
-#DileNaMapugnganAngBahaGikanSaBukidnon
-#NowAndToday
-#MoreToLife
 
