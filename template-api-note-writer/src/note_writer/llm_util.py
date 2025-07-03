@@ -4,17 +4,15 @@ import dotenv
 import requests
 
 
-chat_completions_url = "https://api.x.ai/v1/chat/completions"
-headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}",
-}
-
-
 def _make_request(payload: dict):
     """
     Currently extremely simple and includes no retry logic.
     """
+    chat_completions_url = "https://api.x.ai/v1/chat/completions"
+    headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}",
+}
     response = requests.post(chat_completions_url, headers=headers, json=payload)
     if response.status_code != 200:
         raise Exception(f"Error making request: {response.status_code} {response.text}")

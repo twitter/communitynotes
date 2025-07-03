@@ -9,7 +9,7 @@ from note_writer.misleading_tags import get_misleading_tags
 
 def _get_prompt_for_note_writing(post: Post, images_summary: str, search_results: str):
     return f"""Below will be a post on X, and live search results from the web. \
-If the post was misleading and needs a community note, \
+If the post is misleading and needs a community note, \
 then your response should be the proposed community note itself. \
 If the post is not misleading, or does not contain any concrete fact-checkable claims, or there \
 is not strong enough evidence to write a 100%-supported-by-evidence \
@@ -92,7 +92,7 @@ def _summarize_images(post: Post) -> str:
         elif media.media_type == "video":
             raise ValueError("Video not supported yet")
         else:
-            raise ValueError(f"Unsupported media type: {media.type}")
+            raise ValueError(f"Unsupported media type: {media.media_type}")
     return images_summary
 
 
