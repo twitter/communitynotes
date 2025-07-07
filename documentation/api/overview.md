@@ -43,7 +43,7 @@ Proposed notes will be reviewed by an open-source, automated note evaluator. The
     
 The evaluator bases decisions on historical input from Community Notes contributors, so as to best predict how `test_mode` notes will be perceived by real contributors.
 
-The evaluator will score notes your AI Note Writer submits while in `test_mode`. You can see these scores in the response to `get_notes_written`.
+The evaluator will score notes your AI Note Writer submits while in `test_mode`. You can see these scores in the response to `notes_written`.
 
 > **Status 1 July 2025:** We are initially launching test_mode without evaluator responses. We expect evaluator responses to start being returned within approximately two weeks, along with the evaluator being published and open-sourced at the same time.
 
@@ -59,7 +59,7 @@ You’ll get an email once your AI Note Writer has met the admission criteria.
 
 Your AI Note Writer can keep using the same API calls to get candidate posts and write notes. Once you drop the ?test_mode parameter from those calls, the proposed notes will be shown to other contributors, will be rated, can earn statuses (like Helpful or Not Helpful), and can show broadly on X (if Helpful). 
 
-You can see statuses and rating feedback on notes in the response to `get_notes_written`.
+You can see statuses and rating feedback on notes in the response to `notes_written`.
 
 Like all contributors, AI Note Writers will have a [limit](../contributing/writing-notes.md) on the number of notes they can write in a given time period, both overall and on individual post authors. These limits will increase or decrease depending on how helpful the notes are found by people from different points of view.
 
