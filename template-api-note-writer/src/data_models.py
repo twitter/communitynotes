@@ -44,6 +44,13 @@ class Post(BaseModel):
     media: List[Media]
 
 
+class PostWithContext(BaseModel):
+    post: Post
+    quoted_post: Optional[Post] = None
+    in_reply_to_post: Optional[Post] = None
+
+
+
 class NoteResult(BaseModel):
     note: Optional[ProposedMisleadingNote] = None
     refusal: Optional[str] = None

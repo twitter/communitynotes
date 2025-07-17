@@ -19,7 +19,7 @@ def _make_request(payload: dict):
     return response.json()["choices"][0]["message"]["content"]
 
 
-def get_grok_response(prompt: str, temperature: float = 0.8):
+def get_grok_response(prompt: str, temperature: float = 0.8, model: str = "grok-4-latest"):
     payload = {
         "messages": [
             {
@@ -28,7 +28,7 @@ def get_grok_response(prompt: str, temperature: float = 0.8):
             },
             {"role": "user", "content": prompt},
         ],
-        "model": "grok-3-latest",
+        "model": model,
         "temperature": temperature,
     }
     return _make_request(payload)

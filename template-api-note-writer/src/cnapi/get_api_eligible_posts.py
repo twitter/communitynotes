@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Dict, List
 
-from .xurl_util import run_xurl
+from src.cnapi.xurl_util import run_xurl
 
-from data_models import Media, Post
+from src.data_models import Media, Post, PostWithContext
 
 
 def _fetch_posts_eligible_for_notes(
@@ -32,8 +32,33 @@ def _fetch_posts_eligible_for_notes(
     ]
     return run_xurl(cmd)
 
+def _parse_individual_post(item: Dict, media_by_key: Dict[str, Dict]) -> Post:
+    media_objs: List[Media] = []
+    media_keys = item.get("attachments", {}).get("media_keys", [])
 
-def _parse_posts_eligible_response(resp: Dict) -> List[Post]:
+    for key in media_keys:
+        if key in media_by_key:
+            media_obj = Media(**media_by_key[key])
+            media_objs.append(media_obj)
+
+    text = item["text"]
+    note_tweet_text = item.get("note_tweet", {}).get("text", "")
+    if note_tweet_text:
+        text = note_tweet_text
+
+    post = Post(
+        post_id=item["id"],
+        author_id=item["author_id"],
+        created_at=datetime.fromisoformat(
+            item["created_at"].replace("Z", "+00:00")
+        ),
+        text=text,
+        media=media_objs,
+    )
+    return post
+
+
+def _parse_posts_eligible_response(resp: Dict) -> List[PostWithContext]:
     """
     Convert the raw JSON dict returned by `fetch_posts_eligible_for_notes`
     into a list of `Post` objects with their associated `Media`.
@@ -47,35 +72,41 @@ def _parse_posts_eligible_response(resp: Dict) -> List[Post]:
     includes_media = resp.get("includes", {}).get("media", [])
     media_by_key = {m["media_key"]: m for m in includes_media}
 
+    includes_posts = resp.get("includes", {}).get("tweets", [])
+    posts_by_id = {t["id"]: t for t in includes_posts}
+
     # rename type field to media_type to avoid name conflict with type
     for media_obj in media_by_key.values():
         media_obj["media_type"] = media_obj.pop("type")
 
     posts: List[Post] = []
     for item in resp.get("data", []):
-        media_objs: List[Media] = []
-        media_keys = item.get("attachments", {}).get("media_keys", [])
+        post = _parse_individual_post(item, media_by_key)
 
-        for key in media_keys:
-            if key in media_by_key:
-                media_obj = Media(**media_by_key[key])
-                media_objs.append(media_obj)
+        # Handle quoted and in-reply-to posts ("referenced_tweets")
+        quoted_post = None
+        in_reply_to_post = None
+        if 'referenced_tweets' in item:
+            for ref in item["referenced_tweets"]:
+                referenced_post_id = ref["id"]
+                referenced_post_item = posts_by_id[referenced_post_id]
+                referenced_post = _parse_individual_post(referenced_post_item, media_by_key)
 
-        text = item["text"]
-        note_tweet_text = item.get("note_tweet", {}).get("text", "")
-        if note_tweet_text:
-            text = note_tweet_text
+                if ref["type"] == "quoted":
+                    assert quoted_post is None, "Multiple quoted posts found in a single post"
+                    quoted_post = referenced_post
+                elif ref["type"] == "replied_to":
+                    assert in_reply_to_post is None, "Multiple in-reply-to posts found in a single post"
+                    in_reply_to_post = referenced_post
+                else:
+                    raise ValueError(f"Unknown referenced tweet type: {ref['type']} (expected 'quoted' or 'replied_to')")
 
-        post = Post(
-            post_id=item["id"],
-            author_id=item["author_id"],
-            created_at=datetime.fromisoformat(
-                item["created_at"].replace("Z", "+00:00")
-            ),
-            text=text,
-            media=media_objs,
+        postWithContext = PostWithContext(
+            post=post,
+            quoted_post=quoted_post,
+            in_reply_to_post=in_reply_to_post,
         )
-        posts.append(post)
+        posts.append(postWithContext)
 
     return posts
 
@@ -96,5 +127,6 @@ def get_posts_eligible_for_notes(
 
 
 if __name__ == "__main__":
+    # Example: $ uv run -m src.cnapi.get_api_eligible_posts
     eligible_posts = get_posts_eligible_for_notes(max_results=10)
-    print(eligible_posts)
+    print("\n\n".join([str(post) for post in eligible_posts]))
