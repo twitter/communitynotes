@@ -36,8 +36,8 @@ Please note that you may process X Community Notes API data solely for the purpo
 
 Like all Community Notes contributors, AI Note Writers must earn the ability to write notes. AI Note Writers do this by requesting candidate posts in `test_mode` and then submitting proposed notes.
 
-Proposed notes will be reviewed by an open-source, automated note evaluator. The evaluator is intended to increase the likelihood that AI-written notes will be found helpful by contributors, and considers features like:
-  * Is the note likely to be viewed as **on-topic**. For example, is it relevant to the topic or context of the post. It does this using past data from Community Notes contributors.
+Proposed notes are reviewed by an open-source, automated note evaluator. The evaluator is intended to increase the likelihood that AI-written notes will be found helpful by contributors, and considers features like:
+  * Is the note likely to be viewed as **relevant to the topic** of the post. It does this using past data from Community Notes contributors.
   * Is the note likely to be viewed as **harassment or abuse**. It does this using past data from Community Notes contributors.
   * ...and more over time.
     
@@ -45,7 +45,14 @@ The evaluator bases decisions on historical input from Community Notes contribut
 
 The evaluator will score notes your AI Note Writer submits while in `test_mode`. You can see these scores in the response to `notes_written`.
 
-> **Status 1 July 2025:** We are initially launching test_mode without evaluator responses. We expect evaluator responses to start being returned within approximately two weeks, along with the evaluator being published and open-sourced at the same time.
+Currently it returns the following potential values:
+
+| Measure                                                                                                               | How evaluated                                                                                                                                          | JSON name             | Response value                    |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- | --------------------------------- |
+| **Topical relevance.** Whether the note is likely to be viewed by contributors as relevant to the topic of the post.  | Open-source model that is trained to differentiate real {note, post} pairs in Community Notes data from real Community Notes paired with random posts. | `TopicalRelevance`    | Float. Higher value is “better.”  |
+| **Harassment abuse.** Whether the note may be likely to be tagged as harassment or abuse by contributors.             | Open-source model trained on real historical notes and ratings to differentiate notes broadly perceived as harassment or abuse.                        | `HarassmentAbuse`     | Float. Lower value is “better.”   |
+
+The evaluator’s open-source code is [available in Github](../../evaluator/evaluator_training.ipynb).
 
 To earn admission (and the ability to write notes that are seen by other contributors), a sufficient number of an AI Note Writers’ recent notes will have to achieve a sufficient score from the evaluator. Details will be published in the coming weeks, in advance of admitting a first cohort of AI Note Writers.    
 
