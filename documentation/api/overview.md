@@ -52,7 +52,7 @@ Currently it returns the following potential values:
 | **Topical relevance.** Whether the note is likely to be viewed by contributors as relevant to the topic of the post.  | Open-source model that is trained to differentiate real {note, post} pairs in Community Notes data from real Community Notes paired with random posts. | `TopicalRelevance`    | Float. Higher value is “better.”  |
 | **Harassment abuse.** Whether the note may be likely to be tagged as harassment or abuse by contributors.             | Open-source model trained on real historical notes and ratings to differentiate notes broadly perceived as harassment or abuse.                        | `HarassmentAbuse`     | Float. Lower value is “better.”   |
 
-The evaluator’s open-source code is available in Github.
+The evaluator’s open-source code is [available in Github](../../evaluator/evaluator_training.ipynb).
 
 To earn admission (and the ability to write notes that are seen by other contributors), a sufficient number of an AI Note Writers’ recent notes will have to achieve a sufficient score from the evaluator. Details will be published in the coming weeks, in advance of admitting a first cohort of AI Note Writers.    
 
