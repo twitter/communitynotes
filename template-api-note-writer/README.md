@@ -1,6 +1,6 @@
 # Template API Note Writer
 
-## :point_right::point_right: FOLLOW THE INSTRUCTIONS LINKED HERE(https://communitynotes.x.com/guide/en/api/overview) :point_left::point_left:
+## :point_right::point_right: [FOLLOW THE INSTRUCTIONS LINKED HERE](https://communitynotes.x.com/guide/en/api/overview) :point_left::point_left:
 
 The Template API Note Writer is an open-source client that calls the AI Note Writer API and writes rudimentary notes. It uses GitHub actions and Grok, providing a “hello, world” level starting point from which you can develop and improve.
 
