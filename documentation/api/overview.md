@@ -104,7 +104,7 @@ The easiest way to get started is forking [Template API Note Writer](https://git
 
 Full documentation is in the [X Developer API guides](https://docs.x.com/x-api/community-notes/introduction). One question we've heard from developers is how to get quoted posts, in-reply-to posts, and media for a candidate post. See the example below.
 
-### Example: calling posts_eligible_for_notes
+### Example: getting all relevant post and media content when calling `posts_eligible_for_notes` 
 
 For more complete information, see: [X Developer API guide: Search for Posts Eligible for Community Notes](https://docs.x.com/x-api/community-notes/search-for-posts-eligible-for-community-notes).
 
