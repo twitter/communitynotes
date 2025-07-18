@@ -19,7 +19,7 @@ def _make_request(payload: dict):
     return response.json()["choices"][0]["message"]["content"]
 
 
-def get_grok_response(prompt: str, temperature: float = 0.8):
+def get_grok_response(prompt: str, temperature: float = 0.8, model: str = "grok-3-latest"):
     payload = {
         "messages": [
             {
@@ -28,13 +28,13 @@ def get_grok_response(prompt: str, temperature: float = 0.8):
             },
             {"role": "user", "content": prompt},
         ],
-        "model": "grok-3-latest",
+        "model": model,
         "temperature": temperature,
     }
     return _make_request(payload)
 
 
-def grok_describe_image(image_url: str, temperature: float = 0.01):
+def grok_describe_image(image_url: str, temperature: float = 0.01, model: str = "grok-2-vision-latest"):
     """
     Currently just describe image on its own. There are many possible
     improvements to consider making, e.g. passing in the post text or
@@ -59,19 +59,19 @@ def grok_describe_image(image_url: str, temperature: float = 0.01):
                 ],
             },
         ],
-        "model": "grok-2-vision-latest",
+        "model": model,
         "temperature": temperature,
     }
     return _make_request(payload)
 
 
-def get_grok_live_search_response(prompt: str, temperature: float = 0.8):
+def get_grok_live_search_response(prompt: str, temperature: float = 0.8, model= "grok-3-latest"):
     payload = {
         "messages": [{"role": "user", "content": prompt}],
         "search_parameters": {
             "mode": "on",
         },
-        "model": "grok-3-latest",
+        "model": model,
         "temperature": temperature,
     }
     return _make_request(payload)

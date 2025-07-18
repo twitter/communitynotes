@@ -6,10 +6,10 @@ from note_writer.llm_util import get_grok_response
 
 
 def get_misleading_tags(
-    post: Post, images_summary: str, note_text: str, retries: int = 3
+    post_with_context_description: str, note_text: str, retries: int = 3
 ) -> List[MisleadingTag]:
     misleading_why_tags_prompt = _get_prompt_for_misleading_why_tags(
-        post, images_summary, note_text
+        post_with_context_description, note_text
     )
     while retries > 0:
         try:
@@ -23,15 +23,7 @@ def get_misleading_tags(
     raise Exception("Failed to get misleading tags for note.")
 
 
-def _get_prompt_for_misleading_why_tags(
-    post: Post, images_summary: str = "", note: str = ""
-):
-    images_summary_prompt = f"""```
-    Summary of images in the post:
-    ```
-    {images_summary}
-    ```"""
-
+def _get_prompt_for_misleading_why_tags(post_with_context_description: str, note: str):
     return f"""Below will be a post on X, and a proposed community note that \
 adds additional context to the potentially misleading post. \
 Your task will be to identify which of the following tags apply to the post and note. \
@@ -51,22 +43,16 @@ Example valid JSON response:
 }}
 
 OTHER = 0
-  FACTUAL_ERROR = 1
-  MANIPULATED_MEDIA = 2
-  OUTDATED_INFORMATION = 3
-  MISSING_IMPORTANT_CONTEXT = 4
-  DISPUTED_CLAIM_AS_FACT = 5
-  MISINTERPRETED_SATIRE = 6
+FACTUAL_ERROR = 1
+MANIPULATED_MEDIA = 2
+OUTDATED_INFORMATION = 3
+MISSING_IMPORTANT_CONTEXT = 4
+DISPUTED_CLAIM_AS_FACT = 5
+MISINTERPRETED_SATIRE = 6
 
 The post and note are as follows:
 
-```
-Post text:
-```
-{post.text}
-```
-
-{images_summary_prompt}
+{post_with_context_description}
 
 ```
 Proposed community note:
