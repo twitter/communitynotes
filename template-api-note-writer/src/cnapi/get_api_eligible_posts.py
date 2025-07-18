@@ -101,12 +101,12 @@ def _parse_posts_eligible_response(resp: Dict) -> List[PostWithContext]:
                 else:
                     raise ValueError(f"Unknown referenced tweet type: {ref['type']} (expected 'quoted' or 'replied_to')")
 
-        postWithContext = PostWithContext(
+        post_with_context = PostWithContext(
             post=post,
             quoted_post=quoted_post,
             in_reply_to_post=in_reply_to_post,
         )
-        posts.append(postWithContext)
+        posts.append(post_with_context)
 
     return posts
 
