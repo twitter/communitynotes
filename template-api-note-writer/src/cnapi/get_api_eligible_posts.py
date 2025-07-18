@@ -89,6 +89,9 @@ def _parse_posts_eligible_response(resp: Dict) -> List[PostWithContext]:
         if 'referenced_tweets' in item:
             for ref in item["referenced_tweets"]:
                 referenced_post_id = ref["id"]
+                if referenced_post_id not in posts_by_id:
+                    print(f"For post {post.post_id}, referenced post {referenced_post_id} not found in posts_by_id; skipping.")
+                    continue
                 referenced_post_item = posts_by_id[referenced_post_id]
                 referenced_post = _parse_individual_post(referenced_post_item, media_by_key)
 
