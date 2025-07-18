@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Dict, List
 
-from src.cnapi.xurl_util import run_xurl
+from cnapi.xurl_util import run_xurl
 
-from src.data_models import Media, Post, PostWithContext
+from data_models import Media, Post, PostWithContext
 
 
 def _fetch_posts_eligible_for_notes(
@@ -113,7 +113,7 @@ def _parse_posts_eligible_response(resp: Dict) -> List[PostWithContext]:
 
 def get_posts_eligible_for_notes(
     max_results: int = 2, test_mode: bool = True
-) -> List[Post]:
+) -> List[PostWithContext]:
     """
     Get posts eligible for notes by calling the Community Notes API.
     For more details, see: https://docs.x.com/x-api/community-notes/introduction
@@ -124,9 +124,3 @@ def get_posts_eligible_for_notes(
     return _parse_posts_eligible_response(
         _fetch_posts_eligible_for_notes(max_results, test_mode)
     )
-
-
-if __name__ == "__main__":
-    # Example: $ uv run -m src.cnapi.get_api_eligible_posts
-    eligible_posts = get_posts_eligible_for_notes(max_results=10)
-    print("\n\n".join([str(post) for post in eligible_posts]))

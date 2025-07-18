@@ -4,26 +4,26 @@ from typing import List
 
 from cnapi.get_api_eligible_posts import get_posts_eligible_for_notes
 from cnapi.submit_note import submit_note
-from data_models import NoteResult, Post
+from data_models import NoteResult, Post, PostWithContext
 import dotenv
 from note_writer.write_note import research_post_and_write_note
 
 
 def _worker(
-    post: Post,
+    post_with_context: PostWithContext,
     dry_run: bool = False,
 ):
     """
     Fetch and try to write and submit a note for one post.
     If `dry_run` is True, do not submit notes to the API, just print them to the console.
     """
-    note_result: NoteResult = research_post_and_write_note(post)
+    note_result: NoteResult = research_post_and_write_note(post_with_context)
 
-    log_strings: List[str] = ["-" * 20, f"Post: {post.post_id}", "-" * 20]
-    if note_result.post is not None:
-        log_strings.append(f"\n*POST TEXT:*\n  {note_result.post.text}\n")
-    if note_result.images_summary is not None:
-        log_strings.append(f"\n*IMAGE SUMMARY:*\n  {note_result.images_summary}")
+    log_strings: List[str] = ["-" * 20, f"Post: {post_with_context.post.post_id}", "-" * 20]
+    if note_result.context_description is not None:
+        log_strings.append(
+            f"\n*POST TEXT, IMAGE SUMMARIES, AND ANY QUOTED OR REPLIED-TO POST:*\n{note_result.context_description}\n"
+        )
     if note_result.error is not None:
         log_strings.append(f"\n*ERROR:* {note_result.error}")
     if note_result.refusal:
@@ -60,10 +60,10 @@ def main(
     """
 
     print(f"Getting up to {num_posts} recent posts eligible for notes")
-    eligible_posts: List[Post] = get_posts_eligible_for_notes(max_results=num_posts)
+    eligible_posts: List[PostWithContext] = get_posts_eligible_for_notes(max_results=num_posts)
     print(f"Found {len(eligible_posts)} recent posts eligible for notes")
     print(
-        f"  Eligible Post IDs: {', '.join([str(post.post_id) for post in eligible_posts])}\n"
+        f"  Eligible Post IDs: {', '.join([str(post_with_context.post.post_id) for post_with_context in eligible_posts])}\n"
     )
     if len(eligible_posts) == 0:
         print("No posts to process.")

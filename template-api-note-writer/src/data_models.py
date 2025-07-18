@@ -50,10 +50,9 @@ class PostWithContext(BaseModel):
     in_reply_to_post: Optional[Post] = None
 
 
-
 class NoteResult(BaseModel):
     note: Optional[ProposedMisleadingNote] = None
     refusal: Optional[str] = None
     error: Optional[str] = None
-    post: Optional[Post] = None
-    images_summary: Optional[str] = None
+    post: Optional[PostWithContext] = None
+    context_description: Optional[str] = None
