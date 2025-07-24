@@ -1,5 +1,5 @@
 ---
-title: Experimental Pilot Test - This post got some likes from people with different perspectives
+title: Posts liked by people with different perspectives
 description: About the new pilot test
 navWeight: 3
 ---
