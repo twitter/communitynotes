@@ -13,7 +13,7 @@ A subset of Community Notes contributors — representing a wide range of viewpo
 
 If a post then receives sufficiently positive ratings — determined by an early, in-development open-source scoring algorithm — the callout will switch to indicate that the post seems to be liked by people from different perspectives. You can [see and learn more about the open-source algorithm](https://github.com/twitter/communitynotes/tree/main/liked-by-different-perspectives).
 
-![Post got liked by people with different perspectives](../images/liked-by-people.png)
+![Post got liked by people with different perspectives](../images/liked-by-people-wide.png)
 
 If your ratings help a note get recognized in this way, you’ll get a notification letting you know.
 
