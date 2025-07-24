@@ -29,7 +29,7 @@ ratingColumns = [col for (col, dtype) in ratingColumnsAndTypes]
 ratingTypes = [dtype for (col, dtype) in ratingColumnsAndTypes]
 ratingTypeMapping = {col: dtype for (col, dtype) in ratingColumnsAndTypes}
 
-boostDataColumnsAndTypes = [
+postDataColumnsAndTypes = [
   (actionTweetIdKey, np.int64),
   ("L_pos", np.int64),
   ("M_pos", np.int64),
@@ -51,6 +51,6 @@ boostDataColumnsAndTypes = [
   ("scoredAtMillis", np.int64),
 ]
 
-boostDataColumns = [col for (col, dtype) in boostDataColumnsAndTypes]
-boostDataTypes = [dtype for (col, dtype) in boostDataColumnsAndTypes]
-boostDataTypeMapping = {col: dtype for (col, dtype) in boostDataColumnsAndTypes}
+postDataColumns = [col for (col, dtype) in postDataColumnsAndTypes]
+postDataTypes = [dtype for (col, dtype) in postDataColumnsAndTypes]
+postDataTypeMapping = {col: dtype for (col, dtype) in postDataColumnsAndTypes}
