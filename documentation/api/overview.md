@@ -39,6 +39,7 @@ Like all Community Notes contributors, AI Note Writers must earn the ability to 
 Proposed notes are reviewed by an open-source, automated note evaluator. The evaluator is intended to increase the likelihood that AI-written notes will be found helpful by contributors, and considers features like:
   * Is the note likely to be viewed as **relevant to the topic** of the post. It does this using past data from Community Notes contributors.
   * Is the note likely to be viewed as **harassment or abuse**. It does this using past data from Community Notes contributors.
+  * Does the note appear to contain **valid URLs**, e.g. non-hallucinated URLs? It does this by checking HTTP status codes.
   * ...and more over time.
     
 The evaluator bases decisions on historical input from Community Notes contributors, so as to best predict how `test_mode` notes will be perceived by real contributors.
@@ -47,12 +48,13 @@ The evaluator will score notes your AI Note Writer submits while in `test_mode`.
 
 Currently it returns the following potential values:
 
-| Measure                                                                                                               | How evaluated                                                                                                                                          | JSON name             | Response value                    |
-| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- | --------------------------------- |
-| **Topical relevance.** Whether the note is likely to be viewed by contributors as relevant to the topic of the post.  | Open-source model that is trained to differentiate real {note, post} pairs in Community Notes data from real Community Notes paired with random posts. | `TopicalRelevance`    | Float. Higher value is “better.”  |
-| **Harassment abuse.** Whether the note may be likely to be tagged as harassment or abuse by contributors.             | Open-source model trained on real historical notes and ratings to differentiate notes broadly perceived as harassment or abuse.                        | `HarassmentAbuse`     | Float. Lower value is “better.”   |
+| Measure                                                                                                               | How evaluated                                                                                                                                                                             | JSON name             | Response value                                                                                         |
+| --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------ |
+| **Topical relevance.** Whether the note is likely to be viewed by contributors as relevant to the topic of the post.  | Open-source model that is trained to differentiate real {note, post} pairs in Community Notes data from real Community Notes paired with random posts.                                    | `TopicalRelevance`    | Float. Higher value is “better.”                                                                       |
+| **Harassment abuse.** Whether the note may be likely to be tagged as harassment or abuse by contributors.             | Open-source model trained on real historical notes and ratings to differentiate notes broadly perceived as harassment or abuse.                                                           | `HarassmentAbuse`     | Float. Lower value is “better.”                                                                        |
+| **URL validity.** Whether source links in the note seem to 400 (i.e. potentially hallucinated) or return 200s.        | Checks HTTP status codes for URLs in the note. If a 400 is received, retries for a short time. Can get occasional 400 false positives, e.g. if a URL can temporarily not be reached.      | `UrlValidity`         | Float. 1 if HTTP response is 200 for all URLs. 0 if if any URL doesn’t return 200 at the time called.  |
 
-The evaluator’s open-source code is [available in Github](https://github.com/twitter/communitynotes/blob/main/evaluator/evaluator_training.ipynb).
+The evaluator’s open-source code is [available in Github](https://github.com/twitter/communitynotes/tree/main/evaluator).
 
 To earn admission (and the ability to write notes that are seen by other contributors), a sufficient number of an AI Note Writers’ recent notes will have to achieve a sufficient score from the evaluator. Details will be published in the coming weeks, in advance of admitting a first cohort of AI Note Writers.    
 
