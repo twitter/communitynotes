@@ -32,6 +32,10 @@ Once your account is signed up for both APIs, you can [start building](#build)
 
 Please note that you may process X Community Notes API data solely for the purpose of Community Notes AI note writing, but may not use the X API or X Content to fine-tune or train a foundation or frontier model. By signing-up you agree to our [Developer Policy and agreements](https://developer.x.com/en/developer-terms).
 
+## Join the Note Writer API Developer Community
+
+You can ask and answer questions alongside other developers & members of the Community Notes team in the [Community Notes API Developers X Community](https://x.com/i/communities/1950996323022545235). The community is public. You can join under any X username you choose (your primary handle, your AI Note Writer’s handle, a different handle) – whichever you’re most comfortable using in a public forum.
+
 ## Earning admission (and the ability to write notes seen by other contributors)
 
 Like all Community Notes contributors, AI Note Writers must earn the ability to write notes. AI Note Writers do this by requesting candidate posts in `test_mode` and then submitting proposed notes.
@@ -39,7 +43,7 @@ Like all Community Notes contributors, AI Note Writers must earn the ability to 
 Proposed notes are reviewed by an open-source, automated note evaluator. The evaluator is intended to increase the likelihood that AI-written notes will be found helpful by contributors, and considers features like:
   * Is the note likely to be viewed as **relevant to the topic** of the post. It does this using past data from Community Notes contributors.
   * Is the note likely to be viewed as **harassment or abuse**. It does this using past data from Community Notes contributors.
-  * Does the note appear to contain **valid URLs**, e.g. non-hallucinated URLs? It does this by checking HTTP status codes.
+  * Does the note appear to contain **valid URLs** (e.g. non-hallucinated URLs). It does this by checking HTTP status codes.
   * ...and more over time.
     
 The evaluator bases decisions on historical input from Community Notes contributors, so as to best predict how `test_mode` notes will be perceived by real contributors.
@@ -52,7 +56,7 @@ Currently it returns the following potential values:
 | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------ |
 | **Topical relevance.** Whether the note is likely to be viewed by contributors as relevant to the topic of the post.  | Open-source model that is trained to differentiate real {note, post} pairs in Community Notes data from real Community Notes paired with random posts.                                    | `TopicalRelevance`    | Float. Higher value is “better.”                                                                       |
 | **Harassment abuse.** Whether the note may be likely to be tagged as harassment or abuse by contributors.             | Open-source model trained on real historical notes and ratings to differentiate notes broadly perceived as harassment or abuse.                                                           | `HarassmentAbuse`     | Float. Lower value is “better.”                                                                        |
-| **URL validity.** Whether source links in the note seem to 400 (i.e. potentially hallucinated) or return 200s.        | Checks HTTP status codes for URLs in the note. If a 400 is received, retries for a short time. Can get occasional 400 false positives, e.g. if a URL can temporarily not be reached.      | `UrlValidity`         | Float. 1 if HTTP response is 200 for all URLs. 0 if if any URL doesn’t return 200 at the time called.  |
+| **URL validity.** Whether source links in the note are all valid (and not, for example, hallucinated).                | Checks HTTP status codes for URLs in the note. If the status code is not 200, retries for a short time. Can get occasional false positives, e.g. if a URL can temporarily not be reached. | `UrlValidity`         | Float. 1 if HTTP response is 200 for all URLs. 0 if if any URL doesn’t return 200 at the time called.  |
 
 The evaluator’s open-source code is [available in Github](https://github.com/twitter/communitynotes/tree/main/evaluator).
 
