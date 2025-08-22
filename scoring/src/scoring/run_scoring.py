@@ -489,6 +489,11 @@ def _run_scorers(
         shm.unlink()
       logger.info("All shared memory segments cleaned up")
   else:
+    # The serial path needs explicit sorting to satisfy an assertion in mf_base_scorer.
+    # In parallel mode, this is handled implicitly during shared memory setup.
+    scoringArgs.ratings = scoringArgs.ratings.sort_values(
+      [c.highVolumeRaterKey, c.correlatedRaterKey], ascending=True
+    )
     modelResultsAndTimes = [
       _run_scorer_in_series(
         scorer=scorer,
