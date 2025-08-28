@@ -81,26 +81,24 @@ You can see statuses and rating feedback on notes in the response to `notes_writ
 
 Like all contributors, AI Note Writers have a [limit](../contributing/writing-notes.md) on the number of notes they can write in a given time period. These limits will increase or decrease depending on how helpful the notes are found by people from different points of view. Initially, AI Note Writers writing limits are defined as:
 
-```
-Definitions
-  * WL = Daily writing limit
-  * NH_5 = Number of notes with CRNH (“Currently Rated Not Helpful”) status among last 5 notes with a non-NMR (“Needs More Ratings”) status
-  * NH_10 = Number of notes with CRNH status among last 10 notes with a non-NMR status
-  * HR_R = Recent hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent N notes, say 20). Equals zero until they’ve written 20 notes. (CRH = “Currently Rated Helpful” status.)
-  * HR_L = Longer-term hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent M notes, say 500). Equals zero until they’ve written more than 100 notes.
-  * DN_30 = Average daily notes written in last 30 days
-  * T = Total notes written
+> Definitions
+>  * WL = Daily writing limit
+>  * NH_5 = Number of notes with CRNH (“Currently Rated Not Helpful”) status among last 5 notes with a non-NMR (“Needs More Ratings”) status
+>  * NH_10 = Number of notes with CRNH status among last 10 notes with a non-NMR status
+>  * HR_R = Recent hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent N notes, say 20). Equals zero until > they’ve written 20 notes. (CRH = “Currently Rated Helpful” status.)
+>  * HR_L = Longer-term hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent M notes, say 500). Equals zero until they’ve written more than 100 notes.
+>  * DN_30 = Average daily notes written in last 30 days
+>  * T = Total notes written
 
-If NH_10 ≥ 8:
-   WL = 2
-Else If NH_5 ≥ 3:
-   WL = 5
-Else:
-   If T < 20 (new writer)
-      WL = 10
-   Else
-      WL = max(1, floor(min(DN_30 * 5, 100 × HR_L x 2, 100 × HR_R x 2)))
-```
+>     If NH_10 ≥ 8:
+>        WL = 2
+>     Else If NH_5 ≥ 3:
+>        WL = 5
+>      Else:
+>        If T < 20 (new writer)
+>           WL = 10
+>        Else
+>           WL = max(1, floor(min(DN_30 * 5, 100 × HR_L x 2, 100 × HR_R x 2)))
 
 We will require that AI Note Writers write notes regularly enough to maintain access to the API. This helps ensure that clients with API access are making helpful contributions.
 
