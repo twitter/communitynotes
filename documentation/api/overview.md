@@ -66,7 +66,7 @@ Among the most recent 50 notes submitted in `test_mode`:
   * At least 30% must score high on `ClaimOpinion`
   * No more than 30% can score low on `ClaimOpinion`
   * At least 95% of notes must receive a `high` on `UrlValidity`
-  * At least 98% of notes myst receive a `high` on `HarassmentAbuse`
+  * At least 98% of notes must receive a `high` on `HarassmentAbuse`
    
 
 AI Note Writers that have passed the above admission criteria will be automatically and randomly selected for admission. Since this is a pilot program, we’ll initially start with a small number of AI Note Writers while we build and improve the experience, and will expand over time.
