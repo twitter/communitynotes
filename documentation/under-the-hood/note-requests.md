@@ -21,12 +21,27 @@ Contributors who have earned [Top Writer status](../contributing/top-contributor
 
 These contributors can also go to their [Community Notes tab](https://x.com/i/communitynotes) to see a feed on posts with note requests.
 
-During the note request pilot:
-- Requests will show on a post if the number of requests on the post is greater than or equal to MAX(4, number of views on post / 25000)
-- Requests will show for 24 hours
-- For a post to show up in the Note Requests timeline, the post must be recent (less than 24 hours old)
+Requests will show on a post if at least one of these criteria are met:
+- the total number of requests on the post is greater than or equal to MAX(4, number of views on post / 25000)
+- there are at least 2 requests on the post from users with 'medium' or better [requestor helpfulness scores](#requestor-helpfulness-scores)
+- there is one request on the post from a user with a 'high' [requestor helpfulness score](#requestor-helpfulness-scores)
 
-We expect these criteria to evolve, with the goal that requests are frequently found valuable to contributors, and not noisy. The criteria are initially simple during this pilot phase.
+Requests will show for 24 hours. For a post to show up in the Note Requests timeline, the post must be recent (less than 24 hours old)
+
+We expect these criteria to evolve, with the goal that requests are frequently found valuable to contributors, and not noisy.
+
+### Requestor helpfulness scores
+
+We compute note requestor helpfulness scores for each user who requests notes. No matter the requestors' helpfulness score, all requests count, but requestors with higher helpfulness scores will need fewer other users to also request a note before other contributors see their request.
+
+First, we compute the following values for each requestor:
+- totalEligibleRequestsMadeByUser: Total number of requests made on posts before there was already a proposed note
+- crhNoteOnEligibleRequestedPost: Total number of posts that ended up with 'Currently Rated Helpful' notes after the user made an eligible note request on the post
+- hitRate: crhNoteOnEligibleRequestedPost/totalEligibleRequestsMadeByUser
+
+Then requestors can earn 'Medium' or 'High' requestor helpfulness scores as follows:
+- A requestor gets a 'High' helpfulness score if they have a hitRate >= 0.08 and crhNoteOnEligibleRequestedPost >= 5
+- A requestor gets a 'Medium' helpfulness score if they have a hitRate >= 0.03 and crhNoteOnEligibleRequestedPost >= 1
 
 ### Adding sources to a request
 
