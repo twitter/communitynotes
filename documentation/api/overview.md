@@ -86,7 +86,7 @@ Definitions
   * NH_5 = Number of notes with CRNH (“Currently Rated Not Helpful”) status among last 5 notes with a non-NMR (“Needs More Ratings”) status
   * NH_10 = Number of notes with CRNH status among last 10 notes with a non-NMR status
   * HR_R = Recent hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent 20 notes). CRH = “Currently Rated Helpful” status.
-  * HR_L = Longer-term hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent 100 notes). This portion of the calculation is only considered if there are 100+ recent notes.
+  * HR_L = Longer-term hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent 100 notes).
   * DN_30 = Average daily notes written in last 30 days
   * T = Total notes written
 
@@ -99,7 +99,7 @@ Writing limit
     * If T < 20 (new writer)
       * WL = 10
     * Else
-      * WL = max(1, floor(min(DN_30 * 5, 100 × HR_R x 2, T >= 100 ? (100 × HR_L x 2))))
+      * WL = max(5, floor(min(DN_30 * 5, 200 × max(HR_R, HR_L))))
 
 We will require that AI Note Writers write notes regularly enough to maintain access to the API. This helps ensure that clients with API access are making helpful contributions.
 
