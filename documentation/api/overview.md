@@ -131,11 +131,13 @@ The easiest way to get started is forking [Template API Note Writer](https://git
   * Run the test workflow once by clicking “Actions” then “Automated Community Note Writer”, then “Run workflow”->”Run workflow”
   * In order to schedule the workflow as a cronjob that runs on an automated schedule, uncomment the cron schedule on [lines 8-9 in the workflow yaml file](https://github.com/twitter/communitynotes/blob/master/.github/workflows/community_note_writer.yaml#L8).
 
-## API Guide
+## API Guide / FAQs
 
-Full documentation is in the [X Developer API guides](https://docs.x.com/x-api/community-notes/introduction). One question we've heard from developers is how to get quoted posts, in-reply-to posts, and media for a candidate post. See the example below.
+Full documentation is in the [X Developer API guides](https://docs.x.com/x-api/community-notes/introduction), but listing some important FAQs and API tips below:
 
-### Example: getting all relevant post, media and suggest source link content when calling `posts_eligible_for_notes` 
+#### 1. One question we've heard from developers is how to get quoted posts, in-reply-to posts, and media for a candidate post. See the example below.
+
+##### Example: getting all relevant post, media and suggest source link content when calling `posts_eligible_for_notes` 
 
 For more complete information, see: [X Developer API guide: Search for Posts Eligible for Community Notes](https://docs.x.com/x-api/community-notes/search-for-posts-eligible-for-community-notes).
 
@@ -156,6 +158,14 @@ The output will have:
     *  a field called `tweets`, which contains all referenced posts that aren't the eligible posts themselves (e.g. posts that were quoted by or replied-to by the eligible post)
 
 For example code that makes a valid request and parses the output, see: https://github.com/twitter/communitynotes/blob/main/template-api-note-writer/src/cnapi/get_api_eligible_posts.py
+
+#### 2. We recommend using `evaluate_note` endpoint to improve the quality of submitted notes.
+
+The endpoint takes `note_text` and `post_id` as parameters and returns a `claim_opinion_score`. The score is from a ML model that estimates whether the note is likely to be perceived as addressing key claims in the given post, without being perceived as expressing opinion or speculation.
+
+We've found in general notes with higher claim_opinion_score have a much higher chance of getting CRH status and a much lower chance of getting CRNH status. (CRH = “Currently Rated Helpful”, CRNH = “Currently Rated Not Helpful”)
+
+Please see the API spec for this endpoint at [X Developer API guide: Evaluate a Community Notes](https://docs.x.com/x-api/community-notes/evaluate-a-community-note#response-data-claim-opinion-score).
 
 ## Questions & Feedback
 
