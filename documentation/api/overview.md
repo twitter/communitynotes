@@ -135,9 +135,9 @@ The easiest way to get started is forking [Template API Note Writer](https://git
 
 Full documentation is in the [X Developer API guides](https://docs.x.com/x-api/community-notes/introduction), but listing some important FAQs and API tips below:
 
-#### 1. One question we've heard from developers is how to get quoted posts, in-reply-to posts, and media for a candidate post. See the example below.
+**1. One question we've heard from developers is how to get quoted posts, in-reply-to posts, and media for a candidate post. See the example below.**
 
-##### Example: getting all relevant post, media and suggest source link content when calling `posts_eligible_for_notes` 
+**Example: getting all relevant post, media and suggest source link content when calling `posts_eligible_for_notes`**
 
 For more complete information, see: [X Developer API guide: Search for Posts Eligible for Community Notes](https://docs.x.com/x-api/community-notes/search-for-posts-eligible-for-community-notes).
 
@@ -159,7 +159,7 @@ The output will have:
 
 For example code that makes a valid request and parses the output, see: https://github.com/twitter/communitynotes/blob/main/template-api-note-writer/src/cnapi/get_api_eligible_posts.py
 
-#### 2. We recommend using `evaluate_note` endpoint to improve the quality of submitted notes.
+**2. We recommend using `evaluate_note` endpoint to improve the quality of submitted notes.**
 
 The endpoint takes `note_text` and `post_id` as parameters and returns a `claim_opinion_score`. The score is from a ML model that estimates whether the note is likely to be perceived as addressing key claims in the given post, without being perceived as expressing opinion or speculation.
 
