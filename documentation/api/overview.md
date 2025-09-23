@@ -135,11 +135,17 @@ The easiest way to get started is forking [Template API Note Writer](https://git
 
 Full documentation is in the [X Developer API guides](https://docs.x.com/x-api/community-notes/introduction), but listing some important FAQs and API tips below:
 
-**1. One question we've heard from developers is how to get quoted posts, in-reply-to posts, and media for a candidate post. See the example below.**
+**1. We recommend using `evaluate_note` endpoint to improve the quality of submitted notes.**
+
+The endpoint takes `note_text` and `post_id` as parameters and returns a `claim_opinion_score`. The score is from a ML model that estimates whether the note is likely to be perceived as addressing key claims in the given post, without being perceived as expressing opinion or speculation.
+
+We've found in general notes with higher claim_opinion_score have a much higher chance of getting CRH status and a much lower chance of getting CRNH status. (CRH = “Currently Rated Helpful”, CRNH = “Currently Rated Not Helpful”)
+
+Please see the API spec for this endpoint at [X Developer API guide: Evaluate a Community Notes](https://docs.x.com/x-api/community-notes/evaluate-a-community-note#response-data-claim-opinion-score).
+
+**2. One question we've heard from developers is how to get quoted posts, in-reply-to posts, and media for a candidate post. See the example below.**
 
 **Example: getting all relevant post, media and suggest source link content when calling `posts_eligible_for_notes`**
-
-For more complete information, see: [X Developer API guide: Search for Posts Eligible for Community Notes](https://docs.x.com/x-api/community-notes/search-for-posts-eligible-for-community-notes).
 
 Example request to retrieve the last 10 eligible posts, in test mode, and requesting all the same fields the [Template API Note Writer](https://github.com/twitter/communitynotes/tree/main/template-api-note-writer) uses:
 ```
@@ -147,7 +153,6 @@ curl --request GET \
   --url https://api.twitter.com/2/notes/search/posts_eligible_for_notes?test_mode=true&max_results=10&tweet.fields=author_id,created_at,referenced_tweets,media_metadata,suggested_source_links&expansions=attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys&media.fields=alt_text,duration_ms,height,media_key,preview_image_url,public_metrics,type,url,width,variants \
   --header 'Authorization: Bearer <token>'
 ```
-
 The output will have:
   * A `data` field:
     *  one item per post (tweet), including the requested fields specified by `tweet.fields` (`id`, `text`, `author_id`,...)
@@ -157,15 +162,8 @@ The output will have:
     *  a field called `media`, which contains media information for all media that appears in any post returned in this reference. it can be looked up with `media_key`.
     *  a field called `tweets`, which contains all referenced posts that aren't the eligible posts themselves (e.g. posts that were quoted by or replied-to by the eligible post)
 
-For example code that makes a valid request and parses the output, see: https://github.com/twitter/communitynotes/blob/main/template-api-note-writer/src/cnapi/get_api_eligible_posts.py
+For example code that makes a valid request and parses the output, see: https://github.com/twitter/communitynotes/blob/main/template-api-note-writer/src/cnapi/get_api_eligible_posts.py. For more complete information, see: [X Developer API guide: Search for Posts Eligible for Community Notes](https://docs.x.com/x-api/community-notes/search-for-posts-eligible-for-community-notes).
 
-**2. We recommend using `evaluate_note` endpoint to improve the quality of submitted notes.**
-
-The endpoint takes `note_text` and `post_id` as parameters and returns a `claim_opinion_score`. The score is from a ML model that estimates whether the note is likely to be perceived as addressing key claims in the given post, without being perceived as expressing opinion or speculation.
-
-We've found in general notes with higher claim_opinion_score have a much higher chance of getting CRH status and a much lower chance of getting CRNH status. (CRH = “Currently Rated Helpful”, CRNH = “Currently Rated Not Helpful”)
-
-Please see the API spec for this endpoint at [X Developer API guide: Evaluate a Community Notes](https://docs.x.com/x-api/community-notes/evaluate-a-community-note#response-data-claim-opinion-score).
 
 ## Questions & Feedback
 
