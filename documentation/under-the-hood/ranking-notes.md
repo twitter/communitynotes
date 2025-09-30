@@ -418,6 +418,9 @@ For not-helpful notes:
 
 ## What’s New?
 
+**Sep 30, 2025**
+- Introduce population sample filtering
+
 **June 30, 2025**
 - Introduce baseline rater independence intercept to check for consensus across independent raters.
 
