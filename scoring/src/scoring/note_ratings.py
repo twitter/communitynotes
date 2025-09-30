@@ -341,6 +341,11 @@ def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -
     ratings[[c.noteIdKey] + c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder]
   )
   ratingsToUse.loc[:, c.numRatingsKey] = 1
+  ratingsToUse.loc[:, c.numPopulationSampledRatingsKey] = 0
+  ratingsToUse.loc[
+    ratings[c.ratingSourceBucketedKey] == c.ratingSourcePopulationSampledValueTsv,
+    c.numPopulationSampledRatingsKey,
+  ] = 1
   ratingsToUse.loc[:, c.numRatingsLast28DaysKey] = False
   ratingsToUse.loc[ratings[c.createdAtMillisKey] > last28Days, c.numRatingsLast28DaysKey] = True
   noteStats = ratingsToUse.groupby(c.noteIdKey).sum()
@@ -362,6 +367,7 @@ def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -
       [
         c.numRatingsKey,
         c.numRatingsLast28DaysKey,
+        c.numPopulationSampledRatingsKey,
       ]
       + c.helpfulTagsTSVOrder
       + c.notHelpfulTagsTSVOrder
@@ -373,6 +379,7 @@ def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -
   columns = [
     c.numRatingsKey,
     c.numRatingsLast28DaysKey,
+    c.numPopulationSampledRatingsKey,
   ] + (c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder)
   noteStats = noteStats.fillna({col: 0 for col in columns})
   noteStats[columns] = noteStats[columns].astype(np.int64)
@@ -514,6 +521,78 @@ def get_note_counts_by_rater_sign(raterModelOutput, ratings):
   ].rename_axis(None, axis=1)
 
 
+def get_population_sampled_counts_by_rater_sign(raterModelOutput, ratings):
+  raterModelOutput[c.raterParticipantIdKey].astype(ratings[c.raterParticipantIdKey].dtype)
+
+  ratingsToUse = pd.DataFrame(
+    ratings[[c.noteIdKey, c.raterParticipantIdKey, c.ratingSourceBucketedKey]]
+  )
+  # Filter to population sampled ratings
+  ratingsToUse = ratingsToUse[
+    ratingsToUse[c.ratingSourceBucketedKey] == c.ratingSourcePopulationSampledValueTsv
+  ]
+
+  if len(ratingsToUse) == 0:
+    return pd.DataFrame(
+      {
+        c.noteIdKey: pd.Series([], dtype=np.int64),
+        c.negFactorPopulationSampledRatingCountKey: pd.Series([], dtype=np.int64),
+        c.posFactorPopulationSampledRatingCountKey: pd.Series([], dtype=np.int64),
+      }
+    )
+
+  raterModelOutputToUse = pd.DataFrame(
+    raterModelOutput[[c.raterParticipantIdKey, c.internalRaterFactor1Key]]
+  )
+  mergedRatings = ratingsToUse.merge(raterModelOutputToUse, on=c.raterParticipantIdKey)
+  origLength = len(mergedRatings)
+  mergedRatings = mergedRatings[mergedRatings[c.internalRaterFactor1Key].notna()]
+  logger.info(
+    f"dropped {origLength - len(mergedRatings)} out of {origLength} population sampled ratings due to NaN factor."
+  )
+
+  negFactorKey = "negFactor"
+  posFactorKey = "posFactor"
+  raterFactorBucketKey = "raterFactorBucket"
+
+  mergedRatings[raterFactorBucketKey] = np.where(
+    mergedRatings[c.internalRaterFactor1Key] < 0, negFactorKey, posFactorKey
+  )
+
+  counts = (
+    mergedRatings.groupby([c.noteIdKey, raterFactorBucketKey])
+    .size()
+    .unstack(fill_value=0)
+    .reset_index()
+  )
+  if negFactorKey not in counts.columns:
+    counts[negFactorKey] = 0
+  if posFactorKey not in counts.columns:
+    counts[posFactorKey] = 0
+
+  counts = counts.rename(
+    columns={
+      negFactorKey: c.negFactorPopulationSampledRatingCountKey,
+      posFactorKey: c.posFactorPopulationSampledRatingCountKey,
+    }
+  )
+
+  counts[c.negFactorPopulationSampledRatingCountKey] = counts[
+    c.negFactorPopulationSampledRatingCountKey
+  ].astype(np.int64)
+  counts[c.posFactorPopulationSampledRatingCountKey] = counts[
+    c.posFactorPopulationSampledRatingCountKey
+  ].astype(np.int64)
+
+  return counts[
+    [
+      c.noteIdKey,
+      c.negFactorPopulationSampledRatingCountKey,
+      c.posFactorPopulationSampledRatingCountKey,
+    ]
+  ]
+
+
 # TODO: compute_scored_notes is only called from matrix_factorization_scorer and the behavior is directly
 # coupled to the matrix_factorization_scorer results.  When we define a model object, this function should
 # become a member of matrix_factorization_scorer and the composure of "rules" should be explicitly factored
@@ -616,11 +695,41 @@ def compute_scored_notes(
     noteParamsColsToKeep.append(c.internalNoteInterceptNoHighVolKey)
   if crhThresholdNoCorrelated is not None:
     noteParamsColsToKeep.append(c.internalNoteInterceptNoCorrelatedKey)
+  if c.internalNoteInterceptPopulationSampledKey in noteParams.columns:
+    noteParamsColsToKeep.append(c.internalNoteInterceptPopulationSampledKey)
   noteStats = noteStats.merge(
     noteParams[noteParamsColsToKeep],
     on=c.noteIdKey,
     how="left",
     unsafeAllowed={"ratingCount_all", "ratingCount_neg_fac", "ratingCount_pos_fac"},
+  )
+
+  # Merge per-sign population sampled counts
+  popSampledCounts = get_population_sampled_counts_by_rater_sign(raterParams, ratings)
+  noteStats = noteStats.merge(
+    popSampledCounts,
+    on=c.noteIdKey,
+    how="left",
+    unsafeAllowed={
+      c.negFactorPopulationSampledRatingCountKey,
+      c.posFactorPopulationSampledRatingCountKey,
+    },
+  )
+
+  noteStats[
+    [
+      c.negFactorPopulationSampledRatingCountKey,
+      c.posFactorPopulationSampledRatingCountKey,
+    ]
+  ] = (
+    noteStats[
+      [
+        c.negFactorPopulationSampledRatingCountKey,
+        c.posFactorPopulationSampledRatingCountKey,
+      ]
+    ]
+    .fillna(0)
+    .astype(np.int64)
   )
 
   rules = [
@@ -817,6 +926,7 @@ def compute_scored_notes(
       c.posFactorMeanHelpfulNumKey,
       c.netMinHelpfulKey,
       c.netMinHelpfulRatioKey,
+      c.numPopulationSampledRatingsKey,
     ]
   )
 
