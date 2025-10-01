@@ -204,6 +204,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `notHelpfulOpinionSpeculation`           | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Opinion or speculation” is selected, else 0.               |
 | `notHelpfulNoteNotNeeded`                | Int    | User-entered checkbox in response to prompt “What was unhelpful about it?” (Check all that apply question type). New as of 2021-12-15                                                                               | 1 if “Note not needed on this Tweet” is selected, else 0.        |
 | `ratedOnTweetId`                         | Long   | The unique ID of the Tweet that the note was rated on (which, in the case of media notes, may not be the same Tweet as the note was originally written on). _New as of 2023-05-24_.                                 |
+| `ratingSourceBucketed`                         | String   | The source of the rating (ratings are population-sampled only if they are made in response to a "Needs Your Help" notification).  _New as of 2025-09-30_.                                 | "DEFAULT", "POPULATION_SAMPLED"
 
 ### User Enrollment
 

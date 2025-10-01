@@ -163,10 +163,23 @@ The model uses logistic regression to predict note status outcomes.
 The feature vectorization process involves both discretization and feature crosses, yielding a sparse representation and allowing the model to learn non-linear relationships.
 The model is calibrated to delay Helpful status for no more than 60% of notes that ultimately stabilize to Helpful status.
 
+**Population Sample Filtering**
+
+In general, it's very useful for contributors to be able to rate whatever notes they are interested in rating, and the scoring algorithm described on this page is designed to be robust to notes that get more ratings from contributors with one viewpoint than another. But in the event that ratings from users who self-selected whether to rate a particular note disagree substantially with ratings from users who were randomly sampled from the population (in that they were responding to randomly-sent notifications requesting their help to rate a particular note), then the ratings from the random population sample can override the self-selected raters.
+
+Each rating has an associated source which indicates whether a contributor rated a note after receiving a randomized notification where they were specifically asked to rate a particular note – these are considered population-sampled – or whether they discovered the note some other way (e.g. maybe they saw a proposed note on their For You page, or followed a link directly to the note, or found the note on one of the [timeline tabs](../under-the-hood/timeline-tabs.md) like "Needs your help" or "New").
+
+Then, for any note scored by the core model with at least 8 population-sampled ratings, a separate matrix factorization is run on just the population-sampled ratings, where we learn the note's population-sampled intercept score $i_{n}^{pop}$. If a note was otherwise going to be Currently Rated Helpful based on self-selected (default) raters, it will be filtered (assigned "Needs More Ratings" status) if:
+
+- The note's core population-sampled intercept is at least 0.15 less than the note's default core intercept ($i_{n}^{pop} < i_{n} - 0.15$)
+- The note's core population-sampled intercept is at most 0.3 ($i_{n}^{pop} <= 0.3$)
+- The note received at least 8 total population-sampled ratings from raters above the helpfulness score threshold, including at least two ratings from raters with $f_{u} < 0$ and at least two ratings from raters with $f_{u} > 0$.
+
+
 ## Tag Outlier Filtering
 
 In some cases, a note may appear helpful but miss key points about the tweet or lack sources.
-Reviewers who rate a note as "Not Helpful" can associate [tag](../contributing/examples.md) with their review to identify specific shortcomings of the note.
+Reviewers who rate a note as "Not Helpful" can associate [tags](../contributing/examples.md) with their review to identify specific shortcomings of the note.
 When a note has receives high levels of a "Not Helpful" tag, we require a higher intercept before rating the note as "Helpful".
 This approach helps us to maintain data quality by recognizing when there is a troubling pattern on an otherwise strong note.
 
@@ -404,6 +417,9 @@ For not-helpful notes:
 5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**Sep 30, 2025**
+- Introduce population sample filtering
 
 **June 30, 2025**
 - Introduce baseline rater independence intercept to check for consensus across independent raters.
