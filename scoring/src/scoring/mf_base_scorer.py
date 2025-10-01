@@ -18,7 +18,7 @@ from .reputation_matrix_factorization.diligence_model import (
   fit_low_diligence_model_final,
   fit_low_diligence_model_prescoring,
 )
-from .scorer import Scorer
+from .scorer import EmptyRatingException, Scorer
 
 import numpy as np
 import pandas as pd
@@ -196,6 +196,7 @@ class MFBaseScorer(Scorer):
     firmRejectThreshold: Optional[float] = None,
     minMinorityNetHelpfulRatings: Optional[int] = None,
     minMinorityNetHelpfulRatio: Optional[float] = None,
+    populationSampledRatingPerNoteLossRatio: Optional[float] = 10.0,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -234,6 +235,7 @@ class MFBaseScorer(Scorer):
       threads: number of threads to use for intra-op parallelism in pytorch
       maxFirstMFTrainError: maximum error allowed for the first MF training process
       maxFinalMFTrainError: maximum error allowed for the final MF training process
+      populationSampledRatingPerNoteLossRatio: optional override for ratingPerNoteLossRatio when computing the population sampled intercept
     """
     super().__init__(
       includedTopics=includedTopics,
@@ -276,6 +278,7 @@ class MFBaseScorer(Scorer):
     self._firmRejectThreshold = firmRejectThreshold
     self._minMinorityNetHelpfulRatings = minMinorityNetHelpfulRatings
     self._minMinorityNetHelpfulRatio = minMinorityNetHelpfulRatio
+    self._populationSampledRatingPerNoteLossRatio = populationSampledRatingPerNoteLossRatio
     mfArgs = dict(
       [
         pair
@@ -392,16 +395,29 @@ class MFBaseScorer(Scorer):
 
   def _get_dropped_note_cols(self) -> List[str]:
     """Returns a list of columns which should be excluded from scoredNotes and auxiliaryNoteInfo."""
+    dropped_cols = [
+      c.currentlyRatedHelpfulBoolKey,
+      c.currentlyRatedNotHelpfulBoolKey,
+      c.awaitingMoreRatingsBoolKey,
+      c.currentLabelKey,
+      c.classificationKey,
+      c.numRatingsKey,
+      c.noteAuthorParticipantIdKey,
+    ]
+
+    # only drop population sampled column if it's not mapped to an output column
+    note_col_mapping = self._get_note_col_mapping()
+    if c.internalNoteInterceptPopulationSampledKey not in note_col_mapping:
+      dropped_cols.extend(
+        [
+          c.internalNoteInterceptPopulationSampledKey,
+          c.negFactorPopulationSampledRatingCountKey,
+          c.posFactorPopulationSampledRatingCountKey,
+        ]
+      )
+
     return (
-      [
-        c.currentlyRatedHelpfulBoolKey,
-        c.currentlyRatedNotHelpfulBoolKey,
-        c.awaitingMoreRatingsBoolKey,
-        c.currentLabelKey,
-        c.classificationKey,
-        c.numRatingsKey,
-        c.noteAuthorParticipantIdKey,
-      ]
+      dropped_cols
       + c.helpfulTagsTSVOrder
       + c.notHelpfulTagsTSVOrder
       + c.noteParameterUncertaintyTSVAuxColumns
@@ -556,6 +572,12 @@ class MFBaseScorer(Scorer):
           ]
         ]
       )
+    if len(ratingsForTraining) == 0:
+      # This is only expected to occur for MFTopicScorer_MessiRonaldo in --recent runs
+      assert (
+        self.get_name() == "MFTopicScorer_MessiRonaldo"
+      ), f"Unexpected scorer: {self.get_name()}"
+      raise EmptyRatingException
     logger.info(
       f"ratingsForTraining summary {self.get_name()}: {get_df_fingerprint(ratingsForTraining, [c.noteIdKey, c.raterParticipantIdKey])}"
     )
@@ -629,6 +651,7 @@ class MFBaseScorer(Scorer):
             ]
             + c.notHelpfulTagsTSVOrder
             + c.helpfulTagsTSVOrder
+            + [c.ratingSourceBucketedKey]
           ],
           keep_columns(
             noteParamsUnfiltered,
@@ -636,6 +659,7 @@ class MFBaseScorer(Scorer):
               c.noteIdKey,
               c.internalNoteInterceptKey,
               c.internalNoteFactor1Key,
+              c.internalNoteInterceptPopulationSampledKey,
             ]
             + c.noteParameterUncertaintyTSVColumns,
           ),
@@ -700,6 +724,11 @@ class MFBaseScorer(Scorer):
         )
       if self._saveIntermediateState:
         self.validRatings = validRatings
+
+      if len(validRatings) == 0:
+        # This is only expected for MFGroupScorer_33 on --recent runs.
+        assert self.get_name() == "MFGroupScorer_33", f"Unexpected scorer: {self.get_name()}"
+        raise EmptyRatingException
 
       # Assigns contributor (author & rater) helpfulness bit based on (1) performance
       # authoring and reviewing previous and current notes.
@@ -895,6 +924,7 @@ class MFBaseScorer(Scorer):
         ]
         + c.notHelpfulTagsTSVOrder
         + c.helpfulTagsTSVOrder
+        + [c.ratingSourceBucketedKey]
       ],
       keep_columns(
         noteParamsUnfiltered,
@@ -902,6 +932,7 @@ class MFBaseScorer(Scorer):
           c.noteIdKey,
           c.internalNoteInterceptKey,
           c.internalNoteFactor1Key,
+          c.internalNoteInterceptPopulationSampledKey,
         ]
         + c.noteParameterUncertaintyTSVColumns,
       ),
@@ -971,29 +1002,48 @@ class MFBaseScorer(Scorer):
       ]
     )
 
-    raterModelOutput = raterParams.merge(
-      helpfulnessScores[
-        [
-          c.raterParticipantIdKey,
-          c.crhCrnhRatioDifferenceKey,
-          c.meanNoteScoreKey,
-          c.raterAgreeRatioKey,
-          c.aboveHelpfulnessThresholdKey,
-          c.successfulRatingHelpfulCount,
-          c.successfulRatingNotHelpfulCount,
-          c.unsuccessfulRatingHelpfulCount,
-          c.unsuccessfulRatingNotHelpfulCount,
-          c.totalHelpfulHarassmentRatingsPenaltyKey,
-          c.raterAgreeRatioWithHarassmentAbusePenaltyKey,
-        ]
-      ],
-      on=c.raterParticipantIdKey,
-      how="outer",
-    ).merge(
-      userIncorrectTagUsageDf,
-      on=c.raterParticipantIdKey,
-      how="left",
-      unsafeAllowed={c.totalRatingsMadeByRaterKey, c.incorrectTagRatingsMadeByRaterKey},
+    raterModelOutput = (
+      raterParams.merge(
+        helpfulnessScores[
+          [
+            c.raterParticipantIdKey,
+            c.crhCrnhRatioDifferenceKey,
+            c.meanNoteScoreKey,
+            c.raterAgreeRatioKey,
+            c.aboveHelpfulnessThresholdKey,
+            c.successfulRatingHelpfulCount,
+            c.successfulRatingNotHelpfulCount,
+            c.unsuccessfulRatingHelpfulCount,
+            c.unsuccessfulRatingNotHelpfulCount,
+            c.totalHelpfulHarassmentRatingsPenaltyKey,
+            c.raterAgreeRatioWithHarassmentAbusePenaltyKey,
+          ]
+        ],
+        on=c.raterParticipantIdKey,
+        how="outer",
+      )
+      .merge(
+        userIncorrectTagUsageDf,
+        on=c.raterParticipantIdKey,
+        how="left",
+        unsafeAllowed={c.totalRatingsMadeByRaterKey, c.incorrectTagRatingsMadeByRaterKey},
+      )
+      .merge(
+        raterParamsUnfiltered[
+          [
+            c.raterParticipantIdKey,
+            c.internalRaterInterceptKey,
+            c.internalRaterFactor1Key,
+          ]
+        ].rename(
+          columns={
+            c.internalRaterInterceptKey: c.internalFirstRoundRaterInterceptKey,
+            c.internalRaterFactor1Key: c.internalFirstRoundRaterFactor1Key,
+          }
+        ),
+        on=c.raterParticipantIdKey,
+        how="left",
+      )
     )
 
     noteModelOutput = noteParams
@@ -1015,6 +1065,8 @@ class MFBaseScorer(Scorer):
     flipFactorsForIdentification: bool = False,
     noteScoresNoHighVol: Optional[pd.DataFrame] = None,
     noteScoresNoCorrelated: Optional[pd.DataFrame] = None,
+    noteScoresPopulationSampled: Optional[pd.DataFrame] = None,
+    ratingPerNoteLossRatio: Optional[float] = None,
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Run the "final" matrix factorization scoring algorithm.
     Accepts prescoring's output as its input, as well as the new ratings and note status history.
@@ -1028,6 +1080,7 @@ class MFBaseScorer(Scorer):
       noteStatusHistory (pd.DataFrame): one row per note; history of when note had each status
       prescoringNoteModelOutput (pd.DataFrame): note parameters.
       prescoringRaterModelOutput (pd.DataFrame): contains both rater parameters and helpfulnessScores.
+      ratingPerNoteLossRatio (Optional[float]): optional override for ratingPerNoteLossRatio for MF run
     Returns:
       Tuple[pd.DataFrame, pd.DataFrame]:
         noteScores pd.DataFrame: one row per note contained note scores and parameters.
@@ -1092,8 +1145,14 @@ class MFBaseScorer(Scorer):
         globalInterceptInit=prescoringMetaScorerOutput.globalIntercept,
         freezeRaterParameters=True,
         freezeGlobalParameters=True,
-        ratingPerNoteLossRatio=prescoringMetaScorerOutput.finalRoundNumRatings
-        / prescoringMetaScorerOutput.finalRoundNumNotes,
+        ratingPerNoteLossRatio=(
+          ratingPerNoteLossRatio
+          if ratingPerNoteLossRatio is not None
+          else (
+            prescoringMetaScorerOutput.finalRoundNumRatings
+            / prescoringMetaScorerOutput.finalRoundNumNotes
+          )
+        ),
         flipFactorsForIdentification=flipFactorsForIdentification,
         run_name=f"{self.get_name()}/final_helpfulness_filtered_mf",
       )
@@ -1162,6 +1221,11 @@ class MFBaseScorer(Scorer):
       noteParams = noteParams.merge(noteScoresNoHighVol, on=c.noteIdKey, how="left")
     if noteScoresNoCorrelated is not None:
       noteParams = noteParams.merge(noteScoresNoCorrelated, on=c.noteIdKey, how="left")
+    if noteScoresPopulationSampled is not None:
+      noteParams = noteParams.merge(noteScoresPopulationSampled, on=c.noteIdKey, how="left")
+    else:
+      # Ensure population sampled column exists even when not computed, filled with NaN
+      noteParams[c.internalNoteInterceptPopulationSampledKey] = np.nan
 
     # Assigns updated CRH / CRNH bits to notes based on volume of prior ratings
     # and ML output.
@@ -1344,6 +1408,52 @@ class MFBaseScorer(Scorer):
       noteScoresNoCorrelated[c.noteIdKey] = []
       noteScoresNoCorrelated[c.internalNoteInterceptNoCorrelatedKey] = []
 
+    # Separate population sampled ratings
+    if (
+      c.ratingSourceBucketedKey in ratings.columns
+      and (ratings[c.ratingSourceBucketedKey] == c.ratingSourcePopulationSampledValueTsv).sum() > 0
+    ):
+      populationSampledRatings = ratings[
+        ratings[c.ratingSourceBucketedKey] == c.ratingSourcePopulationSampledValueTsv
+      ]
+      logger.info(
+        f"Total Ratings vs Population Sampled Ratings ({self.get_name()}): {len(ratings)} vs {len(populationSampledRatings)}"
+      )
+
+      noteScoresPopulationSampled, _ = self._score_notes_and_users(
+        ratings=populationSampledRatings,
+        noteStatusHistory=noteStatusHistory,
+        prescoringNoteModelOutput=prescoringNoteModelOutput,
+        prescoringRaterModelOutput=prescoringRaterModelOutput,
+        prescoringMetaScorerOutput=prescoringMetaScorerOutput,
+        ratingPerNoteLossRatio=self._populationSampledRatingPerNoteLossRatio,
+      )
+      logger.info(
+        f"noteScoresPopulationSampled Summary {self.get_name()}: length ({len(noteScoresPopulationSampled)}), cols ({', '.join(noteScoresPopulationSampled.columns)})"
+      )
+      if len(noteScoresPopulationSampled) > 0:
+        noteScoresPopulationSampled = noteScoresPopulationSampled[
+          [c.noteIdKey, c.internalNoteInterceptKey]
+        ].rename(
+          columns={
+            c.internalNoteInterceptKey: c.internalNoteInterceptPopulationSampledKey,
+          }
+        )
+      else:
+        # In case of low volumes, ensure that the dataframe contains the expected columns downstream
+        logger.info(f"Imputing expected columns for population sampled ({self.get_name()})")
+        noteScoresPopulationSampled = pd.DataFrame(
+          {
+            c.noteIdKey: pd.array([], dtype=np.int64),
+            c.internalNoteInterceptPopulationSampledKey: pd.array([], dtype=np.float64),
+          }
+        )
+    else:
+      logger.info(
+        f"No population sampled ratings found for {self.get_name()}, skipping population sampled computation"
+      )
+      noteScoresPopulationSampled = None
+
     noteScores, userScores = self._score_notes_and_users(
       ratings=ratings,
       noteStatusHistory=noteStatusHistory,
@@ -1353,6 +1463,7 @@ class MFBaseScorer(Scorer):
       flipFactorsForIdentification=False,
       noteScoresNoHighVol=noteScoresNoHighVol,
       noteScoresNoCorrelated=noteScoresNoCorrelated,
+      noteScoresPopulationSampled=noteScoresPopulationSampled,
     )
     logger.info(
       f"noteScores Summary {self.get_name()}: length ({len(noteScores)}), cols ({', '.join(noteScores.columns)})"

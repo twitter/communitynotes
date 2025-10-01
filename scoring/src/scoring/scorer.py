@@ -266,6 +266,21 @@ class Scorer(ABC):
     Runs initial rounds of the matrix factorization scoring algorithm and returns intermediate
     output that can be used to initialize and reduce the runtime of final scoring.
     """
+    emptyModelResult = ModelResult(
+      pd.DataFrame(columns=self.get_internal_scored_notes_cols()),
+      (
+        pd.DataFrame(columns=self.get_internal_helpfulness_scores_cols())
+        if self.get_internal_helpfulness_scores_cols()
+        else None
+      ),
+      (
+        pd.DataFrame(columns=self.get_auxiliary_note_info_cols())
+        if self.get_auxiliary_note_info_cols()
+        else None
+      ),
+      self.get_name(),
+      None,
+    )
     torch.set_num_threads(self._threads)
     logger.info(
       f"prescore: Torch intra-op parallelism for {self.get_name()} set to: {torch.get_num_threads()}"
@@ -284,7 +299,8 @@ class Scorer(ABC):
             c.createdAtMillisKey,
           ]
           + c.notHelpfulTagsTSVOrder
-          + c.helpfulTagsTSVOrder,
+          + c.helpfulTagsTSVOrder
+          + [c.ratingSourceBucketedKey],
         ),
         scoringArgs.noteStatusHistory,
         scoringArgs.userEnrollment,
@@ -297,25 +313,15 @@ class Scorer(ABC):
 
       # If there are no ratings left after filtering, then return empty dataframes.
       if len(ratings) == 0:
-        return ModelResult(
-          pd.DataFrame(columns=self.get_internal_scored_notes_cols()),
-          (
-            pd.DataFrame(columns=self.get_internal_helpfulness_scores_cols())
-            if self.get_internal_helpfulness_scores_cols()
-            else None
-          ),
-          (
-            pd.DataFrame(columns=self.get_auxiliary_note_info_cols())
-            if self.get_auxiliary_note_info_cols()
-            else None
-          ),
-          self.get_name(),
-          None,
-        )
+        return emptyModelResult
 
-    noteScores, userScores, metaScores = self._prescore_notes_and_users(
-      ratings, noteStatusHistory, scoringArgs.userEnrollment
-    )
+    try:
+      noteScores, userScores, metaScores = self._prescore_notes_and_users(
+        ratings, noteStatusHistory, scoringArgs.userEnrollment
+      )
+    except EmptyRatingException:
+      logger.info(f"EmptyRatingException raised from {self.get_name()}.")
+      return emptyModelResult
 
     # Returning should remove references to ratings, but manually trigger GC just to reclaim
     # resources as soon as possible.
@@ -379,6 +385,12 @@ class Scorer(ABC):
     prescoringRaterModelOutput = scoringArgs.prescoringRaterModelOutput[
       scoringArgs.prescoringRaterModelOutput[c.scorerNameKey] == self.get_name()
     ].drop(columns=c.scorerNameKey, inplace=False)
+
+    if len(prescoringRaterModelOutput) == 0:
+      logger.info(
+        f"Scorer {self.get_name()} has no raters in prescoringRaterModelOutput; returning empty scores from final scoring."
+      )
+      return self._return_empty_final_scores()
 
     if self.get_name() not in scoringArgs.prescoringMetaOutput.metaScorerOutput:
       logger.info(

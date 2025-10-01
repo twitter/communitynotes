@@ -55,7 +55,13 @@ class BiasedMatrixFactorization(torch.nn.Module):
     torch.nn.init.xavier_uniform_(self.note_factors.weight)
     self.user_intercepts.weight.data.fill_(0.0)
     self.note_intercepts.weight.data.fill_(0.0)
-    self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    self.device = torch.device(
+      "cuda:0"
+      if torch.cuda.is_available()
+      else "mps"
+      if torch.backends.mps.is_available()
+      else "cpu"
+    )
 
   def forward(self, data: ModelData):
     """

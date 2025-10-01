@@ -42,6 +42,7 @@ class RuleID(Enum):
   RATER_BALANCE = RuleAndVersion("RaterBalance", "1.0", False)
   NO_HIGH_VOL_INTERCEPT = RuleAndVersion("NoHighVolIntercept", "1.0", False)
   NO_CORRELATED_INTERCEPT = RuleAndVersion("NoCorrelatedIntercept", "1.0", False)
+  POPULATION_SAMPLED_INTERCEPT = RuleAndVersion("PopulationSampledIntercept", "1.0", False)
 
   # Rules used in _meta_score.
   META_INITIAL_NMR = RuleAndVersion("MetaInitialNMR", "1.0", False)
@@ -596,6 +597,118 @@ class NoCorrelatedIntercept(ScoringRule):
     logger.info(
       f"Total notes impacted by NoCorrelated intercept requirement: {len(noteStatusUpdates)}"
     )
+    noteStatusUpdates[statusColumn] = self._status
+
+    return (noteStatusUpdates, None)
+
+
+class PopulationSampledIntercept(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    status: str,
+    minPopulationSampledRatings: int,
+    maxNoteInterceptThreshold: float = 0.30,
+    divergenceThreshold: float = 0.15,
+    minPerSignPopulationSampledRatings: int = 2,
+  ):
+    """Block CRH when population sampled intercept diverges significantly from regular intercept.
+
+    This rule prevents notes from achieving CRH status when there's significant
+    disagreement between all raters and population sampled raters, indicating
+    potential manipulation. This rule is currently limited to only  core
+    model results.
+
+    Args:
+      ruleID: enum corresponding to rule name and version
+      dependencies: Rules which must run before this rule
+      status: the status which each note should be set to when they diverge (e.g. NMR)
+      minPopulationSampledRatings: minimum number of ratings in population sampled to apply this rule
+      divergenceThreshold: minimum difference between intercepts to block a note from going CRH
+      crhThreshold: minimum intercept for notes to generally achieve CRH status
+    """
+    super().__init__(ruleID, dependencies)
+    self._status = status
+    self._minPopulationSampledRatings = minPopulationSampledRatings
+    self._divergenceThreshold = divergenceThreshold
+    self._maxNoteInterceptThreshold = maxNoteInterceptThreshold
+    self._minPerSignPopulationSampledRatings = minPerSignPopulationSampledRatings
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
+    """Block notes from CRH when population sampled intercept diverges from main intercept."""
+    # Check if this rule applies by looking for core-specific population sampled column
+    if c.coreNoteInterceptPopulationSampledKey not in noteStats.columns:
+      logger.info(
+        f"PopulationSampledIntercept rule skipped: {c.coreNoteInterceptPopulationSampledKey} column not present (not enough core model context)"
+      )
+      # Return empty updates - rule doesn't apply in this context
+      return (pd.DataFrame({c.noteIdKey: [], statusColumn: []}), None)
+
+    # Require per-sign population sampled counts from core model
+    if not (
+      (c.coreNegFactorPopulationSampledRatingCountKey in noteStats.columns)
+      and (c.corePosFactorPopulationSampledRatingCountKey in noteStats.columns)
+    ):
+      logger.info(
+        "PopulationSampledIntercept rule skipped: core per-sign population sampled rating counts not present"
+      )
+      return (pd.DataFrame({c.noteIdKey: [], statusColumn: []}), None)
+
+    # Only apply to notes on track for CRH
+    candidateNotes = currentLabels[currentLabels[statusColumn] == c.currentlyRatedHelpful][
+      [c.noteIdKey]
+    ]
+    noteStats = noteStats.merge(candidateNotes, on=c.noteIdKey, how="inner")
+
+    # Only consider notes with both core and population sampled intercepts available and have enough population sampled ratings
+    before_filter = len(noteStats)
+    noteStats = noteStats.dropna(
+      subset=[c.coreNoteInterceptKey, c.coreNoteInterceptPopulationSampledKey]
+    )
+
+    noteStats = noteStats.copy()
+    noteStats["totalPopulationSampledRatings"] = (
+      noteStats[c.coreNegFactorPopulationSampledRatingCountKey]
+      + noteStats[c.corePosFactorPopulationSampledRatingCountKey]
+    )
+    noteStats = noteStats[
+      noteStats["totalPopulationSampledRatings"] >= self._minPopulationSampledRatings
+    ]
+
+    noteStats = noteStats[
+      (
+        noteStats[c.coreNegFactorPopulationSampledRatingCountKey]
+        >= self._minPerSignPopulationSampledRatings
+      )
+      & (
+        noteStats[c.corePosFactorPopulationSampledRatingCountKey]
+        >= self._minPerSignPopulationSampledRatings
+      )
+    ]
+    after_filter = len(noteStats)
+
+    logger.info(
+      f"Population sampled divergence check: {after_filter}/{before_filter} notes have both core and population sampled intercepts"
+    )
+
+    # Compare the core intercept with the core population sampled intercept
+    noteStats["populationSampledInterceptDiff"] = (
+      noteStats[c.coreNoteInterceptKey] - noteStats[c.coreNoteInterceptPopulationSampledKey]
+    )
+
+    # Identify notes where the population sampled intercept is below the max note intercept threshold
+    # and also diverges from the core intercept by at least the divergence threshold.
+    notesWithLowPopulationSampledIntercept = noteStats.loc[
+      (noteStats[c.coreNoteInterceptPopulationSampledKey] < self._maxNoteInterceptThreshold)
+      & (noteStats["populationSampledInterceptDiff"] >= self._divergenceThreshold)
+    ]
+
+    noteStatusUpdates = notesWithLowPopulationSampledIntercept[[c.noteIdKey]].copy()
+
+    logger.info(f"Notes blocked due to low population sampled intercept: {len(noteStatusUpdates)}")
     noteStatusUpdates[statusColumn] = self._status
 
     return (noteStatusUpdates, None)

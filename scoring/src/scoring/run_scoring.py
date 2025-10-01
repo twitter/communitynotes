@@ -399,6 +399,7 @@ def _save_dfs_to_shared_memory(
         c.createdAtMillisKey,
         c.highVolumeRaterKey,
         c.correlatedRaterKey,
+        c.ratingSourceBucketedKey,
       ]
       + c.notHelpfulTagsTSVOrder
       + c.helpfulTagsTSVOrder,
@@ -609,6 +610,7 @@ def combine_final_scorer_results(
       modelResult.scoredNotes,
       modelResult.auxiliaryNoteInfo,
     )
+
   scoredNotes = coalesce_group_model_scored_notes(scoredNotes)
   scoredNotes = coalesce_multi_group_model_scored_notes(scoredNotes)
   scoredNotes = coalesce_topic_models(scoredNotes)
@@ -705,7 +707,14 @@ def meta_score(
     assert len(scoredNotes) == len(auxiliaryNoteInfo)
     scoredNotes = scoredNotes.merge(
       auxiliaryNoteInfo[
-        [c.noteIdKey, c.currentLabelKey] + c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder
+        [
+          c.noteIdKey,
+          c.currentLabelKey,
+          c.coreNegFactorPopulationSampledRatingCountKey,
+          c.corePosFactorPopulationSampledRatingCountKey,
+        ]
+        + c.helpfulTagsTSVOrder
+        + c.notHelpfulTagsTSVOrder
       ],
       on=c.noteIdKey,
     )
@@ -834,6 +843,19 @@ def meta_score(
             topic,
           )
         )
+
+    rules.append(
+      scoring_rules.PopulationSampledIntercept(
+        RuleID.POPULATION_SAMPLED_INTERCEPT,
+        {RuleID.CORE_MODEL},
+        c.needsMoreRatings,
+        minPopulationSampledRatings=8,
+        maxNoteInterceptThreshold=0.30,
+        divergenceThreshold=0.15,
+        minPerSignPopulationSampledRatings=2,
+      )
+    )
+
     if enableNmrDueToMinStableCrhTime:
       rules.append(
         scoring_rules.NmrDueToMinStableCrhTime(
@@ -841,6 +863,7 @@ def meta_score(
           {RuleID.CORE_MODEL},
         )
       )
+
     rules.extend(
       [
         scoring_rules.ScoringDriftGuard(
@@ -946,6 +969,7 @@ def _compute_note_stats(
       c.createdAtMillisKey,
       c.numRatingsLast28DaysKey,
       c.currentLabelKey,
+      c.numPopulationSampledRatingsKey,
     ]
     + (c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder)
   ]
@@ -1784,6 +1808,17 @@ def run_final_note_scoring(
   )
 
   scoredNotes, auxiliaryNoteInfo = combine_final_scorer_results(modelResults, noteStatusHistory)
+
+  # Fill NaN values in core population sampled columns after merging all scorer results
+  population_sampled_rating_count_cols = [
+    c.coreNegFactorPopulationSampledRatingCountKey,
+    c.corePosFactorPopulationSampledRatingCountKey,
+  ]
+
+  for col in population_sampled_rating_count_cols:
+    if col in auxiliaryNoteInfo.columns:
+      auxiliaryNoteInfo[col] = auxiliaryNoteInfo[col].fillna(0).astype(np.int64)
+
   scoredNotes = scoredNotes.merge(pflipPredictions, how="left")
   scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo = post_note_scoring(
     scorers,
@@ -1924,6 +1959,7 @@ def post_note_scoring(
     scoredNotes[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = newNoteStatusHistory[
       c.timestampMillisOfNmrDueToMinStableCrhTimeKey
     ]
+
     scoredNotes = _add_deprecated_columns(scoredNotes)
     scoredNotes = scoredNotes.drop(columns=PFLIP_LABEL)
     if strictColumns:
