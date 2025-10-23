@@ -47,7 +47,9 @@ No. Neither the existence of a callout, nor ratings, affect a post’s reach or 
 
 **What determines whether a callout is on a post?**
 
-Callouts appear based on early and limited Like signals on the post. The existence of a callout does not imply that a post was in fact liked by people from different perspectives, nor does it imply that other posts are not. We expect this approach to evolve and improve over time. The aim of the pilot test is to gather feedback and develop an open-source algorithm to identify notes that are found helpful from people with different perspectives.
+Callouts appear based on early and limited signals on the post: whether the post has received Likes from people with different perspectives, and whether or not a significant proportion of replies are negative sentiment (a very basic proxy for potential dislikes). Additionally, to help ensure that it’s noteworthy and interesting that a post is liked by people from different perspectives (vs, say, a cute video of cats that might be more obviously widely liked) posts currently only receive a callout if a topic classifier identifies them as related to politics. We aim to expand the set of posts over time, and expect the approach to generating callouts to evolve and improve with feedback throughout the course of the pilot.
+
+The existence of a callout does not imply that a post was in fact liked by people from different perspectives, nor does it imply that other posts are not. The aim of the pilot test is to gather feedback and develop an open-source algorithm to identify notes that are found helpful from people with different perspectives.
 
 **How can I provide feedback?**
 
