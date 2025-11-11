@@ -72,6 +72,9 @@ class Scorer(ABC):
   def get_name(self):
     return str(type(self))
 
+  def get_prescoring_name(self):
+    return str(type(self))
+
   @abstractmethod
   def get_scored_notes_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the scoredNotes output."""
@@ -377,27 +380,29 @@ class Scorer(ABC):
     # Filter unfiltered params to just params for this scorer (with copy).
     # Avoid editing the dataframe in FinalScoringArgs, which is shared across scorers.
     prescoringNoteModelOutput = scoringArgs.prescoringNoteModelOutput[
-      scoringArgs.prescoringNoteModelOutput[c.scorerNameKey] == self.get_name()
+      scoringArgs.prescoringNoteModelOutput[c.scorerNameKey] == self.get_prescoring_name()
     ].drop(columns=c.scorerNameKey, inplace=False)
 
     if scoringArgs.prescoringRaterModelOutput is None:
       return self._return_empty_final_scores()
     prescoringRaterModelOutput = scoringArgs.prescoringRaterModelOutput[
-      scoringArgs.prescoringRaterModelOutput[c.scorerNameKey] == self.get_name()
+      scoringArgs.prescoringRaterModelOutput[c.scorerNameKey] == self.get_prescoring_name()
     ].drop(columns=c.scorerNameKey, inplace=False)
 
     if len(prescoringRaterModelOutput) == 0:
       logger.info(
-        f"Scorer {self.get_name()} has no raters in prescoringRaterModelOutput; returning empty scores from final scoring."
+        f"Scorer {self.get_prescoring_name()} has no raters in prescoringRaterModelOutput; returning empty scores from final scoring."
       )
       return self._return_empty_final_scores()
 
-    if self.get_name() not in scoringArgs.prescoringMetaOutput.metaScorerOutput:
+    if self.get_prescoring_name() not in scoringArgs.prescoringMetaOutput.metaScorerOutput:
       logger.info(
-        f"Scorer {self.get_name()} not found in prescoringMetaOutput; returning empty scores from final scoring."
+        f"Scorer {self.get_prescoring_name()} not found in prescoringMetaOutput; returning empty scores from final scoring."
       )
       return self._return_empty_final_scores()
-    prescoringMetaScorerOutput = scoringArgs.prescoringMetaOutput.metaScorerOutput[self.get_name()]
+    prescoringMetaScorerOutput = scoringArgs.prescoringMetaOutput.metaScorerOutput[
+      self.get_prescoring_name()
+    ]
 
     # Filter raw input
     with self.time_block("Filter input"):

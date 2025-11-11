@@ -399,7 +399,22 @@ class MatrixFactorization:
       loss = self.criterion(y_pred, self.trainModelData.rating_labels).mean()
     regularizationLoss = self._get_reg_loss()
     loss += regularizationLoss
-    assert not torch.isnan(loss).any()
+    if torch.isnan(loss).any():
+      logger.info(f"NaN loss detected at epoch {epoch}, re-initializing model")
+      # Re-initialize model with stable seed
+      if isinstance(self._lossModule, NormalizedLoss):
+        self._create_mf_model(None, self.userInit, None)
+      else:
+        self._create_mf_model(self.noteInit, self.userInit, self.globalInterceptInit)
+      # Compute loss with the fresh model to maintain gradient connectivity
+      y_pred = self.mf_model(self.trainModelData)
+      if self._lossModule is not None:
+        loss = self._lossModule(y_pred)
+      else:
+        assert self.trainModelData is not None
+        loss = self.criterion(y_pred, self.trainModelData.rating_labels).mean()
+      regularizationLoss = self._get_reg_loss()
+      loss += regularizationLoss
     return loss
 
   def _get_reg_loss(self):
@@ -485,6 +500,8 @@ class MatrixFactorization:
 
       # Backpropagate
       loss.backward()
+      # clip gradients to improve numerical stability
+      torch.nn.utils.clip_grad_norm_(self.mf_model.parameters(), max_norm=1.0)
 
       # Update the parameters
       self.optimizer.step()
@@ -595,7 +612,9 @@ class MatrixFactorization:
     self._ratingPerUserLossRatio = ratingPerUserLossRatio
 
     self._initialize_note_and_rater_id_maps(ratings)
-
+    self.noteInit = noteInit
+    self.userInit = userInit
+    self.globalInterceptInit = globalInterceptInit
     self._create_mf_model(noteInit, userInit, globalInterceptInit)
     assert self.mf_model is not None
 

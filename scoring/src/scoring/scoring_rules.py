@@ -75,6 +75,7 @@ class RuleID(Enum):
   INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
   SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
   NMR_DUE_TO_MIN_STABLE_CRH_TIME = RuleAndVersion("NmrDueToMinStableCrhTime", "1.0", False)
+  GAUSSIAN_MODEL = RuleAndVersion("GaussianModel", "1.0", False)
 
   def get_name(self) -> str:
     """Returns a string combining the name and version to uniquely name the logic of the ScoringRule."""
@@ -1249,6 +1250,101 @@ class ApplyNMRGroupModelResult(ScoringRule):
 
     # Set note status and return
     noteStatusUpdates[statusColumn] = c.needsMoreRatings
+
+    return (noteStatusUpdates, None)
+
+
+class ApplyCoverageModelResult(ScoringRule):
+  def __init__(
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    sourceColumn: str,
+    checkFirmReject: bool = False,
+    minSafeguardThreshold: Optional[float] = None,
+  ):
+    """Set the note status from sourceColumn when status is CRH and note is not already CRH
+    and note is not firm reject or CRNH in core/expansion
+
+    Args:
+      rule: enum corresponding to a namedtuple defining a rule name and version string for the ScoringRule.
+      dependencies: Rules which must run before this rule can run.
+      sourceColumn: column containing note status (CRH, CRNH, NMR) to propagate to output,
+    """
+    super().__init__(ruleID, dependencies)
+    self._sourceColumn = sourceColumn
+    self._checkFirmReject = checkFirmReject
+    self._minSafeguardThreshold = minSafeguardThreshold
+
+  def score_notes(
+    self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
+  ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
+    """Flip notes from NMR to CRH based on source models and subject to core/expansion model safeguards."""
+    # Identify notes blocked from CRH status due to FR/CRNH status in core or expansion
+    if self._checkFirmReject:
+      coreRejects = noteStats[c.coreRatingStatusKey].isin(
+        {c.firmReject, c.currentlyRatedNotHelpful}
+      )
+      expansionRejects = noteStats[c.expansionRatingStatusKey].isin(
+        {c.firmReject, c.currentlyRatedNotHelpful}
+      )
+      blocked = coreRejects | (noteStats[c.coreRatingStatusKey].isna() & expansionRejects)
+      noteStats = noteStats[~blocked]
+    # Generate the set of note status updates
+    probationaryCRHOrNYHNotes = noteStats[
+      (noteStats[self._sourceColumn].isin({c.currentlyRatedHelpful, c.needsYourHelp}))
+    ][[c.noteIdKey, self._sourceColumn]]
+    # Identify notes which are currently NMR or NYH.
+    currentNMROrNYHNotes = currentLabels[
+      currentLabels[statusColumn].isin({c.needsMoreRatings, c.needsYourHelp})
+    ][[c.noteIdKey, statusColumn]]
+    # Identify candidate note status updates.  This requires pruning to notes that have a NMR->NYH, NMR->CRH
+    # or NYH->CRH transition - in other words dropping NYH->NYH transitions.
+    noteStatusUpdates = probationaryCRHOrNYHNotes.merge(
+      currentNMROrNYHNotes, on=c.noteIdKey, how="inner"
+    )
+    noteStatusUpdates = noteStatusUpdates[
+      (noteStatusUpdates[self._sourceColumn] != c.needsYourHelp)
+      | (noteStatusUpdates[statusColumn] != c.needsYourHelp)
+    ][[c.noteIdKey, self._sourceColumn]]
+
+    if self._minSafeguardThreshold is not None:
+      # If necessary, identify notes which pass score bound checks for expansion and core models.
+
+      noteStats = noteStats[
+        [c.noteIdKey, c.coreNoteInterceptKey, c.expansionNoteInterceptKey]
+      ].copy()
+      noteStats["core"] = noteStats[c.coreNoteInterceptKey] > self._minSafeguardThreshold
+
+      noteStats.loc[noteStats[c.coreNoteInterceptKey].isna(), "core"] = np.nan
+      noteStats["expansion"] = noteStats[c.expansionNoteInterceptKey] > self._minSafeguardThreshold
+
+      noteStats.loc[noteStats[c.expansionNoteInterceptKey].isna(), "expansion"] = np.nan
+
+      # Prioritize core over expansion intercepts when available
+      def _get_value(row):
+        idx = row.first_valid_index()
+        # If either core or expansion had an intercept then return whether it was in the valid
+        # range.  If neither had an intercept, return False.  Preference is given to core due
+        # to the ordering when selecting columns from noteStats below.
+        if idx is None:
+          return False
+        elif row[idx] == 1.0:
+          return True
+        elif row[idx] == 0.0:
+          return False
+        else:
+          assert False, f"unexpected value: {row[idx]}"
+
+      with c.time_block("Get value apply for source model"):
+        noteStats["actionable"] = noteStats[["core", "expansion"]].apply(_get_value, axis=1)
+
+      # Filter set of note status updates to only include actionable notes
+      actionableNotes = noteStats[noteStats["actionable"]][[c.noteIdKey]]
+      noteStatusUpdates = noteStatusUpdates.merge(actionableNotes, on=c.noteIdKey, how="inner")
+
+    # Set note status and return
+    noteStatusUpdates = noteStatusUpdates.rename(columns={self._sourceColumn: statusColumn})
 
     return (noteStatusUpdates, None)
 

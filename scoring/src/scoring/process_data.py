@@ -50,6 +50,17 @@ def read_from_strings(
   return notes, ratings, noteStatusHistory
 
 
+def read_prescoring_from_strings(
+  noteModelOutputDataStr: str, raterModelOutputDataStr: str
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+  noteModelOutput = pd.read_csv(
+    StringIO(noteModelOutputDataStr), sep="\t", dtype=c.noteModelOutputTSVTypeMapping
+  )
+  raterModelOutput = pd.read_csv(StringIO(raterModelOutputDataStr), sep="\t")
+
+  return noteModelOutput, raterModelOutput
+
+
 def tsv_parser(
   rawTSV: str,
   mapping: Dict[str, type],
@@ -478,6 +489,8 @@ def preprocess_data(
     ratings = remove_duplicate_ratings(ratings)
     ratings = compute_helpful_num(ratings)
     ratings = tag_high_volume_raters(ratings)
+    ratings[c.ratingSourceBucketedKey] = ratings[c.ratingSourceBucketedKey].astype("category")
+    ratings[c.helpfulnessLevelKey] = ratings[c.helpfulnessLevelKey].astype("category")
 
   if ratingsOnly:
     return pd.DataFrame(), ratings, pd.DataFrame()

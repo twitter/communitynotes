@@ -57,6 +57,9 @@ class ReputationScorer(Scorer):
   def get_name(self):
     return "ReputationScorer"
 
+  def get_prescoring_name(self):
+    return "ReputationScorer"
+
   def get_scored_notes_cols(self) -> List[str]:
     """Returns a list of columns which should be present in the scoredNotes output."""
     return [

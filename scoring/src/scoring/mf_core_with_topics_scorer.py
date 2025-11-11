@@ -105,6 +105,8 @@ class MFCoreWithTopicsScorer(MFBaseScorer):
       c.meanNoteScoreKey,
       c.raterAgreeRatioKey,
       c.aboveHelpfulnessThresholdKey,
+      c.internalFirstRoundRaterInterceptKey,
+      c.internalFirstRoundRaterFactor1Key,
     ]
 
   def get_auxiliary_note_info_cols(self) -> List[str]:

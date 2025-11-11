@@ -110,4 +110,6 @@ class MFExpansionScorer(MFBaseScorer):
       c.meanNoteScoreKey,
       c.raterAgreeRatioKey,
       c.aboveHelpfulnessThresholdKey,
+      c.internalFirstRoundRaterInterceptKey,
+      c.internalFirstRoundRaterFactor1Key,
     ]

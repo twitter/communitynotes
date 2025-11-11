@@ -365,6 +365,8 @@ class MFBaseScorer(Scorer):
       c.meanNoteScoreKey,
       c.raterAgreeRatioKey,
       c.aboveHelpfulnessThresholdKey,
+      c.internalFirstRoundRaterInterceptKey,
+      c.internalFirstRoundRaterFactor1Key,
     ]
 
   def get_internal_helpfulness_scores_cols(self) -> List[str]:
@@ -380,6 +382,8 @@ class MFBaseScorer(Scorer):
       c.lowDiligenceRaterInterceptKey,
       c.lowDiligenceRaterFactor1Key,
       c.lowDiligenceRaterReputationKey,
+      c.internalFirstRoundRaterInterceptKey,
+      c.internalFirstRoundRaterFactor1Key,
     ]
 
   def get_auxiliary_note_info_cols(self) -> List[str]:
@@ -1275,6 +1279,8 @@ class MFBaseScorer(Scorer):
             c.meanNoteScoreKey,
             c.raterAgreeRatioKey,
             c.aboveHelpfulnessThresholdKey,
+            c.internalFirstRoundRaterInterceptKey,
+            c.internalFirstRoundRaterFactor1Key,
           ]
         ],
         on=c.raterParticipantIdKey,

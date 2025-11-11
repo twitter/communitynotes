@@ -19,6 +19,7 @@ from typing import Callable, Dict, List, Optional, Set, Tuple
 from . import constants as c, contributor_state, note_ratings, note_status_history, scoring_rules
 from .constants import FinalScoringArgs, ModelResult, PrescoringArgs, ScoringArgs
 from .enums import Scorers, Topics
+from .gaussian_scorer import GaussianScorer
 from .matrix_factorization.normalized_loss import NormalizedLossHyperparameters
 from .mf_core_scorer import MFCoreScorer
 from .mf_core_with_topics_scorer import MFCoreWithTopicsScorer
@@ -62,6 +63,7 @@ def _get_scorers(
   seed: Optional[int],
   pseudoraters: Optional[bool],
   useStableInitialization: bool = True,
+  final: bool = False,
 ) -> Dict[Scorers, List[Scorer]]:
   """Instantiate all Scorer objects which should be used for note ranking.
 
@@ -73,6 +75,8 @@ def _get_scorers(
     Dict[Scorers, List[Scorer]] containing instantiated Scorer objects for note ranking.
   """
   scorers: Dict[Scorers, List[Scorer]] = dict()
+  if final:
+    scorers[Scorers.GaussianScorer] = [GaussianScorer(seed=seed, threads=12)]
   scorers[Scorers.MFCoreWithTopicsScorer] = [
     MFCoreWithTopicsScorer(
       seed, pseudoraters, useStableInitialization=useStableInitialization, threads=12
@@ -832,6 +836,15 @@ def meta_score(
           nmrScoringGroup,
         )
       )
+    if enabledScorers is None or Scorers.GaussianScorer in enabledScorers:
+      rules.append(
+        scoring_rules.ApplyCoverageModelResult(
+          RuleID.GAUSSIAN_MODEL,
+          {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+          c.gaussianRatingStatusKey,
+          checkFirmReject=True,
+        )
+      )
     if enabledScorers is None or Scorers.MFTopicScorer in enabledScorers:
       for topic in Topics:
         if topic == Topics.Unassigned:
@@ -839,7 +852,12 @@ def meta_score(
         rules.append(
           scoring_rules.ApplyTopicModelResult(
             RuleID[f"TOPIC_MODEL_{topic.value}"],
-            {RuleID.EXPANSION_PLUS_MODEL, RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+            {
+              RuleID.EXPANSION_PLUS_MODEL,
+              RuleID.EXPANSION_MODEL,
+              RuleID.CORE_MODEL,
+              RuleID.GAUSSIAN_MODEL,
+            },
             topic,
           )
         )
@@ -1190,6 +1208,7 @@ def run_prescoring(
   checkFlips: bool = True,
   enableNmrDueToMinStableCrhTime: bool = True,
   previousRatingCutoffTimestampMillis: Optional[int] = None,
+  maxWorkers: Optional[int] = None,
 ) -> Tuple[
   pd.DataFrame,
   pd.DataFrame,
@@ -1275,7 +1294,7 @@ def run_prescoring(
     # Restrict parallelism to 6 processes.  Memory usage scales linearly with the number of
     # processes and 6 is enough that the limiting factor continues to be the longest running
     # scorer (i.e. we would not finish faster with >6 worker processes.)
-    maxWorkers=6,
+    maxWorkers=maxWorkers or 6,
   )
   (
     prescoringNoteModelOutput,
@@ -1623,6 +1642,7 @@ def run_final_note_scoring(
   previousAuxiliaryNoteInfo: Optional[pd.DataFrame] = None,
   previousRatingCutoffTimestampMillis: Optional[int] = 0,
   enableNmrDueToMinStableCrhTime: bool = True,
+  maxWorkers: Optional[int] = None,
 ):
   metrics = {}
   with c.time_block("Logging Final Scoring RAM usage"):
@@ -1782,13 +1802,16 @@ def run_final_note_scoring(
     )
     logger.info(f"Post Selection Similarity Final Scoring: {len(ratings)} ratings remaining.")
 
-  scorers = _get_scorers(seed, pseudoraters, useStableInitialization=useStableInitialization)
+  # run with final = True to get Gaussian Scorer
+  scorers = _get_scorers(
+    seed, pseudoraters, useStableInitialization=useStableInitialization, final=True
+  )
 
   # Restrict parallelism to 6 processes.  Memory usage scales linearly with the number of
   # processes and 6 is enough that the limiting factor continues to be the longest running
   # scorer (i.e. we would not finish faster with >6 worker processes.).  Note that only
   # system tests run with full scale data and previousScoredNotes=None.
-  maxWorkers = 4 if previousScoredNotes is None else 6
+  maxWorkers = maxWorkers or (4 if previousScoredNotes is None else 6)
   logger.info(f"Number of concurrent scoring workers: {maxWorkers}")
   modelResults = _run_scorers(
     args,

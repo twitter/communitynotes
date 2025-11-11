@@ -64,6 +64,8 @@ class MFCoreScorer(MFBaseScorer):
     return {
       c.internalRaterInterceptKey: c.coreRaterInterceptKey,
       c.internalRaterFactor1Key: c.coreRaterFactor1Key,
+      c.internalFirstRoundRaterInterceptKey: c.coreFirstRoundRaterInterceptKey,
+      c.internalFirstRoundRaterFactor1Key: c.coreFirstRoundRaterFactor1Key,
     }
 
   def get_scored_notes_cols(self) -> List[str]:
@@ -93,6 +95,8 @@ class MFCoreScorer(MFBaseScorer):
       c.meanNoteScoreKey,
       c.raterAgreeRatioKey,
       c.aboveHelpfulnessThresholdKey,
+      c.coreFirstRoundRaterInterceptKey,
+      c.coreFirstRoundRaterFactor1Key,
     ]
 
   def get_auxiliary_note_info_cols(self) -> List[str]:

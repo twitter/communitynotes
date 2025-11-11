@@ -42,7 +42,7 @@ def get_top_two_tags_for_note(
       thresh=minTagsNeededToGetStatus, inplace=True
     )  # only keep rows with at least 2 non-NaN entries
 
-    negativeTags = -1 * filteredTags.to_numpy(dtype=np.float64)
+    negativeTags = -1 * filteredTags.to_numpy(dtype=np.float64, na_value=np.nan)
 
     # Create a small value for tie-breaking, proportional to the column indices
     # The small value should be smaller than the smallest difference between any two elements (ints)
@@ -98,7 +98,7 @@ def get_top_nonhelpful_tags_per_author(
     filteredTags = noteTagTotals.where(lambda x: x >= c.minRatingsToGetTag)
     filteredTags.dropna(thresh=2, inplace=True)  # only keep rows with at least 2 non-NaN entries
 
-    negativeTags = -1 * filteredTags.to_numpy(dtype=np.float64)
+    negativeTags = -1 * filteredTags.to_numpy(dtype=np.float64, na_value=np.nan)
 
     # Create a small value for tie-breaking, proportional to the column indices
     # The small value should be smaller than the smallest difference between any two elements (ints)

@@ -188,6 +188,8 @@ class MFTopicScorer(MFBaseScorer):
       c.internalRaterInterceptKey,
       c.internalRaterFactor1Key,
       c.raterParticipantIdKey,
+      c.internalFirstRoundRaterInterceptKey,
+      c.internalFirstRoundRaterFactor1Key,
     ]
 
   def _postprocess_output(

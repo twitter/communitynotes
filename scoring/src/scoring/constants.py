@@ -80,8 +80,65 @@ correlatedRaterKey = "correlatedRater"
 
 # Scoring Groups
 coreGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 21, 25}
+coverageGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 25}
 expansionGroups: Set[int] = {0, 4, 5, 7, 12, 15, 16, 18, 20, 22, 23, 26, 27, 28, 29, 33}
 expansionPlusGroups: Set[int] = {17, 24, 30, 31, 32}
+
+# Bins for Gaussian Scorer
+quantileRange = np.array(
+  [
+    -0.92,
+    -0.65,
+    -0.61,
+    -0.58,
+    -0.55,
+    -0.52,
+    -0.49,
+    -0.46,
+    -0.43,
+    -0.41,
+    -0.38,
+    -0.35,
+    -0.33,
+    -0.3,
+    -0.28,
+    -0.25,
+    -0.22,
+    -0.2,
+    -0.17,
+    -0.14,
+    -0.12,
+    -0.09,
+    -0.07,
+    -0.04,
+    -0.01,
+    0.01,
+    0.04,
+    0.07,
+    0.09,
+    0.12,
+    0.14,
+    0.17,
+    0.2,
+    0.22,
+    0.25,
+    0.28,
+    0.3,
+    0.33,
+    0.35,
+    0.38,
+    0.41,
+    0.43,
+    0.46,
+    0.49,
+    0.52,
+    0.55,
+    0.58,
+    0.61,
+    0.65,
+    0.92,
+  ]
+)
 
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
@@ -185,6 +242,8 @@ coreNumFinalRoundRatingsKey = "coreNumFinalRoundRatings"
 coreNoteInterceptNoHighVolKey = "coreNoteInterceptNoHighVol"
 coreNoteInterceptNoCorrelatedKey = "coreNoteInterceptNoCorrelated"
 coreNoteInterceptPopulationSampledKey = "coreNoteInterceptPopulationSampled"
+coreFirstRoundRaterInterceptKey = "coreFirstRoundRaterIntercept"
+coreFirstRoundRaterFactor1Key = "coreFirstRoundRaterFactor1"
 # Core No Topic Model
 coreWithTopicsNoteInterceptKey = "coreWithTopicsNoteIntercept"
 coreWithTopicsNoteFactor1Key = "coreWithTopicsNoteFactor1"
@@ -257,6 +316,15 @@ topicInternalActiveRulesKey = "topicActiveRules"
 topicNumFinalRoundRatingsKey = "topicNumFinalRoundRatings"
 topicNoteInterceptNoHighVolKey = "topicNoteInterceptNoHighVol"
 topicNoteInterceptNoCorrelatedKey = "topicNoteInterceptNoCorrelated"
+# Gaussian Model
+gaussianNoteInterceptKey = "gaussianNoteIntercept"
+gaussianNoteFactor1Key = "gaussianNoteFactor1"
+gaussianRatingStatusKey = "gaussianRatingStatus"
+gaussianActiveRulesKey = "gaussianActiveRules"
+gaussianNumFinalRoundRatingsKey = "gaussianNumFinalRoundRatings"
+gaussianNoteInterceptNoHighVolKey = "gaussianNoteInterceptNoHighVol"
+gaussianNoteInterceptNoCorrelatedKey = "gaussianNoteInterceptNoCorrelated"
+gaussianNoteInterceptPopulationSampledKey = "gaussianNoteInterceptPopulationSampled"
 # Harassment/Abuse Tag
 harassmentNoteInterceptKey = "harassmentNoteIntercept"
 harassmentNoteFactor1Key = "harassmentNoteFactor1"
@@ -846,6 +914,14 @@ noteModelOutputTSVColumnsAndTypes = [
   (groupNoteInterceptNoCorrelatedKey, "category"),
   (multiGroupNoteInterceptNoCorrelatedKey, "category"),
   (topicNoteInterceptNoCorrelatedKey, "category"),
+  (gaussianNoteInterceptKey, np.double),
+  (gaussianNoteFactor1Key, np.double),
+  (gaussianRatingStatusKey, "category"),
+  (gaussianActiveRulesKey, "category"),
+  (gaussianNoteInterceptNoCorrelatedKey, np.double),
+  (gaussianNoteInterceptNoHighVolKey, np.double),
+  (gaussianNoteInterceptPopulationSampledKey, np.double),
+  (gaussianNumFinalRoundRatingsKey, np.double),  # double because nullable.
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
@@ -933,6 +1009,8 @@ raterModelOutputTSVColumnsAndTypes = [
   (modelingMultiGroupKey, np.float64),
   (coreWithTopicsRaterInterceptKey, np.double),
   (coreWithTopicsRaterFactor1Key, np.double),
+  (coreFirstRoundRaterInterceptKey, np.double),
+  (coreFirstRoundRaterFactor1Key, np.double),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}

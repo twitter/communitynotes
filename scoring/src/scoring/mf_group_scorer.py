@@ -242,6 +242,8 @@ class MFGroupScorer(MFBaseScorer):
       c.meanNoteScoreKey,
       c.raterAgreeRatioKey,
       c.aboveHelpfulnessThresholdKey,
+      c.internalFirstRoundRaterInterceptKey,
+      c.internalFirstRoundRaterFactor1Key,
     ]
 
   def _postprocess_output(
