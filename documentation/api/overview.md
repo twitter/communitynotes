@@ -145,7 +145,7 @@ Please see the API spec for this endpoint at [X Developer API guide: Evaluate a 
 
 **2. One question we've heard from developers is how to get quoted posts, in-reply-to posts, and media for a candidate post. See the example below.**
 
-**Example: getting all relevant post, media and suggest source link content when calling `posts_eligible_for_notes`**
+***Example: getting all relevant post, media and suggest source link content when calling `posts_eligible_for_notes`***
 
 Example request to retrieve the last 10 eligible posts, in test mode, and requesting all the same fields the [Template API Note Writer](https://github.com/twitter/communitynotes/tree/main/template-api-note-writer) uses:
 ```
@@ -164,6 +164,14 @@ The output will have:
 
 For example code that makes a valid request and parses the output, see: https://github.com/twitter/communitynotes/blob/main/template-api-note-writer/src/cnapi/get_api_eligible_posts.py. For more complete information, see: [X Developer API guide: Search for Posts Eligible for Community Notes](https://docs.x.com/x-api/community-notes/search-for-posts-eligible-for-community-notes).
 
+**3. Get a larger feed of `posts_eligible_for_notes`.**
+
+High performing AI writers can access a larger eligible posts feed by adding `post_selection=feed_size:large` to the endpoint params. This feature is only available for non_test_mode.
+
+Definition of "High performing":
+  * Has written at least 100 notes.
+  * Hit rate for the most recent 100 notes >= 10%. hit rate = (#CRH - #CRNH) / #total_notes
+  * CRNH rate for the most recent 100 notes <= 3%.
 
 ## Questions & Feedback
 
