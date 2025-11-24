@@ -12,6 +12,7 @@ from typing import List
 from requests_oauthlib import OAuth1Session  # type: ignore
 from cnapi.get_api_eligible_posts import get_posts_eligible_for_notes
 from cnapi.submit_note import submit_note
+from cnapi.evaluate_note import evaluate_note
 from data_models import EnvironmentVariables, NoteResult, PostWithContext
 import dotenv
 from note_writer.write_note import research_post_and_write_note
@@ -145,8 +146,17 @@ def _worker(
         log_strings.append(
             f"\n*MISLEADING TAGS:*\n  {[tag.value for tag in note_result.note.misleading_tags]}\n"
         )
+    
+    co_score: float | None = None
+    if note_result.note is not None:
+        co_score = evaluate_note(
+            oauth=oauth,
+            note_text=note_result.note.note_text,
+            post_id=note_result.note.post_id,
+        )
+        log_strings.append(f"\n*CLAIM OPINION SCORE:* \n  {co_score}\n")
 
-    if note_result.note is not None and not dry_run:
+    if (note_result.note is not None) and (co_score is not None) and (co_score > -0.5) and (not dry_run):
         try:
             submit_note(
                 oauth=oauth,
