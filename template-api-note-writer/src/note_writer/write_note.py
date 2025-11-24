@@ -1,3 +1,5 @@
+import asyncio
+
 from data_models import NoteResult, Post, PostWithContext, ProposedMisleadingNote
 from note_writer.llm_util import LLMClient
 from note_writer.misleading_tags import get_misleading_tags

@@ -302,11 +302,14 @@ async def main(
         return
 
     if concurrency > 1:
-        # Process posts concurrently using asyncio.gather
-        tasks = [
-            _worker(oauth, post, xai_api_key, dry_run, co_submission_threshold, co_reject_threshold, max_attempts) 
-            for post in eligible_posts
-        ]
+        # Process posts concurrently with semaphore to enforce max concurrency
+        semaphore = asyncio.Semaphore(concurrency)
+        
+        async def _worker_with_semaphore(post):
+            async with semaphore:
+                await _worker(oauth, post, xai_api_key, dry_run, co_submission_threshold, co_reject_threshold, max_attempts)
+        
+        tasks = [_worker_with_semaphore(post) for post in eligible_posts]
         await asyncio.gather(*tasks)
     else:
         # Process posts sequentially
