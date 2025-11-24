@@ -285,12 +285,13 @@ def main(
     print("=" * 60)
     print()
 
-    print(f"Getting up to {num_posts} recent posts eligible for notes")
+    print("Getting posts eligible for notes")
     eligible_posts: List[PostWithContext] = get_posts_eligible_for_notes(
         oauth=oauth,
-        max_results=num_posts
     )
     print(f"Found {len(eligible_posts)} recent posts eligible for notes")
+    eligible_posts = eligible_posts[:num_posts]
+    print(f"Pruned to {len(eligible_posts)} posts")
     print(
         f"  Eligible Post IDs: \n{'\n'.join([str(post_with_context.post.post_id) for post_with_context in eligible_posts])}\n"
     )

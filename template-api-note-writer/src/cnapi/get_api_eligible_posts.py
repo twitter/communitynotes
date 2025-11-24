@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from requests_oauthlib import OAuth1Session  # type: ignore
 
@@ -10,6 +10,7 @@ def _fetch_posts_eligible_for_notes(
     oauth: OAuth1Session,
     max_results: int = 2,
     test_mode: bool = True,
+    pagination_token: Optional[str] = None,
 ) -> dict:
     """
     Fetch posts eligible for notes by calling the Community Notes API.
@@ -18,6 +19,7 @@ def _fetch_posts_eligible_for_notes(
         oauth: OAuth1Session object for authenticating with the X API.
         max_results: Maximum number of results to return (default is 2).
         test_mode: If True, use test mode for the API (default is True).
+        pagination_token: Token to get the next page of results (default is None).
     Returns:
         A dictionary containing the API response.
     """
@@ -30,6 +32,8 @@ def _fetch_posts_eligible_for_notes(
         "&user.fields=username"
         "&media.fields=alt_text,duration_ms,height,media_key,preview_image_url,public_metrics,type,url,width,variants"
     )
+    if pagination_token:
+        url += f"&pagination_token={pagination_token}"
     response = oauth.get(url)
     response.raise_for_status()
     return response.json()
@@ -126,8 +130,9 @@ def _parse_posts_eligible_response(resp: Dict) -> List[PostWithContext]:
 
 def get_posts_eligible_for_notes(
     oauth: OAuth1Session,
-    max_results: int = 2,
+    max_results: Optional[int] = None,
     test_mode: bool = True,
+    max_results_per_page: int = 100,
 ) -> List[PostWithContext]:
     """
     Get posts eligible for notes by calling the Community Notes API.
@@ -141,6 +146,37 @@ def get_posts_eligible_for_notes(
     Returns:
         A list of `Post` objects.
     """
-    return _parse_posts_eligible_response(
-        _fetch_posts_eligible_for_notes(oauth, max_results, test_mode)
-    )
+    all_posts: List[PostWithContext] = []
+    pagination_token: Optional[str] = None
+    
+    while True:
+        # Determine how many results to fetch in this page
+        if max_results is not None:
+            remaining = max_results - len(all_posts)
+            if remaining <= 0:
+                break
+            page_size = min(remaining, max_results_per_page)
+        else:
+            page_size = max_results_per_page
+        
+        # Fetch a page of results
+        response = _fetch_posts_eligible_for_notes(
+            oauth, 
+            max_results=page_size, 
+            test_mode=test_mode,
+            pagination_token=pagination_token
+        )
+        
+        # Parse and add posts from this page
+        posts = _parse_posts_eligible_response(response)
+        all_posts.extend(posts)
+        
+        # Check if there are more pages
+        pagination_token = response.get("meta", {}).get("next_token")
+        if not pagination_token:
+            break
+    
+    # Sort by post_id in increasing order
+    all_posts.sort(key=lambda p: int(p.post.post_id))
+    
+    return all_posts
