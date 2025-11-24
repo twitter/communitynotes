@@ -1,5 +1,4 @@
-from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 from requests_oauthlib import OAuth1Session  # type: ignore
 
@@ -9,8 +8,8 @@ from data_models import NoteStatus, TestResult
 def get_notes_written(
     oauth: OAuth1Session,
     test_mode: bool = True,
-    max_results: Optional[int] = None,
-) -> List[NoteStatus]:
+    max_results: int | None = None,
+) -> list[NoteStatus]:
     """
     Get all notes written by the authenticated user from the Community Notes API.
     For more details, see: https://docs.x.com/x-api/community-notes/introduction
@@ -23,8 +22,8 @@ def get_notes_written(
     Returns:
         A list of NoteStatus objects containing information about written notes.
     """
-    all_notes: List[NoteStatus] = []
-    pagination_token: Optional[str] = None
+    all_notes: list[NoteStatus] = []
+    pagination_token: str | None = None
     
     while True:
         # Build the URL with query parameters
@@ -46,7 +45,7 @@ def get_notes_written(
         notes_data = data.get("data", [])
         for note_item in notes_data:
             # Parse test_result if present
-            test_result_list: Optional[List[TestResult]] = None
+            test_result_list: list[TestResult] | None = None
             test_result_raw = note_item.get("test_result")
             if test_result_raw and isinstance(test_result_raw, dict):
                 evaluation_outcomes = test_result_raw.get("evaluation_outcome", [])

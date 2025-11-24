@@ -1,6 +1,9 @@
+import asyncio
+import dotenv
+import os
 from typing import Any
 
-from xai_sdk import Client
+from xai_sdk import AsyncClient
 from xai_sdk.chat import user, system
 from xai_sdk.tools import web_search, x_search
 
@@ -26,23 +29,24 @@ class LLMClient:
             enable_x_video_understanding: Enable video understanding in X search (default: False)
         """
         self._api_key: str = api_key
-        self._client: Client | None = None
+        self._client: AsyncClient | None = None
         self._model: str = model
         self._enable_web_image_understanding: bool = enable_web_image_understanding
         self._enable_x_image_understanding: bool = enable_x_image_understanding
         self._enable_x_video_understanding: bool = enable_x_video_understanding
     
     @property
-    def client(self) -> Client:
-        """Get xAI client."""
+    def client(self) -> AsyncClient:
+        """Get xAI async client."""
         if self._client is None:
-            self._client = Client(api_key=self._api_key)
+            self._client = AsyncClient(api_key=self._api_key)
         return self._client
     
-    def get_grok_response(
+    async def get_grok_response(
         self, 
         prompt: str, 
-        temperature: float = 0.8, 
+        temperature: float = 0.8,
+        timeout: float | None = None,
     ) -> tuple[str, list[Any], list[str]]:
         """
         Get a response from Grok for a given prompt with web and X search enabled.
@@ -50,10 +54,13 @@ class LLMClient:
         Args:
             prompt: The prompt to send to Grok
             temperature: Temperature for response generation (default: 0.8)
-            model: Model to use (default: "grok-4-fast")
+            timeout: Optional timeout in seconds for the streaming operation (default: None for no timeout)
             
         Returns:
             The generated response text
+        
+        Raises:
+            asyncio.TimeoutError: If the operation exceeds the specified timeout
         """
         # Create a chat session with web_search and x_search tools enabled
         chat = self.client.chat.create(
@@ -75,34 +82,45 @@ class LLMClient:
         chat.append(user(prompt))
         
         # Stream the response and collect the final content
-        final_content: list[str] = []
-        is_thinking = True
-        tool_calls = []
-        citations = []
-        for response, chunk in chat.stream():
-            # View the server-side tool calls as they are being made in real-time
-            for tool_call in chunk.tool_calls:
-                tool_calls.append(tool_call)
-            if chunk.content and is_thinking:
-                is_thinking = False
-            if chunk.content and not is_thinking:
-                final_content.append(chunk.content)
-            citations.extend(response.citations)
+        async def stream_response():
+            final_content: list[str] = []
+            is_thinking = True
+            tool_calls = []
+            citations = []
+            async for response, chunk in chat.stream():
+                # View the server-side tool calls as they are being made in real-time
+                for tool_call in chunk.tool_calls:
+                    tool_calls.append(tool_call)
+                if chunk.content and is_thinking:
+                    is_thinking = False
+                if chunk.content and not is_thinking:
+                    final_content.append(chunk.content)
+                citations.extend(response.citations)
+            return final_content, tool_calls, citations
+        
+        # Apply timeout if specified
+        if timeout is not None:
+            final_content, tool_calls, citations = await asyncio.wait_for(
+                stream_response(), 
+                timeout=timeout
+            )
+        else:
+            final_content, tool_calls, citations = await stream_response()
+        
         return "".join(final_content), tool_calls, citations
 
 
 if __name__ == "__main__":
-    import dotenv
-    import os
-
     dotenv.load_dotenv()
     xai_api_key = os.getenv("XAI_API_KEY")
     if not xai_api_key:
         raise ValueError("XAI_API_KEY environment variable is required")
     
-    llm_client = LLMClient(api_key=xai_api_key)
-    print(
-        llm_client.get_grok_response(
+    async def main():
+        llm_client = LLMClient(api_key=xai_api_key)
+        result = await llm_client.get_grok_response(
             "Provide me a digest of world news in the last 2 hours. Please respond with links to each source next to the claims that the source supports."
         )
-    )
+        print(result)
+    
+    asyncio.run(main())

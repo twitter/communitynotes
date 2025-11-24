@@ -5,7 +5,7 @@ Then run the bot with:
 """
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor
+import asyncio
 import os
 from typing import List
 
@@ -133,7 +133,7 @@ def _create_oauth_session(env_vars: EnvironmentVariables) -> OAuth1Session:
     )
 
 
-def _worker(
+async def _worker(
     oauth: OAuth1Session,
     post_with_context: PostWithContext,
     xai_api_key: str,
@@ -177,7 +177,8 @@ def _worker(
     for attempt in range(1, max_attempts + 1):
         log_strings.append(f"\n*ATTEMPT {attempt}/{max_attempts}*")
         
-        note_result = research_post_and_write_note(post_with_context, xai_api_key, log_strings, verbose=(attempt == 1))
+        # Async LLM call
+        note_result = await research_post_and_write_note(post_with_context, xai_api_key, log_strings, verbose=(attempt == 1))
 
         if note_result.note:
             log_strings.append(f"\n*NOTE:*\n  {note_result.note.note_text}")
@@ -187,6 +188,7 @@ def _worker(
         
         co_score = None
         if note_result.note is not None:
+            # Sync API call (no await)
             co_score = evaluate_note(
                 oauth=oauth,
                 note_text=note_result.note.note_text,
@@ -221,6 +223,7 @@ def _worker(
         and (not dry_run)
     ):
         try:
+            # Sync API call (no await)
             submit_note(
                 oauth=oauth,
                 note=note_result.note,
@@ -234,7 +237,7 @@ def _worker(
     print("\n".join(log_strings) + "\n")
 
 
-def main(
+async def main(
     oauth: OAuth1Session,
     xai_api_key: str,
     num_posts: int = 10,
@@ -259,10 +262,10 @@ def main(
     
     Notes:
         Posts are processed either sequentially (concurrency=1) or concurrently
-        using a ThreadPoolExecutor. The function prints progress information
+        using asyncio.gather(). The function prints progress information
         including eligible post IDs and processing results.
     """
-    # Log recently submitted notes
+    # Log recently submitted notes (sync call)
     print("=" * 60)
     print("RECENTLY SUBMITTED NOTES SUMMARY")
     print("=" * 60)
@@ -284,11 +287,11 @@ def main(
     print()
 
     print("Getting posts eligible for notes")
+    # Sync call
     eligible_posts: List[PostWithContext] = get_posts_eligible_for_notes(
         oauth=oauth,
     )
     print(f"Found {len(eligible_posts)} recent posts eligible for notes")
-    eligible_posts = eligible_posts[200:]
     eligible_posts = eligible_posts[:num_posts]
     print(f"Pruned to {len(eligible_posts)} posts")
     print(
@@ -299,15 +302,16 @@ def main(
         return
 
     if concurrency > 1:
-        with ThreadPoolExecutor(max_workers=concurrency) as executor:
-            futures = [
-                executor.submit(_worker, oauth, post, xai_api_key, dry_run, co_submission_threshold, co_reject_threshold, max_attempts) for post in eligible_posts
-            ]
-            for future in futures:
-                future.result()
+        # Process posts concurrently using asyncio.gather
+        tasks = [
+            _worker(oauth, post, xai_api_key, dry_run, co_submission_threshold, co_reject_threshold, max_attempts) 
+            for post in eligible_posts
+        ]
+        await asyncio.gather(*tasks)
     else:
+        # Process posts sequentially
         for post in eligible_posts:
-            _worker(oauth, post, xai_api_key, dry_run, co_submission_threshold, co_reject_threshold, max_attempts)
+            await _worker(oauth, post, xai_api_key, dry_run, co_submission_threshold, co_reject_threshold, max_attempts)
     print("Done.")
 
 
@@ -319,14 +323,16 @@ if __name__ == "__main__":
     # Create OAuth session
     oauth = _create_oauth_session(env_vars)
 
-    # Run the main function
-    main(
-        oauth=oauth,
-        xai_api_key=env_vars.xai_api_key,
-        num_posts=args.num_posts,
-        dry_run=args.dry_run,
-        concurrency=args.concurrency,
-        co_submission_threshold=args.co_submission_threshold,
-        co_reject_threshold=args.co_reject_threshold,
-        max_attempts=args.max_attempts,
+    # Run the main async function
+    asyncio.run(
+        main(
+            oauth=oauth,
+            xai_api_key=env_vars.xai_api_key,
+            num_posts=args.num_posts,
+            dry_run=args.dry_run,
+            concurrency=args.concurrency,
+            co_submission_threshold=args.co_submission_threshold,
+            co_reject_threshold=args.co_reject_threshold,
+            max_attempts=args.max_attempts,
+        )
     )

@@ -4,7 +4,7 @@ from data_models import MisleadingTag, PostWithContext
 from note_writer.llm_util import LLMClient
 
 
-def get_misleading_tags(
+async def get_misleading_tags(
     post_with_context: PostWithContext, note_text: str, llm_client: LLMClient, retries: int = 3
 ) -> list[MisleadingTag]:
     misleading_why_tags_prompt = _get_prompt_for_misleading_why_tags(
@@ -12,7 +12,8 @@ def get_misleading_tags(
     )
     while retries > 0:
         try:
-            misleading_why_tags_str, _, _ = llm_client.get_grok_response(misleading_why_tags_prompt)
+            misleading_why_tags_str, _, _ = await llm_client.get_grok_response(
+                misleading_why_tags_prompt, timeout=60)
             misleading_why_tags = json.loads(misleading_why_tags_str)["misleading_tags"]
             return [MisleadingTag(tag) for tag in misleading_why_tags]
         except Exception as e:

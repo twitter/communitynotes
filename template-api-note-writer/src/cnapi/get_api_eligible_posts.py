@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Optional
 
 from requests_oauthlib import OAuth1Session  # type: ignore
 
@@ -10,7 +10,7 @@ def _fetch_posts_eligible_for_notes(
     oauth: OAuth1Session,
     max_results: int = 2,
     test_mode: bool = True,
-    pagination_token: Optional[str] = None,
+    pagination_token: str | None = None,
 ) -> dict:
     """
     Fetch posts eligible for notes by calling the Community Notes API.
@@ -38,8 +38,8 @@ def _fetch_posts_eligible_for_notes(
     response.raise_for_status()
     return response.json()
 
-def _parse_individual_post(item: Dict, media_by_key: Dict[str, Dict], users_by_id: Dict[str, Dict]) -> Post:
-    media_objs: List[Media] = []
+def _parse_individual_post(item: dict, media_by_key: dict[str, dict], users_by_id: dict[str, dict]) -> Post:
+    media_objs: list[Media] = []
     media_keys = item.get("attachments", {}).get("media_keys", [])
 
     for key in media_keys:
@@ -69,7 +69,7 @@ def _parse_individual_post(item: Dict, media_by_key: Dict[str, Dict], users_by_i
     return post
 
 
-def _parse_posts_eligible_response(resp: Dict) -> List[PostWithContext]:
+def _parse_posts_eligible_response(resp: dict) -> list[PostWithContext]:
     """
     Convert the raw JSON dict returned by `fetch_posts_eligible_for_notes`
     into a list of `Post` objects with their associated `Media`.
@@ -130,10 +130,10 @@ def _parse_posts_eligible_response(resp: Dict) -> List[PostWithContext]:
 
 def get_posts_eligible_for_notes(
     oauth: OAuth1Session,
-    max_results: Optional[int] = None,
+    max_results: int | None = None,
     test_mode: bool = True,
     max_results_per_page: int = 100,
-) -> List[PostWithContext]:
+) -> list[PostWithContext]:
     """
     Get posts eligible for notes by calling the Community Notes API.
     For more details, see: https://docs.x.com/x-api/community-notes/introduction
@@ -146,8 +146,8 @@ def get_posts_eligible_for_notes(
     Returns:
         A list of `Post` objects.
     """
-    all_posts: List[PostWithContext] = []
-    pagination_token: Optional[str] = None
+    all_posts: list[PostWithContext] = []
+    pagination_token: str | None = None
     
     while True:
         # Determine how many results to fetch in this page

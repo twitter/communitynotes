@@ -48,7 +48,7 @@ def check_for_unsupported_media_in_post_with_context(post_with_context: PostWith
     return False
 
 
-def research_post_and_write_note(
+async def research_post_and_write_note(
     post_with_context: PostWithContext,
     xai_api_key: str,
     log_strings: list[str],
@@ -78,17 +78,22 @@ def research_post_and_write_note(
     writing_prompt = _get_prompt_for_note_writing(post_with_context)
     if verbose:
         log_strings.append(f"\n*WRITING PROMPT:*\n  {writing_prompt}")
-    note_or_refusal_str, tool_calls, citations = llm_client.get_grok_response(writing_prompt)
+    try:
+        note_or_refusal_str, tool_calls, citations = await llm_client.get_grok_response(
+            writing_prompt, timeout=300)
 
-    if ("NO NOTE NEEDED" in note_or_refusal_str) or (
-        "NOT ENOUGH EVIDENCE TO WRITE A GOOD COMMUNITY NOTE" in note_or_refusal_str
-    ):
-        log_strings.append(f"\n*REFUSAL:*\n  {note_or_refusal_str}")
-        return NoteResult(post=post_with_context, refusal=note_or_refusal_str, writing_prompt=writing_prompt)
+        if ("NO NOTE NEEDED" in note_or_refusal_str) or (
+            "NOT ENOUGH EVIDENCE TO WRITE A GOOD COMMUNITY NOTE" in note_or_refusal_str
+        ):
+            log_strings.append(f"\n*REFUSAL:*\n  {note_or_refusal_str}")
+            return NoteResult(post=post_with_context, refusal=note_or_refusal_str, writing_prompt=writing_prompt)
 
-    misleading_tags = get_misleading_tags(post_with_context, note_or_refusal_str, llm_client)
+        misleading_tags = await get_misleading_tags(post_with_context, note_or_refusal_str, llm_client)
+    except asyncio.TimeoutError as e:
+        log_strings.append(f"\n*ERROR (LLM timeout):*\n  {e}")
+        return NoteResult(post=post_with_context, error=str(e), writing_prompt=writing_prompt)
 
-    failed_urls = extract_and_validate_urls(note_or_refusal_str, citations)
+    failed_urls = await extract_and_validate_urls(note_or_refusal_str, citations)
     error_details = []
     if failed_urls:
         for url, status_code in failed_urls:

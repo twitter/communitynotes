@@ -1,5 +1,3 @@
-from typing import Any, Dict
-
 from requests_oauthlib import OAuth1Session  # type: ignore
 
 

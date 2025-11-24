@@ -1,5 +1,4 @@
-import json
-from typing import Any, Dict
+from typing import Any
 
 from requests_oauthlib import OAuth1Session  # type: ignore
 
@@ -11,7 +10,7 @@ def submit_note(
     note: ProposedMisleadingNote,
     log_strings: list[str],
     test_mode: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Submit a note to the Community Notes API. For more details, see:
     https://docs.x.com/x-api/community-notes/introduction
