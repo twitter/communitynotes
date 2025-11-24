@@ -1,9 +1,5 @@
 from data_models import NoteResult, Post, PostWithContext, ProposedMisleadingNote
-from note_writer.llm_util import (
-    get_grok_live_search_response,
-    get_grok_response,
-    grok_describe_image,
-)
+from note_writer.llm_util import LLMClient
 from note_writer.misleading_tags import get_misleading_tags
 
 
@@ -54,13 +50,13 @@ saying that the prediction is uncertain or likely to be wrong. \
     """
 
 
-def _get_post_with_context_description_for_prompt(post_with_context: PostWithContext) -> str:
+def _get_post_with_context_description_for_prompt(post_with_context: PostWithContext, llm_client: LLMClient) -> str:
     description = f"""Post text:
 ```
 {post_with_context.post.text}
 ```
 """
-    images_summary = _summarize_images_for_post(post_with_context.post)
+    images_summary = _summarize_images_for_post(post_with_context.post, llm_client)
     if images_summary is not None and len(images_summary) > 0:
         description += f"""Summary of images in the post:
 ```
@@ -73,7 +69,7 @@ def _get_post_with_context_description_for_prompt(post_with_context: PostWithCon
 {post_with_context.quoted_post.text}
 ```
 """
-        quoted_images_summary = _summarize_images_for_post(post_with_context.quoted_post)
+        quoted_images_summary = _summarize_images_for_post(post_with_context.quoted_post, llm_client)
         if quoted_images_summary is not None and len(quoted_images_summary) > 0:
             description += f"""Summary of images in the quoted post:
 ```
@@ -87,7 +83,7 @@ def _get_post_with_context_description_for_prompt(post_with_context: PostWithCon
 {post_with_context.in_reply_to_post.text}
 ```
 """
-        replied_to_images_summary = _summarize_images_for_post(post_with_context.in_reply_to_post)
+        replied_to_images_summary = _summarize_images_for_post(post_with_context.in_reply_to_post, llm_client)
         if replied_to_images_summary is not None and len(replied_to_images_summary) > 0:
             description += f"""Summary of images in the replied-to post:
 ```
@@ -106,15 +102,16 @@ of wasted characters e.g. [Source] when listing a URL. Just state the URL direct
     {post_with_context_description}
     """
 
-def _summarize_images_for_post(post: Post) -> str:
+def _summarize_images_for_post(post: Post, llm_client: LLMClient) -> str:
     """
     Summarize images, if they exist. Abort if video or other unsupported media type.
     """
     images_summary = ""
     for i, media in enumerate(post.media):
         assert media.media_type == "photo" # remove assert when video support is added
-        image_description = grok_describe_image(media.url)
-        images_summary += f"Image {i}: {image_description}\n"
+        if media.url:
+            image_description = llm_client.grok_describe_image(media.url)
+            images_summary += f"Image {i}: {image_description}\n"
     return images_summary
 
 
@@ -123,9 +120,10 @@ def _check_for_unsupported_media(post: Post) -> bool:
     for media in post.media:
         if media.media_type not in ["photo"]:
             return True
+    return False
 
 
-def _check_for_unsupported_media_in_post_with_context(post_with_context: PostWithContext) -> None:
+def _check_for_unsupported_media_in_post_with_context(post_with_context: PostWithContext) -> bool:
     """Check if the post or any referenced posts contain unsupported media types."""
     if _check_for_unsupported_media(post_with_context.post):
         return True
@@ -138,24 +136,38 @@ def _check_for_unsupported_media_in_post_with_context(post_with_context: PostWit
 
 def research_post_and_write_note(
     post_with_context: PostWithContext,
+    xai_api_key: str,
 ) -> NoteResult:
+    """
+    Research a post and write a Community Note if needed.
+    
+    Args:
+        post_with_context: Post with additional context (replies, quotes, etc.)
+        xai_api_key: xAI API key for Grok models
+        
+    Returns:
+        NoteResult containing the note, refusal, or error
+    """
     if _check_for_unsupported_media_in_post_with_context(post_with_context):
         return NoteResult(post=post_with_context, error="Unsupported media type (e.g. video) found in post or in referenced post.")
     
-    post_with_context_description = _get_post_with_context_description_for_prompt(post_with_context)
+    # Create LLM client instance
+    llm_client = LLMClient(api_key=xai_api_key)
+    
+    post_with_context_description = _get_post_with_context_description_for_prompt(post_with_context, llm_client)
 
     search_prompt = _get_prompt_for_live_search(post_with_context_description)
-    search_results = get_grok_live_search_response(search_prompt)
+    search_results = llm_client.get_grok_live_search_response(search_prompt)
 
     note_prompt = _get_prompt_for_note_writing(post_with_context_description, search_results)
-    note_or_refusal_str = get_grok_response(note_prompt)
+    note_or_refusal_str = llm_client.get_grok_response(note_prompt)
 
     if ("NO NOTE NEEDED" in note_or_refusal_str) or (
         "NOT ENOUGH EVIDENCE TO WRITE A GOOD COMMUNITY NOTE" in note_or_refusal_str
     ):
         return NoteResult(post=post_with_context, refusal=note_or_refusal_str, context_description=post_with_context_description)
 
-    misleading_tags = get_misleading_tags(post_with_context_description, note_or_refusal_str)
+    misleading_tags = get_misleading_tags(post_with_context_description, note_or_refusal_str, llm_client)
 
     return NoteResult(
         post=post_with_context,

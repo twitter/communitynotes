@@ -12,7 +12,7 @@ from typing import List
 from requests_oauthlib import OAuth1Session  # type: ignore
 from cnapi.get_api_eligible_posts import get_posts_eligible_for_notes
 from cnapi.submit_note import submit_note
-from data_models import EnvironmentVariables, NoteResult, Post, PostWithContext
+from data_models import EnvironmentVariables, NoteResult, PostWithContext
 import dotenv
 from note_writer.write_note import research_post_and_write_note
 
@@ -62,6 +62,7 @@ def _load_environment_variables() -> EnvironmentVariables:
     api_secret_key = os.getenv("X_API_KEY_SECRET")
     access_token = os.getenv("X_ACCESS_TOKEN")
     access_token_secret = os.getenv("X_ACCESS_TOKEN_SECRET")
+    xai_api_key = os.getenv("XAI_API_KEY")
     
     # Validate that all credentials are present
     missing_vars = []
@@ -73,6 +74,8 @@ def _load_environment_variables() -> EnvironmentVariables:
         missing_vars.append("X_ACCESS_TOKEN")
     if not access_token_secret:
         missing_vars.append("X_ACCESS_TOKEN_SECRET")
+    if not xai_api_key:
+        missing_vars.append("XAI_API_KEY")
     
     if missing_vars:
         raise ValueError(
@@ -85,6 +88,7 @@ def _load_environment_variables() -> EnvironmentVariables:
         api_secret_key=api_secret_key,
         access_token=access_token,
         access_token_secret=access_token_secret,
+        xai_api_key=xai_api_key,
     )
 
 
@@ -109,6 +113,7 @@ def _create_oauth_session(env_vars: EnvironmentVariables) -> OAuth1Session:
 def _worker(
     oauth: OAuth1Session,
     post_with_context: PostWithContext,
+    xai_api_key: str,
     dry_run: bool = False,
 ):
     """
@@ -117,13 +122,14 @@ def _worker(
     Args:
         oauth: OAuth1Session for authenticating with the X API
         post_with_context: Post with additional context (replies, quotes, etc.)
+        xai_api_key: xAI API key for Grok models
         dry_run: If True, skip API submission and only print notes to console (default: False)
     
     Notes:
         This function prints detailed information about the processing result, including
         post text, any errors, refusals, the generated note, and submission status.
     """
-    note_result: NoteResult = research_post_and_write_note(post_with_context)
+    note_result: NoteResult = research_post_and_write_note(post_with_context, xai_api_key)
 
     log_strings: List[str] = ["-" * 20, f"Post: {post_with_context.post.post_id}", "-" * 20]
     if note_result.context_description is not None:
@@ -158,6 +164,7 @@ def _worker(
 
 def main(
     oauth: OAuth1Session,
+    xai_api_key: str,
     num_posts: int = 10,
     dry_run: bool = False,
     concurrency: int = 1,
@@ -167,6 +174,7 @@ def main(
     
     Args:
         oauth: OAuth1Session for authenticating with the X API
+        xai_api_key: xAI API key for Grok models
         num_posts: Maximum number of posts to process (default: 10)
         dry_run: If True, skip API submission and only print notes (default: False)
         concurrency: Number of posts to process concurrently (default: 1)
@@ -189,18 +197,17 @@ def main(
     if len(eligible_posts) == 0:
         print("No posts to process.")
         return
-    return
 
     if concurrency > 1:
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
             futures = [
-                executor.submit(_worker, oauth, post, dry_run) for post in eligible_posts
+                executor.submit(_worker, oauth, post, xai_api_key, dry_run) for post in eligible_posts
             ]
             for future in futures:
                 future.result()
     else:
         for post in eligible_posts:
-            _worker(oauth, post, dry_run)
+            _worker(oauth, post, xai_api_key, dry_run)
     print("Done.")
 
 
@@ -215,6 +222,7 @@ if __name__ == "__main__":
     # Run the main function
     main(
         oauth=oauth,
+        xai_api_key=env_vars.xai_api_key,
         num_posts=args.num_posts,
         dry_run=args.dry_run,
         concurrency=args.concurrency,

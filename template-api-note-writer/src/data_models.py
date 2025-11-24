@@ -10,6 +10,7 @@ class EnvironmentVariables(BaseModel):
     api_secret_key: str
     access_token: str
     access_token_secret: str
+    xai_api_key: str
 
 
 class ProposedNote(BaseModel):

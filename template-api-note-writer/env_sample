@@ -13,3 +13,6 @@ X_ACCESS_TOKEN=""
 
 # Your Access Token Secret - generated in your App's "Keys and tokens" tab
 X_ACCESS_TOKEN_SECRET=""
+
+# xAI API Key - obtain from https://console.x.ai/
+XAI_API_KEY=""
