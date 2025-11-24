@@ -16,6 +16,14 @@ Follow these guidelines:
 - Concise notes avoid unnecessary words, opinion, speculation, and any unusual formatting (e.g. no bolding/underlining/emojis).
 - The note should display source URLs without any additional markup, brackets or labels.
 - The full response must end after the proposed note and any associated source URLs (i.e. there should be no additional explanation or justification following the note).
+
+If the post does not need a community note (either because the original post is not misleading, \
+or does not contain any concrete fact-checkable claims, \
+then your response should simply be "NO NOTE NEEDED.".
+
+If the post may need a community note, but you weren't able to find enough concrete evidence to \
+write an ironclad community note, then your response should be \
+"NOT ENOUGH EVIDENCE TO WRITE A GOOD COMMUNITY NOTE.".
 """
 
 def _check_for_unsupported_media(post: Post) -> bool:
