@@ -13,6 +13,7 @@ from requests_oauthlib import OAuth1Session  # type: ignore
 from cnapi.get_api_eligible_posts import get_posts_eligible_for_notes
 from cnapi.submit_note import submit_note
 from cnapi.evaluate_note import evaluate_note
+from cnapi.get_notes_written import get_notes_written
 from data_models import EnvironmentVariables, NoteResult, PostWithContext
 import dotenv
 from note_writer.write_note import research_post_and_write_note, check_for_unsupported_media_in_post_with_context
@@ -262,6 +263,27 @@ def main(
         using a ThreadPoolExecutor. The function prints progress information
         including eligible post IDs and processing results.
     """
+    # Log recently submitted notes
+    print("=" * 60)
+    print("RECENTLY SUBMITTED NOTES SUMMARY")
+    print("=" * 60)
+    try:
+        recent_notes = get_notes_written(oauth=oauth, test_mode=True, max_results=None)
+        if recent_notes:
+            print(f"\nFound {len(recent_notes)} recent note(s):\n")
+            print("     NOTE_ID              POST_ID                TEST_RESULT")
+            #print("1    1993006473949946282  1992676776057917735    (HarassmentAbuse: High) (UrlValidity: High) (ClaimOpinion: High)")                
+            for i, note in enumerate(recent_notes, 1):
+                test_result_str = ""
+                if note.test_result:
+                    test_result_str = ", ".join([f"{result.evaluator_type}: {result.evaluator_score_bucket}" for result in note.test_result])
+                print(f"{i:<3}  {note.note_id}  {note.post_id}    {{{test_result_str}}}")
+        else:
+            print("\nNo notes found.\n")
+    except Exception as e:
+        print(f"\nError fetching notes: {e}\n")
+    print("=" * 60)
+    print()
 
     print(f"Getting up to {num_posts} recent posts eligible for notes")
     eligible_posts: List[PostWithContext] = get_posts_eligible_for_notes(
@@ -270,7 +292,7 @@ def main(
     )
     print(f"Found {len(eligible_posts)} recent posts eligible for notes")
     print(
-        f"  Eligible Post IDs: {', '.join([str(post_with_context.post.post_id) for post_with_context in eligible_posts])}\n"
+        f"  Eligible Post IDs: \n{'\n'.join([str(post_with_context.post.post_id) for post_with_context in eligible_posts])}\n"
     )
     if len(eligible_posts) == 0:
         print("No posts to process.")

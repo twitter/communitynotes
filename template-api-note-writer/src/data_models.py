@@ -69,3 +69,16 @@ class NoteResult(BaseModel):
     post: PostWithContext | None = None
     citations: list[str] | None = None
     tool_calls: list[Any] | None = None
+
+
+class TestResult(BaseModel):
+    evaluator_score_bucket: str
+    evaluator_type: str
+
+
+class NoteStatus(BaseModel):
+    note_id: str
+    post_id: str
+    status: str
+    test_result: List[TestResult] | None = None
+    note_text: str | None = None
