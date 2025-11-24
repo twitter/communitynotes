@@ -271,7 +271,6 @@ def main(
         if recent_notes:
             print(f"\nFound {len(recent_notes)} recent note(s):\n")
             print("     NOTE_ID              POST_ID                TEST_RESULT")
-            #print("1    1993006473949946282  1992676776057917735    (HarassmentAbuse: High) (UrlValidity: High) (ClaimOpinion: High)")                
             for i, note in enumerate(recent_notes, 1):
                 test_result_str = ""
                 if note.test_result:
@@ -289,7 +288,7 @@ def main(
         oauth=oauth,
     )
     print(f"Found {len(eligible_posts)} recent posts eligible for notes")
-    eligible_posts = eligible_posts[100:]
+    eligible_posts = eligible_posts[200:]
     eligible_posts = eligible_posts[:num_posts]
     print(f"Pruned to {len(eligible_posts)} posts")
     print(

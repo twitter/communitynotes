@@ -18,6 +18,8 @@ Follow these guidelines:
 - The note should display source URLs without any additional markup, brackets or labels.
 - The full response must end after the proposed note and any associated source URLs (i.e. there should be no additional explanation or justification following the note).
 
+The generated note must be at most 280 characters long, with URLs counted as a single character each.
+
 If the post does not need a community note (either because the original post is not misleading, \
 or does not contain any concrete fact-checkable claims, \
 then your response should simply be "NO NOTE NEEDED.".
