@@ -35,7 +35,7 @@ def _check_for_unsupported_media(post: Post) -> bool:
     return False
 
 
-def _check_for_unsupported_media_in_post_with_context(post_with_context: PostWithContext) -> bool:
+def check_for_unsupported_media_in_post_with_context(post_with_context: PostWithContext) -> bool:
     """Check if the post or any referenced posts contain unsupported media types."""
     if _check_for_unsupported_media(post_with_context.post):
         return True
@@ -53,6 +53,7 @@ def research_post_and_write_note(
     enable_web_image_understanding: bool = True,
     enable_x_image_understanding: bool = True,
     enable_x_video_understanding: bool = False,
+    verbose: bool = True,
 ) -> NoteResult:
     """
     Research a post and write a Community Note if needed.
@@ -64,11 +65,6 @@ def research_post_and_write_note(
     Returns:
         NoteResult containing the note, refusal, or error
     """
-    if _check_for_unsupported_media_in_post_with_context(post_with_context):
-        error_message = "Unsupported media type (e.g. video) found in post or in referenced post."
-        log_strings.append(f"\n*ERROR (unsupported media):* \n  {error_message}")
-        return NoteResult(post=post_with_context, error=error_message)
-    
     # Create LLM client instance
     llm_client = LLMClient(
         api_key=xai_api_key,
@@ -78,7 +74,8 @@ def research_post_and_write_note(
         enable_x_video_understanding=enable_x_video_understanding,
     )    
     writing_prompt = _get_prompt_for_note_writing(post_with_context)
-    log_strings.append(f"\n*WRITING PROMPT:*\n  {writing_prompt}")
+    if verbose:
+        log_strings.append(f"\n*WRITING PROMPT:*\n  {writing_prompt}")
     note_or_refusal_str, tool_calls, citations = llm_client.get_grok_response(writing_prompt)
 
     if ("NO NOTE NEEDED" in note_or_refusal_str) or (
