@@ -5,6 +5,13 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
+class EnvironmentVariables(BaseModel):
+    api_key: str
+    api_secret_key: str
+    access_token: str
+    access_token_secret: str
+
+
 class ProposedNote(BaseModel):
     post_id: str
     note_text: str

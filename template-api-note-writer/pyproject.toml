@@ -9,5 +9,6 @@ dependencies = [
     "pre-commit>=4.2.0",
     "pydantic>=2.11.7",
     "requests>=2.32.3",
+    "requests-oauthlib>=2.0.0",
     "ruff>=0.12.0",
 ]

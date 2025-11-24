@@ -1,12 +1,13 @@
 import json
 from typing import Any, Dict
 
-from .xurl_util import run_xurl
+from requests_oauthlib import OAuth1Session  # type: ignore
 
 from data_models import ProposedMisleadingNote
 
 
 def submit_note(
+    oauth: OAuth1Session,
     note: ProposedMisleadingNote,
     test_mode: bool = True,
     verbose_if_failed: bool = False,
@@ -14,6 +15,12 @@ def submit_note(
     """
     Submit a note to the Community Notes API. For more details, see:
     https://docs.x.com/x-api/community-notes/introduction
+
+    Args:
+        oauth: OAuth1Session object for authenticating with the X API.
+        note: The note to submit.
+        test_mode: If True, use test mode for the API (default is True).
+        verbose_if_failed: If True, print error details if the request fails.
     """
     payload = {
         "test_mode": test_mode,
@@ -26,13 +33,16 @@ def submit_note(
         },
     }
 
-    cmd = [
-        "xurl",
-        "-X",
-        "POST",
-        "/2/notes",
-        "-d",
-        json.dumps(payload),
-    ]
-
-    return run_xurl(cmd, verbose_if_failed=verbose_if_failed)
+    url = "https://api.x.com/2/notes"
+    response = oauth.post(url, json=payload)
+    
+    try:
+        response.raise_for_status()
+    except Exception as e:
+        if verbose_if_failed:
+            print(f"Failed to submit note: {e}")
+            print(f"Response status: {response.status_code}")
+            print(f"Response text: {response.text}")
+        raise
+    
+    return response.json()

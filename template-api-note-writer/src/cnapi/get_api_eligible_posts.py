@@ -1,36 +1,37 @@
 from datetime import datetime
 from typing import Dict, List
 
-from cnapi.xurl_util import run_xurl
+from requests_oauthlib import OAuth1Session  # type: ignore
 
 from data_models import Media, Post, PostWithContext
 
 
 def _fetch_posts_eligible_for_notes(
-    max_results: int = 2, test_mode: bool = True
+    oauth: OAuth1Session,
+    max_results: int = 2,
+    test_mode: bool = True,
 ) -> dict:
     """
     Fetch posts eligible for notes by calling the Community Notes API.
     For more details, see: https://docs.x.com/x-api/community-notes/introduction
     Args:
+        oauth: OAuth1Session object for authenticating with the X API.
         max_results: Maximum number of results to return (default is 2).
         test_mode: If True, use test mode for the API (default is True).
     Returns:
         A dictionary containing the API response.
     """
-    path = (
-        "/2/notes/search/posts_eligible_for_notes"
+    url = (
+        "https://api.x.com/2/notes/search/posts_eligible_for_notes"
         f"?test_mode={'true' if test_mode else 'false'}"
         f"&max_results={max_results}"
         "&tweet.fields=author_id,created_at,referenced_tweets,media_metadata,note_tweet"
         "&expansions=attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys"
         "&media.fields=alt_text,duration_ms,height,media_key,preview_image_url,public_metrics,type,url,width,variants"
     )
-    cmd = [
-        "xurl",
-        path,
-    ]
-    return run_xurl(cmd)
+    response = oauth.get(url)
+    response.raise_for_status()
+    return response.json()
 
 def _parse_individual_post(item: Dict, media_by_key: Dict[str, Dict]) -> Post:
     media_objs: List[Media] = []
@@ -115,15 +116,22 @@ def _parse_posts_eligible_response(resp: Dict) -> List[PostWithContext]:
 
 
 def get_posts_eligible_for_notes(
-    max_results: int = 2, test_mode: bool = True
+    oauth: OAuth1Session,
+    max_results: int = 2,
+    test_mode: bool = True,
 ) -> List[PostWithContext]:
     """
     Get posts eligible for notes by calling the Community Notes API.
     For more details, see: https://docs.x.com/x-api/community-notes/introduction
 
+    Args:
+        oauth: OAuth1Session object for authenticating with the X API.
+        max_results: Maximum number of results to return (default is 2).
+        test_mode: If True, use test mode for the API (default is True).
+
     Returns:
         A list of `Post` objects.
     """
     return _parse_posts_eligible_response(
-        _fetch_posts_eligible_for_notes(max_results, test_mode)
+        _fetch_posts_eligible_for_notes(oauth, max_results, test_mode)
     )

@@ -1,0 +1,15 @@
+# Fill in the missing keys and move to .env
+
+# Obtain keys from the X API developer portal: https://developer.x.com/en/portal/dashboard
+
+# Your API Key (Consumer Key) - found in your App's "Keys and tokens" tab
+X_API_KEY=""
+
+# Your API Secret Key (Consumer Secret) - found in your App's "Keys and tokens" tab
+X_API_KEY_SECRET=""
+
+# Your Access Token - generated in your App's "Keys and tokens" tab
+X_ACCESS_TOKEN=""
+
+# Your Access Token Secret - generated in your App's "Keys and tokens" tab
+X_ACCESS_TOKEN_SECRET=""
