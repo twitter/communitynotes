@@ -129,21 +129,17 @@ def _worker(
         This function prints detailed information about the processing result, including
         post text, any errors, refusals, the generated note, and submission status.
     """
-    note_result: NoteResult = research_post_and_write_note(post_with_context, xai_api_key)
-
+    # Initialize log with post and context
     log_strings: List[str] = ["-" * 20, f"Post: {post_with_context.post.post_id}", "-" * 20]
-    if note_result.error is not None:
-        log_strings.append(f"\n*ERROR:* {note_result.error}")
-    if note_result.writing_prompt is not None:
-        log_strings.append(f"\n*WRITING PROMPT:*\n  {note_result.writing_prompt}")
-    if post_with_context.post.text is not None:
-        log_strings.append(f"\n*POST TEXT:* \n  {post_with_context.post.text}")
+    assert post_with_context.post.text is not None
+    log_strings.append(f"\n*POST TEXT:* \n  {post_with_context.post.text}")
     if post_with_context.quoted_post is not None and post_with_context.quoted_post.text is not None:
         log_strings.append(f"\n*QUOTED POST TEXT:* \n  {post_with_context.quoted_post.text}")
     if post_with_context.in_reply_to_post is not None and post_with_context.in_reply_to_post.text is not None:
         log_strings.append(f"\n*IN-REPLY-TO POST TEXT:* \n  {post_with_context.in_reply_to_post.text}")
-    if note_result.refusal:
-        log_strings.append(f"\n*REFUSAL:* {note_result.refusal}")
+
+    note_result: NoteResult = research_post_and_write_note(post_with_context, xai_api_key, log_strings)
+
     if note_result.note:
         log_strings.append(f"\n*NOTE:*\n  {note_result.note.note_text}\n")
         log_strings.append(

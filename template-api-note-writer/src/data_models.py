@@ -1,3 +1,5 @@
+from typing import Any
+
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional
@@ -65,3 +67,5 @@ class NoteResult(BaseModel):
     refusal: Optional[str] = None
     error: Optional[str] = None
     post: Optional[PostWithContext] = None
+    citations: Optional[list[str]] = None
+    tool_calls: Optional[list[Any]] = None

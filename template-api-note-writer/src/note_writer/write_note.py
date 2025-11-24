@@ -1,6 +1,7 @@
 from data_models import NoteResult, Post, PostWithContext, ProposedMisleadingNote
 from note_writer.llm_util import LLMClient
 from note_writer.misleading_tags import get_misleading_tags
+from utils.url_utils import extract_and_validate_urls
 
 
 def _get_prompt_for_note_writing(post_with_context: PostWithContext):
@@ -48,6 +49,7 @@ def _check_for_unsupported_media_in_post_with_context(post_with_context: PostWit
 def research_post_and_write_note(
     post_with_context: PostWithContext,
     xai_api_key: str,
+    log_strings: list[str],
     enable_web_image_understanding: bool = True,
     enable_x_image_understanding: bool = True,
     enable_x_video_understanding: bool = False,
@@ -63,7 +65,9 @@ def research_post_and_write_note(
         NoteResult containing the note, refusal, or error
     """
     if _check_for_unsupported_media_in_post_with_context(post_with_context):
-        return NoteResult(post=post_with_context, error="Unsupported media type (e.g. video) found in post or in referenced post.")
+        error_message = "Unsupported media type (e.g. video) found in post or in referenced post."
+        log_strings.append(f"\n*ERROR (unsupported media):* \n  {error_message}")
+        return NoteResult(post=post_with_context, error=error_message)
     
     # Create LLM client instance
     llm_client = LLMClient(
@@ -74,14 +78,24 @@ def research_post_and_write_note(
         enable_x_video_understanding=enable_x_video_understanding,
     )    
     writing_prompt = _get_prompt_for_note_writing(post_with_context)
-    note_or_refusal_str = llm_client.get_grok_response(writing_prompt)
+    log_strings.append(f"\n*WRITING PROMPT:*\n  {writing_prompt}")
+    note_or_refusal_str, tool_calls, citations = llm_client.get_grok_response(writing_prompt)
 
     if ("NO NOTE NEEDED" in note_or_refusal_str) or (
         "NOT ENOUGH EVIDENCE TO WRITE A GOOD COMMUNITY NOTE" in note_or_refusal_str
     ):
+        log_strings.append(f"\n*REFUSAL:*\n  {note_or_refusal_str}")
         return NoteResult(post=post_with_context, refusal=note_or_refusal_str, writing_prompt=writing_prompt)
 
     misleading_tags = get_misleading_tags(post_with_context, note_or_refusal_str, llm_client)
+
+    failed_urls = extract_and_validate_urls(note_or_refusal_str, citations)
+    if failed_urls:
+        error_details = "\n".join([f"  {status_code:<4} {url}" for url, status_code in failed_urls])
+        error_message = f"One or more URLs returned non-2xx/3xx status codes:\n{error_details}"
+        log_strings.append(f"\n*ERROR (URL validation failed):*\n  {error_message}")
+        log_strings.append(f"\n*CITATIONS:*\n  {'\n  '.join(citations)}")
+        return NoteResult(post=post_with_context, error=error_message, citations=citations, tool_calls=tool_calls)
 
     return NoteResult(
         post=post_with_context,
@@ -91,4 +105,6 @@ def research_post_and_write_note(
             misleading_tags=misleading_tags,
         ),
         writing_prompt=writing_prompt,
+        citations=citations,
+        tool_calls=tool_calls,
     )

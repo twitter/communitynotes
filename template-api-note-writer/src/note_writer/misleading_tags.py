@@ -1,18 +1,18 @@
 import json
 
-from data_models import MisleadingTag
+from data_models import MisleadingTag, PostWithContext
 from note_writer.llm_util import LLMClient
 
 
 def get_misleading_tags(
-    post_with_context_description: str, note_text: str, llm_client: LLMClient, retries: int = 3
+    post_with_context: PostWithContext, note_text: str, llm_client: LLMClient, retries: int = 3
 ) -> list[MisleadingTag]:
     misleading_why_tags_prompt = _get_prompt_for_misleading_why_tags(
-        post_with_context_description, note_text
+        post_with_context, note_text
     )
     while retries > 0:
         try:
-            misleading_why_tags_str = llm_client.get_grok_response(misleading_why_tags_prompt)
+            misleading_why_tags_str, _, _ = llm_client.get_grok_response(misleading_why_tags_prompt)
             misleading_why_tags = json.loads(misleading_why_tags_str)["misleading_tags"]
             return [MisleadingTag(tag) for tag in misleading_why_tags]
         except Exception as e:
@@ -22,7 +22,10 @@ def get_misleading_tags(
     raise Exception("Failed to get misleading tags for note.")
 
 
-def _get_prompt_for_misleading_why_tags(post_with_context_description: str, note: str):
+def _get_prompt_for_misleading_why_tags(post_with_context: PostWithContext, note: str):
+    user_name = post_with_context.post.username
+    post_id = post_with_context.post.post_id
+    post_link = f"https://x.com/{user_name}/status/{post_id}"
     return f"""Below will be a post on X, and a proposed community note that \
 adds additional context to the potentially misleading post. \
 Your task will be to identify which of the following tags apply to the post and note. \
@@ -51,7 +54,7 @@ MISINTERPRETED_SATIRE = 6
 
 The post and note are as follows:
 
-{post_with_context_description}
+{post_link}
 
 ```
 Proposed community note:

@@ -1,3 +1,5 @@
+from typing import Any
+
 from xai_sdk import Client
 from xai_sdk.chat import user, system
 from xai_sdk.tools import web_search, x_search
@@ -41,7 +43,7 @@ class LLMClient:
         self, 
         prompt: str, 
         temperature: float = 0.8, 
-    ) -> str:
+    ) -> tuple[str, list[Any], list[str]]:
         """
         Get a response from Grok for a given prompt with web and X search enabled.
         
@@ -73,12 +75,20 @@ class LLMClient:
         chat.append(user(prompt))
         
         # Stream the response and collect the final content
-        final_content = ""
+        final_content: list[str] = []
+        is_thinking = True
+        tool_calls = []
+        citations = []
         for response, chunk in chat.stream():
-            if chunk.content:
-                final_content += chunk.content
-        
-        return final_content
+            # View the server-side tool calls as they are being made in real-time
+            for tool_call in chunk.tool_calls:
+                tool_calls.append(tool_call)
+            if chunk.content and is_thinking:
+                is_thinking = False
+            if chunk.content and not is_thinking:
+                final_content.append(chunk.content)
+            citations.extend(response.citations)
+        return "".join(final_content), tool_calls, citations
 
 
 if __name__ == "__main__":
