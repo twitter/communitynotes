@@ -1,117 +1,84 @@
-from openai import OpenAI
+from xai_sdk import Client
+from xai_sdk.chat import user, system
+from xai_sdk.tools import web_search, x_search
 
 
 class LLMClient:
-    """Client for interacting with xAI's Grok models via OpenAI-compatible API."""
+    """Client for interacting with xAI's Grok models via xAI SDK."""
     
-    def __init__(self, api_key: str):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "grok-4-fast",
+        enable_web_image_understanding: bool = False,
+        enable_x_image_understanding: bool = False,
+        enable_x_video_understanding: bool = False
+    ):
         """
         Initialize the LLM client with the provided API key.
         
         Args:
             api_key: The xAI API key for authentication
+            enable_web_image_understanding: Enable image understanding in web search (default: False)
+            enable_x_image_understanding: Enable image understanding in X search (default: False)
+            enable_x_video_understanding: Enable video understanding in X search (default: False)
         """
         self._api_key: str = api_key
-        self._client: OpenAI | None = None
+        self._client: Client | None = None
+        self._model: str = model
+        self._enable_web_image_understanding: bool = enable_web_image_understanding
+        self._enable_x_image_understanding: bool = enable_x_image_understanding
+        self._enable_x_video_understanding: bool = enable_x_video_understanding
     
     @property
-    def client(self) -> OpenAI:
-        """Get OpenAI client configured for xAI API."""
+    def client(self) -> Client:
+        """Get xAI client."""
         if self._client is None:
-            self._client = OpenAI(
-                api_key=self._api_key,
-                base_url="https://api.x.ai/v1",
-            )
+            self._client = Client(api_key=self._api_key)
         return self._client
     
-    def get_grok_response(self, prompt: str, temperature: float = 0.8, model: str = "grok-3-latest") -> str:
+    def get_grok_response(
+        self, 
+        prompt: str, 
+        temperature: float = 0.8, 
+    ) -> str:
         """
-        Get a response from Grok for a given prompt.
+        Get a response from Grok for a given prompt with web and X search enabled.
         
         Args:
             prompt: The prompt to send to Grok
             temperature: Temperature for response generation (default: 0.8)
-            model: Model to use (default: "grok-3-latest")
+            model: Model to use (default: "grok-4-fast")
             
         Returns:
             The generated response text
         """
-        response = self.client.chat.completions.create(
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a highly intelligent AI assistant.",
-                },
-                {"role": "user", "content": prompt},
+        # Create a chat session with web_search and x_search tools enabled
+        chat = self.client.chat.create(
+            model=self._model,
+            temperature=temperature,
+            tools=[
+                web_search(
+                    enable_image_understanding=self._enable_web_image_understanding,
+                ),
+                x_search(
+                    enable_image_understanding=self._enable_x_image_understanding,
+                    enable_video_understanding=self._enable_x_video_understanding
+                )
             ],
-            model=model,
-            temperature=temperature,
         )
-        return response.choices[0].message.content
-    
-    def grok_describe_image(self, image_url: str, temperature: float = 0.01, model: str = "grok-2-vision-latest") -> str:
-        """
-        Describe an image using Grok's vision capabilities.
         
-        Currently just describe image on its own. There are many possible
-        improvements to consider making, e.g. passing in the post text or
-        other context and describing the image and post text together.
+        # Add system and user messages
+        chat.append(system("You are a highly intelligent AI assistant."))
+        chat.append(user(prompt))
         
-        Args:
-            image_url: URL of the image to describe
-            temperature: Temperature for response generation (default: 0.01)
-            model: Model to use (default: "grok-2-vision-latest")
-            
-        Returns:
-            The image description text
-        """
-        response = self.client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": image_url,
-                                "detail": "high",
-                            },
-                        },
-                        {
-                            "type": "text",
-                            "text": "What's in this image?",
-                        },
-                    ],
-                },
-            ],
-            model=model,
-            temperature=temperature,
-        )
-        return response.choices[0].message.content
-    
-    def get_grok_live_search_response(self, prompt: str, temperature: float = 0.8, model: str = "grok-3-latest") -> str:
-        """
-        Get a response from Grok with live web search enabled.
+        # Stream the response and collect the final content
+        final_content = ""
+        for response, chunk in chat.stream():
+            if chunk.content:
+                final_content += chunk.content
         
-        Args:
-            prompt: The prompt to send to Grok
-            temperature: Temperature for response generation (default: 0.8)
-            model: Model to use (default: "grok-3-latest")
-            
-        Returns:
-            The generated response text with live search results
-        """
-        response = self.client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            extra_body={
-                "search_parameters": {
-                    "mode": "on",
-                },
-            },
-            model=model,
-            temperature=temperature,
-        )
-        return response.choices[0].message.content
+        return final_content
 
 
 if __name__ == "__main__":
@@ -125,7 +92,7 @@ if __name__ == "__main__":
     
     llm_client = LLMClient(api_key=xai_api_key)
     print(
-        llm_client.get_grok_live_search_response(
+        llm_client.get_grok_response(
             "Provide me a digest of world news in the last 2 hours. Please respond with links to each source next to the claims that the source supports."
         )
     )

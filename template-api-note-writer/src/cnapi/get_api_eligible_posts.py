@@ -26,14 +26,15 @@ def _fetch_posts_eligible_for_notes(
         f"?test_mode={'true' if test_mode else 'false'}"
         f"&max_results={max_results}"
         "&tweet.fields=author_id,created_at,referenced_tweets,media_metadata,note_tweet"
-        "&expansions=attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys"
+        "&expansions=author_id,attachments.media_keys,referenced_tweets.id"
+        "&user.fields=username"
         "&media.fields=alt_text,duration_ms,height,media_key,preview_image_url,public_metrics,type,url,width,variants"
     )
     response = oauth.get(url)
     response.raise_for_status()
     return response.json()
 
-def _parse_individual_post(item: Dict, media_by_key: Dict[str, Dict]) -> Post:
+def _parse_individual_post(item: Dict, media_by_key: Dict[str, Dict], users_by_id: Dict[str, Dict]) -> Post:
     media_objs: List[Media] = []
     media_keys = item.get("attachments", {}).get("media_keys", [])
 
@@ -47,9 +48,14 @@ def _parse_individual_post(item: Dict, media_by_key: Dict[str, Dict]) -> Post:
     if note_tweet_text:
         text = note_tweet_text
 
+    # Get username from users_by_id lookup
+    author_id = item["author_id"]
+    username = users_by_id.get(author_id, {}).get("username", "unknown")
+
     post = Post(
         post_id=item["id"],
-        author_id=item["author_id"],
+        author_id=author_id,
+        username=username,
         created_at=datetime.fromisoformat(
             item["created_at"].replace("Z", "+00:00")
         ),
@@ -76,13 +82,16 @@ def _parse_posts_eligible_response(resp: Dict) -> List[PostWithContext]:
     includes_posts = resp.get("includes", {}).get("tweets", [])
     posts_by_id = {t["id"]: t for t in includes_posts}
 
+    includes_users = resp.get("includes", {}).get("users", [])
+    users_by_id = {u["id"]: u for u in includes_users}
+
     # rename type field to media_type to avoid name conflict with type
     for media_obj in media_by_key.values():
         media_obj["media_type"] = media_obj.pop("type")
 
-    posts: List[Post] = []
+    posts: List[PostWithContext] = []
     for item in resp.get("data", []):
-        post = _parse_individual_post(item, media_by_key)
+        post = _parse_individual_post(item, media_by_key, users_by_id)
 
         # Handle quoted and in-reply-to posts ("referenced_tweets")
         quoted_post = None
@@ -94,7 +103,7 @@ def _parse_posts_eligible_response(resp: Dict) -> List[PostWithContext]:
                     print(f"For post {post.post_id}, referenced post {referenced_post_id} not found in posts_by_id; skipping.")
                     continue
                 referenced_post_item = posts_by_id[referenced_post_id]
-                referenced_post = _parse_individual_post(referenced_post_item, media_by_key)
+                referenced_post = _parse_individual_post(referenced_post_item, media_by_key, users_by_id)
 
                 if ref["type"] == "quoted":
                     assert quoted_post is None, "Multiple quoted posts found in a single post"

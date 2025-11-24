@@ -132,12 +132,16 @@ def _worker(
     note_result: NoteResult = research_post_and_write_note(post_with_context, xai_api_key)
 
     log_strings: List[str] = ["-" * 20, f"Post: {post_with_context.post.post_id}", "-" * 20]
-    if note_result.context_description is not None:
-        log_strings.append(
-            f"\n*POST TEXT, IMAGE SUMMARIES, AND ANY QUOTED OR REPLIED-TO POST:*\n{note_result.context_description}\n"
-        )
     if note_result.error is not None:
         log_strings.append(f"\n*ERROR:* {note_result.error}")
+    if note_result.writing_prompt is not None:
+        log_strings.append(f"\n*WRITING PROMPT:*\n  {note_result.writing_prompt}")
+    if post_with_context.post.text is not None:
+        log_strings.append(f"\n*POST TEXT:* \n  {post_with_context.post.text}")
+    if post_with_context.quoted_post is not None and post_with_context.quoted_post.text is not None:
+        log_strings.append(f"\n*QUOTED POST TEXT:* \n  {post_with_context.quoted_post.text}")
+    if post_with_context.in_reply_to_post is not None and post_with_context.in_reply_to_post.text is not None:
+        log_strings.append(f"\n*IN-REPLY-TO POST TEXT:* \n  {post_with_context.in_reply_to_post.text}")
     if note_result.refusal:
         log_strings.append(f"\n*REFUSAL:* {note_result.refusal}")
     if note_result.note:

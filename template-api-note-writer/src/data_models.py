@@ -47,6 +47,7 @@ class Media(BaseModel):
 class Post(BaseModel):
     post_id: str
     author_id: str
+    username: str
     created_at: datetime
     text: str
     media: List[Media]
@@ -59,8 +60,8 @@ class PostWithContext(BaseModel):
 
 
 class NoteResult(BaseModel):
+    writing_prompt: Optional[str] = None
     note: Optional[ProposedMisleadingNote] = None
     refusal: Optional[str] = None
     error: Optional[str] = None
     post: Optional[PostWithContext] = None
-    context_description: Optional[str] = None
