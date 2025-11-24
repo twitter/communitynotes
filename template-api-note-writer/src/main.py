@@ -225,13 +225,12 @@ def _worker(
                 oauth=oauth,
                 note=note_result.note,
                 test_mode=True,
-                verbose_if_failed=False,
+                log_strings=log_strings,
             )
             log_strings.append("\n*SUCCESSFULLY SUBMITTED NOTE*")
-        except Exception:
-            log_strings.append(
-                "\n*ERROR SUBMITTING NOTE*: likely we already wrote a note on this post; moving on."
-            )
+        except:
+            # Logging occurs in submit_note
+            pass
     print("\n".join(log_strings) + "\n")
 
 
@@ -290,6 +289,7 @@ def main(
         oauth=oauth,
     )
     print(f"Found {len(eligible_posts)} recent posts eligible for notes")
+    eligible_posts = eligible_posts[100:]
     eligible_posts = eligible_posts[:num_posts]
     print(f"Pruned to {len(eligible_posts)} posts")
     print(

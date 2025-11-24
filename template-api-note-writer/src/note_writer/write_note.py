@@ -87,9 +87,16 @@ def research_post_and_write_note(
     misleading_tags = get_misleading_tags(post_with_context, note_or_refusal_str, llm_client)
 
     failed_urls = extract_and_validate_urls(note_or_refusal_str, citations)
+    error_details = []
     if failed_urls:
-        error_details = "\n".join([f"  {status_code:<4} {url}" for url, status_code in failed_urls])
-        error_message = f"One or more URLs returned non-2xx/3xx status codes:\n{error_details}"
+        for url, status_code in failed_urls:
+            if status_code is not None:
+                error_details.append(f"  {status_code:<4} {url}")
+            else:
+                error_details.append(f"  None {url}")
+
+        error_details_str = "\n".join(error_details)
+        error_message = f"One or more URLs returned non-2xx/3xx status codes:\n{error_details_str}"
         log_strings.append(f"\n*ERROR (URL validation failed):*\n  {error_message}")
         log_strings.append(f"\n*CITATIONS:*\n  {'\n  '.join(citations)}")
         return NoteResult(post=post_with_context, error=error_message, citations=citations, tool_calls=tool_calls)

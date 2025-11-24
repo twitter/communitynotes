@@ -9,8 +9,8 @@ from data_models import ProposedMisleadingNote
 def submit_note(
     oauth: OAuth1Session,
     note: ProposedMisleadingNote,
+    log_strings: list[str],
     test_mode: bool = True,
-    verbose_if_failed: bool = False,
 ) -> Dict[str, Any]:
     """
     Submit a note to the Community Notes API. For more details, see:
@@ -19,8 +19,8 @@ def submit_note(
     Args:
         oauth: OAuth1Session object for authenticating with the X API.
         note: The note to submit.
+        log_strings: List of log strings to append to.
         test_mode: If True, use test mode for the API (default is True).
-        verbose_if_failed: If True, print error details if the request fails.
     """
     payload = {
         "test_mode": test_mode,
@@ -34,15 +34,15 @@ def submit_note(
     }
 
     url = "https://api.x.com/2/notes"
-    response = oauth.post(url, json=payload)
     
+    response = oauth.post(url, json=payload)
     try:
         response.raise_for_status()
+        return response.json()
     except Exception as e:
-        if verbose_if_failed:
-            print(f"Failed to submit note: {e}")
-            print(f"Response status: {response.status_code}")
-            print(f"Response text: {response.text}")
+        log_strings.append("\n*ERROR SUBMITTING NOTE*:")
+        log_strings.append(f"  Failed to submit note: {e}")
+        log_strings.append(f"  Response status: {response.status_code}")
+        log_strings.append(f"  Response text: {response.text}")
         raise
     
-    return response.json()
