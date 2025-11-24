@@ -2,7 +2,7 @@ from typing import Any
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel
 
@@ -38,12 +38,12 @@ class ProposedMisleadingNote(ProposedNote):
 class Media(BaseModel):
     media_key: str
     media_type: str
-    url: Optional[str] = None
-    preview_image_url: Optional[str] = None
-    height: Optional[int] = None
-    width: Optional[int] = None
-    duration_ms: Optional[int] = None
-    view_count: Optional[int] = None
+    url: str | None = None
+    preview_image_url: str | None = None
+    height: int | None = None
+    width: int | None = None
+    duration_ms: int | None = None
+    view_count: int | None = None
 
 
 class Post(BaseModel):
@@ -57,15 +57,15 @@ class Post(BaseModel):
 
 class PostWithContext(BaseModel):
     post: Post
-    quoted_post: Optional[Post] = None
-    in_reply_to_post: Optional[Post] = None
+    quoted_post: Post | None = None
+    in_reply_to_post: Post | None = None
 
 
 class NoteResult(BaseModel):
-    writing_prompt: Optional[str] = None
-    note: Optional[ProposedMisleadingNote] = None
-    refusal: Optional[str] = None
-    error: Optional[str] = None
-    post: Optional[PostWithContext] = None
-    citations: Optional[list[str]] = None
-    tool_calls: Optional[list[Any]] = None
+    writing_prompt: str | None = None
+    note: ProposedMisleadingNote | None = None
+    refusal: str | None = None
+    error: str | None = None
+    post: PostWithContext | None = None
+    citations: list[str] | None = None
+    tool_calls: list[Any] | None = None
