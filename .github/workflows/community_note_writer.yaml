@@ -25,20 +25,6 @@ jobs:
       
       - name: Install the project
         run: cd template-api-note-writer && uv sync --locked 
-
-      - name: Install xurl CLI
-        run: |
-          sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/xdevplatform/xurl/main/install.sh)"
-
-      - name: Authenticate xurl via Oauth 1.0
-        run: xurl auth oauth1 --consumer-key "$X_API_KEY" --consumer-secret "$X_API_KEY_SECRET" --access-token "$X_ACCESS_TOKEN" --token-secret "$X_ACCESS_TOKEN_SECRET"
-        # Read the environment variables from the github repository.
-        # Store under Settings --> Secrets and variables --> Actions
-        env: 
-          X_API_KEY:    ${{ secrets.X_API_KEY }}
-          X_API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
-          X_ACCESS_TOKEN:    ${{ secrets.X_ACCESS_TOKEN }}
-          X_ACCESS_TOKEN_SECRET:    ${{ secrets.X_ACCESS_TOKEN_SECRET }}
       
       - name: Run bot
         run: cd template-api-note-writer && uv run src/main.py
@@ -46,3 +32,7 @@ jobs:
         # Store under Settings --> Secrets and variables --> Actions
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }} # Optional: delete if not using XAI API
+          X_API_KEY:    ${{ secrets.X_API_KEY }}
+          X_API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
+          X_ACCESS_TOKEN:    ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET:    ${{ secrets.X_ACCESS_TOKEN_SECRET }}
