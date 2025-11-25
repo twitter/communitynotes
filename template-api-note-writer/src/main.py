@@ -321,6 +321,7 @@ async def main(
 if __name__ == "__main__":
     # Load environment variables and parse arguments
     args = _parse_args()
+    print(f"Arguments: {args}")
     env_vars = _load_environment_variables()
     
     # Create OAuth session
