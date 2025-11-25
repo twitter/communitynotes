@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: bradm/writer_updates
       
       - name: Install uv
         uses: astral-sh/setup-uv@v5
