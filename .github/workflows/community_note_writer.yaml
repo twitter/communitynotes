@@ -6,7 +6,7 @@ on:
 
   # Uncomment the cron schedule to start automated runs via Github Actions
   #schedule:
-  #  - cron: '*/15 * * * *'
+    - cron: '*/15 * * * *'
 
 # Add concurrency group to prevent parallel runs
 concurrency:
@@ -33,7 +33,7 @@ jobs:
           cd template-api-note-writer && uv run src/main.py
           --concurrency 3
           --num-posts 3
-          --co-submission-threshold=0.5
+          --co-submission-threshold=0.7
           --co-reject-threshold=-1
         # Read the environment variables from the github repository.
         # Store under Settings --> Secrets and variables --> Actions
