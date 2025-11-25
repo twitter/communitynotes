@@ -270,15 +270,15 @@ async def main(
     print("RECENTLY SUBMITTED NOTES SUMMARY")
     print("=" * 60)
     try:
-        recent_notes = get_notes_written(oauth=oauth, test_mode=True, max_results=None)
+        recent_notes = get_notes_written(oauth=oauth, test_mode=False, max_results=None)
         if recent_notes:
             print(f"\nFound {len(recent_notes)} recent note(s):\n")
-            print("     NOTE_ID              POST_ID                TEST_RESULT")
+            print("     NOTE_ID              POST_ID              STATUS                     TEST_RESULT")
             for i, note in enumerate(recent_notes, 1):
                 test_result_str = ""
                 if note.test_result:
                     test_result_str = ", ".join([f"{result.evaluator_type}: {result.evaluator_score_bucket}" for result in note.test_result])
-                print(f"{i:<3}  {note.note_id}  {note.post_id}    {{{test_result_str}}}")
+                print(f"{i:<3}  {note.note_id}  {note.post_id}  {note.status}    {{{test_result_str}}}")
         else:
             print("\nNo notes found.\n")
     except Exception as e:
