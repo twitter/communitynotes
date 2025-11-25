@@ -227,7 +227,7 @@ async def _worker(
             submit_note(
                 oauth=oauth,
                 note=note_result.note,
-                test_mode=True,
+                test_mode=False,
                 log_strings=log_strings,
             )
             log_strings.append("\n*SUCCESSFULLY SUBMITTED NOTE*")

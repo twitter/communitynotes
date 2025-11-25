@@ -176,7 +176,4 @@ def get_posts_eligible_for_notes(
         if not pagination_token:
             break
     
-    # Sort by post_id in increasing order
-    all_posts.sort(key=lambda p: int(p.post.post_id))
-    
     return all_posts
