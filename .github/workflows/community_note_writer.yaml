@@ -38,7 +38,7 @@ jobs:
         # Read the environment variables from the github repository.
         # Store under Settings --> Secrets and variables --> Actions
         env:
-          XAI_API_KEY: ${{ secrets.XAI_API_KEY }} # Optional: delete if not using XAI API
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           X_API_KEY:    ${{ secrets.X_API_KEY }}
           X_API_KEY_SECRET: ${{ secrets.X_API_KEY_SECRET }}
           X_ACCESS_TOKEN:    ${{ secrets.X_ACCESS_TOKEN }}
