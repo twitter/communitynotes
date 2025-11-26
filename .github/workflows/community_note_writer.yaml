@@ -1,12 +1,9 @@
 name: Hard Bot Life
 
 on:
-  # Allow manual triggering of the workflow via Github Actions
-  workflow_dispatch:
-
   # Uncomment the cron schedule to start automated runs via Github Actions
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: "*/5 * * * *"
 
 # Add concurrency group to prevent parallel runs
 concurrency:
