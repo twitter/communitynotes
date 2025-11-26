@@ -6,7 +6,7 @@ on:
 
   # Uncomment the cron schedule to start automated runs via Github Actions
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
 
 # Add concurrency group to prevent parallel runs
 concurrency:
