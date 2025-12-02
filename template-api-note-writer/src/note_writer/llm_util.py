@@ -14,7 +14,7 @@ class LLMClient:
     def __init__(
         self,
         api_key: str,
-        model: str = "grok-4-fast",
+        model: str = "grok-4-fast-community-notes-r35",
         enable_web_image_understanding: bool = False,
         enable_x_image_understanding: bool = False,
         enable_x_video_understanding: bool = False
@@ -39,7 +39,7 @@ class LLMClient:
     def client(self) -> AsyncClient:
         """Get xAI async client."""
         if self._client is None:
-            self._client = AsyncClient(api_key=self._api_key)
+            self._client = AsyncClient(api_key=self._api_key, api_host="research-models.api.x.ai")
         return self._client
     
     async def get_grok_response(

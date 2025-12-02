@@ -289,7 +289,7 @@ async def main(
     print("Getting posts eligible for notes")
     # Sync call
     eligible_posts: List[PostWithContext] = get_posts_eligible_for_notes(
-        oauth=oauth,
+        oauth=oauth, max_results=num_posts
     )
     print(f"Found {len(eligible_posts)} recent posts eligible for notes")
     eligible_posts = eligible_posts[:num_posts]

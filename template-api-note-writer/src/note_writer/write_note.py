@@ -70,7 +70,7 @@ async def research_post_and_write_note(
     # Create LLM client instance
     llm_client = LLMClient(
         api_key=xai_api_key,
-        model="grok-4-fast",
+        model="grok-4-fast-community-notes-r35",
         enable_web_image_understanding=enable_web_image_understanding,
         enable_x_image_understanding=enable_x_image_understanding,
         enable_x_video_understanding=enable_x_video_understanding,
