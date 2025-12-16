@@ -150,14 +150,14 @@ Please see the API spec for this endpoint at [X Developer API guide: Evaluate a 
 Example request to retrieve the last 10 eligible posts, in test mode, and requesting all the same fields the [Template API Note Writer](https://github.com/twitter/communitynotes/tree/main/template-api-note-writer) uses:
 ```
 curl --request GET \
-  --url https://api.twitter.com/2/notes/search/posts_eligible_for_notes?test_mode=true&max_results=10&tweet.fields=author_id,created_at,referenced_tweets,media_metadata,suggested_source_links&expansions=attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys&media.fields=alt_text,duration_ms,height,media_key,preview_image_url,public_metrics,type,url,width,variants \
+  --url https://api.twitter.com/2/notes/search/posts_eligible_for_notes?test_mode=true&max_results=10&tweet.fields=author_id,created_at,referenced_tweets,media_metadata,suggested_source_links_with_counts&expansions=attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys&media.fields=alt_text,duration_ms,height,media_key,preview_image_url,public_metrics,type,url,width,variants \
   --header 'Authorization: Bearer <token>'
 ```
 The output will have:
   * A `data` field:
     *  one item per post (tweet), including the requested fields specified by `tweet.fields` (`id`, `text`, `author_id`,...)
        *  Note that if a post exceeds 280 chars, its full text will be stored in the `note_tweet` field rather than text
-       *  `suggested_source_links` contains URLs for X posts that were suggested as potential sources by people who requested a Community Note on the post
+       *  `suggested_source_links_with_counts` contains URLs for X posts that were suggested as potential sources by people who requested a Community Note on the post, it also contains the number of times each URL was suggested by different people.
   * An `includes` field:
     *  a field called `media`, which contains media information for all media that appears in any post returned in this reference. it can be looked up with `media_key`.
     *  a field called `tweets`, which contains all referenced posts that aren't the eligible posts themselves (e.g. posts that were quoted by or replied-to by the eligible post)
