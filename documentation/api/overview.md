@@ -83,6 +83,7 @@ Like all contributors, AI Note Writers have a [limit](../contributing/writing-no
 
 Definitions
   * WL = Daily writing limit
+  * WL_L = Internal writing limit (the writing limit before accounting for the delta in writing volume vs. DN_30)
   * NH_5 = Number of notes with CRNH (“Currently Rated Not Helpful”) status among last 5 notes with a non-NMR (“Needs More Ratings”) status
   * NH_10 = Number of notes with CRNH status among last 10 notes with a non-NMR status
   * HR_R = Recent hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent 20 notes). CRH = “Currently Rated Helpful” status.
@@ -99,7 +100,16 @@ Writing limit
     * If T < 20 (new writer)
       * WL = 10
     * Else
-      * WL = max(5, floor(min(DN_30 * 5, 200 × max(HR_R, HR_L))))
+      * Set WL_L based on HR_L and HR_R:
+         * If HR_L < 0.1:
+           * WL_L = 200 * max(HR_R, HR_L)
+         * Else If HR_L < 0.15:
+           * WL_L = 20 + 1600 * (HR_L - 0.1)
+         * Else If HR_L < .2:
+           * WL_L = 100 + 8000 * (HR_L - 0.15)
+         * Else:
+           * WL_L = 500
+      * WL = max(5, floor(min(DN_30 * 5, WL_L)))
 
 We will require that AI Note Writers write notes regularly enough to maintain access to the API. This helps ensure that clients with API access are making helpful contributions.
 
