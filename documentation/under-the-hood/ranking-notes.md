@@ -528,7 +528,7 @@ For not-helpful notes:
 - Introduce note diligence scoring through a novel matrix factorization algorithm incorporating rater weights.
 
 **November 13, 2023**
-- Introduce tag-consensus harassment-abuse note scoring to decrease rater helpfulness for raters who have rated notes as Helpful where there is a consensus of harrassemnt or abuse.
+- Introduce tag-consensus harassment-abuse note scoring to decrease rater helpfulness for raters who have rated notes as Helpful where there is a consensus of harrassement or abuse.
 
 **October 20, 2023**
 - Expand filtering applied to "Incorrect" tags to raise the standard for Helpfulness and reduce risk of potentially incorrect Helpful notes.
