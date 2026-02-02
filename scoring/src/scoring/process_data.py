@@ -61,112 +61,32 @@ def read_prescoring_from_strings(
   return noteModelOutput, raterModelOutput
 
 
-def tsv_parser(
-  rawTSV: str,
-  mapping: Dict[str, type],
-  columns: List[str],
-  header: bool,
-  useCols: Optional[List[str]] = None,
-  chunkSize: Optional[int] = None,
-  convertNAToNone: bool = True,
-) -> pd.DataFrame:
-  """Parse a TSV input and raise an Exception if the input is not formatted as expected.
-
-  Args:
-    rawTSV: str contianing entire TSV input
-    mapping: Dict mapping column names to types
-    columns: List of column names
-    header: bool indicating whether the input will have a header
-    useCols: Optional list of columns to return
-    chunkSize: Optional number of rows to read at a time when returning a subset of columns
-
-  Returns:
-    pd.DataFrame containing parsed data
-  """
-  try:
-    firstLine = rawTSV.split("\n")[0]
-    num_fields = len(firstLine.split("\t"))
-    if num_fields != len(columns):
-      raise ValueError(f"Expected {len(columns)} columns, but got {num_fields}")
-
-    if useCols and chunkSize:
-      textParser = pd.read_csv(
-        StringIO(rawTSV),
-        sep="\t",
-        names=columns,
-        dtype=mapping,
-        header=0 if header else None,
-        index_col=[],
-        usecols=useCols,
-        chunksize=chunkSize,
-      )
-      data = pd.concat(textParser, ignore_index=True)
-    else:
-      data = pd.read_csv(
-        StringIO(rawTSV),
-        sep="\t",
-        names=columns,
-        dtype=mapping,
-        header=0 if header else None,
-        index_col=[],
-        usecols=useCols,
-      )
-    if convertNAToNone:
-      logger.info("Logging size effect of convertNAToNone")
-      logger.info("Before conversion:")
-      logger.info(get_df_info(data))
-      # float types will be nan if missing; newer nullable types like "StringDtype" or "Int64Dtype" will by default
-      # be pandas._libs.missing.NAType if missing. Set those to None and change the dtype back to object.
-      for colname, coltype in mapping.items():
-        # check if coltype is pd.BooleanDtype
-        if coltype in set(
-          [
-            pd.StringDtype(),
-            pd.BooleanDtype(),
-            pd.Int64Dtype(),
-            pd.Int32Dtype(),
-            "boolean",
-          ]
-        ):
-          data[colname] = data[colname].astype(object)
-          data.loc[pd.isna(data[colname]), colname] = None
-      logger.info("After conversion:")
-      logger.info(get_df_info(data))
-    return data
-  except (ValueError, IndexError) as e:
-    raise ValueError(f"Invalid input: {e}")
-
-
 def tsv_reader_single(
-  path: str, mapping, columns, header=False, parser=tsv_parser, convertNAToNone=True
+  path: str, mapping, columns, header=False, parser=None, convertNAToNone=True
 ):
-  """Read a single TSV file."""
-  with open(path, "r", encoding="utf-8") as handle:
-    return tsv_parser(handle.read(), mapping, columns, header, convertNAToNone=convertNAToNone)
+  """Read a single TSV file using PyArrow."""
+  if header:
+    data = pd.read_csv(path, sep="\t", dtype=mapping, header=0, usecols=columns, engine="pyarrow")
+    data = data[columns]
+  else:
+    data = pd.read_csv(path, sep="\t", dtype=mapping, header=None, names=columns, index_col=False, engine="pyarrow")
+  if convertNAToNone:
+    for colname, coltype in mapping.items():
+      if coltype in {pd.StringDtype(), pd.BooleanDtype(), pd.Int64Dtype(), pd.Int32Dtype(), "boolean"}:
+        data[colname] = data[colname].astype(object)
+        data.loc[pd.isna(data[colname]), colname] = None
+  return data
 
 
 def tsv_reader(
-  path: str, mapping, columns, header=False, parser=tsv_parser, convertNAToNone=True
+  path: str, mapping, columns, header=False, parser=None, convertNAToNone=True
 ) -> pd.DataFrame:
-  """Read a single TSV file or a directory of TSV files."""
+  """Read a single TSV file or a directory of TSV files using PyArrow."""
   if os.path.isdir(path):
-    dfs = [
-      tsv_reader_single(
-        os.path.join(path, filename),
-        mapping,
-        columns,
-        header,
-        parser,
-        convertNAToNone=convertNAToNone,
-      )
-      for filename in os.listdir(path)
-      if filename.endswith(".tsv")
-    ]
+    filenames = sorted(f for f in os.listdir(path) if f.endswith(".tsv"))
+    dfs = [tsv_reader_single(os.path.join(path, f), mapping, columns, header, convertNAToNone=convertNAToNone) for f in filenames]
     return pd.concat(dfs, ignore_index=True)
-  else:
-    return tsv_reader_single(
-      path, mapping, columns, header, parser, convertNAToNone=convertNAToNone
-    )
+  return tsv_reader_single(path, mapping, columns, header, convertNAToNone=convertNAToNone)
 
 
 def read_from_tsv(
