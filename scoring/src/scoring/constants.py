@@ -140,6 +140,42 @@ quantileRange = np.array(
   ]
 )
 
+smoothedRange = np.concatenate([quantileRange[0::2][:13], quantileRange[25::2]])
+
+
+@dataclass
+class GaussianParams:
+  bandwidth: float = 0.1
+  smoothingWeight: float = 0.4
+  smoothingValue: float = 0.35
+  adaptiveWeightBase: Optional[int] = 9
+  priorFactor: bool = True
+  negWeight: float = 1.75
+  minPrior: Optional[float] = 0.2
+  weightLim: float = 1e-9
+  somewhatHelpfulValue: float = 0.7
+  clipLower: float = 0.05
+  clipUpper: float = 0.8
+  flip: bool = False
+  normalize: bool = True
+
+
+gaussianCrhParams = GaussianParams()
+
+gaussianCrnhParams = GaussianParams(
+  smoothingWeight=5.0,
+  smoothingValue=0.35,
+  bandwidth=0.2,
+  minPrior=0.3,
+  adaptiveWeightBase=9,
+  negWeight=1.25,
+  flip=True,
+  clipUpper=0.65,
+  clipLower=0.25,
+  normalize=False,
+  weightLim=5e-4,
+)
+
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
 somewhatHelpfulValueTsv = "SOMEWHAT_HELPFUL"
@@ -548,6 +584,7 @@ harmfulKey = "harmful"
 validationDifficultyKey = "validationDifficulty"
 trustworthySourcesKey = "trustworthySources"
 isMediaNoteKey = "isMediaNote"
+isCollaborativeNoteKey = "isCollaborativeNote"
 
 noteTSVColumnsAndTypes = (
   [
@@ -566,6 +603,7 @@ noteTSVColumnsAndTypes = (
     (trustworthySourcesKey, pd.Int8Dtype()),
     (summaryKey, object),
     (isMediaNoteKey, pd.Int8Dtype()),
+    (isCollaborativeNoteKey, pd.Int8Dtype()),
   ]
 )
 noteTSVColumns = [col for (col, dtype) in noteTSVColumnsAndTypes]

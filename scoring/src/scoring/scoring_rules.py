@@ -75,7 +75,7 @@ class RuleID(Enum):
   INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
   SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
   NMR_DUE_TO_MIN_STABLE_CRH_TIME = RuleAndVersion("NmrDueToMinStableCrhTime", "1.0", False)
-  GAUSSIAN_MODEL = RuleAndVersion("GaussianModel", "1.0", False)
+  GAUSSIAN_MODEL = RuleAndVersion("GaussianModel", "1.0", True)
 
   def get_name(self) -> str:
     """Returns a string combining the name and version to uniquely name the logic of the ScoringRule."""
@@ -776,7 +776,7 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     ruleID: RuleID,
     dependencies: Set[RuleID],
     requiredStableCrhMinutesThreshold: int = 30,
-    maxStableCrhMinutesThreshold: int = 180,
+    maxStableCrhMinutesThreshold: int = 150,
     maxNyhMinutesThreshold: int = 360,
   ):
     """
@@ -1262,6 +1262,7 @@ class ApplyCoverageModelResult(ScoringRule):
     sourceColumn: str,
     checkFirmReject: bool = False,
     minSafeguardThreshold: Optional[float] = None,
+    crnhCoverage: bool = False,
   ):
     """Set the note status from sourceColumn when status is CRH and note is not already CRH
     and note is not firm reject or CRNH in core/expansion
@@ -1275,11 +1276,18 @@ class ApplyCoverageModelResult(ScoringRule):
     self._sourceColumn = sourceColumn
     self._checkFirmReject = checkFirmReject
     self._minSafeguardThreshold = minSafeguardThreshold
+    self._crnhCoverage = crnhCoverage
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Flip notes from NMR to CRH based on source models and subject to core/expansion model safeguards."""
+
+    # Generate the set of note status updates
+    probationaryCRHOrNYHNotes = noteStats[
+      (noteStats[self._sourceColumn].isin({c.currentlyRatedHelpful, c.needsYourHelp}))
+    ][[c.noteIdKey, self._sourceColumn]]
+
     # Identify notes blocked from CRH status due to FR/CRNH status in core or expansion
     if self._checkFirmReject:
       coreRejects = noteStats[c.coreRatingStatusKey].isin(
@@ -1288,25 +1296,11 @@ class ApplyCoverageModelResult(ScoringRule):
       expansionRejects = noteStats[c.expansionRatingStatusKey].isin(
         {c.firmReject, c.currentlyRatedNotHelpful}
       )
-      blocked = coreRejects | (noteStats[c.coreRatingStatusKey].isna() & expansionRejects)
-      noteStats = noteStats[~blocked]
-    # Generate the set of note status updates
-    probationaryCRHOrNYHNotes = noteStats[
-      (noteStats[self._sourceColumn].isin({c.currentlyRatedHelpful, c.needsYourHelp}))
-    ][[c.noteIdKey, self._sourceColumn]]
-    # Identify notes which are currently NMR or NYH.
-    currentNMROrNYHNotes = currentLabels[
-      currentLabels[statusColumn].isin({c.needsMoreRatings, c.needsYourHelp})
-    ][[c.noteIdKey, statusColumn]]
-    # Identify candidate note status updates.  This requires pruning to notes that have a NMR->NYH, NMR->CRH
-    # or NYH->CRH transition - in other words dropping NYH->NYH transitions.
-    noteStatusUpdates = probationaryCRHOrNYHNotes.merge(
-      currentNMROrNYHNotes, on=c.noteIdKey, how="inner"
-    )
-    noteStatusUpdates = noteStatusUpdates[
-      (noteStatusUpdates[self._sourceColumn] != c.needsYourHelp)
-      | (noteStatusUpdates[statusColumn] != c.needsYourHelp)
-    ][[c.noteIdKey, self._sourceColumn]]
+      blockedNotes = coreRejects | (noteStats[c.coreRatingStatusKey].isna() & expansionRejects)
+      actionableNotes = noteStats[~blockedNotes][[c.noteIdKey]]
+      probationaryCRHOrNYHNotes = probationaryCRHOrNYHNotes.merge(
+        actionableNotes, on=c.noteIdKey, how="inner"
+      )
 
     if self._minSafeguardThreshold is not None:
       # If necessary, identify notes which pass score bound checks for expansion and core models.
@@ -1341,7 +1335,28 @@ class ApplyCoverageModelResult(ScoringRule):
 
       # Filter set of note status updates to only include actionable notes
       actionableNotes = noteStats[noteStats["actionable"]][[c.noteIdKey]]
-      noteStatusUpdates = noteStatusUpdates.merge(actionableNotes, on=c.noteIdKey, how="inner")
+      probationaryCRHOrNYHNotes = probationaryCRHOrNYHNotes.merge(
+        actionableNotes, on=c.noteIdKey, how="inner"
+      )
+
+    if self._crnhCoverage:
+      probationaryCRNHNotes = noteStats[
+        (noteStats[self._sourceColumn].isin({c.currentlyRatedNotHelpful}))
+      ][[c.noteIdKey, self._sourceColumn]]
+      probationaryUpdates = pd.concat([probationaryCRHOrNYHNotes, probationaryCRNHNotes])
+    else:
+      probationaryUpdates = probationaryCRHOrNYHNotes
+    # Identify notes which are currently NMR or NYH.
+    currentNMROrNYHNotes = currentLabels[
+      currentLabels[statusColumn].isin({c.needsMoreRatings, c.needsYourHelp})
+    ][[c.noteIdKey, statusColumn]]
+    # Identify candidate note status updates.  This requires pruning to notes that have a NMR->NYH, NMR->CRH
+    # or NYH->CRH transition - in other words dropping NYH->NYH transitions.
+    noteStatusUpdates = probationaryUpdates.merge(currentNMROrNYHNotes, on=c.noteIdKey, how="inner")
+    noteStatusUpdates = noteStatusUpdates[
+      (noteStatusUpdates[self._sourceColumn] != c.needsYourHelp)
+      | (noteStatusUpdates[statusColumn] != c.needsYourHelp)
+    ][[c.noteIdKey, self._sourceColumn]]
 
     # Set note status and return
     noteStatusUpdates = noteStatusUpdates.rename(columns={self._sourceColumn: statusColumn})

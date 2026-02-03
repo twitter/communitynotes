@@ -456,6 +456,7 @@ def preprocess_data(
   shouldFilterNotMisleadingNotes: bool = True,
   log: bool = True,
   ratingsOnly: bool = False,
+  basic: bool = False,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
   """Populate helpfulNumKey, a unified column that merges the helpfulness answers from
   the V1 and V2 rating forms together, as described in
@@ -470,6 +471,7 @@ def preprocess_data(
       shouldFilterNotMisleadingNotes (bool, optional): Defaults to True.
       log (bool, optional): Defaults to True.
       ratingsOnly (bool, optional): Defaults to False
+      basic (bool, optional): Defaults to false
 
   Returns:
       notes (pd.DataFrame)
@@ -488,8 +490,9 @@ def preprocess_data(
   if len(ratings) > 0:
     ratings = remove_duplicate_ratings(ratings)
     ratings = compute_helpful_num(ratings)
-    ratings = tag_high_volume_raters(ratings)
-    ratings[c.ratingSourceBucketedKey] = ratings[c.ratingSourceBucketedKey].astype("category")
+    if not basic:
+      ratings = tag_high_volume_raters(ratings)
+      ratings[c.ratingSourceBucketedKey] = ratings[c.ratingSourceBucketedKey].astype("category")
     ratings[c.helpfulnessLevelKey] = ratings[c.helpfulnessLevelKey].astype("category")
 
   if ratingsOnly:

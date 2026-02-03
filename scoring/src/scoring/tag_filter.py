@@ -50,7 +50,7 @@ def _get_weight_from_distance(distances: pd.Series) -> pd.Series:
   Returns:
     pd.Series of rating weights corresponding to the input distances.
   """
-  normalizationFactor = np.percentile(distances, c.tagPercentileForNormalization)
+  normalizationFactor = np.nanpercentile(distances, c.tagPercentileForNormalization)
   return 1.0 / (1 + (distances / normalizationFactor) ** 5)
 
 

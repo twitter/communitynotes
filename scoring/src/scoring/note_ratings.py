@@ -789,6 +789,7 @@ def compute_scored_notes(
       """
 
       noteStats = tagAggregates.merge(noteStats, on=c.noteIdKey, how="outer")
+
     with c.time_block("compute_scored_notes: compute incorrect aggregates"):
       incorrectAggregates = incorrect_filter.get_incorrect_aggregates_final_scoring(
         ratings, noteParams, raterParams
