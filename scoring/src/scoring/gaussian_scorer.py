@@ -3,6 +3,7 @@ import logging
 from typing import Dict, List, Optional, Set, Tuple
 
 from . import constants as c, helpfulness_scores, note_ratings, process_data, tag_filter
+from .matrix_factorization.matrix_factorization import MatrixFactorization
 from .mf_core_scorer import MFCoreScorer
 from .reputation_matrix_factorization.diligence_model import fit_low_diligence_model_final
 from .scorer import Scorer
@@ -36,14 +37,14 @@ class GaussianScorer(Scorer):
     minRaterAgreeRatio: float = 0.66,
     crhThreshold: float = 0.51,
     crnhThresholdIntercept: float = -0.5,  # set this to a number that it should not be in effect
-    crnhThresholdNoteFactorMultiplier: float = -0.8,
-    crnhThresholdNMIntercept: float = -0.15,
+    crnhThresholdNoteFactorMultiplier: float = 0,
+    crnhThresholdNMIntercept: float = -0.6,
     crnhThresholdUCBIntercept: float = -0.5,
-    crhSuperThreshold: Optional[float] = 0.51,
+    crhSuperThreshold: Optional[float] = 0.65,
     crhThresholdNoHighVol: float = 0.45,
     crhThresholdNoCorrelated: float = 0.45,
     lowDiligenceThreshold: float = 0.263,
-    factorThreshold: float = 0.5,
+    factorThreshold: float = 1.0,
     inertiaDelta: float = 0.01,
     saveIntermediateState: bool = False,
     threads: int = c.defaultNumThreads,
@@ -54,19 +55,12 @@ class GaussianScorer(Scorer):
     minMinorityNetHelpfulRatings: Optional[int] = None,
     minMinorityNetHelpfulRatio: Optional[float] = None,
     populationSampledRatingPerNoteLossRatio: Optional[float] = 10.0,
-    bandwidth=0.1,
-    smoothingWeight=0.5,
-    smoothingValue=0.4,
-    n_points=50,
-    quantile_range=None,
-    adaptiveWeightBase=5,
-    priorFactor=True,
-    negWeight=2.0,
-    minPrior=None,
-    weightLim=1e-9,
-    somewhatHelpfulValue=0.7,
+    nPoints=50,
     nBinsEachSide=25,
     calculateBins=False,
+    crhParams: c.GaussianParams = c.gaussianCrhParams,
+    crnhParams: c.GaussianParams = c.gaussianCrnhParams,
+    useMfNoteParams=True,
   ):
     """Configure GaussianScorer object.
 
@@ -127,19 +121,12 @@ class GaussianScorer(Scorer):
     self._minMinorityNetHelpfulRatings = minMinorityNetHelpfulRatings
     self._minMinorityNetHelpfulRatio = minMinorityNetHelpfulRatio
     self._populationSampledRatingPerNoteLossRatio = populationSampledRatingPerNoteLossRatio
-    self._bandwidth = bandwidth
-    self._smoothingWeight = smoothingWeight
-    self._smoothingValue = smoothingValue
-    self._n_points = n_points
-    self._quantile_range = quantile_range
-    self._adaptiveWeightBase = adaptiveWeightBase
-    self._priorFactor = priorFactor
-    self._negWeight = negWeight
-    self._minPrior = minPrior
-    self._weightLim = weightLim
-    self._somewhatHelpfulValue = somewhatHelpfulValue
+    self._nPoints = nPoints
     self._nBinsEachSide = nBinsEachSide
     self._calculateBins = calculateBins
+    self._crhParams = crhParams
+    self._crnhParams = crnhParams
+    self._useMfNoteParams = useMfNoteParams
 
   def get_prescoring_name(self):
     return "MFCoreScorer"
@@ -215,7 +202,7 @@ class GaussianScorer(Scorer):
 
   def _get_dropped_note_cols(self) -> List[str]:
     """Returns a list of columns which should be excluded from scoredNotes and auxiliaryNoteInfo."""
-    dropped_cols = (
+    droppedCols = (
       [
         c.currentlyRatedHelpfulBoolKey,
         c.currentlyRatedNotHelpfulBoolKey,
@@ -240,7 +227,7 @@ class GaussianScorer(Scorer):
     # only drop population sampled column if it's not mapped to an output column
     note_col_mapping = self._get_note_col_mapping()
     if c.internalNoteInterceptPopulationSampledKey not in note_col_mapping:
-      dropped_cols.extend(
+      droppedCols.extend(
         [
           c.internalNoteInterceptPopulationSampledKey,
           c.negFactorPopulationSampledRatingCountKey,
@@ -249,7 +236,7 @@ class GaussianScorer(Scorer):
       )
 
     return (
-      dropped_cols
+      droppedCols
       + c.helpfulTagsTSVOrder
       + c.notHelpfulTagsTSVOrder
       + c.noteParameterUncertaintyTSVAuxColumns
@@ -271,23 +258,72 @@ class GaussianScorer(Scorer):
       )
 
   # Optimize kernel computation
-  def _gaussian_kernel(self, distances):
+  def _gaussian_kernel(self, distances, isCrh=True):
     """Vectorized kernel computation with pre-computed constants."""
-    bandwidth = self._bandwidth
-    norm_const = 1.0 / (bandwidth * np.sqrt(2 * np.pi))
-    return norm_const * np.exp(-0.5 * (distances / bandwidth) ** 2)
+    bandwidth = self._crhParams.bandwidth if isCrh else self._crnhParams.bandwidth
+    normConst = 1.0 / (bandwidth * np.sqrt(2 * np.pi))
+    return normConst * np.exp(-0.5 * (distances / bandwidth) ** 2)
 
-  def _gaussian_kernel_extrapolator_vectorized(
-    self, ratingsForTrainingWithFactors: pd.DataFrame, quantileRange: np.array
+  def _return_all_pts(
+    self,
+    ratingsForTrainingWithFactors: pd.DataFrame,
+    quantileRange: np.array,
+    isCrh=True,
+    empiricalPriors=None,
   ):
+    params = self._crhParams if isCrh else self._crnhParams
+
     numQuantiles = len(quantileRange)
-    quantileCols = [f"{x:5.2f}" for x in quantileRange]
     quantileArray = np.array(quantileRange, dtype=np.float32)
 
+    assert (
+      ratingsForTrainingWithFactors[c.internalRaterFactor1Key].isna().sum() == 0
+    ), "all rater factors must be non nan"
     noteIds = ratingsForTrainingWithFactors[c.noteIdKey].values
     helpfulScores = ratingsForTrainingWithFactors[c.helpfulNumKey].values.astype(np.float32)
+    # Adjust helpful for somewhat helpful (original helpful used below for priors)
+    somewhatMask = helpfulScores == 0.5
+    helpfulScores[somewhatMask] = params.somewhatHelpfulValue
+
+    if params.flip:
+      helpfulScores = 1 - helpfulScores
+
     raterFactors = ratingsForTrainingWithFactors[c.internalRaterFactor1Key].values.astype(
       np.float32
+    )
+    notHelpfulVariances = (
+      ratingsForTrainingWithFactors.loc[
+        ratingsForTrainingWithFactors[c.helpfulNumKey] == (0 if not params.flip else 1)
+      ]
+      .groupby(c.noteIdKey)[c.internalRaterFactor1Key]
+      .agg("mean")
+      .reset_index()
+    )
+    notHelpfulVariances.rename(columns={c.internalRaterFactor1Key: "mean"}, inplace=True)
+    allRatings = (
+      ratingsForTrainingWithFactors[[c.noteIdKey, c.internalRaterFactor1Key]]
+      .groupby(c.noteIdKey)
+      .agg("count")
+    )
+    allRatings.rename(columns={c.internalRaterFactor1Key: "count"}, inplace=True)
+    notHelpfulVariances = notHelpfulVariances.merge(allRatings, on=c.noteIdKey)
+
+    stdWindow = 0.28
+    counts = ratingsForTrainingWithFactors.loc[
+      ratingsForTrainingWithFactors["helpfulNum"] == (0 if not params.flip else 1)
+    ][[c.noteIdKey, c.internalRaterFactor1Key]].merge(notHelpfulVariances, on=c.noteIdKey)
+    counts["dist"] = np.abs(counts[c.internalRaterFactor1Key] - counts["mean"])
+
+    counts[c.internalRaterFactor1Key] = 1 / (1 + np.exp(-200 * (counts["dist"] - stdWindow / 2)))
+    unexpected = (
+      counts[[c.internalRaterFactor1Key, c.noteIdKey]].groupby(c.noteIdKey).agg("sum").reset_index()
+    )
+    unexpected[c.internalRaterFactor1Key] = unexpected[c.internalRaterFactor1Key].astype(np.float64)
+    varsWUnexpected = notHelpfulVariances.merge(unexpected, how="left", on=c.noteIdKey).fillna(0)
+    varsWUnexpected["pct"] = varsWUnexpected[c.internalRaterFactor1Key] / (varsWUnexpected["count"])
+    varsWUnexpected.set_index(c.noteIdKey, inplace=True)
+    notHelpfulVariances = (varsWUnexpected.loc[:, "pct"] * (4 if params.flip else 3) + 1).clip(
+      upper=(4.0 if params.flip else 2.0)
     )
 
     uniqueNotes, noteIndices = np.unique(noteIds, return_inverse=True)
@@ -298,11 +334,14 @@ class GaussianScorer(Scorer):
     raterExpanded = raterFactors[:, None]
     centers = quantileArray[None, :]
     distances = np.abs(raterExpanded - centers)
-    kernelWeights = self._gaussian_kernel(distances).astype(np.float32)
+    kernelWeights = self._gaussian_kernel(distances, isCrh=isCrh).astype(np.float32)
 
     # Normalize rows
-    rowSums = kernelWeights.sum(axis=1, keepdims=True)
-    weights = kernelWeights / rowSums
+    if params.normalize:
+      rowSums = kernelWeights.sum(axis=1, keepdims=True)
+      weights = kernelWeights / rowSums
+    else:
+      weights = kernelWeights
 
     # Base total weights for insufficient check
     totalBaseWeights = np.empty((numNotes, numQuantiles), dtype=np.float32)
@@ -310,11 +349,18 @@ class GaussianScorer(Scorer):
       totalBaseWeights[:, quantileIndex] = np.bincount(
         noteIndices, weights=weights[:, quantileIndex], minlength=numNotes
       )
-    insufficientData = (totalBaseWeights < self._weightLim).any(axis=1)
+    insufficientData = (totalBaseWeights < params.weightLim).any(axis=1)
 
     # Adjust weights for negative ratings
     negMask = helpfulScores == 0
-    weights[negMask] *= self._negWeight
+    if negMask.any():
+      notHelpfulVariances = notHelpfulVariances.reindex(uniqueNotes, fill_value=1.0)
+      varianceFactors = np.where(
+        np.isnan(notHelpfulVariances[noteIds]), 1.0, notHelpfulVariances[noteIds]
+      )
+      weights[negMask] *= varianceFactors[negMask][:, np.newaxis]
+
+    weights[negMask] *= params.negWeight
 
     # Rater total weights (post-neg adjustment)
     totalRaterWeights = np.empty((numNotes, numQuantiles), dtype=np.float32)
@@ -322,10 +368,6 @@ class GaussianScorer(Scorer):
       totalRaterWeights[:, quantileIndex] = np.bincount(
         noteIndices, weights=weights[:, quantileIndex], minlength=numNotes
       )
-
-    # Adjust helpful for somewhat helpful (original helpful used below for priors)
-    somewhatMask = helpfulScores == 0.5
-    helpfulScores[somewhatMask] = self._somewhatHelpfulValue
 
     # Rater values and totals
     weightedRaterValues = weights * helpfulScores[:, None]
@@ -337,43 +379,67 @@ class GaussianScorer(Scorer):
 
     # Compute note priors using average of helpful rater factors - NH rater factors
     originalHelpful = ratingsForTrainingWithFactors[c.helpfulNumKey].values.astype(np.float32)
+    if params.flip:
+      originalHelpful = 1 - originalHelpful
     adjustedHelpful = (originalHelpful - 0.5) * 2 * raterFactors
     sumFactors = np.bincount(noteIndices, weights=adjustedHelpful, minlength=numNotes)
     noteFactors = sumFactors / ratingCounts
 
     # Smoothing values
-    if self._priorFactor:
-      priorValues = noteFactors[:, None] * centers + self._smoothingValue
-      smoothingValues = np.minimum(priorValues, self._smoothingValue).astype(np.float32)
-      if self._minPrior is not None:
-        smoothingValues = np.maximum(smoothingValues, self._minPrior).astype(np.float32)
+    if params.priorFactor:
+      priorValues = (noteFactors[:, None] * centers) / 2 + params.smoothingValue
+      smoothingValues = np.minimum(priorValues, params.smoothingValue).astype(np.float32)
+      if params.minPrior is not None:
+        smoothingValues = np.maximum(smoothingValues, params.minPrior).astype(np.float32)
     else:
-      smoothingValues = np.full((numNotes, numQuantiles), self._smoothingValue, dtype=np.float32)
+      smoothingValues = np.full((numNotes, numQuantiles), params.smoothingValue, dtype=np.float32)
+
+    if empiricalPriors is not None:
+      smoothingValues[
+        np.where(np.isin(uniqueNotes, empiricalPriors.index))[0]
+      ] = empiricalPriors.values
 
     # Smoothing weights
-    if self._adaptiveWeightBase is not None:
+    if params.adaptiveWeightBase is not None:
       smoothingWeights = (
-        np.log(ratingCounts) / np.log(self._adaptiveWeightBase) * self._smoothingWeight
+        np.log(np.maximum(ratingCounts, params.adaptiveWeightBase))
+        / np.log(params.adaptiveWeightBase)
+        * params.smoothingWeight
       )
     else:
-      smoothingWeights = np.full(numNotes, self._smoothingWeight, dtype=np.float32)
+      smoothingWeights = np.full(numNotes, params.smoothingWeight, dtype=np.float32)
     smoothingWeights = smoothingWeights.astype(np.float32)
-
     # Totals with prior
     totalWeightsWithPrior = totalRaterWeights + smoothingWeights[:, None]
     totalValuesWithPrior = totalRaterValues + (smoothingValues * smoothingWeights[:, None])
-
     # Weighted means with fillna(0.05)
-    outArray = np.full_like(totalValuesWithPrior, 0.05, dtype=np.float32)
+    outArray = np.full_like(totalValuesWithPrior, params.clipLower, dtype=np.float32)
     weightedMeanMatrix = np.divide(
       totalValuesWithPrior, totalWeightsWithPrior, out=outArray, where=totalWeightsWithPrior != 0
     )
 
     # Clip
-    clippedValues = np.clip(weightedMeanMatrix, 0.05, 0.8)
+    clippedValues = np.clip(weightedMeanMatrix, params.clipLower, params.clipUpper)
 
     # Set insufficient to -1
     clippedValues[insufficientData, :] = -1
+
+    return clippedValues, noteFactors
+
+  def _gaussian_kernel_extrapolator_vectorized(
+    self,
+    ratingsForTrainingWithFactors: pd.DataFrame,
+    quantileRange: np.array,
+    isCrh: bool = True,
+    empiricalPriors=None,
+  ):
+    clippedValues, noteFactors = self._return_all_pts(
+      ratingsForTrainingWithFactors, quantileRange, isCrh=isCrh, empiricalPriors=empiricalPriors
+    )
+
+    quantileCols = [f"{x:5.2f}" for x in quantileRange]
+    noteIds = ratingsForTrainingWithFactors[c.noteIdKey].values
+    uniqueNotes, noteIndices = np.unique(noteIds, return_inverse=True)
 
     # Compute intercept
     logValues = np.log(clippedValues)
@@ -394,14 +460,15 @@ class GaussianScorer(Scorer):
   def _calculate_gaussian_scores(
     self,
     ratingsForTraining: pd.DataFrame,
-    quantileRange: np.array,
+    crhQuantileRange: np.array,
+    crnhQuantileRange: np.array,
     prescoringRaterModelOutput: pd.DataFrame,
   ):
     """Calculate Gaussian convolution scores  on the ratingsForTraining data.
 
     Args:
         ratingsForTraining (pd.DataFrame)
-        quantile_range: (np.array)
+        quantileRange: (np.array)
 
     Returns:
         noteParams (pd.DataFrame)
@@ -414,7 +481,20 @@ class GaussianScorer(Scorer):
       ratingsForTrainingWithFactors.shape[0] == ratingsForTraining.shape[0]
     ), "number of ratings changed"
     noteParams = self._gaussian_kernel_extrapolator_vectorized(
-      ratingsForTrainingWithFactors, quantileRange
+      ratingsForTrainingWithFactors, crhQuantileRange, isCrh=True
+    )
+    crnhNoteParams = self._gaussian_kernel_extrapolator_vectorized(
+      ratingsForTrainingWithFactors, crnhQuantileRange, isCrh=False
+    )
+    crnhNoteParams[c.internalNoteInterceptKey] = -crnhNoteParams[c.internalNoteInterceptKey]
+    crnhNoteParams.rename(columns={c.internalNoteInterceptKey: "crnhNoteIntercept"}, inplace=True)
+    noteParams = noteParams.merge(
+      crnhNoteParams[[c.noteIdKey, "crnhNoteIntercept"]], on=c.noteIdKey, how="outer"
+    )
+    noteParams[c.internalNoteInterceptKey] = np.where(
+      np.abs(noteParams[c.internalNoteInterceptKey]) < np.abs(noteParams["crnhNoteIntercept"]),
+      noteParams["crnhNoteIntercept"],
+      noteParams[c.internalNoteInterceptKey],
     )
     return noteParams[[c.noteIdKey, c.internalNoteInterceptKey, c.internalNoteFactor1Key]]
 
@@ -548,19 +628,23 @@ class GaussianScorer(Scorer):
           self._nBinsEachSide,
           retbins=True,
         )
-        l_mids = (l_range[:-1] + l_range[1:]) / 2
-        r_mids = (r_range[:-1] + r_range[1:]) / 2
-        mids = (np.array(sorted(abs(l_mids))) + np.array(sorted(abs(r_mids)))) / 2
-        quantile_range = np.concatenate([sorted(-mids), mids])
-        logger.info(f"quantile range: {quantile_range}")
+        lMids = (l_range[:-1] + l_range[1:]) / 2
+        rMids = (r_range[:-1] + r_range[1:]) / 2
+        mids = (np.array(sorted(abs(lMids))) + np.array(sorted(abs(rMids)))) / 2
+        crhQuantileRange = np.concatenate([sorted(-mids), mids])
+        crnhQuantileRange = np.concatenate([sorted(-mids), mids])
+        logger.info(f"crh quantile range: {crhQuantileRange}")
+        logger.info(f"crnh quantile range: {crnhQuantileRange}")
       # if there are not enough unique raters to even calculate bins, do not predict
       else:
         scoredNotes = pd.DataFrame(columns=self.get_internal_scored_notes_cols())
         helpfulnessScores = pd.DataFrame(columns=self.get_internal_helpfulness_scores_cols())
 
     else:
-      quantile_range = c.quantileRange
-    logger.info(f"quantiles {quantile_range}")
+      crhQuantileRange = c.quantileRange
+      crnhQuantileRange = c.smoothedRange
+    logger.info(f"crh quantiles {crhQuantileRange}")
+    logger.info(f"crnh quantiles {crnhQuantileRange}")
     assert (
       prescoringMetaScorerOutput.finalRoundNumNotes is not None
     ), "Missing final round num notes"
@@ -581,8 +665,47 @@ class GaussianScorer(Scorer):
       np.unique(raterParams[c.raterParticipantIdKey])
     ), "duplicate rater ids in prescoring rmo"
     noteParams = self._calculate_gaussian_scores(
-      finalRoundRatings, quantile_range, prescoringRaterModelOutput
+      finalRoundRatings, crhQuantileRange, crnhQuantileRange, prescoringRaterModelOutput
     )
+    if self._useMfNoteParams:
+      with self.time_block("Get Note Factor from MF"):
+        mfNoteParams, _, _ = MatrixFactorization(seed=self._seed).run_mf(
+          ratings=finalRoundRatings,
+          noteInit=prescoringNoteModelOutput,
+          userInit=prescoringRaterModelOutput,
+          globalInterceptInit=prescoringMetaScorerOutput.globalIntercept,
+          freezeRaterParameters=True,
+          freezeGlobalParameters=True,
+          ratingPerNoteLossRatio=(
+            ratingPerNoteLossRatio
+            if ratingPerNoteLossRatio is not None
+            else (
+              prescoringMetaScorerOutput.finalRoundNumRatings
+              / prescoringMetaScorerOutput.finalRoundNumNotes
+            )
+          ),
+          flipFactorsForIdentification=flipFactorsForIdentification,
+          run_name="gaussianNoteFactorMF",
+        )
+      noteParams[c.internalNoteFactor1Key] = noteParams[c.internalNoteFactor1Key].astype(np.float32)
+      noteParams.rename(
+        columns={c.internalNoteFactor1Key: c.internalNoteFactor1Key + "_gaus"}, inplace=True
+      )
+      mfNoteParams.rename(
+        columns={c.internalNoteFactor1Key: c.internalNoteFactor1Key + "_mf"}, inplace=True
+      )
+      noteParams = noteParams.merge(
+        mfNoteParams[[c.noteIdKey, c.internalNoteFactor1Key + "_mf"]],
+        on=c.noteIdKey,
+        how="left",
+      )
+      noteParams[c.internalNoteFactor1Key] = noteParams[
+        c.internalNoteFactor1Key + "_mf"
+      ].combine_first(noteParams[c.internalNoteFactor1Key + "_gaus"])
+      noteParams = noteParams.drop(
+        columns=[c.internalNoteFactor1Key + "_mf", c.internalNoteFactor1Key + "_gaus"]
+      )
+
     logger.info(f"noteParams shape {noteParams.shape[0]}")
     if self._saveIntermediateState:
       self.noteParams = noteParams

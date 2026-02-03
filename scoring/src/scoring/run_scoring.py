@@ -843,6 +843,7 @@ def meta_score(
           {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
           c.gaussianRatingStatusKey,
           checkFirmReject=True,
+          crnhCoverage=False,
         )
       )
     if enabledScorers is None or Scorers.MFTopicScorer in enabledScorers:
@@ -878,7 +879,7 @@ def meta_score(
       rules.append(
         scoring_rules.NmrDueToMinStableCrhTime(
           RuleID.NMR_DUE_TO_MIN_STABLE_CRH_TIME,
-          {RuleID.CORE_MODEL},
+          {RuleID.CORE_MODEL, RuleID.GAUSSIAN_MODEL},
         )
       )
 
