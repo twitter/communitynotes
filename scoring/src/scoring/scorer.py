@@ -516,6 +516,7 @@ class Scorer(ABC):
       prescoringNoteModelOutput=prescoringModelResult.scoredNotes,
       prescoringRaterModelOutput=prescoringModelResult.helpfulnessScores,
       prescoringMetaOutput=prescoringMetaOutput,
+      empiricalTotals=None,
     )
     finalModelResult = self.score_final(finalScoringArgs)
     return (

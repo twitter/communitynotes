@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from enum import Enum
+import hashlib
 import logging
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
@@ -776,8 +777,10 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     ruleID: RuleID,
     dependencies: Set[RuleID],
     requiredStableCrhMinutesThreshold: int = 30,
-    maxStableCrhMinutesThreshold: int = 150,
     maxNyhMinutesThreshold: int = 360,
+    # maxStableCrhMinutesThreshold: int = 150, # TODO: set this after A/B test resolved
+    maxStableCrhMinutesThresholdABHighEvenBucket=120,  # TODO: delete after A/B test resolved
+    maxStableCrhMinutesThresholdABLowOddBucket=60,  # TODO: delete after A/B test resolved
   ):
     """
     Args:
@@ -790,8 +793,12 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     """
     super().__init__(ruleID, dependencies)
     self.requiredStableCrhMinutesThreshold = requiredStableCrhMinutesThreshold
-    self.maxStableCrhMinutesThreshold = maxStableCrhMinutesThreshold
     self.maxNyhMinutesThreshold = maxNyhMinutesThreshold
+
+    # TODO: started A/B test for max stable CRH minutes Feb 13, 2026. Once analyzed, revert to fixed value.
+    # self.maxStableCrhMinutesThreshold = maxStableCrhMinutesThreshold
+    self.maxStableCrhMinutesThresholdABHighEvenBucket = maxStableCrhMinutesThresholdABHighEvenBucket
+    self.maxStableCrhMinutesThresholdABLowOddBucket = maxStableCrhMinutesThresholdABLowOddBucket
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
@@ -906,12 +913,31 @@ class NmrDueToMinStableCrhTime(ScoringRule):
     notesAlreadyInStabilization = (
       noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0
     )
+
+    # Set max stabilization period based on A/B test. TODO: cleanup when A/B test cleaned up.
+    # Bucketing uses MD5 hash of noteId for unbiased 50/50 split:
+    #   - Bucket 0 (first hex char is even: 0,2,4,6,8,A,C,E): high threshold (120 min)
+    #   - Bucket 1 (first hex char is odd: 1,3,5,7,9,B,D,F): low threshold (60 min)
+    maxStableCrhMinutesThresholdKey = "maxStableCrhMinutesThreshold"
+
+    def _get_ab_test_bucket(noteId: int) -> int:
+      """Get A/B test bucket (0 or 1) using MD5 hash of noteId."""
+      return int(hashlib.md5(str(int(noteId)).encode()).hexdigest()[0], 16) % 2
+
+    noteStatusUpdates[maxStableCrhMinutesThresholdKey] = noteStatusUpdates[c.noteIdKey].apply(
+      lambda noteId: self.maxStableCrhMinutesThresholdABHighEvenBucket
+      if _get_ab_test_bucket(noteId) == 0
+      else self.maxStableCrhMinutesThresholdABLowOddBucket
+    )
+
     # (1)-(C)-(a): Exit stabilization period to CRH if the note has been in the period for
     # longer than maxStableCrhMinutesThreshold and the note is currently scored CRH.
     inStabilizationLongerThanCrhMax = (
       c.epochMillis - noteStatusUpdates[c.timestampMillisOfNmrDueToMinStableCrhTimeKey]
-      > self.maxStableCrhMinutesThreshold * 60 * 1000
+      > noteStatusUpdates[maxStableCrhMinutesThresholdKey] * 60 * 1000
     )
+    # Drop temporary A/B test column before merge to avoid type conversion issues
+    noteStatusUpdates = noteStatusUpdates.drop(columns=[maxStableCrhMinutesThresholdKey])
 
     noteStatusUpdates.loc[
       notesGoingCrh & notesAlreadyInStabilization & inStabilizationLongerThanCrhMax,

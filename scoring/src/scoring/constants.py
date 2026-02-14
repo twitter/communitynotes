@@ -1183,6 +1183,7 @@ class FinalScoringArgs(ScoringArgs):
   prescoringNoteModelOutput: pd.DataFrame
   prescoringRaterModelOutput: pd.DataFrame
   prescoringMetaOutput: PrescoringMetaOutput
+  empiricalTotals: Optional[pd.DataFrame]
 
   def remove_large_args_for_multiprocessing(self):
     self.ratings = None
