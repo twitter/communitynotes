@@ -1,5 +1,6 @@
 import gc
 import logging
+import random
 from typing import Dict, List, Optional, Set, Tuple
 
 from . import constants as c, helpfulness_scores, note_ratings, process_data, tag_filter
@@ -15,6 +16,128 @@ import torch
 
 logger = logging.getLogger("birdwatch.mf_base_scorer")
 logger.setLevel(logging.INFO)
+
+
+def compute_empirical_prior_df(
+  ratingsWithFactors: pd.DataFrame,
+  binWidth: float = 0.2,
+  minNeg: int = 10,
+  minPos: int = 10,
+  maxNeg: int = 50,
+  maxPos: int = 50,
+) -> pd.DataFrame:
+  ratingsWithFactors = ratingsWithFactors.loc[
+    ratingsWithFactors[c.helpfulNumKey] != 0.5,
+    [c.noteIdKey, c.internalRaterFactor1Key, c.helpfulNumKey],
+  ]
+
+  # bins x values
+  ratingsWithFactors["bin"] = np.floor(
+    (ratingsWithFactors[c.internalRaterFactor1Key] + 1.0) / binWidth
+  ).astype(int)
+  max_bin = int(np.floor(2.0 / binWidth))
+  ratingsWithFactors["bin"] = ratingsWithFactors["bin"].clip(0, max_bin)
+
+  # compute sign counts for bins, limit to notes within a certain range
+  signCounts = (
+    ratingsWithFactors.assign(
+      neg=ratingsWithFactors[c.internalRaterFactor1Key] < 0,
+      pos=ratingsWithFactors[c.internalRaterFactor1Key] > 0,
+    )
+    .groupby(c.noteIdKey)[["neg", "pos"]]
+    .sum()
+    .astype(int)
+  )
+
+  candidateMask = (
+    (signCounts["neg"] >= minNeg)
+    & (signCounts["pos"] >= minPos)
+    & (signCounts["neg"] <= maxNeg)
+    & (signCounts["pos"] <= maxPos)
+  )
+  candidateIds = signCounts[candidateMask].index
+
+  candidates = ratingsWithFactors[ratingsWithFactors[c.noteIdKey].isin(candidateIds)]
+
+  # build count matrix only for candidates
+  countDf = (
+    candidates.groupby([c.noteIdKey, "bin", c.helpfulNumKey]).size().reset_index(name="count")
+  )
+  pivot = countDf.pivot_table(
+    index=c.noteIdKey, columns=["bin", c.helpfulNumKey], values="count", fill_value=0
+  ).astype(np.int32)
+
+  return pivot
+
+
+def lookup_empirical_priors(
+  empiricalTotals: pd.DataFrame,
+  ratingsWithFactors: pd.DataFrame,
+  allCurves: pd.DataFrame,
+  strictMin: int = 7,
+):
+  candidateMatrix = empiricalTotals.values
+  candidateIndex = empiricalTotals.index.values
+
+  queryMatrix = compute_empirical_prior_df(
+    ratingsWithFactors, minNeg=3, maxNeg=np.inf, minPos=3, maxPos=np.inf
+  )
+
+  # Reindex to match candidate columns exactly (adds missing as 0)
+  queryMatrix = queryMatrix.reindex(columns=empiricalTotals.columns, fill_value=0).astype(np.int32)
+
+  queryIds = queryMatrix.index.values
+  queryMatrix = queryMatrix.values  # (Q, F)
+
+  # require either that the prior candidates have strictly more than the query, or more than strictMin
+  requiredMin = np.where(queryMatrix <= strictMin, queryMatrix, strictMin)
+
+  requiredMin = np.where(queryMatrix > 0, requiredMin, 0)
+
+  Q, C = len(queryIds), len(candidateIndex)
+  isSupersetMatrix = np.ones((Q, C), dtype=bool)
+
+  for f in range(candidateMatrix.shape[1]):
+    colGe = candidateMatrix[:, f][np.newaxis, :] >= requiredMin[:, f][:, np.newaxis]
+    isSupersetMatrix &= colGe
+
+  # Remove self-matches
+  if np.isin(queryIds, candidateIndex).any():
+    # Map candidate_index to column positions
+    candPos = {id_: i for i, id_ in enumerate(candidateIndex)}
+    # Find which queries are also candidates
+    selfMatchQueries = np.isin(queryIds, candidateIndex)
+    queryRowsSelf = np.where(selfMatchQueries)[0]
+    selfCols = np.array([candPos[qid] for qid in queryIds[selfMatchQueries]])
+    isSupersetMatrix[queryRowsSelf, selfCols] = False
+
+  # Collect 30 samples for each, fill with 0 where < 30 available
+  supersetLists = np.array(
+    [
+      random.choices(candidateIndex[row].tolist(), k=30)
+      if len(candidateIndex[row].tolist()) >= 30
+      else candidateIndex[row].tolist() + [0] * (30 - len(candidateIndex[row].tolist()))
+      for row in isSupersetMatrix
+    ]
+  )
+
+  # Map back to original query_ids order
+  resultSupersets = pd.DataFrame(
+    np.empty(shape=(len(queryIds), 30), dtype=np.int64), index=queryIds
+  )
+  resultSupersets.loc[queryIds] = supersetLists
+
+  noteIds = ratingsWithFactors[c.noteIdKey].values
+  uniqueNotes, noteIndices = np.unique(noteIds, return_inverse=True)
+
+  # calculate average of gaussian curves for prior candidates
+  curveDf = pd.DataFrame(allCurves, index=uniqueNotes)
+  nanDf = pd.DataFrame(np.nan, columns=curveDf.columns, index=[0], dtype=np.float64)
+  curveDfWNan = pd.concat([curveDf, nanDf])
+  testDf = curveDfWNan.loc[resultSupersets.values.flatten()]
+  dfAvg = testDf.groupby(np.arange(len(testDf)) // 30).mean()
+  dfAvg.index = queryIds
+  return dfAvg
 
 
 class GaussianScorer(Scorer):
@@ -270,10 +393,11 @@ class GaussianScorer(Scorer):
     quantileRange: np.array,
     isCrh=True,
     empiricalPriors=None,
-  ):
+  ) -> pd.DataFrame:
     params = self._crhParams if isCrh else self._crnhParams
 
     numQuantiles = len(quantileRange)
+    quantileCols = [f"{x:5.2f}" for x in quantileRange]
     quantileArray = np.array(quantileRange, dtype=np.float32)
 
     assert (
@@ -395,9 +519,25 @@ class GaussianScorer(Scorer):
       smoothingValues = np.full((numNotes, numQuantiles), params.smoothingValue, dtype=np.float32)
 
     if empiricalPriors is not None:
-      smoothingValues[
-        np.where(np.isin(uniqueNotes, empiricalPriors.index))[0]
-      ] = empiricalPriors.values
+      smoothingValues[np.where(np.isin(uniqueNotes, empiricalPriors.index))[0]] = empiricalPriors[
+        quantileCols
+      ].values
+
+    if not isCrh:
+      # Ensure notes with fewer than 3 ratings on each side get 0.1 smoothing
+      signCounts = (
+        ratingsForTrainingWithFactors.assign(
+          neg=ratingsForTrainingWithFactors[c.internalRaterFactor1Key] < 0,
+          pos=ratingsForTrainingWithFactors[c.internalRaterFactor1Key] > 0,
+        )
+        .groupby(c.noteIdKey)[["neg", "pos"]]
+        .sum()
+        .astype(int)
+      )
+      insufficientMask = (signCounts["neg"] < 3) | (signCounts["pos"] < 3)
+      insufficientNoteIds = signCounts[insufficientMask].index
+      isInsufficient = np.isin(uniqueNotes, insufficientNoteIds)
+      smoothingValues[isInsufficient] = 0.1
 
     # Smoothing weights
     if params.adaptiveWeightBase is not None:
@@ -424,35 +564,45 @@ class GaussianScorer(Scorer):
     # Set insufficient to -1
     clippedValues[insufficientData, :] = -1
 
-    return clippedValues, noteFactors
+    clippedDf = pd.DataFrame(clippedValues, columns=quantileCols, index=uniqueNotes)
+    clippedDf[c.internalNoteFactor1Key] = noteFactors
+
+    return clippedDf
 
   def _gaussian_kernel_extrapolator_vectorized(
     self,
     ratingsForTrainingWithFactors: pd.DataFrame,
     quantileRange: np.array,
     isCrh: bool = True,
-    empiricalPriors=None,
+    empiricalTotals: Optional[pd.DataFrame] = None,
   ):
-    clippedValues, noteFactors = self._return_all_pts(
-      ratingsForTrainingWithFactors, quantileRange, isCrh=isCrh, empiricalPriors=empiricalPriors
+    clippedValues = self._return_all_pts(
+      ratingsForTrainingWithFactors,
+      quantileRange,
+      isCrh=isCrh,
     )
+    if empiricalTotals is not None:
+      empiricalPriors = lookup_empirical_priors(
+        empiricalTotals, ratingsForTrainingWithFactors, clippedValues
+      )
+      clippedValues = self._return_all_pts(
+        ratingsForTrainingWithFactors, quantileRange, isCrh=isCrh, empiricalPriors=empiricalPriors
+      )
 
     quantileCols = [f"{x:5.2f}" for x in quantileRange]
-    noteIds = ratingsForTrainingWithFactors[c.noteIdKey].values
-    uniqueNotes, noteIndices = np.unique(noteIds, return_inverse=True)
 
     # Compute intercept
-    logValues = np.log(clippedValues)
+    logValues = np.log(clippedValues[quantileCols].values)
     meanLog = np.mean(logValues, axis=1)
     meanLog = np.where(np.isnan(meanLog), -np.inf, meanLog)
     intercepts = np.exp(meanLog)
 
     # Build final DataFrame
-    dataDict = {c.noteIdKey: uniqueNotes}
-    for quantileIndex, col in enumerate(quantileCols):
-      dataDict[col] = clippedValues[:, quantileIndex]
+    dataDict = {c.noteIdKey: clippedValues.index.values}
+    for col in quantileCols:
+      dataDict[col] = clippedValues[col].values
     dataDict[c.internalNoteInterceptKey] = intercepts
-    dataDict[c.internalNoteFactor1Key] = noteFactors
+    dataDict[c.internalNoteFactor1Key] = clippedValues[c.internalNoteFactor1Key].values
     weightedMean = pd.DataFrame(dataDict)
 
     return weightedMean
@@ -463,6 +613,7 @@ class GaussianScorer(Scorer):
     crhQuantileRange: np.array,
     crnhQuantileRange: np.array,
     prescoringRaterModelOutput: pd.DataFrame,
+    empiricalTotals: Optional[pd.DataFrame] = None,
   ):
     """Calculate Gaussian convolution scores  on the ratingsForTraining data.
 
@@ -481,10 +632,10 @@ class GaussianScorer(Scorer):
       ratingsForTrainingWithFactors.shape[0] == ratingsForTraining.shape[0]
     ), "number of ratings changed"
     noteParams = self._gaussian_kernel_extrapolator_vectorized(
-      ratingsForTrainingWithFactors, crhQuantileRange, isCrh=True
+      ratingsForTrainingWithFactors, crhQuantileRange, isCrh=True, empiricalTotals=None
     )
     crnhNoteParams = self._gaussian_kernel_extrapolator_vectorized(
-      ratingsForTrainingWithFactors, crnhQuantileRange, isCrh=False
+      ratingsForTrainingWithFactors, crnhQuantileRange, isCrh=False, empiricalTotals=empiricalTotals
     )
     crnhNoteParams[c.internalNoteInterceptKey] = -crnhNoteParams[c.internalNoteInterceptKey]
     crnhNoteParams.rename(columns={c.internalNoteInterceptKey: "crnhNoteIntercept"}, inplace=True)
