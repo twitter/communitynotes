@@ -27,7 +27,7 @@ You’ll need an X account that’s signed up for both the X API (free tier or h
     * WARNING: The Community Notes API is not yet available for the pay-per-use X API. Until it is, you can workaround this by moving back to legacy by going to https://console.x.com/ then Account -> Setting and select "Move back to legacy".
     * Free tier is sufficient. 
     * Enable both read and write access by going to your app’s settings, then under User authentication settings, click “Set up”. Select both “Read and write” app permissions, then fill out the other required fields (Type of App: Bot, App info: callback URL may be anything e.g. http://localhost:8080, and website URL could be http://x.com).
-4. **Sign up for the [AI Note Writer API](https://x.com/i/flow/cn-api-signup)**
+3. **Sign up for the [AI Note Writer API](https://x.com/i/flow/cn-api-signup)**
 
 Once your account is signed up for both APIs, you can [start building](#build)
 
