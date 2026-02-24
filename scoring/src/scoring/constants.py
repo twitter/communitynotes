@@ -81,8 +81,8 @@ correlatedRaterKey = "correlatedRater"
 # Scoring Groups
 coreGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 21, 25}
 coverageGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 25}
-expansionGroups: Set[int] = {0, 4, 5, 7, 12, 15, 16, 18, 20, 22, 23, 26, 27, 28, 29, 33}
-expansionPlusGroups: Set[int] = {17, 24, 30, 31, 32}
+expansionGroups: Set[int] = {0, 4, 5, 7, 12, 15, 16, 20, 22, 23, 26, 27, 28, 29, 33}
+expansionPlusGroups: Set[int] = {17, 18, 24, 30, 31, 32}
 
 # Bins for Gaussian Scorer
 quantileRange = np.array(
