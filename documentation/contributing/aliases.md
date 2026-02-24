@@ -28,7 +28,7 @@ Contributors can visit [this link](https://x.com/i/communitynotes/u/me) to choos
 
 ## Contributor profiles
 
-![Screen showing an anonymous contributor, their avatar, and alias name](./images/alias-03.png)
+![Screen showing an anonymous contributor, their avatar, and alias name](../images/alias-03.png)
 
 With aliases, every contributor gets a public profile. On this page, everyone can see the notes people have written in the past, as well as their [Writing and Rating Impact](./writing-and-rating-impact.md). We'll continue to add information and evolve the profile pages as we learn more about what's important to contributors when using Community Notes.
 
