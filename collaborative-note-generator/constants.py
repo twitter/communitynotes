@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import Enum
+import json
 from typing import Optional
 
 
@@ -32,6 +33,26 @@ def rating_status_from_string(status: Optional[str]) -> RatingStatus:
   if status is None:
     return RatingStatus.NeedsMoreRatings
   return RatingStatus(status)
+
+
+def format_dataclass(obj) -> str:
+  data = asdict(obj)
+  # Render long text fields with real newlines for readability in logs
+  _TEXT_FIELDS = {"sources_considered", "long_live_note", "short_live_note", "story_assessment"}
+  for key in _TEXT_FIELDS:
+    if key in data and isinstance(data[key], str) and "\n" in data[key]:
+      data[key] = "<<MULTILINE>>\n" + data[key] + "\n<<END>>"
+  result = json.dumps(data, default=str, sort_keys=True, indent=2)
+  # Unescape the newlines inside our multiline markers
+  import re
+
+  result = re.sub(
+    r'"<<MULTILINE>>\\n(.*?)\\n<<END>>"',
+    lambda m: '"\n' + m.group(1).replace("\\n", "\n").replace('\\"', '"') + '\n"',
+    result,
+    flags=re.DOTALL,
+  )
+  return result
 
 
 @dataclass
@@ -92,6 +113,16 @@ class NotificationInfo:
 
 
 @dataclass
+class LiveNoteTrackingStats:
+  generator_stats: dict[str, int]
+  generator_failure: Optional[str] = None
+  strato_failure: Optional[str] = None
+  tracking_start_ms: Optional[int] = None
+  tracking_end_ms: Optional[int] = None
+  intended_failure: bool = False
+
+
+@dataclass
 class LiveNoteVersion:
   live_note_classification: str
   category: str
@@ -106,6 +137,16 @@ class LiveNoteVersion:
   suggestion_evaluations: Optional[dict[int, SuggestionEvaluation]] = None
   notifications: Optional[NotificationInfo] = None
   scoring_result: Optional[ScoringResult] = None
+  story_assessment: Optional[str] = None
+  rating_tag_summary: Optional[dict[str, int]] = None
+  rating_level_summary: Optional[dict[str, dict[str, int]]] = None  # bucket → {HELPFUL: n, ...}
+  total_ratings: Optional[int] = None
+
+
+@dataclass
+class LiveNoteGenerationResult:
+  live_note_version: Optional[LiveNoteVersion]
+  tracking_stats: LiveNoteTrackingStats
 
 
 @dataclass
