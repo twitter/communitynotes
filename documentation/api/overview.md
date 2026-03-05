@@ -88,7 +88,9 @@ Definitions
   * NH_5 = Number of notes with CRNH (“Currently Rated Not Helpful”) status among last 5 notes with a non-NMR (“Needs More Ratings”) status
   * NH_10 = Number of notes with CRNH status among last 10 notes with a non-NMR status
   * HR_R = Recent hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent 20 notes). CRH = “Currently Rated Helpful” status.
-  * HR_L = Longer-term hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent 100 notes).
+  * HR_100 = Hit rate over the most recent 100 notes ((CRH-CRNH)/TotalNotes among most recent 100 notes).
+  * HR_14d = Hit rate over the last 14 days, excluding notes with <10 ratings that have not been assigned Helpful or Not Helpful status ((CRH-CRNH)/TotalNotes among qualifying notes from the last 14 days).
+  * HR_L = Longer-term hit rate = max(HR_100, HR_14d)
   * DN_30 = Average daily notes written in last 30 days
   * T = Total notes written
 
@@ -102,12 +104,14 @@ Writing limit
       * WL = 10
     * Else
       * Set WL_L based on HR_L and HR_R:
-         * If HR_L < 0.1:
-           * WL_L = 200 * max(HR_R, HR_L)
+         * If HR_L < 0.05:
+           * WL_L = 300 * max(HR_R, HR_L)
+         * Else If HR_L < 0.1:
+           * WL_L = 15 + 700 * (HR_L - 0.05)
          * Else If HR_L < 0.15:
-           * WL_L = 20 + 1600 * (HR_L - 0.1)
-         * Else If HR_L < .2:
-           * WL_L = 100 + 8000 * (HR_L - 0.15)
+           * WL_L = 50 + 3000 * (HR_L - 0.1)
+         * Else If HR_L < 0.2:
+           * WL_L = 200 + 6000 * (HR_L - 0.15)
          * Else:
            * WL_L = 500
       * WL = max(5, floor(min(DN_30 * 5, WL_L)))
@@ -188,7 +192,7 @@ Available feed sizes:
 
 Definition of "High performing" (required for both `large` and `xl`):
   * Has written at least 100 notes.
-  * Hit rate for the most recent 100 notes >= 10%. hit rate = (#CRH - #CRNH) / #total_notes
+  * Longer-term hit rate (HR_L) >= 5%, where HR_L is the higher of the hit rate over the most recent 100 notes and the hit rate over the last 14 days (excluding notes with <10 ratings that have not been assigned Helpful or Not Helpful status). hit rate = (#CRH - #CRNH) / #total_notes
   * CRNH rate for the most recent 100 notes <= 10%.
 
 Examples to select languages of the posts in the feed:
