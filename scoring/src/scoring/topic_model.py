@@ -45,26 +45,36 @@ seedTerms = {
     "palestin",  # intentionally shortened for expanded matching
     "gaza",
     "jerusalem",
-    "\shamas\s",
+    r"\bhamas\b",
   },
   Topics.MessiRonaldo: {
-    "messi\s",  # intentional whitespace to prevent prefix matches
+    r"messi\b",  # intentional whitespace to prevent prefix matches
     "ronaldo",
   },
   Topics.Scams: {
     "scam",
-    "undisclosed\sad",  # intentional whitespace
-    "terms\sof\sservice",  # intentional whitespace
-    "help\.x\.com",
-    "x\.com/tos",
-    "engagement\sfarm",  # intentional whitespace
+    r"undisclosed\sad",  # intentional whitespace
+    r"terms\sof\sservice",  # intentional whitespace
+    r"help\.x\.com",
+    r"x\.com/tos",
+    r"engagement\sfarm",  # intentional whitespace
     "spam",
     "gambling",
     "apostas",
     "apuestas",
     "dropship",
-    "drop\sship",  # intentional whitespace
+    r"drop\sship",  # intentional whitespace
     "promotion",
+  },
+  Topics.InDimensionTwo: {
+    # this is an emergent second dimension from MF in IN
+    r"\bugc\b",
+    r"\bgc\b",
+    r"\bobc\b",
+    r"\bsc\b",
+    r"\bsc[,\s]+st\b",
+    r"\bst[,\s]+sc\b",
+    "आरक्षण",
   },
 }
 
@@ -73,7 +83,7 @@ def get_seed_term_with_periods():
   seedTermsWithPeriods = []
   for terms in seedTerms.values():
     for term in terms:
-      if "\." in term:
+      if r"\." in term:
         seedTermsWithPeriods.append(term)
   return seedTermsWithPeriods
 
@@ -82,7 +92,8 @@ class TopicModel(object):
   def __init__(self, unassignedThreshold=0.99):
     """Initialize a list of seed terms for each topic."""
     self._seedTerms = seedTerms
-    self._unassignedThreshold = unassignedThreshold
+    self._unassignedThreshold = {label: unassignedThreshold for label in range(1, len(Topics))}
+    self._unassignedThreshold[Topics.InDimensionTwo.value] = 0.7
     self._compiled_regex = self._compile_regex()
 
   def _compile_regex(self):
@@ -94,13 +105,16 @@ class TopicModel(object):
         # If the pattern contains an escaped period (i.e. it's a URL), don't enforce the preceding whitespace or start-of-string.
         if "\\." in pattern:
           mod_patterns.append(pattern)
+        elif pattern.startswith(r"\b") or pattern.startswith(r"\s"):
+          # Pattern already has its own boundary — use as-is
+          mod_patterns.append(pattern)
         else:
-          mod_patterns.append(f"(\s|^){pattern}")
+          mod_patterns.append(rf"(?:\s|^){pattern}")
       group_name = f"{topic.name}"
       regex_patterns[group_name] = f"(?P<{group_name}>{'|'.join(mod_patterns)})"
     # Combine all groups into a single regex
     full_regex = "|".join(regex_patterns.values())
-    return re.compile(full_regex)
+    return re.compile(full_regex, re.IGNORECASE)
 
   def _make_seed_labels(self, texts: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Produce a label vector based on seed terms.
@@ -177,8 +191,8 @@ class TopicModel(object):
     # Identify stop words
     blockedTokens = set()
     for terms in self._seedTerms.values():
-      # Remove whitespace and any escaped whitespace characters from seed terms
-      blockedTokens |= {re.sub(r"\\s", "", t.strip()) for t in terms}
+      # Remove whitespace, escaped whitespace characters, and word boundary markers from seed terms
+      blockedTokens |= {re.sub(r"\\[sb]", "", t.strip()) for t in terms}
       # Convert escaped periods to periods
       blockedTokens |= {re.sub(r"\\.", ".", t.strip()) for t in terms}
     logger.info(f"  Total tokens to filter: {len(blockedTokens)}")
@@ -198,9 +212,41 @@ class TopicModel(object):
     predictions = np.argmax(probs, axis=1)
     for label in range(1, len(Topics)):
       # Update label if (1) note was assigned based on the labeling heuristic, and (2)
-      # p(Unassigned) is below the required uncertainty threshold.
-      predictions[(labels == label) & (probs[:, 0] <= self._unassignedThreshold)] = label
+      # the sum of probabilities for all classes other than the seed label is below
+      # the required uncertainty threshold.
+      other_class_prob = 1.0 - probs[:, label]
+      predictions[
+        (labels == label) & (other_class_prob <= self._unassignedThreshold[label])
+      ] = label
     return predictions
+
+  @staticmethod
+  def _filter_url_tokens(text: str, min_token_length: int = 4) -> str:
+    """Replace URLs with only their constituent tokens that are at least min_token_length characters.
+
+    This prevents short URL parameter fragments (e.g. 'sc' from 'sc_lang') from
+    creating false positive seed term matches after underscore replacement.
+    URLs matching seed term patterns (e.g. help.x.com, x.com/tos) are preserved as-is.
+    """
+
+    def replace_url(match):
+      # URLs that should be preserved verbatim because they are used as seed terms.
+      _PRESERVE_URL_PATTERNS = [
+        re.compile(r"help\.x\.com"),
+        re.compile(r"x\.com/tos"),
+      ]
+      url = match.group(0)
+      # Preserve URLs that match seed term patterns
+      for pattern in _PRESERVE_URL_PATTERNS:
+        if pattern.search(url):
+          return url
+      # Split URL into word-like tokens (splitting on non-alphanumeric characters)
+      tokens = re.findall(r"[a-zA-Z]+", url)
+      # Keep only tokens that are at least min_token_length characters
+      filtered = [t for t in tokens if len(t) >= min_token_length]
+      return " ".join(filtered)
+
+    return re.sub(r"https?://[^\s)\]]+", replace_url, text)
 
   def _prepare_post_text(self, notes: pd.DataFrame) -> pd.DataFrame:
     """Concatenate all notes within each post into a single row associated with the post.
@@ -218,11 +264,17 @@ class TopicModel(object):
       .apply(lambda postNotes: " ".join(postNotes))
       .reset_index(drop=False)
     )
-    # Default tokenization for CountVectorizer will not split on underscore, which
-    # results in very long tokens containing many words inside of URLs.  Removing
-    # underscores allows us to keep default splitting while fixing that problem.
+    # Replace URLs with filtered tokens (only keeping words >= 4 chars) to prevent
+    # short URL fragments from matching seed terms after underscore replacement.
     postNoteText[c.summaryKey] = [
-      text.replace("_", " ") for text in postNoteText[c.summaryKey].values
+      self._filter_url_tokens(text) for text in postNoteText[c.summaryKey].values
+    ]
+    # Default tokenization for CountVectorizer will not split on underscore or
+    # forward slash, which results in very long tokens containing many words
+    # inside of URLs.  Removing underscores and slashes allows us to keep
+    # default splitting while fixing that problem.
+    postNoteText[c.summaryKey] = [
+      text.replace("_", " ").replace("/", " ") for text in postNoteText[c.summaryKey].values
     ]
     return postNoteText
 
@@ -306,6 +358,10 @@ class TopicModel(object):
       bootstrappedSeedTerms[Topics.Scams].remove(
         np.random.choice(list(seedTerms[Topics.Scams]), 1)[0]
       )
+      bootstrappedSeedTerms[Topics.InDimensionTwo] = seedTerms[Topics.InDimensionTwo].copy()
+      bootstrappedSeedTerms[Topics.InDimensionTwo].remove(
+        np.random.choice(list(seedTerms[Topics.InDimensionTwo]), 1)[0]
+      )
       self._seedTerms = bootstrappedSeedTerms
       (
         pipe,
@@ -381,6 +437,18 @@ class TopicModel(object):
           probs = np.vstack([1 - probs, probs]).T
         else:
           probs = softmax(logits, axis=1)
+
+        # The classifier may have been trained on a non-contiguous subset of topic labels
+        # (e.g. [0, 1, 3, 4] when no training data exists for label 2).  In that case,
+        # probs columns correspond to the classifier's classes_, not directly to topic
+        # indices.  Expand probs so that column i = probability of topic i, ensuring
+        # np.argmax returns actual class labels rather than column indices.
+        classes = pipe.named_steps["Classifier"].classes_
+        if len(classes) < len(Topics):
+          fullProbs = np.zeros((probs.shape[0], len(Topics)))
+          for j, cls in enumerate(classes):
+            fullProbs[:, cls] = probs[:, j]
+          probs = fullProbs
 
         if seedLabelSets[i] is None:
           with c.time_block("Get Note Topics: Make Seed Labels"):

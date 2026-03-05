@@ -65,6 +65,8 @@ class MFTopicScorer(MFBaseScorer):
     multiplyPenaltyByHarassmentScore: bool = True,
     minimumHarassmentScoreToPenalize: float = 2.0,
     tagConsensusHarassmentHelpfulRatingPenalty: int = 10,
+    numConfidenceRatings: int = 4,
+    useGlobalIntercept: bool = True,
   ) -> None:
     """Configure MFTopicScorer object.
 
@@ -110,6 +112,7 @@ class MFTopicScorer(MFBaseScorer):
       minimumHarassmentScoreToPenalize=minimumHarassmentScoreToPenalize,
       tagConsensusHarassmentHelpfulRatingPenalty=tagConsensusHarassmentHelpfulRatingPenalty,
       useReputation=False,
+      useGlobalIntercept=useGlobalIntercept,
     )
     self._topicName = topicName
     self._topicNoteInterceptKey = f"{c.topicNoteInterceptKey}_{self._topicName}"
@@ -123,6 +126,7 @@ class MFTopicScorer(MFBaseScorer):
     self._topicNoteInterceptNoCorrelatedKey = (
       f"{c.topicNoteInterceptNoCorrelatedKey}_{self._topicName}"
     )
+    self._numConfidenceRatings = numConfidenceRatings
 
   def get_name(self):
     return f"MFTopicScorer_{self._topicName}"
@@ -243,8 +247,12 @@ class MFTopicScorer(MFBaseScorer):
       .rename(columns={c.raterParticipantIdKey: "negRatingTotal"})
     )
     # Set scoring confidence bit
-    posFactorCounts = posFactorCounts[posFactorCounts["posRatingTotal"] > 4][[c.noteIdKey]]
-    negFactorCounts = negFactorCounts[negFactorCounts["negRatingTotal"] > 4][[c.noteIdKey]]
+    posFactorCounts = posFactorCounts[
+      posFactorCounts["posRatingTotal"] > self._numConfidenceRatings
+    ][[c.noteIdKey]]
+    negFactorCounts = negFactorCounts[
+      negFactorCounts["negRatingTotal"] > self._numConfidenceRatings
+    ][[c.noteIdKey]]
     confidentNotes = posFactorCounts.merge(negFactorCounts)
     confidentNotes[self._noteTopicConfidentKey] = True
     noteScores = noteScores.merge(

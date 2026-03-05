@@ -29,14 +29,15 @@ def author_helpfulness(
   """
 
   scoredNotes.loc[:, c.noteCountKey] = 1
-  authorCounts = scoredNotes.groupby(c.noteAuthorParticipantIdKey).sum(numeric_only=True)[
-    [
-      c.currentlyRatedHelpfulBoolKey,
-      c.currentlyRatedNotHelpfulBoolKey,
-      c.noteCountKey,
-      noteInterceptKey,
-    ]
+  cols = [
+    c.currentlyRatedHelpfulBoolKey,
+    c.currentlyRatedNotHelpfulBoolKey,
+    c.noteCountKey,
+    noteInterceptKey,
   ]
+  authorCounts = (
+    scoredNotes[[c.noteAuthorParticipantIdKey] + cols].groupby(c.noteAuthorParticipantIdKey).sum()
+  )
   authorCounts[c.crhRatioKey] = (
     authorCounts[c.currentlyRatedHelpfulBoolKey] / authorCounts[c.noteCountKey]
   )
