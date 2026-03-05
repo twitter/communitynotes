@@ -1,48 +1,32 @@
 from typing import Dict, List, Optional, Tuple
 
 from . import constants as c
-from .mf_base_scorer import MFBaseScorer, coalesce_columns
+from .gaussian_scorer import GaussianScorer
+from .mf_topic_scorer import MFTopicScorer
 
 import pandas as pd
 
 
-def coalesce_topic_models(scoredNotes: pd.DataFrame) -> pd.DataFrame:
-  """Coalesce all topic modeling columns across note and user scoring.
-
-  Since each Scorer must have distinct output columns, we use coalescing to run
-  multiple instances of MFTopicScorer objects and then condense the results into
-  a single set of columns.  This approach works because each note will be scored
-  by at most one MFTopicScorer instance.
-
-  Args:
-    scoredNotes: scoring output for notes.
-
-  Returns:
-    tuple containing coalesced scoring results for notes and users.
-  """
-  for col in [
-    c.topicNoteInterceptKey,
-    c.topicNoteFactor1Key,
-    c.topicRatingStatusKey,
-    c.topicNoteConfidentKey,
-    c.noteTopicKey,
-    c.topicInternalActiveRulesKey,
-    c.topicNumFinalRoundRatingsKey,
-    c.topicNoteInterceptNoHighVolKey,
-    c.topicNoteInterceptNoCorrelatedKey,
-  ]:
-    scoredNotes = coalesce_columns(scoredNotes, col)
-
-  return scoredNotes
-
-
-class MFTopicScorer(MFBaseScorer):
+class GaussianTopicScorer(GaussianScorer):
   def __init__(
     self,
     topicName: str,
     seed: Optional[int] = None,
-    pseudoraters: Optional[bool] = False,
     saveIntermediateState: bool = False,
+    minMeanNoteScore: float = 0.05,
+    crhThreshold: float = 0.40,
+    crnhThresholdIntercept: float = -0.05,
+    crnhThresholdNoteFactorMultiplier: float = -0.8,
+    crnhThresholdNMIntercept: float = -0.15,
+    crnhThresholdUCBIntercept: float = -0.5,
+    crhSuperThreshold: float = 0.5,
+    crhThresholdNoHighVol: float = 0.37,
+    crhThresholdNoCorrelated: float = 0.37,
+    lowDiligenceThreshold: float = 0.263,
+    factorThreshold: float = 0.5,
+    tagFilterPercentile: int = 95,
+    incorrectFilterThreshold: float = 2.5,
+    numConfidenceRatings: int = 4,
     userFactorLambda=None,
     noteFactorLambda=None,
     userInterceptLambda=None,
@@ -50,45 +34,53 @@ class MFTopicScorer(MFBaseScorer):
     globalInterceptLambda=None,
     diamondLambda=None,
     normalizedLossHyperparameters=None,
-    maxFirstMFTrainError: float = 0.16,
-    maxFinalMFTrainError: float = 0.09,
-    minMeanNoteScore: float = 0.05,
-    crhThreshold: float = 0.40,
-    crnhThresholdIntercept: float = -0.05,
-    crnhThresholdNoteFactorMultiplier: float = -0.8,
-    crnhThresholdNMIntercept: float = -0.15,
-    crhSuperThreshold: float = 0.5,
-    crhThresholdNoHighVol: float = 0.37,
-    crhThresholdNoCorrelated: float = 0.37,
-    lowDiligenceThreshold: float = 0.263,
-    factorThreshold: float = 0.5,
-    multiplyPenaltyByHarassmentScore: bool = True,
-    minimumHarassmentScoreToPenalize: float = 2.0,
-    tagConsensusHarassmentHelpfulRatingPenalty: int = 10,
-    numConfidenceRatings: int = 4,
     useGlobalIntercept: bool = True,
+    crhParams: c.GaussianParams = c.gaussianCrhParams,
+    crnhParams: c.GaussianParams = c.gaussianCrnhParams,
   ) -> None:
-    """Configure MFTopicScorer object.
+    """Configure GaussianTopicScorer object.
 
-    Notice that each MFTopicScorer defines column names by appending the topicName to
+    Notice that each GaussianTopicScorer defines column names by appending the topicName to
     column prefixes which are constant.  Dynamically defining the column names allows the
     topic scorer to be instantiated multiple times while maintaining the property that
     the columns attached by each scorer remain unique.  Once all scorers have ran, we
-    (will) validate that each note was scored by at most one topic scorer and then coalesce
+    validate that each note was scored by at most one topic scorer and then coalesce
     all of the topic scoring columns and remove the topicName suffix.
 
     Args:
       topicName: str indicating which topic this scorer instance should filter for.
       seed: if not None, seed value to ensure deterministic execution
-      pseudoraters: if True, compute optional pseudorater confidence intervals
     """
     super().__init__(
       includedTopics={topicName},
+      excludeTopics=False,
+      includedGroups=set(),
+      includeUnassigned=False,
+      captureThreshold=None,
       seed=seed,
-      pseudoraters=pseudoraters,
-      useStableInitialization=False,
       saveIntermediateState=saveIntermediateState,
       threads=4,
+      minMeanNoteScore=minMeanNoteScore,
+      crhThreshold=crhThreshold,
+      crnhThresholdIntercept=crnhThresholdIntercept,
+      crnhThresholdNoteFactorMultiplier=crnhThresholdNoteFactorMultiplier,
+      crnhThresholdNMIntercept=crnhThresholdNMIntercept,
+      crnhThresholdUCBIntercept=crnhThresholdUCBIntercept,
+      crhSuperThreshold=crhSuperThreshold,
+      crhThresholdNoHighVol=crhThresholdNoHighVol,
+      crhThresholdNoCorrelated=crhThresholdNoCorrelated,
+      lowDiligenceThreshold=lowDiligenceThreshold,
+      factorThreshold=factorThreshold,
+      useReputation=False,
+      tagFilterPercentile=tagFilterPercentile,
+      incorrectFilterThreshold=incorrectFilterThreshold,
+      crhParams=crhParams,
+      crnhParams=crnhParams,
+    )
+    # Store MF parameters for constructing the MFTopicScorer used in prescoring.
+    self._mfTopicScorerArgs = dict(
+      topicName=topicName,
+      seed=seed,
       userFactorLambda=userFactorLambda,
       noteFactorLambda=noteFactorLambda,
       userInterceptLambda=userInterceptLambda,
@@ -96,22 +88,6 @@ class MFTopicScorer(MFBaseScorer):
       globalInterceptLambda=globalInterceptLambda,
       diamondLambda=diamondLambda,
       normalizedLossHyperparameters=normalizedLossHyperparameters,
-      maxFirstMFTrainError=maxFirstMFTrainError,
-      maxFinalMFTrainError=maxFinalMFTrainError,
-      minMeanNoteScore=minMeanNoteScore,
-      crhThreshold=crhThreshold,
-      crnhThresholdIntercept=crnhThresholdIntercept,
-      crnhThresholdNoteFactorMultiplier=crnhThresholdNoteFactorMultiplier,
-      crnhThresholdNMIntercept=crnhThresholdNMIntercept,
-      crhSuperThreshold=crhSuperThreshold,
-      crhThresholdNoHighVol=crhThresholdNoHighVol,
-      crhThresholdNoCorrelated=crhThresholdNoCorrelated,
-      lowDiligenceThreshold=lowDiligenceThreshold,
-      factorThreshold=factorThreshold,
-      multiplyPenaltyByHarassmentScore=multiplyPenaltyByHarassmentScore,
-      minimumHarassmentScoreToPenalize=minimumHarassmentScoreToPenalize,
-      tagConsensusHarassmentHelpfulRatingPenalty=tagConsensusHarassmentHelpfulRatingPenalty,
-      useReputation=False,
       useGlobalIntercept=useGlobalIntercept,
     )
     self._topicName = topicName
@@ -128,8 +104,20 @@ class MFTopicScorer(MFBaseScorer):
     )
     self._numConfidenceRatings = numConfidenceRatings
 
-  def get_name(self):
+  def get_prescoring_name(self):
     return f"MFTopicScorer_{self._topicName}"
+
+  def get_name(self):
+    return f"GaussianTopicScorer_{self._topicName}"
+
+  def _prescore_notes_and_users(
+    self,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    userEnrollmentRaw: pd.DataFrame,
+  ) -> Tuple[pd.DataFrame, pd.DataFrame, c.PrescoringMetaScorerOutput]:
+    mfScorer = MFTopicScorer(**self._mfTopicScorerArgs)
+    return mfScorer._prescore_notes_and_users(ratings, noteStatusHistory, userEnrollmentRaw)
 
   def _get_note_col_mapping(self) -> Dict[str, str]:
     """Returns a dict mapping default note column names to custom names for a specific model."""
@@ -169,31 +157,17 @@ class MFTopicScorer(MFBaseScorer):
 
   def _get_dropped_note_cols(self) -> List[str]:
     """Returns a list of columns which should be excluded from scoredNotes and auxiliaryNoteInfo."""
-    return super()._get_dropped_note_cols() + (
-      [
-        c.activeFilterTagsKey,
-        c.ratingWeightKey,
-        c.noteInterceptMinKey,
-        c.noteInterceptMaxKey,
-      ]
-      + c.notHelpfulTagsAdjustedColumns
-      + c.notHelpfulTagsAdjustedRatioColumns
-      + c.incorrectFilterColumns
-      + c.noteParameterUncertaintyTSVAuxColumns
-    )
+    return super()._get_dropped_note_cols()
 
   def _get_dropped_user_cols(self) -> List[str]:
-    """Returns a list of columns which should be excluded from helpfulnessScores output."""
+    """Returns a list of columns which should be excluded from helpfulnessScores output.
+
+    Note: GaussianScorer's helpfulnessScores only contains raterParticipantIdKey and
+    internalRaterFactor1Key. The parent GaussianScorer._get_dropped_user_cols() already
+    drops internalRaterFactor1Key, so we only need to additionally drop raterParticipantIdKey.
+    """
     return super()._get_dropped_user_cols() + [
-      c.crhCrnhRatioDifferenceKey,
-      c.meanNoteScoreKey,
-      c.raterAgreeRatioKey,
-      c.aboveHelpfulnessThresholdKey,
-      c.internalRaterInterceptKey,
-      c.internalRaterFactor1Key,
       c.raterParticipantIdKey,
-      c.internalFirstRoundRaterInterceptKey,
-      c.internalFirstRoundRaterFactor1Key,
     ]
 
   def _postprocess_output(
@@ -218,7 +192,7 @@ class MFTopicScorer(MFBaseScorer):
         noteScores: filtered and updated note scoring output
         userScores: filtered and updated user scoring output
     """
-    # Set the modelingGroupKey column in each output
+    # Set the noteTopicKey column in each output
     noteScores[self._noteTopicKey] = self._topicName
     # Calculate total counts of positive and negative factor ratings
     scoredNotes = noteScores[~noteScores[c.internalNoteInterceptKey].isna()][[c.noteIdKey]]

@@ -71,11 +71,13 @@ class RuleID(Enum):
   TOPIC_MODEL_2 = RuleAndVersion("TopicModel02", "1.0", False)
   TOPIC_MODEL_3 = RuleAndVersion("TopicModel03", "1.0", False)
   TOPIC_MODEL_4 = RuleAndVersion("TopicModel04", "1.0", False)
+  TOPIC_MODEL_5 = RuleAndVersion("TopicModel05", "1.0", False)
   MULTI_GROUP_MODEL_1 = RuleAndVersion("MultiGroupModel01", "1.0", True)
   INSUFFICIENT_EXPLANATION = RuleAndVersion("InsufficientExplanation", "1.0", True)
   SCORING_DRIFT_GUARD = RuleAndVersion("ScoringDriftGuard", "1.0", False)
   NMR_DUE_TO_MIN_STABLE_CRH_TIME = RuleAndVersion("NmrDueToMinStableCrhTime", "1.0", False)
   GAUSSIAN_MODEL = RuleAndVersion("GaussianModel", "1.0", True)
+  GAUSSIAN_CORE_WITH_TOPICS_MODEL = RuleAndVersion("GaussianCoreWithTopicsModel", "1.0", True)
 
   def get_name(self) -> str:
     """Returns a string combining the name and version to uniquely name the logic of the ScoringRule."""

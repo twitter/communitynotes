@@ -16,6 +16,7 @@ class Scorers(Enum):
   MFTopicScorer = auto()
   MFMultiGroupScorer = auto()
   GaussianScorer = auto()
+  GaussianCoreWithTopicsScorer = auto()
 
 
 class Topics(Enum):
@@ -26,6 +27,7 @@ class Topics(Enum):
   GazaConflict = 2
   MessiRonaldo = 3
   Scams = 4
+  InDimensionTwo = 5
 
 
 def scorers_from_csv(csv: str) -> Set[Scorers]:

@@ -197,6 +197,7 @@ class MFBaseScorer(Scorer):
     minMinorityNetHelpfulRatings: Optional[int] = None,
     minMinorityNetHelpfulRatio: Optional[float] = None,
     populationSampledRatingPerNoteLossRatio: Optional[float] = 10.0,
+    useGlobalIntercept: bool = True,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -297,6 +298,7 @@ class MFBaseScorer(Scorer):
           ("initLearningRate", 0.02 if normalizedLossHyperparameters is not None else 0.2),
           ("noInitLearningRate", 0.02 if normalizedLossHyperparameters is not None else 1.0),
           ("seed", seed) if seed is not None else None,
+          ("useGlobalIntercept", useGlobalIntercept),
         ]
         if pair is not None
       ]

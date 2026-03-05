@@ -250,6 +250,7 @@ class GaussianScorer(Scorer):
     self._crhParams = crhParams
     self._crnhParams = crnhParams
     self._useMfNoteParams = useMfNoteParams
+    self._centeredBins = False
 
   def get_prescoring_name(self):
     return "MFCoreScorer"
@@ -367,7 +368,7 @@ class GaussianScorer(Scorer):
 
   def _get_dropped_user_cols(self) -> List[str]:
     """Returns a list of columns which should be excluded from helpfulnessScores output."""
-    return []
+    return [c.internalRaterFactor1Key]
 
   def _prepare_data_for_scoring(self, ratings: pd.DataFrame, final: bool = False) -> pd.DataFrame:
     """Prepare data for scoring. This includes filtering out notes and raters which do not meet
@@ -397,7 +398,7 @@ class GaussianScorer(Scorer):
     params = self._crhParams if isCrh else self._crnhParams
 
     numQuantiles = len(quantileRange)
-    quantileCols = [f"{x:5.2f}" for x in quantileRange]
+    quantileCols = [f"{x:5.3f}" for x in quantileRange]
     quantileArray = np.array(quantileRange, dtype=np.float32)
 
     assert (
@@ -523,21 +524,20 @@ class GaussianScorer(Scorer):
         quantileCols
       ].values
 
-    if not isCrh:
-      # Ensure notes with fewer than 3 ratings on each side get 0.1 smoothing
-      signCounts = (
-        ratingsForTrainingWithFactors.assign(
-          neg=ratingsForTrainingWithFactors[c.internalRaterFactor1Key] < 0,
-          pos=ratingsForTrainingWithFactors[c.internalRaterFactor1Key] > 0,
-        )
-        .groupby(c.noteIdKey)[["neg", "pos"]]
-        .sum()
-        .astype(int)
+    # Ensure notes with fewer than 3 ratings on each side get 0.1 smoothing
+    signCounts = (
+      ratingsForTrainingWithFactors.assign(
+        neg=ratingsForTrainingWithFactors[c.internalRaterFactor1Key] < 0,
+        pos=ratingsForTrainingWithFactors[c.internalRaterFactor1Key] > 0,
       )
-      insufficientMask = (signCounts["neg"] < 3) | (signCounts["pos"] < 3)
-      insufficientNoteIds = signCounts[insufficientMask].index
-      isInsufficient = np.isin(uniqueNotes, insufficientNoteIds)
-      smoothingValues[isInsufficient] = 0.1
+      .groupby(c.noteIdKey)[["neg", "pos"]]
+      .sum()
+      .astype(int)
+    )
+    insufficientMask = (signCounts["neg"] < 3) | (signCounts["pos"] < 3)
+    insufficientNoteIds = signCounts[insufficientMask].index
+    isInsufficient = np.isin(uniqueNotes, insufficientNoteIds)
+    smoothingValues[isInsufficient] = 0.1
 
     # Smoothing weights
     if params.adaptiveWeightBase is not None:
@@ -589,7 +589,7 @@ class GaussianScorer(Scorer):
         ratingsForTrainingWithFactors, quantileRange, isCrh=isCrh, empiricalPriors=empiricalPriors
       )
 
-    quantileCols = [f"{x:5.2f}" for x in quantileRange]
+    quantileCols = [f"{x:5.3f}" for x in quantileRange]
 
     # Compute intercept
     logValues = np.log(clippedValues[quantileCols].values)
@@ -765,31 +765,36 @@ class GaussianScorer(Scorer):
         ].nunique()
         > self._nBinsEachSide
       ):
-        _, l_range = pd.qcut(
+        l_range = (
           ratersWithParams.loc[ratersWithParams[c.internalRaterFactor1Key] < 0][
             c.internalRaterFactor1Key
-          ],
-          self._nBinsEachSide,
-          retbins=True,
+          ]
+          .quantile(list(np.linspace(0.001, 0.999, self._nBinsEachSide)))
+          .values
         )
-        _, r_range = pd.qcut(
+        r_range = (
           ratersWithParams.loc[ratersWithParams[c.internalRaterFactor1Key] > 0][
             c.internalRaterFactor1Key
-          ],
-          self._nBinsEachSide,
-          retbins=True,
+          ]
+          .quantile(list(np.linspace(0.001, 0.999, self._nBinsEachSide)))
+          .values
         )
         lMids = (l_range[:-1] + l_range[1:]) / 2
         rMids = (r_range[:-1] + r_range[1:]) / 2
-        mids = (np.array(sorted(abs(lMids))) + np.array(sorted(abs(rMids)))) / 2
-        crhQuantileRange = np.concatenate([sorted(-mids), mids])
-        crnhQuantileRange = np.concatenate([sorted(-mids), mids])
+        if self._centeredBins:
+          mids = (np.array(sorted(abs(lMids))) + np.array(sorted(abs(rMids)))) / 2
+          crhQuantileRange = np.concatenate([sorted(-mids), mids])
+          crnhQuantileRange = np.concatenate([sorted(-mids), mids])
+        else:
+          crhQuantileRange = np.concatenate([lMids, rMids])
+          crnhQuantileRange = np.concatenate([lMids, rMids])
         logger.info(f"crh quantile range: {crhQuantileRange}")
         logger.info(f"crnh quantile range: {crnhQuantileRange}")
       # if there are not enough unique raters to even calculate bins, do not predict
       else:
-        scoredNotes = pd.DataFrame(columns=self.get_internal_scored_notes_cols())
-        helpfulnessScores = pd.DataFrame(columns=self.get_internal_helpfulness_scores_cols())
+        return pd.DataFrame(columns=self.get_internal_scored_notes_cols()), pd.DataFrame(
+          columns=self.get_internal_helpfulness_scores_cols()
+        )
 
     else:
       crhQuantileRange = c.quantileRange
@@ -957,6 +962,7 @@ class GaussianScorer(Scorer):
       helpfulnessScores = prescoringRaterModelOutput[
         [
           c.raterParticipantIdKey,
+          c.internalRaterFactor1Key,
         ]
       ]
 

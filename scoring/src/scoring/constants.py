@@ -361,6 +361,19 @@ gaussianNumFinalRoundRatingsKey = "gaussianNumFinalRoundRatings"
 gaussianNoteInterceptNoHighVolKey = "gaussianNoteInterceptNoHighVol"
 gaussianNoteInterceptNoCorrelatedKey = "gaussianNoteInterceptNoCorrelated"
 gaussianNoteInterceptPopulationSampledKey = "gaussianNoteInterceptPopulationSampled"
+# Gaussian Core With Topics Model
+gaussianCoreWithTopicsNoteInterceptKey = "gaussianCoreWithTopicsNoteIntercept"
+gaussianCoreWithTopicsNoteFactor1Key = "gaussianCoreWithTopicsNoteFactor1"
+gaussianCoreWithTopicsRatingStatusKey = "gaussianCoreWithTopicsRatingStatus"
+gaussianCoreWithTopicsActiveRulesKey = "gaussianCoreWithTopicsActiveRules"
+gaussianCoreWithTopicsNumFinalRoundRatingsKey = "gaussianCoreWithTopicsNumFinalRoundRatings"
+gaussianCoreWithTopicsNoteInterceptNoHighVolKey = "gaussianCoreWithTopicsNoteInterceptNoHighVol"
+gaussianCoreWithTopicsNoteInterceptNoCorrelatedKey = (
+  "gaussianCoreWithTopicsNoteInterceptNoCorrelated"
+)
+gaussianCoreWithTopicsNoteInterceptPopulationSampledKey = (
+  "gaussianCoreWithTopicsNoteInterceptPopulationSampled"
+)
 # Harassment/Abuse Tag
 harassmentNoteInterceptKey = "harassmentNoteIntercept"
 harassmentNoteFactor1Key = "harassmentNoteFactor1"
@@ -394,6 +407,9 @@ ratingAgreesWithNoteStatusKey = "ratingAgreesWithNoteStatus"
 aboveHelpfulnessThresholdKey = "aboveHelpfulnessThreshold"
 totalHelpfulHarassmentRatingsPenaltyKey = "totalHelpfulHarassmentPenalty"
 raterAgreeRatioWithHarassmentAbusePenaltyKey = "raterAgreeRatioKeyWithHarassmentAbusePenalty"
+crhTotal14dKey = "crhTotal14d"
+crnhTotal14dKey = "crnhTotal14d"
+nmrTotal14dKey = "nmrTotal14d"
 
 # Note Status Labels
 currentlyRatedHelpful = "CURRENTLY_RATED_HELPFUL"
@@ -960,6 +976,14 @@ noteModelOutputTSVColumnsAndTypes = [
   (gaussianNoteInterceptNoHighVolKey, np.double),
   (gaussianNoteInterceptPopulationSampledKey, np.double),
   (gaussianNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (gaussianCoreWithTopicsNoteInterceptKey, np.double),
+  (gaussianCoreWithTopicsNoteFactor1Key, np.double),
+  (gaussianCoreWithTopicsRatingStatusKey, "category"),
+  (gaussianCoreWithTopicsActiveRulesKey, "category"),
+  (gaussianCoreWithTopicsNoteInterceptNoHighVolKey, np.double),
+  (gaussianCoreWithTopicsNoteInterceptNoCorrelatedKey, np.double),
+  (gaussianCoreWithTopicsNoteInterceptPopulationSampledKey, np.double),
+  (gaussianCoreWithTopicsNumFinalRoundRatingsKey, np.double),  # double because nullable.
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
@@ -1049,6 +1073,9 @@ raterModelOutputTSVColumnsAndTypes = [
   (coreWithTopicsRaterFactor1Key, np.double),
   (coreFirstRoundRaterInterceptKey, np.double),
   (coreFirstRoundRaterFactor1Key, np.double),
+  (crhTotal14dKey, pd.Int64Dtype()),
+  (crnhTotal14dKey, pd.Int64Dtype()),
+  (nmrTotal14dKey, pd.Int64Dtype()),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
