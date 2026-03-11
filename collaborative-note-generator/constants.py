@@ -70,6 +70,8 @@ class NoteContent:
   created_at_ms: Optional[int] = None
   final_status: Optional[str] = None
   core_intercept: Optional[float] = None
+  rating_tag_summary: Optional[dict] = None  # bucket → {tag: count}
+  rating_level_summary: Optional[dict] = None  # bucket → {level: count}
 
 
 @dataclass
