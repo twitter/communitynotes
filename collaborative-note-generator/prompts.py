@@ -5,8 +5,11 @@ from typing import Optional
 from .constants import (
   ContextForGeneration,
   LiveNoteVersion,
+  MediaComparisonVotes,
+  MediaMatchVerdict,
   NoteContent,
   Suggestion,
+  UrlMediaComparisonResult,
   liveNoteCategoryMisleading,
   liveNoteCategoryNotMisleading,
   liveNoteClassificationInaccurate,
@@ -328,17 +331,21 @@ classifications and the inaccuracies seem like very substantial ones that even s
 post would want to know about, output \
 <CATEGORY>{liveNoteCategoryMisleading}</CATEGORY> otherwise output \
 <CATEGORY>{liveNoteCategoryNotMisleading}</CATEGORY>
-- A comprehensive table of ALL sources and inputs you considered in your analysis, in \
-<SOURCES_CONSIDERED></SOURCES_CONSIDERED> tags. This must include EVERY source type:
-  - URLs you visited (web articles, documents, databases)
-  - Images you viewed (using view_image — describe what you saw)
-  - Videos you viewed (using view_x_video — describe what you saw)
-  - X posts you read (include the URL)
-  - Proposed community notes (summarize what each claimed and whether you verified it)
-  - User suggestions (summarize what each claimed and whether you verified it)
-  - Web searches you performed (include the query and what you found)
-The table should have columns: 1) source (type of source and URL or description), 2) summary of what the source \
-said and how it affected your analysis, 3) date of creation.
+- A JSON array of ALL sources and inputs you considered in your analysis, in \
+<SOURCES_CONSIDERED></SOURCES_CONSIDERED> tags. This must include EVERY source type: URLs visited, \
+images/videos viewed, X posts read, proposed community notes, user suggestions, web searches performed. \
+Each source should be a JSON object with these fields:
+  - "source_type": the tool name if a tool was called (e.g. "browse_page", "x_thread_fetch", \
+"x_keyword_search", "view_x_video", "view_image", "web_search"), or "proposed_community_note", \
+"suggestion", or other descriptive type
+  - "source_detail": for tools, the full tool call with args (e.g. "browse_page(url=https://...)"); \
+for non-tool sources like notes/suggestions, the text content of that source
+  - "url": the URL of the source itself, only for source types that are URLs (e.g. browse_page, \
+view_x_video). Leave null for sources that aren't URLs (e.g. web_search, suggestion, proposed_community_note)
+  - "summary_and_impact_on_analysis": summary of what the source said and how it affected your analysis
+  - "date": date of creation of the source (not when accessed), or null if unknown
+Example: [{{"source_type": "browse_page", "source_detail": "browse_page(url=https://example.com)", \
+"url": "https://example.com", "summary_and_impact_on_analysis": "Confirmed the claim...", "date": "2024-01-15"}}]
 - A "proposed note": if the post is misleading (per the category above), write a note in the style \
 of a great community note. Jump directly into explaining why — do NOT lead with redundant statements \
 like "This post is misleading" or "This claim is false." If the post is not misleading (per the \
@@ -717,15 +724,78 @@ to readers.
 """
 
 
+def _format_vote_counts(votes: Optional[MediaComparisonVotes]) -> str:
+  """Format vote counts as a readable string like '3Y/2N/0E'."""
+  if not votes:
+    return ""
+  return f"{votes.yes_votes}Y/{votes.no_votes}N/{votes.error_votes}E"
+
+
+def format_media_comparison_results(per_url_results: list[UrlMediaComparisonResult]) -> str:
+  """Format per-URL media comparison results as guidance text for the generator prompt."""
+  lines = [
+    "**Media Comparison Analysis (automated pre-processing)**\n",
+    "An automated pipeline independently compared this post's media against media ",
+    "found in each source URL. Results per URL:\n",
+  ]
+
+  any_no = False
+  for ur in per_url_results:
+    mv = _format_vote_counts(ur.same_media_votes)
+    if ur.same_media == MediaMatchVerdict.NO:
+      marker = "DIFFERENT MEDIA"
+      any_no = True
+    elif ur.same_media == MediaMatchVerdict.YES:
+      marker = "SAME MEDIA"
+    else:
+      marker = "INCONCLUSIVE"
+    lines.append(
+      f"  - {ur.url}\n    Media match: {ur.same_media.value} ({mv}) | "
+      f"Same incident: {ur.same_incident.value} [{marker}]\n"
+    )
+
+  lines.append("")
+  if any_no:
+    lines.append(
+      "IMPORTANT: Some sources above contain DIFFERENT media than this post. "
+      "Do NOT adopt conclusions from those sources about what this post's media shows. "
+      "Only trust conclusions from sources whose media MATCHES this post.\n"
+    )
+  else:
+    lines.append(
+      "All analyzed sources appear to contain matching media. Their conclusions "
+      "may be applicable to this post.\n"
+    )
+
+  return "\n".join(lines)
+
+
+def _inject_media_guidance(prompt: str, guidance: str) -> str:
+  """Inject media comparison guidance just before the output format instructions."""
+  if not guidance:
+    return prompt
+  marker = "Please format your output as follows:"
+  idx = prompt.find(marker)
+  if idx >= 0:
+    return prompt[:idx] + guidance + "\n" + prompt[idx:]
+  return prompt.rstrip() + "\n" + guidance
+
+
 def build_generation_prompt(context: ContextForGeneration) -> str:
   """Build the complete generation prompt, including all contextual augmentations.
 
   This is the single entry point for building the prompt sent to the LLM for
   note generation. It assembles the base prompt and conditionally appends
-  suggestion feedback, rating data, categorization guidance, and the
-  story assessment instruction based on what context is available.
+  suggestion feedback, rating data, categorization guidance, the
+  story assessment instruction, and media comparison results based on what
+  context is available.
   """
   prompt = get_live_note_generation_prompt(context)
+
+  # Inject media comparison results if available (before other augmentations)
+  if context.media_comparison_results:
+    media_guidance_text = format_media_comparison_results(context.media_comparison_results)
+    prompt = _inject_media_guidance(prompt, media_guidance_text)
 
   if not context.past_live_note_versions_with_suggestions:
     return prompt
@@ -1030,7 +1100,50 @@ All three tags are required in your output (<REJECT>, <REJECT_REASON>, and <RETR
 
 
 # ===========================================================================
-# 5. Post-hoc Suggestion Incorporation Evaluation
+# 5. Grok Rejector Model Evaluation
+# ===========================================================================
+
+
+def get_grok_rejector_prompt(tweet_id: str, proposed_note: str) -> str:
+  """Build a prompt for the grok-4-1-cn-rejector-r3 model to evaluate a proposed note.
+
+  The rejector model scores the quality of a proposed community note on a scale
+  of 0.0 to 1.0 and provides reasoning for its score.
+
+  Args:
+    tweet_id: The tweet ID the note is written about.
+    proposed_note: The text of the proposed community note.
+
+  Returns:
+    A prompt string for the rejector model.
+  """
+  post_link = f"https://x.com/i/status/{tweet_id}"
+  return f"""\
+Please determine whether the following proposed Community Note is likely to be found Helpful or Not Helpful for the associated post.
+
+post:
+{post_link}
+
+Proposed Community Note:
+{proposed_note}
+
+Please score the proposed Community Note from 0.0 (Very Poor) to 1.0 (Excellent).  To receive a score of 1.0, the Community Note must:
+* Be accurate and direclty supported by the source links in the note.
+* Correct a factual claim in the post.
+* Appear in combination with a post that is making a sincere statement with factual claims.  Notes attached to jokes, hyperbole, sarcasm or opinions can't get a score of 1.0.
+
+Notes that meet some criteria for a Helpful note may receive a partial score (e.g. 0.3, 0.55, 0.7).
+
+Return your score in the following format:
+JSON {{
+  "score": ...,
+  "reasoning": ...,
+}}
+"""
+
+
+# ===========================================================================
+# 6. Post-hoc Suggestion Incorporation Evaluation
 # ===========================================================================
 
 

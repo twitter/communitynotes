@@ -1,6 +1,7 @@
 from dataclasses import asdict, dataclass
 from enum import Enum
 import json
+import textwrap
 from typing import Optional
 
 
@@ -125,6 +126,29 @@ class LiveNoteTrackingStats:
 
 
 @dataclass
+class Source:
+  url: Optional[str] = None
+  explanation: Optional[str] = None
+  created_at_ms: Optional[int] = None
+  source_type: Optional[str] = None
+  source_detail: Optional[str] = None
+
+
+@dataclass
+class GrokRejectorResult:
+  score: Optional[float] = None
+  reasoning: Optional[str] = None
+  error: Optional[str] = None
+
+
+@dataclass
+class Evaluation:
+  grok_rejector_results: Optional[list[GrokRejectorResult]] = None
+  mean_grok_rejector_score: Optional[float] = None
+  claim_opinion_model_score: Optional[float] = None
+
+
+@dataclass
 class LiveNoteVersion:
   live_note_classification: str
   category: str
@@ -143,6 +167,9 @@ class LiveNoteVersion:
   rating_tag_summary: Optional[dict[str, int]] = None
   rating_level_summary: Optional[dict[str, dict[str, int]]] = None  # bucket → {HELPFUL: n, ...}
   total_ratings: Optional[int] = None
+  parsed_sources: Optional[list[Source]] = None
+  num_rejector_samples: int = 0
+  evaluation: Optional[Evaluation] = None
 
 
 @dataclass
@@ -151,9 +178,68 @@ class LiveNoteGenerationResult:
   tracking_stats: LiveNoteTrackingStats
 
 
+class MediaMatchVerdict(Enum):
+  YES = "YES"
+  NO = "NO"
+  INCONCLUSIVE = "INCONCLUSIVE"
+
+
+@dataclass
+class MediaComparisonVotes:
+  yes_votes: int = 0
+  no_votes: int = 0
+  error_votes: int = 0
+
+
+@dataclass
+class UrlMediaComparisonResult:
+  url: str
+  same_media: MediaMatchVerdict
+  same_incident: MediaMatchVerdict
+  same_media_votes: Optional[MediaComparisonVotes] = None
+  same_incident_votes: Optional[MediaComparisonVotes] = None
+
+
 @dataclass
 class ContextForGeneration:
   tweet_id: str
   note_contents: list[NoteContent]
   past_live_note_versions_with_suggestions: list[LiveNoteVersion]
   live_note_version_id: Optional[int] = None
+  media_comparison_results: Optional[list[UrlMediaComparisonResult]] = None
+
+
+# =============================================================================
+# Logging utilities for formatting prompts and responses
+# =============================================================================
+
+_PROMPT_PREFIX = " »   "
+_PROMPT_CONTINUATION = " »       "
+_RESPONSE_PREFIX = " «   "
+_RESPONSE_CONTINUATION = " «       "
+_LOG_WRAP_WIDTH = 180
+
+
+def _wrap_log_line(line: str, prefix: str, continuation: str) -> str:
+  """Wrap a single long line, using prefix for first and continuation for rest."""
+  if len(prefix + line) <= _LOG_WRAP_WIDTH or not line.strip():
+    return prefix + line
+  wrapped = textwrap.wrap(line, width=_LOG_WRAP_WIDTH - len(prefix))
+  if not wrapped:
+    return prefix + line
+  return prefix + wrapped[0] + "".join(f"\n{continuation}{w}" for w in wrapped[1:])
+
+
+def format_prompt_for_logging(prompt_text: str) -> str:
+  """Format a prompt for logging with » prefix on each line."""
+  return "\n".join(
+    _wrap_log_line(line, _PROMPT_PREFIX, _PROMPT_CONTINUATION) for line in prompt_text.split("\n")
+  )
+
+
+def format_response_for_logging(response_text: str) -> str:
+  """Format a response for logging with « prefix on each line."""
+  return "\n".join(
+    _wrap_log_line(line, _RESPONSE_PREFIX, _RESPONSE_CONTINUATION)
+    for line in response_text.split("\n")
+  )
