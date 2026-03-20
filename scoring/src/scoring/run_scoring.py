@@ -301,8 +301,11 @@ def _run_scorer_in_parallel(
   scoringArgs: ScoringArgs,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
   scoringArgsSharedMemory=None,
+  special_handler_process_name: Optional[str] = None,
 ) -> Tuple[ModelResult, float]:
-  return _run_scorer_parallelizable(scorer, True, scoringArgs, dataLoader, scoringArgsSharedMemory)
+  return _run_scorer_parallelizable(
+    scorer, True, scoringArgs, dataLoader, scoringArgsSharedMemory, special_handler_process_name
+  )
 
 
 def _run_scorer_in_series(
@@ -320,6 +323,7 @@ def _run_scorer_parallelizable(
   scoringArgs: ScoringArgs,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
   scoringArgsSharedMemory=None,
+  special_handler_process_name: Optional[str] = None,
 ) -> Tuple[ModelResult, float]:
   """
   Run scoring (either prescoring or final scoring) for a single scorer.
@@ -341,7 +345,7 @@ def _run_scorer_parallelizable(
     try:
       from twitter.logging_config import configure_logging_for_child_process
 
-      configure_logging_for_child_process()
+      configure_logging_for_child_process(special_handler_process_name)
     except ImportError:
       pass
   scorerStartTime = time.perf_counter()
@@ -500,6 +504,19 @@ def _run_scorers(
   overallStartTime = time.perf_counter()
 
   if runParallel:
+    # Discover the SpecialHandler process name so child processes can create local
+    # FileHandlers whose output will be aggregated by SpecialHandler.close().
+    special_handler_process_name = None
+    try:
+      from twitter.data_util import SpecialHandler as _SH
+
+      for h in logging.getLogger("birdwatch").handlers:
+        if isinstance(h, _SH):
+          special_handler_process_name = h.processName
+          break
+    except ImportError:
+      pass
+
     shms, scoringArgsSharedMemory = _save_dfs_to_shared_memory(scoringArgs)
 
     with concurrent.futures.ProcessPoolExecutor(
@@ -518,6 +535,7 @@ def _run_scorers(
           scoringArgs=copy.deepcopy(scoringArgs),
           dataLoader=dataLoader,
           scoringArgsSharedMemory=copy.deepcopy(scoringArgsSharedMemory),
+          special_handler_process_name=special_handler_process_name,
         )
         for scorer in scorers
       ]
