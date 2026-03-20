@@ -1,59 +1,42 @@
+import concurrent.futures
 import datetime
 import hashlib
 import json
 import re
-import textwrap
 from typing import Optional
 
 from .constants import (
   ContextForGeneration,
+  Evaluation,
+  GrokRejectorResult,
   LiveNoteGenerationResult,
   LiveNoteTrackingStats,
   LiveNoteVersion,
   NotificationInfo,
   RatingStatus,
   RejectionDecision,
+  Source,
   Suggestion,
   SuggestionEvaluation,
   UpdateDecision,
+  format_prompt_for_logging,
+  format_response_for_logging,
+)
+from .media_pipeline import (
+  check_media_comparison_pipeline_eligibility,
+  generate_media_match_analysis,
 )
 from .notes_data_client import NotesDataClient
 from .prompts import (
   build_generation_prompt,
   build_update_decider_prompt,
   get_evaluate_whether_single_suggestion_is_incorporated_prompt,
+  get_grok_rejector_prompt,
   get_live_note_candidate_rejector_prompt,
   get_live_note_generation_prompt,
 )
 
 from llm.grok_client import GrokClient, SimpleGrokEAPIClient
-
-
-_PROMPT_PREFIX = " »   "
-_PROMPT_CONT = " »       "
-_RESPONSE_PREFIX = " «   "
-_RESPONSE_CONT = " «       "
-_WRAP_WIDTH = 180
-
-
-def _wrap_line(line: str, prefix: str, continuation: str) -> str:
-  """Wrap a single long line, using prefix for first and continuation for rest."""
-  if len(prefix + line) <= _WRAP_WIDTH or not line.strip():
-    return prefix + line
-  wrapped = textwrap.wrap(line, width=_WRAP_WIDTH - len(prefix))
-  if not wrapped:
-    return prefix + line
-  return prefix + wrapped[0] + "".join(f"\n{continuation}{w}" for w in wrapped[1:])
-
-
-def _format_prompt(text: str) -> str:
-  """Prefix every line with » and word-wrap long lines for readability."""
-  return "\n".join(_wrap_line(line, _PROMPT_PREFIX, _PROMPT_CONT) for line in text.split("\n"))
-
-
-def _format_response(text: str) -> str:
-  """Prefix every line with « and word-wrap long lines for readability."""
-  return "\n".join(_wrap_line(line, _RESPONSE_PREFIX, _RESPONSE_CONT) for line in text.split("\n"))
 
 
 class LiveNoteGenerator:
@@ -63,15 +46,19 @@ class LiveNoteGenerator:
     llm_client: GrokClient = None,
     notes_data_client: NotesDataClient = None,
     max_retries: int = 10,
+    media_eligibility_llm_client: GrokClient = None,
+    rejector_llm_client: Optional[GrokClient] = None,
   ):
     self.logger = logger
     if llm_client is None:
       llm_client = SimpleGrokEAPIClient()
     self.llm_client = llm_client
+    self.media_eligibility_llm_client = media_eligibility_llm_client or self.llm_client
     if notes_data_client is None:
       raise ValueError("notes_data_client must be provided")
     self.notes_data_client = notes_data_client
     self.max_retries = max_retries
+    self.rejector_llm_client = rejector_llm_client
     self._set_version_info_for_model_and_prompt()
 
   def _set_version_info_for_model_and_prompt(self):
@@ -225,6 +212,8 @@ class LiveNoteGenerator:
     self,
     tweet_id,
     include_suggestions: bool = True,
+    enable_media_pipeline: bool = True,
+    num_rejector_samples: int = 0,
   ) -> LiveNoteGenerationResult:
     self.logger.info(f"Generating live note for tweet {tweet_id}")
 
@@ -265,9 +254,37 @@ class LiveNoteGenerator:
         ),
       )
 
-    new_live_note_version.rejection_decision = self.decide_whether_to_reject(
-      context, new_live_note_version, tracking_stats=tracking_stats
+    if enable_media_pipeline:
+      new_live_note_version = self.media_comparison_pipeline(
+        context=context,
+        new_live_note_version=new_live_note_version,
+        tracking_stats=tracking_stats,
+      )
+
+    new_live_note_version.num_rejector_samples = num_rejector_samples
+
+    # Run grok rejector evaluation and quality rejection in parallel
+    run_grok_rejector = (
+      new_live_note_version.num_rejector_samples > 0 and self.rejector_llm_client is not None
     )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+      rejection_future = executor.submit(
+        self.decide_whether_to_reject, context, new_live_note_version, tracking_stats
+      )
+      grok_rejector_future = (
+        executor.submit(self.query_grok_rejector, context, new_live_note_version, tracking_stats)
+        if run_grok_rejector
+        else None
+      )
+      new_live_note_version.rejection_decision = rejection_future.result()
+      if grok_rejector_future is not None:
+        try:
+          new_live_note_version.evaluation = grok_rejector_future.result()
+        except Exception as e:
+          self.logger.warning(
+            f"Grok rejector future failed for post {context.tweet_id} (non-fatal): {e}"
+          )
+          new_live_note_version.evaluation = Evaluation()
     if new_live_note_version.rejection_decision.should_reject:
       new_live_note_version.update_decision = UpdateDecision(
         should_update=False,
@@ -447,11 +464,11 @@ class LiveNoteGenerator:
         previous_live_note_version, new_live_note_result, suggestion
       )
       self.logger.info(
-        f"Evaluating whether suggestion {suggestion.suggestion_id} is incorporated. Prompt:\n{_format_prompt(prompt)}"
+        f"Evaluating whether suggestion {suggestion.suggestion_id} is incorporated. Prompt:\n{format_prompt_for_logging(prompt)}"
       )
       grok_response = self.llm_client.call(prompt)
       self.logger.info(
-        f"Grok response for suggestion {suggestion.suggestion_id} evaluation:\n{_format_response(grok_response)}"
+        f"Grok response for suggestion {suggestion.suggestion_id} evaluation:\n{format_response_for_logging(grok_response)}"
       )
       result = parse_answer_from_grok_post_hoc_suggestion_evaluation_response(grok_response)
       self._increment_stat(tracking_stats, "post_hoc_suggestions.llm_call.successes")
@@ -581,13 +598,8 @@ class LiveNoteGenerator:
       try:
         self._increment_stat(tracking_stats, "decide_reject.llm_call.attempts")
         prompt = get_live_note_candidate_rejector_prompt(new_live_note_result)
-        self.logger.info(
-          f"Getting Grok rejection decision for post {context.tweet_id}. Prompt:\n{_format_prompt(prompt)}"
-        )
+        self.logger.info(f"Getting Grok rejection decision for post {context.tweet_id}")
         grok_response = self.llm_client.call(prompt)
-        self.logger.info(
-          f"Grok response for rejection decision for post {context.tweet_id}:\n{_format_response(grok_response)}"
-        )
         result = parse_answer_from_grok_reject_response(grok_response)
         self._increment_stat(tracking_stats, "decide_reject.llm_call.successes")
         return result
@@ -606,6 +618,95 @@ class LiveNoteGenerator:
     )
     return None
 
+  def _query_single_grok_rejector(
+    self,
+    tweet_id: str,
+    proposed_note: str,
+    tracking_stats: Optional[LiveNoteTrackingStats],
+  ) -> GrokRejectorResult:
+    """Query the grok rejector model once and parse the score.
+
+    Uses a single attempt (no retries beyond the LLM client's own retry).
+    Returns a result with error set on failure — never raises.
+    """
+    self._increment_stat(tracking_stats, "grok_rejector.llm_call.attempts")
+    result = GrokRejectorResult()
+    try:
+      prompt = get_grok_rejector_prompt(tweet_id, proposed_note)
+      response = self.rejector_llm_client.call(prompt, temperature=1.0)
+      if response is None:
+        raise ValueError("Grok rejector returned None")
+      parsed = json.loads(response, strict=False)
+      result.score = float(parsed["score"])
+      result.reasoning = parsed.get("reasoning")
+      self._increment_stat(tracking_stats, "grok_rejector.llm_call.successes")
+    except Exception as e:
+      self.logger.warning(
+        f"Grok rejector query failed for post {tweet_id} (non-fatal): {type(e).__name__}: {str(e)[:200]}"
+      )
+      result.error = f"{type(e).__name__}: {e}"
+      self._increment_stat(tracking_stats, "grok_rejector.llm_call.failures")
+    return result
+
+  def query_grok_rejector(
+    self,
+    context: ContextForGeneration,
+    new_live_note_result: LiveNoteVersion,
+    tracking_stats: Optional[LiveNoteTrackingStats] = None,
+  ) -> Evaluation:
+    """Call the grok rejector model N times in parallel and average scores.
+
+    Fully fault-tolerant: never raises, never delays the critical path.
+    Returns Evaluation with whatever scores succeeded; None mean if all failed.
+    """
+    num_samples = new_live_note_result.num_rejector_samples
+    if num_samples <= 0 or self.rejector_llm_client is None:
+      return Evaluation()
+
+    self._increment_stat(tracking_stats, "grok_rejector.attempts")
+    self.logger.info(
+      f"Querying grok rejector for post {context.tweet_id} with {num_samples} samples"
+    )
+
+    try:
+      with concurrent.futures.ThreadPoolExecutor(max_workers=num_samples) as executor:
+        futures = [
+          executor.submit(
+            self._query_single_grok_rejector,
+            context.tweet_id,
+            new_live_note_result.short_live_note,
+            tracking_stats,
+          )
+          for _ in range(num_samples)
+        ]
+        sample_results = [f.result() for f in futures]
+    except Exception as e:
+      self.logger.warning(
+        f"Grok rejector executor failed for post {context.tweet_id} (non-fatal): {e}"
+      )
+      self._increment_stat(tracking_stats, "grok_rejector.executor_failures")
+      return Evaluation()
+
+    # Mean score from whatever succeeded — drop Nones
+    scores = [r.score for r in sample_results if r.score is not None]
+    mean_score = sum(scores) / len(scores) if scores else None
+
+    errors = [r.error for r in sample_results if r.error]
+    self.logger.info(
+      f"[GROK_REJECTOR_SUMMARY] post={context.tweet_id} "
+      f"mean_score={mean_score} "
+      f"scores={[r.score for r in sample_results]} "
+      f"errors={errors}"
+    )
+    self._increment_stat(tracking_stats, "grok_rejector.successes")
+    if errors:
+      self._increment_stat(tracking_stats, "grok_rejector.samples_with_errors", len(errors))
+
+    return Evaluation(
+      grok_rejector_results=sample_results,
+      mean_grok_rejector_score=mean_score,
+    )
+
   def sample_update_decision(
     self,
     context: ContextForGeneration,
@@ -618,11 +719,11 @@ class LiveNoteGenerator:
         self._increment_stat(tracking_stats, "decide_update.llm_call.attempts")
         prompt = build_update_decider_prompt(context, new_live_note_result)
         self.logger.info(
-          f"Getting Grok update decision for post {context.tweet_id}. Prompt:\n{_format_prompt(prompt)}"
+          f"Getting Grok update decision for post {context.tweet_id}. Prompt:\n{format_prompt_for_logging(prompt)}"
         )
         grok_response = self.llm_client.call(prompt)
         self.logger.info(
-          f"Grok response for update decision for post {context.tweet_id}:\n{_format_response(grok_response)}"
+          f"Grok response for update decision for post {context.tweet_id}:\n{format_response_for_logging(grok_response)}"
         )
         result = parse_answer_from_grok_update_decision_response(grok_response)
         self._increment_stat(tracking_stats, "decide_update.llm_call.successes")
@@ -642,33 +743,116 @@ class LiveNoteGenerator:
     )
     return None
 
+  def media_comparison_pipeline(
+    self,
+    context: ContextForGeneration,
+    new_live_note_version: LiveNoteVersion,
+    tracking_stats: LiveNoteTrackingStats = None,
+    include_citation_urls: bool = False,
+  ) -> LiveNoteVersion:
+    """Run the media comparison pipeline and regenerate with comparison context."""
+    source_urls = []
+    for s in new_live_note_version.parsed_sources or []:
+      if not s.url:
+        continue
+      if not include_citation_urls and getattr(s, "source_type", None) == "grok_citation":
+        continue
+      source_urls.append(s.url)
+    if not source_urls:
+      return new_live_note_version
+
+    # Step 1: Check if media comparison pipeline is needed
+    self._increment_stat(tracking_stats, "media_pipeline.filter.attempts")
+    try:
+      should_run, explanation = check_media_comparison_pipeline_eligibility(
+        self.logger,
+        self.media_eligibility_llm_client,
+        context.tweet_id,
+        new_live_note_version.short_live_note,
+        source_urls,
+      )
+    except RuntimeError as e:
+      self.logger.error(f"Media filter failed for post {context.tweet_id}, skipping pipeline: {e}")
+      self._increment_stat(tracking_stats, "media_pipeline.filter.failures")
+      return new_live_note_version
+    self._increment_stat(tracking_stats, "media_pipeline.filter.successes")
+    self.logger.info(
+      f"Media filter for post {context.tweet_id}: should_run={should_run}, "
+      f"explanation={explanation}"
+    )
+    if not should_run:
+      return new_live_note_version
+    self._increment_stat(tracking_stats, "media_pipeline.filter.triggered")
+
+    # Step 2: Run media comparison (all URLs analyzed together)
+    self._increment_stat(tracking_stats, "media_pipeline.comparison.attempts")
+    per_url_results = generate_media_match_analysis(
+      self.logger,
+      self.llm_client,
+      context.tweet_id,
+      source_urls,
+    )
+    self._increment_stat(tracking_stats, "media_pipeline.comparison.successes")
+    per_url_summary = ", ".join(f"{r.url}: {r.same_media.value}" for r in per_url_results)
+    self.logger.info(
+      f"Media comparison result for post {context.tweet_id}: "
+      f"{len(per_url_results)} URLs analyzed [{per_url_summary}]"
+    )
+
+    # Step 3: Regenerate with media comparison context
+    self._increment_stat(tracking_stats, "media_pipeline.regeneration.attempts")
+    context_with_media = ContextForGeneration(
+      tweet_id=context.tweet_id,
+      note_contents=context.note_contents,
+      past_live_note_versions_with_suggestions=context.past_live_note_versions_with_suggestions,
+      live_note_version_id=context.live_note_version_id,
+      media_comparison_results=per_url_results,
+    )
+
+    regenerated = self.sample_live_note(
+      context_with_media, tracking_stats, "generate_candidate_with_media_context"
+    )
+    if regenerated is None:
+      self._increment_stat(tracking_stats, "media_pipeline.regeneration.failures")
+      return new_live_note_version
+
+    self._increment_stat(tracking_stats, "media_pipeline.regeneration.successes")
+    regenerated.version_id = new_live_note_version.version_id
+    regenerated.created_at_ms = new_live_note_version.created_at_ms
+    regenerated.suggestions = new_live_note_version.suggestions
+    return regenerated
+
   def sample_live_note(
     self,
     context: ContextForGeneration,
     tracking_stats: LiveNoteTrackingStats = None,
+    stat_prefix: str = "generate_candidate",
   ) -> Optional[LiveNoteVersion]:
     retries = 0
     while retries < self.max_retries:
       try:
-        self._increment_stat(tracking_stats, "generate_candidate.llm_call.attempts")
+        self._increment_stat(tracking_stats, f"{stat_prefix}.llm_call.attempts")
         prompt = build_generation_prompt(context)
         self.logger.info(
-          f"Getting Grok draft live note generation for post {context.tweet_id}. Prompt:\n{_format_prompt(prompt)}"
+          f"Getting Grok draft live note generation for post {context.tweet_id}. Prompt:\n{format_prompt_for_logging(prompt)}"
         )
-        grok_response = self.llm_client.call(prompt)
+        full_resp = self.llm_client.call(prompt, full_response=True)
+        grok_response, citation_urls = _extract_text_and_citations(full_resp)
         self.logger.info(
-          f"Grok response for live note generation for post {context.tweet_id}:\n{_format_response(grok_response)}"
+          f"Grok response for live note generation for post {context.tweet_id}:\n{format_response_for_logging(grok_response)}"
         )
 
         try:
           result = parse_answer_from_grok_generation_response(grok_response, self.logger)
         except ValueError:
-          self._increment_stat(tracking_stats, "generate_candidate.llm_call.parse_errors")
-          self._increment_stat(tracking_stats, "generate_candidate.llm_call.failures")
+          self._increment_stat(tracking_stats, f"{stat_prefix}.llm_call.parse_errors")
+          self._increment_stat(tracking_stats, f"{stat_prefix}.llm_call.failures")
           retries += 1
           continue
 
-        # Parse story assessment from generator response
+        # Merge citation URLs into parsed_sources
+        _merge_citation_urls(result, citation_urls)
+
         story_assessment_match = re.search(
           r"<STORY_ASSESSMENT>(.*?)</STORY_ASSESSMENT>", grok_response, re.DOTALL
         )
@@ -678,18 +862,18 @@ class LiveNoteGenerator:
         if not self.notes_data_client.check_note_character_limit(result.short_live_note):
           self._increment_stat(
             tracking_stats,
-            "generate_candidate.generated_short_live_note_exceeds_character_limit",
+            f"{stat_prefix}.generated_short_live_note_exceeds_character_limit",
           )
           retries += 1
           continue
 
-        self._increment_stat(tracking_stats, "generate_candidate.llm_call.successes")
+        self._increment_stat(tracking_stats, f"{stat_prefix}.llm_call.successes")
         return result
       except Exception as e:
-        self._increment_stat(tracking_stats, "generate_candidate.llm_call.failures")
-        self._increment_stat(tracking_stats, "generate_candidate.llm_call.exceptions")
+        self._increment_stat(tracking_stats, f"{stat_prefix}.llm_call.failures")
+        self._increment_stat(tracking_stats, f"{stat_prefix}.llm_call.exceptions")
         if isinstance(e, ValueError):
-          self._increment_stat(tracking_stats, "generate_candidate.llm_call.parse_errors")
+          self._increment_stat(tracking_stats, f"{stat_prefix}.llm_call.parse_errors")
         self.logger.error(
           f"Error generating live note for post {context.tweet_id}: {e}. Retries left: {self.max_retries - retries}",
           exc_info=True,
@@ -778,16 +962,98 @@ def parse_suggestion_explanations_from_grok_response(
     return {}
 
 
+def _parse_date_to_ms(date_str: str) -> Optional[int]:
+  if not date_str or not date_str.strip():
+    return None
+  s = date_str.strip()
+  for fmt in [
+    "%Y-%m-%d",
+    "%Y-%m-%d %H:%M",
+    "%B %d, %Y",
+    "%b %d, %Y",
+    "%d %B %Y",
+    "%d %b %Y",
+    "%m/%d/%Y",
+    "%d/%m/%Y",
+  ]:
+    try:
+      return int(datetime.datetime.strptime(s, fmt).timestamp() * 1000)
+    except ValueError:
+      continue
+  return None
+
+
+def _parse_sources_json(sources_str: str) -> list[Source]:
+  if not sources_str:
+    return []
+
+  sources_str = sources_str.strip()
+  try:
+    data = json.loads(sources_str)
+  except json.JSONDecodeError:
+    return []
+
+  if not isinstance(data, list):
+    return []
+
+  sources = []
+  for item in data:
+    if not isinstance(item, dict):
+      continue
+    sources.append(
+      Source(
+        url=item.get("url"),
+        explanation=item.get("summary_and_impact_on_analysis"),
+        created_at_ms=_parse_date_to_ms(item.get("date")),
+        source_type=item.get("source_type"),
+        source_detail=item.get("source_detail"),
+      )
+    )
+  return sources
+
+
+def _extract_text_and_citations(full_resp) -> tuple[str, list[str]]:
+  """Extract response text and citation URLs from a full Grok API response.
+
+  Handles both dict (full_response=True) and str (legacy) return types.
+  Citations are in output[-1]["content"][0]["annotations"] as
+  {"type": "url_citation", "url": "..."} objects.
+  """
+  if isinstance(full_resp, str):
+    return full_resp, []
+  try:
+    content_block = full_resp["output"][-1]["content"][0]
+    text = content_block["text"]
+  except (KeyError, IndexError, TypeError):
+    return str(full_resp), []
+  annotations = content_block.get("annotations", []) or []
+  citation_urls = [
+    a["url"] for a in annotations if a.get("type") == "url_citation" and a.get("url")
+  ]
+  return text, citation_urls
+
+
+def _merge_citation_urls(result: LiveNoteVersion, citation_urls: list[str]) -> None:
+  """Add citation URLs to parsed_sources, skipping any already present."""
+  if not citation_urls:
+    return
+  if result.parsed_sources is None:
+    result.parsed_sources = []
+  existing_urls = {s.url for s in result.parsed_sources if s.url}
+  for url in citation_urls:
+    if url and url not in existing_urls:
+      result.parsed_sources.append(Source(url=url, source_type="grok_citation"))
+      existing_urls.add(url)
+
+
 def parse_answer_from_grok_generation_response(response: str, logger) -> LiveNoteVersion:
-  """
-  Parses the answer from the Grok response. Raises a ValueError if the answer is not valid.
-  """
   live_note_classification_str = _parse_str_from_tag(response, "CLASSIFICATION")
   proposed_note_str = _parse_str_from_tag(response, "PROPOSED_NOTE")
   category_str = _parse_str_from_tag(response, "CATEGORY")
   detail_str = _parse_str_from_tag(response, "DETAIL")
   sources_considered_str = _parse_str_from_tag(response, "SOURCES_CONSIDERED")
   suggestion_evaluations = parse_suggestion_explanations_from_grok_response(response, logger)
+  parsed_sources = _parse_sources_json(sources_considered_str)
 
   return LiveNoteVersion(
     live_note_classification=live_note_classification_str,
@@ -796,4 +1062,5 @@ def parse_answer_from_grok_generation_response(response: str, logger) -> LiveNot
     long_live_note=detail_str,
     sources_considered=sources_considered_str,
     suggestion_evaluations=suggestion_evaluations,
+    parsed_sources=parsed_sources,
   )
