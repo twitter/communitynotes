@@ -93,7 +93,7 @@ class TopicModel(object):
     """Initialize a list of seed terms for each topic."""
     self._seedTerms = seedTerms
     self._unassignedThreshold = {label: unassignedThreshold for label in range(1, len(Topics))}
-    self._unassignedThreshold[Topics.InDimensionTwo.value] = 0.7
+    self._unassignedThreshold[Topics.InDimensionTwo.value] = 0.98
     self._compiled_regex = self._compile_regex()
 
   def _compile_regex(self):
@@ -124,10 +124,12 @@ class TopicModel(object):
 
     Returns:
       Tuple[0]: array specifying topic labels for texts
-      Tuple[1]: array specifying texts that are unassigned due to conflicting matches.
+      Tuple[1]: array specifying conflicted labels for texts. Each element is None if not
+                conflicted, or a set of topic labels (ints) if multiple topics matched.
     """
     labels = np.zeros(texts.shape[0], dtype=np.int64)
-    conflictedTexts = np.zeros(texts.shape[0], dtype=bool)
+    conflictedLabels = np.empty(texts.shape[0], dtype=object)
+    conflictedLabels[:] = None
 
     for i, text in enumerate(texts):
       matches = self._compiled_regex.finditer(text.lower())
@@ -139,11 +141,12 @@ class TopicModel(object):
         labels[i] = found_topics.pop()
       elif len(found_topics) > 1:
         labels[i] = Topics.Unassigned.value
-        conflictedTexts[i] = True
+        conflictedLabels[i] = found_topics
 
-    unassigned_count = np.sum(conflictedTexts)
+    conflictedMask = np.array([x is not None for x in conflictedLabels], dtype=bool)
+    unassigned_count = np.sum(conflictedMask)
     logger.info(f"  Notes unassigned due to multiple matches: {unassigned_count}")
-    return labels, conflictedTexts
+    return labels, conflictedLabels
 
   def custom_tokenizer(self, text):
     # This pattern captures help.x.com or x.com/tos even if preceded by http(s):// and with optional trailing paths,
@@ -200,11 +203,18 @@ class TopicModel(object):
     logger.info(f"  Total identified stopwords: {len(stopWords)}")
     return stopWords
 
-  def _merge_predictions_and_labels(self, probs: np.ndarray, labels: np.ndarray) -> np.ndarray:
+  def _merge_predictions_and_labels(
+    self, probs: np.ndarray, labels: np.ndarray, conflictedLabels: Optional[np.ndarray] = None
+  ) -> np.ndarray:
     """Update predictions based on defined labels when the label is not Unassigned.
 
     Args:
       probs: 2D matrix specifying the likelihood of each class
+      labels: array specifying seed labels for each text
+      conflictedLabels: array where each element is None if not conflicted, or a set of
+                        topic labels if multiple topics matched. When provided, conflicted
+                        texts are assigned to the conflicted label with highest probability
+                        if it meets the threshold.
 
     Returns:
       Updated predictions based on keyword matches when available.
@@ -218,6 +228,26 @@ class TopicModel(object):
       predictions[
         (labels == label) & (other_class_prob <= self._unassignedThreshold[label])
       ] = label
+
+    # Handle conflicted labels: assign to the conflicted label with highest probability
+    # if it meets the threshold for that topic
+    if conflictedLabels is not None:
+      for i, conflicted_set in enumerate(conflictedLabels):
+        if conflicted_set is not None:
+          # Find the conflicted label with highest probability
+          best_label = None
+          best_prob = -1.0
+          for candidate_label in conflicted_set:
+            candidate_prob = probs[i, candidate_label]
+            if candidate_prob > best_prob:
+              best_prob = candidate_prob
+              best_label = candidate_label
+          # Assign if the best label meets the threshold
+          if best_label is not None:
+            other_class_prob = 1.0 - best_prob
+            if other_class_prob <= self._unassignedThreshold[best_label]:
+              predictions[i] = best_label
+
     return predictions
 
   @staticmethod
@@ -282,7 +312,10 @@ class TopicModel(object):
     self, postText: pd.DataFrame
   ) -> Tuple[Pipeline, np.ndarray, np.ndarray]:
     with c.time_block("Get Note Topics: Make Seed Labels"):
-      seedLabels, conflictedTexts = self._make_seed_labels(postText[c.summaryKey].values)
+      seedLabels, conflictedLabels = self._make_seed_labels(postText[c.summaryKey].values)
+
+    # Create boolean mask for filtering training data (True where conflicted)
+    conflictedMask = np.array([x is not None for x in conflictedLabels], dtype=bool)
 
     with c.time_block("Get Note Topics: Get Stop Words"):
       stopWords = self._get_stop_words(postText[c.summaryKey].values)
@@ -309,10 +342,10 @@ class TopicModel(object):
       )
       pipe.fit(
         # Notice that we omit posts with an unclear label from training.
-        postText[c.summaryKey].values[~conflictedTexts],
-        seedLabels[~conflictedTexts],
+        postText[c.summaryKey].values[~conflictedMask],
+        seedLabels[~conflictedMask],
       )
-    return pipe, seedLabels, conflictedTexts
+    return pipe, seedLabels, conflictedLabels
 
   def train_note_topic_classifier(
     self, notes: pd.DataFrame
@@ -463,7 +496,9 @@ class TopicModel(object):
           )
 
         with c.time_block("Get Note Topics: Merge and assign predictions"):
-          topicAssignments = self._merge_predictions_and_labels(probs, seedLabelSets[i])
+          topicAssignments = self._merge_predictions_and_labels(
+            probs, seedLabelSets[i], conflictedTextSetsForAccuracyEval[i]
+          )
           logger.info(f"  Post Topic assignment results: {np.bincount(topicAssignments)}")
 
           # Assign topics to notes based on aggregated note text, and drop any
@@ -512,11 +547,13 @@ class TopicModel(object):
         )
 
   def validate_note_topic_accuracy_on_seed_labels(
-    self, pred, seedLabels, conflictedTexts, exitOnLowAccuracy=True
+    self, pred, seedLabels, conflictedLabels, exitOnLowAccuracy=True
   ):
-    balancedAccuracy = balanced_accuracy_score(seedLabels[~conflictedTexts], pred[~conflictedTexts])
+    # Create boolean mask from conflictedLabels (True where conflicted)
+    conflictedMask = np.array([x is not None for x in conflictedLabels], dtype=bool)
+    balancedAccuracy = balanced_accuracy_score(seedLabels[~conflictedMask], pred[~conflictedMask])
     logger.info(f"  Balanced accuracy on raw predictions: {balancedAccuracy}")
     if exitOnLowAccuracy:
       assert balancedAccuracy > 0.35, f"Balanced accuracy too low: {balancedAccuracy}"
     # Validate that any conflicted text is Unassigned in seedLabels
-    assert all(seedLabels[conflictedTexts] == Topics.Unassigned.value)
+    assert all(seedLabels[conflictedMask] == Topics.Unassigned.value)
