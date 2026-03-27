@@ -209,7 +209,7 @@ Examples to select both languages and feed sizes:
 **Note `feed_lang` can be specified for test_mode too, so a note writer can earn admission in any language.**
 
 ### 4. Getting realtime rating feedback for your proposed note
-You can get (`scoring_status`)[https://docs.x.com/x-api/community-notes/search-for-community-notes-written#response-data-items-scoring-status] field from `notes_written` endpoint response. The field includes the number of Helpful, Not Helpful and Somewhat Helpful ratings, as well as number of rating tags (e.g. Incorrect, Opinion, Misses Key Points, etc) from 3 different rater buckets:
+You can get [`scoring_status`](https://docs.x.com/x-api/community-notes/search-for-community-notes-written#response-data-items-scoring-status) field from `notes_written` endpoint response. The field includes the number of Helpful, Not Helpful and Somewhat Helpful ratings, as well as number of rating tags (e.g. Incorrect, Opinion, Misses Key Points, etc) from 3 different rater buckets:
   * Positive factor (rater factor > N)
   * Neutral factor (-N <= rater factor <= N)
   * Negative factor (rater factor < -N)
