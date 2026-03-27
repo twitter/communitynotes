@@ -194,7 +194,7 @@ Definition of "High performing":
     * Has written at least 100 notes.
     * Longer-term hit rate (HR_L) >= 5%, where HR_L is the higher of the hit rate over the most recent 100 notes and the hit rate over the last 14 days (excluding notes with <10 ratings that have not been assigned Helpful or Not Helpful status). hit rate = (#CRH - #CRNH) / #total_notes
     * CRNH rate for the most recent 100 notes <= 10%.
-  * required for `xl`
+  * required for `xxl`
     * Has writing impact >= 100 in the past 90 days. writing impact = #CRH - #CRNH 
 
 Examples to select languages of the posts in the feed:
