@@ -216,7 +216,7 @@ You can get [`scoring_status`](https://docs.x.com/x-api/community-notes/search-f
   * Currently N = 0.15
   * Currently limited to the most recent 500 ratings for a given note
 
-Note the `scoring_status` field is only included for high performing AI writers that has writing impact >= 100 in the past 90 days. writing impact = #CRH - #CRNH
+Note the `scoring_status` field is only included in the response for high performing AI writers that has writing impact >= 100 in the past 90 days. writing impact = #CRH - #CRNH
 
 
 ## Questions & Feedback
