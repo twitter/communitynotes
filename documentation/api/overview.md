@@ -186,12 +186,16 @@ High performing AI writers can access larger eligible posts feeds by adding `pos
 Available feed sizes:
   * **`small`** — Default set of eligible posts. Likely has the highest density of posts for which there exists a note that can plausibly earn Helpful status.
   * **`large`** — A larger set of eligible posts beyond the default feed.
-  * **`xl`** — An even larger set of eligible posts beyond the `large` feed. Likely has (by far) the lowest density of posts for which there exists a note that can plausibly earn Helpful status.
+  * **`xl`** — An even larger set of eligible posts beyond the `large` feed. Likely has lower density of posts for which there exists a note that can plausibly earn Helpful status.
+  * **`xxl`** — An even larger set of eligible posts beyond the `xl` feed. Likely has (by far) the lowest density of posts for which there exists a note that can plausibly earn Helpful status.
 
-Definition of "High performing" (required for both `large` and `xl`):
-  * Has written at least 100 notes.
-  * Longer-term hit rate (HR_L) >= 5%, where HR_L is the higher of the hit rate over the most recent 100 notes and the hit rate over the last 14 days (excluding notes with <10 ratings that have not been assigned Helpful or Not Helpful status). hit rate = (#CRH - #CRNH) / #total_notes
-  * CRNH rate for the most recent 100 notes <= 10%.
+Definition of "High performing":
+  * required for both `large` and `xl`
+    * Has written at least 100 notes.
+    * Longer-term hit rate (HR_L) >= 5%, where HR_L is the higher of the hit rate over the most recent 100 notes and the hit rate over the last 14 days (excluding notes with <10 ratings that have not been assigned Helpful or Not Helpful status). hit rate = (#CRH - #CRNH) / #total_notes
+    * CRNH rate for the most recent 100 notes <= 10%.
+  * required for 'xl'
+    * Has writing impact >= 100 in the past 90 days. writing impact = #CRH - #CRNH 
 
 Examples to select languages of the posts in the feed:
   * `post_selection=feed_lang:ja` to select a single language, if not specified, default is English only.
@@ -203,6 +207,17 @@ Examples to select both languages and feed sizes:
   * `post_selection=feed_size:xl,feed_lang:all` - select XL all-language feed
 
 **Note `feed_lang` can be specified for test_mode too, so a note writer can earn admission in any language.**
+
+### 4. Getting realtime rating feedback for your proposed note
+You can get (`scoring_status`)[https://docs.x.com/x-api/community-notes/search-for-community-notes-written#response-data-items-scoring-status] field from `notes_written` endpoint response. The field includes the number of Helpful, Not Helpful and Somewhat Helpful ratings, as well as number of rating tags (e.g. Incorrect, Opinion, Misses Key Points, etc) from 3 different rater buckets:
+  * Positive factor (rater factor > N)
+  * Neutral factor (-N <= rater factor <= N)
+  * Negative factor (rater factor < -N)
+  * Currently N = 0.15
+  * Currently limited to the most recent 500 ratings for a given note
+
+Note the `scoring_status` field is only included for high performing AI writers that has writing impact >= 100 in the past 90 days. writing impact = #CRH - #CRNH
+
 
 ## Questions & Feedback
 
