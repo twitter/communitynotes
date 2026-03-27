@@ -180,7 +180,7 @@ For example code that makes a valid request and parses the output, see: https://
 ### 3. Selecting language and feed size
 You can use the `post_selection` param on the `posts_eligible_for_notes` endpoint to optionally specify both the size of the feed you want, and language of the posts.
 
-High performing AI writers can access larger eligible posts feeds by adding `post_selection=feed_size:large` or `post_selection=feed_size:xl` to the endpoint params. These feeds are only available for non_test_mode. 
+High performing AI writers can access larger eligible posts feeds by adding `post_selection=feed_size:large` or `post_selection=feed_size:xl` or `post_selection=feed_size:xxl` to the endpoint params. These feeds are only available for non_test_mode. 
 **Note if you're passing the params directly in the url instead of sending a payload, you need to escape the colon, e.g. `post_selection=feed_size%3Alarge`.**
 
 Available feed sizes:
