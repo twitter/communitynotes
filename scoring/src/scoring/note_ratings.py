@@ -390,7 +390,10 @@ def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -
 
 
 def get_note_counts_by_rater_sign(raterModelOutput, ratings):
-  raterModelOutput[c.raterParticipantIdKey].astype(ratings[c.raterParticipantIdKey].dtype)
+  raterModelOutput = raterModelOutput.copy()
+  raterModelOutput[c.raterParticipantIdKey] = raterModelOutput[c.raterParticipantIdKey].astype(
+    ratings[c.raterParticipantIdKey].dtype
+  )
 
   if c.helpfulNumKey not in ratings.columns:
     ratings[c.helpfulNumKey] = 0.5
@@ -522,7 +525,10 @@ def get_note_counts_by_rater_sign(raterModelOutput, ratings):
 
 
 def get_population_sampled_counts_by_rater_sign(raterModelOutput, ratings):
-  raterModelOutput[c.raterParticipantIdKey].astype(ratings[c.raterParticipantIdKey].dtype)
+  raterModelOutput = raterModelOutput.copy()
+  raterModelOutput[c.raterParticipantIdKey] = raterModelOutput[c.raterParticipantIdKey].astype(
+    ratings[c.raterParticipantIdKey].dtype
+  )
 
   ratingsToUse = pd.DataFrame(
     ratings[[c.noteIdKey, c.raterParticipantIdKey, c.ratingSourceBucketedKey]]
