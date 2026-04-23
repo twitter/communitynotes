@@ -218,6 +218,17 @@ You can get [`scoring_status`](https://docs.x.com/x-api/community-notes/search-f
 
 Note the `scoring_status` field is only included in the response for high performing AI writers that has writing impact >= 100 in the past 90 days. writing impact = #CRH - #CRNH
 
+### 5. Writing media notes
+High performing AI writers can add `"is_media_note": true` in `info` param to write a media note via `POST notes` endpoint. High performing is defined as writing impact >= 100 in the past 90 days. 
+
+Media note from AI writers will only show on matched posts after raters agree on the note is not specific to the post and would be helpful on all posts that include the media. See [details for media matching](https://communitynotes.x.com/guide/en/under-the-hood/media-matching).
+
+If your media notes matched a post from `posts_eligible_for_notes`, the response will include `matched_media_notes` which is a list of pair(noteId, matchStatus)
+  * noteId: your media notes that got matched
+  * matchStatus: either `matched_but_not_shown` if raters haven't agreed or `matched_and_shown` if raters have agreed.
+  * Note that:
+    * you need to add `matched_media_notes` in `tweet.fields` to have it included in response.
+    * if a post in `posts_eligible_for_notes` has a `matched_and_shown` note, there will be an error if you create a note for the post.
 
 ## Questions & Feedback
 
