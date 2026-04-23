@@ -45,26 +45,36 @@ seedTerms = {
     "palestin",  # intentionally shortened for expanded matching
     "gaza",
     "jerusalem",
-    "\shamas\s",
+    r"\bhamas\b",
   },
   Topics.MessiRonaldo: {
-    "messi\s",  # intentional whitespace to prevent prefix matches
+    r"messi\b",  # intentional whitespace to prevent prefix matches
     "ronaldo",
   },
   Topics.Scams: {
     "scam",
-    "undisclosed\sad",  # intentional whitespace
-    "terms\sof\sservice",  # intentional whitespace
-    "help\.x\.com",
-    "x\.com/tos",
-    "engagement\sfarm",  # intentional whitespace
+    r"undisclosed\sad",  # intentional whitespace
+    r"terms\sof\sservice",  # intentional whitespace
+    r"help\.x\.com",
+    r"x\.com/tos",
+    r"engagement\sfarm",  # intentional whitespace
     "spam",
     "gambling",
     "apostas",
     "apuestas",
     "dropship",
-    "drop\sship",  # intentional whitespace
+    r"drop\sship",  # intentional whitespace
     "promotion",
+  },
+  Topics.InDimensionTwo: {
+    # this is an emergent second dimension from MF in IN
+    r"\bugc\b",
+    r"\bgc\b",
+    r"\bobc\b",
+    r"\bsc\b",
+    r"\bsc[,\s]+st\b",
+    r"\bst[,\s]+sc\b",
+    "आरक्षण",
   },
 }
 
@@ -73,7 +83,7 @@ def get_seed_term_with_periods():
   seedTermsWithPeriods = []
   for terms in seedTerms.values():
     for term in terms:
-      if "\." in term:
+      if r"\." in term:
         seedTermsWithPeriods.append(term)
   return seedTermsWithPeriods
 
@@ -82,7 +92,8 @@ class TopicModel(object):
   def __init__(self, unassignedThreshold=0.99):
     """Initialize a list of seed terms for each topic."""
     self._seedTerms = seedTerms
-    self._unassignedThreshold = unassignedThreshold
+    self._unassignedThreshold = {label: unassignedThreshold for label in range(1, len(Topics))}
+    self._unassignedThreshold[Topics.InDimensionTwo.value] = 0.98
     self._compiled_regex = self._compile_regex()
 
   def _compile_regex(self):
@@ -94,13 +105,16 @@ class TopicModel(object):
         # If the pattern contains an escaped period (i.e. it's a URL), don't enforce the preceding whitespace or start-of-string.
         if "\\." in pattern:
           mod_patterns.append(pattern)
+        elif pattern.startswith(r"\b") or pattern.startswith(r"\s"):
+          # Pattern already has its own boundary — use as-is
+          mod_patterns.append(pattern)
         else:
-          mod_patterns.append(f"(\s|^){pattern}")
+          mod_patterns.append(rf"(?:\s|^){pattern}")
       group_name = f"{topic.name}"
       regex_patterns[group_name] = f"(?P<{group_name}>{'|'.join(mod_patterns)})"
     # Combine all groups into a single regex
     full_regex = "|".join(regex_patterns.values())
-    return re.compile(full_regex)
+    return re.compile(full_regex, re.IGNORECASE)
 
   def _make_seed_labels(self, texts: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Produce a label vector based on seed terms.
@@ -110,10 +124,12 @@ class TopicModel(object):
 
     Returns:
       Tuple[0]: array specifying topic labels for texts
-      Tuple[1]: array specifying texts that are unassigned due to conflicting matches.
+      Tuple[1]: array specifying conflicted labels for texts. Each element is None if not
+                conflicted, or a set of topic labels (ints) if multiple topics matched.
     """
     labels = np.zeros(texts.shape[0], dtype=np.int64)
-    conflictedTexts = np.zeros(texts.shape[0], dtype=bool)
+    conflictedLabels = np.empty(texts.shape[0], dtype=object)
+    conflictedLabels[:] = None
 
     for i, text in enumerate(texts):
       matches = self._compiled_regex.finditer(text.lower())
@@ -125,11 +141,12 @@ class TopicModel(object):
         labels[i] = found_topics.pop()
       elif len(found_topics) > 1:
         labels[i] = Topics.Unassigned.value
-        conflictedTexts[i] = True
+        conflictedLabels[i] = found_topics
 
-    unassigned_count = np.sum(conflictedTexts)
+    conflictedMask = np.array([x is not None for x in conflictedLabels], dtype=bool)
+    unassigned_count = np.sum(conflictedMask)
     logger.info(f"  Notes unassigned due to multiple matches: {unassigned_count}")
-    return labels, conflictedTexts
+    return labels, conflictedLabels
 
   def custom_tokenizer(self, text):
     # This pattern captures help.x.com or x.com/tos even if preceded by http(s):// and with optional trailing paths,
@@ -177,8 +194,8 @@ class TopicModel(object):
     # Identify stop words
     blockedTokens = set()
     for terms in self._seedTerms.values():
-      # Remove whitespace and any escaped whitespace characters from seed terms
-      blockedTokens |= {re.sub(r"\\s", "", t.strip()) for t in terms}
+      # Remove whitespace, escaped whitespace characters, and word boundary markers from seed terms
+      blockedTokens |= {re.sub(r"\\[sb]", "", t.strip()) for t in terms}
       # Convert escaped periods to periods
       blockedTokens |= {re.sub(r"\\.", ".", t.strip()) for t in terms}
     logger.info(f"  Total tokens to filter: {len(blockedTokens)}")
@@ -186,11 +203,18 @@ class TopicModel(object):
     logger.info(f"  Total identified stopwords: {len(stopWords)}")
     return stopWords
 
-  def _merge_predictions_and_labels(self, probs: np.ndarray, labels: np.ndarray) -> np.ndarray:
+  def _merge_predictions_and_labels(
+    self, probs: np.ndarray, labels: np.ndarray, conflictedLabels: Optional[np.ndarray] = None
+  ) -> np.ndarray:
     """Update predictions based on defined labels when the label is not Unassigned.
 
     Args:
       probs: 2D matrix specifying the likelihood of each class
+      labels: array specifying seed labels for each text
+      conflictedLabels: array where each element is None if not conflicted, or a set of
+                        topic labels if multiple topics matched. When provided, conflicted
+                        texts are assigned to the conflicted label with highest probability
+                        if it meets the threshold.
 
     Returns:
       Updated predictions based on keyword matches when available.
@@ -198,9 +222,61 @@ class TopicModel(object):
     predictions = np.argmax(probs, axis=1)
     for label in range(1, len(Topics)):
       # Update label if (1) note was assigned based on the labeling heuristic, and (2)
-      # p(Unassigned) is below the required uncertainty threshold.
-      predictions[(labels == label) & (probs[:, 0] <= self._unassignedThreshold)] = label
+      # the sum of probabilities for all classes other than the seed label is below
+      # the required uncertainty threshold.
+      other_class_prob = 1.0 - probs[:, label]
+      predictions[
+        (labels == label) & (other_class_prob <= self._unassignedThreshold[label])
+      ] = label
+
+    # Handle conflicted labels: assign to the conflicted label with highest probability
+    # if it meets the threshold for that topic
+    if conflictedLabels is not None:
+      for i, conflicted_set in enumerate(conflictedLabels):
+        if conflicted_set is not None:
+          # Find the conflicted label with highest probability
+          best_label = None
+          best_prob = -1.0
+          for candidate_label in conflicted_set:
+            candidate_prob = probs[i, candidate_label]
+            if candidate_prob > best_prob:
+              best_prob = candidate_prob
+              best_label = candidate_label
+          # Assign if the best label meets the threshold
+          if best_label is not None:
+            other_class_prob = 1.0 - best_prob
+            if other_class_prob <= self._unassignedThreshold[best_label]:
+              predictions[i] = best_label
+
     return predictions
+
+  @staticmethod
+  def _filter_url_tokens(text: str, min_token_length: int = 4) -> str:
+    """Replace URLs with only their constituent tokens that are at least min_token_length characters.
+
+    This prevents short URL parameter fragments (e.g. 'sc' from 'sc_lang') from
+    creating false positive seed term matches after underscore replacement.
+    URLs matching seed term patterns (e.g. help.x.com, x.com/tos) are preserved as-is.
+    """
+
+    def replace_url(match):
+      # URLs that should be preserved verbatim because they are used as seed terms.
+      _PRESERVE_URL_PATTERNS = [
+        re.compile(r"help\.x\.com"),
+        re.compile(r"x\.com/tos"),
+      ]
+      url = match.group(0)
+      # Preserve URLs that match seed term patterns
+      for pattern in _PRESERVE_URL_PATTERNS:
+        if pattern.search(url):
+          return url
+      # Split URL into word-like tokens (splitting on non-alphanumeric characters)
+      tokens = re.findall(r"[a-zA-Z]+", url)
+      # Keep only tokens that are at least min_token_length characters
+      filtered = [t for t in tokens if len(t) >= min_token_length]
+      return " ".join(filtered)
+
+    return re.sub(r"https?://[^\s)\]]+", replace_url, text)
 
   def _prepare_post_text(self, notes: pd.DataFrame) -> pd.DataFrame:
     """Concatenate all notes within each post into a single row associated with the post.
@@ -218,11 +294,17 @@ class TopicModel(object):
       .apply(lambda postNotes: " ".join(postNotes))
       .reset_index(drop=False)
     )
-    # Default tokenization for CountVectorizer will not split on underscore, which
-    # results in very long tokens containing many words inside of URLs.  Removing
-    # underscores allows us to keep default splitting while fixing that problem.
+    # Replace URLs with filtered tokens (only keeping words >= 4 chars) to prevent
+    # short URL fragments from matching seed terms after underscore replacement.
     postNoteText[c.summaryKey] = [
-      text.replace("_", " ") for text in postNoteText[c.summaryKey].values
+      self._filter_url_tokens(text) for text in postNoteText[c.summaryKey].values
+    ]
+    # Default tokenization for CountVectorizer will not split on underscore or
+    # forward slash, which results in very long tokens containing many words
+    # inside of URLs.  Removing underscores and slashes allows us to keep
+    # default splitting while fixing that problem.
+    postNoteText[c.summaryKey] = [
+      text.replace("_", " ").replace("/", " ") for text in postNoteText[c.summaryKey].values
     ]
     return postNoteText
 
@@ -230,7 +312,10 @@ class TopicModel(object):
     self, postText: pd.DataFrame
   ) -> Tuple[Pipeline, np.ndarray, np.ndarray]:
     with c.time_block("Get Note Topics: Make Seed Labels"):
-      seedLabels, conflictedTexts = self._make_seed_labels(postText[c.summaryKey].values)
+      seedLabels, conflictedLabels = self._make_seed_labels(postText[c.summaryKey].values)
+
+    # Create boolean mask for filtering training data (True where conflicted)
+    conflictedMask = np.array([x is not None for x in conflictedLabels], dtype=bool)
 
     with c.time_block("Get Note Topics: Get Stop Words"):
       stopWords = self._get_stop_words(postText[c.summaryKey].values)
@@ -257,10 +342,10 @@ class TopicModel(object):
       )
       pipe.fit(
         # Notice that we omit posts with an unclear label from training.
-        postText[c.summaryKey].values[~conflictedTexts],
-        seedLabels[~conflictedTexts],
+        postText[c.summaryKey].values[~conflictedMask],
+        seedLabels[~conflictedMask],
       )
-    return pipe, seedLabels, conflictedTexts
+    return pipe, seedLabels, conflictedLabels
 
   def train_note_topic_classifier(
     self, notes: pd.DataFrame
@@ -305,6 +390,10 @@ class TopicModel(object):
       bootstrappedSeedTerms[Topics.Scams] = seedTerms[Topics.Scams].copy()
       bootstrappedSeedTerms[Topics.Scams].remove(
         np.random.choice(list(seedTerms[Topics.Scams]), 1)[0]
+      )
+      bootstrappedSeedTerms[Topics.InDimensionTwo] = seedTerms[Topics.InDimensionTwo].copy()
+      bootstrappedSeedTerms[Topics.InDimensionTwo].remove(
+        np.random.choice(list(seedTerms[Topics.InDimensionTwo]), 1)[0]
       )
       self._seedTerms = bootstrappedSeedTerms
       (
@@ -382,6 +471,18 @@ class TopicModel(object):
         else:
           probs = softmax(logits, axis=1)
 
+        # The classifier may have been trained on a non-contiguous subset of topic labels
+        # (e.g. [0, 1, 3, 4] when no training data exists for label 2).  In that case,
+        # probs columns correspond to the classifier's classes_, not directly to topic
+        # indices.  Expand probs so that column i = probability of topic i, ensuring
+        # np.argmax returns actual class labels rather than column indices.
+        classes = pipe.named_steps["Classifier"].classes_
+        if len(classes) < len(Topics):
+          fullProbs = np.zeros((probs.shape[0], len(Topics)))
+          for j, cls in enumerate(classes):
+            fullProbs[:, cls] = probs[:, j]
+          probs = fullProbs
+
         if seedLabelSets[i] is None:
           with c.time_block("Get Note Topics: Make Seed Labels"):
             seedLabelSets[i], _ = self._make_seed_labels(postText[c.summaryKey].values)
@@ -395,7 +496,9 @@ class TopicModel(object):
           )
 
         with c.time_block("Get Note Topics: Merge and assign predictions"):
-          topicAssignments = self._merge_predictions_and_labels(probs, seedLabelSets[i])
+          topicAssignments = self._merge_predictions_and_labels(
+            probs, seedLabelSets[i], conflictedTextSetsForAccuracyEval[i]
+          )
           logger.info(f"  Post Topic assignment results: {np.bincount(topicAssignments)}")
 
           # Assign topics to notes based on aggregated note text, and drop any
@@ -444,11 +547,13 @@ class TopicModel(object):
         )
 
   def validate_note_topic_accuracy_on_seed_labels(
-    self, pred, seedLabels, conflictedTexts, exitOnLowAccuracy=True
+    self, pred, seedLabels, conflictedLabels, exitOnLowAccuracy=True
   ):
-    balancedAccuracy = balanced_accuracy_score(seedLabels[~conflictedTexts], pred[~conflictedTexts])
+    # Create boolean mask from conflictedLabels (True where conflicted)
+    conflictedMask = np.array([x is not None for x in conflictedLabels], dtype=bool)
+    balancedAccuracy = balanced_accuracy_score(seedLabels[~conflictedMask], pred[~conflictedMask])
     logger.info(f"  Balanced accuracy on raw predictions: {balancedAccuracy}")
     if exitOnLowAccuracy:
       assert balancedAccuracy > 0.35, f"Balanced accuracy too low: {balancedAccuracy}"
     # Validate that any conflicted text is Unassigned in seedLabels
-    assert all(seedLabels[conflictedTexts] == Topics.Unassigned.value)
+    assert all(seedLabels[conflictedMask] == Topics.Unassigned.value)

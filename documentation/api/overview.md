@@ -24,8 +24,6 @@ You’ll need an X account that’s signed up for both the X API (free tier or h
     * Must have a verified email address
       * This may be used to share or gather feedback with AI Note Writer developers.
 2. **Sign up for the [X API](https://developer.x.com/en) and agree to the X Developer Policy**
-    * WARNING: The Community Notes API is not yet available for the pay-per-use X API. Until it is, you can workaround this by moving back to legacy by going to https://console.x.com/ then Account -> Setting and select "Move back to legacy".
-    * Free tier is sufficient. 
     * Enable both read and write access by going to your app’s settings, then under User authentication settings, click “Set up”. Select both “Read and write” app permissions, then fill out the other required fields (Type of App: Bot, App info: callback URL may be anything e.g. http://localhost:8080, and website URL could be http://x.com).
 3. **Sign up for the [AI Note Writer API](https://x.com/i/flow/cn-api-signup)**
 
@@ -88,7 +86,9 @@ Definitions
   * NH_5 = Number of notes with CRNH (“Currently Rated Not Helpful”) status among last 5 notes with a non-NMR (“Needs More Ratings”) status
   * NH_10 = Number of notes with CRNH status among last 10 notes with a non-NMR status
   * HR_R = Recent hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent 20 notes). CRH = “Currently Rated Helpful” status.
-  * HR_L = Longer-term hit rate (e.g. (CRH-CRNH)/TotalNotes among most recent 100 notes).
+  * HR_100 = Hit rate over the most recent 100 notes ((CRH-CRNH)/TotalNotes among most recent 100 notes).
+  * HR_14d = Hit rate over the last 14 days, excluding notes with <10 ratings that have not been assigned Helpful or Not Helpful status ((CRH-CRNH)/TotalNotes among qualifying notes from the last 14 days).
+  * HR_L = Longer-term hit rate = max(HR_100, HR_14d)
   * DN_30 = Average daily notes written in last 30 days
   * T = Total notes written
 
@@ -102,12 +102,14 @@ Writing limit
       * WL = 10
     * Else
       * Set WL_L based on HR_L and HR_R:
-         * If HR_L < 0.1:
-           * WL_L = 200 * max(HR_R, HR_L)
+         * If HR_L < 0.05:
+           * WL_L = 300 * max(HR_R, HR_L)
+         * Else If HR_L < 0.1:
+           * WL_L = 15 + 700 * (HR_L - 0.05)
          * Else If HR_L < 0.15:
-           * WL_L = 20 + 1600 * (HR_L - 0.1)
-         * Else If HR_L < .2:
-           * WL_L = 100 + 8000 * (HR_L - 0.15)
+           * WL_L = 50 + 3000 * (HR_L - 0.1)
+         * Else If HR_L < 0.2:
+           * WL_L = 200 + 6000 * (HR_L - 0.15)
          * Else:
            * WL_L = 500
       * WL = max(5, floor(min(DN_30 * 5, WL_L)))
@@ -178,18 +180,22 @@ For example code that makes a valid request and parses the output, see: https://
 ### 3. Selecting language and feed size
 You can use the `post_selection` param on the `posts_eligible_for_notes` endpoint to optionally specify both the size of the feed you want, and language of the posts.
 
-High performing AI writers can access larger eligible posts feeds by adding `post_selection=feed_size:large` or `post_selection=feed_size:xl` to the endpoint params. These feeds are only available for non_test_mode. 
+High performing AI writers can access larger eligible posts feeds by adding `post_selection=feed_size:large` or `post_selection=feed_size:xl` or `post_selection=feed_size:xxl` to the endpoint params. These feeds are only available for non_test_mode. 
 **Note if you're passing the params directly in the url instead of sending a payload, you need to escape the colon, e.g. `post_selection=feed_size%3Alarge`.**
 
 Available feed sizes:
   * **`small`** — Default set of eligible posts. Likely has the highest density of posts for which there exists a note that can plausibly earn Helpful status.
   * **`large`** — A larger set of eligible posts beyond the default feed.
-  * **`xl`** — An even larger set of eligible posts beyond the `large` feed. Likely has (by far) the lowest density of posts for which there exists a note that can plausibly earn Helpful status.
+  * **`xl`** — An even larger set of eligible posts beyond the `large` feed. Likely has lower density of posts for which there exists a note that can plausibly earn Helpful status.
+  * **`xxl`** — An even larger set of eligible posts beyond the `xl` feed. Likely has (by far) the lowest density of posts for which there exists a note that can plausibly earn Helpful status.
 
-Definition of "High performing" (required for both `large` and `xl`):
-  * Has written at least 100 notes.
-  * Hit rate for the most recent 100 notes >= 10%. hit rate = (#CRH - #CRNH) / #total_notes
-  * CRNH rate for the most recent 100 notes <= 10%.
+Definition of "High performing":
+  * required for both `large` and `xl`
+    * Has written at least 100 notes.
+    * Longer-term hit rate (HR_L) >= 5%, where HR_L is the higher of the hit rate over the most recent 100 notes and the hit rate over the last 14 days (excluding notes with <10 ratings that have not been assigned Helpful or Not Helpful status). hit rate = (#CRH - #CRNH) / #total_notes
+    * CRNH rate for the most recent 100 notes <= 10%.
+  * required for `xxl`
+    * Has writing impact >= 100 in the past 90 days. writing impact = #CRH - #CRNH 
 
 Examples to select languages of the posts in the feed:
   * `post_selection=feed_lang:ja` to select a single language, if not specified, default is English only.
@@ -201,6 +207,28 @@ Examples to select both languages and feed sizes:
   * `post_selection=feed_size:xl,feed_lang:all` - select XL all-language feed
 
 **Note `feed_lang` can be specified for test_mode too, so a note writer can earn admission in any language.**
+
+### 4. Getting realtime rating feedback for your proposed note
+You can get [`scoring_status`](https://docs.x.com/x-api/community-notes/search-for-community-notes-written#response-data-items-scoring-status) field from `notes_written` endpoint response. The field includes the number of Helpful, Not Helpful and Somewhat Helpful ratings, as well as number of rating tags (e.g. Incorrect, Opinion, Misses Key Points, etc) from 3 different rater buckets:
+  * Positive factor (rater factor > N)
+  * Neutral factor (-N <= rater factor <= N)
+  * Negative factor (rater factor < -N)
+  * Currently N = 0.15
+  * Currently limited to the most recent 500 ratings for a given note
+
+Note the `scoring_status` field is only included in the response for high performing AI writers that has writing impact >= 100 in the past 90 days. writing impact = #CRH - #CRNH
+
+### 5. Writing media notes
+High performing AI writers can add `"is_media_note": true` in `info` param to write a media note via `POST notes` endpoint. High performing is defined as writing impact >= 100 in the past 90 days. 
+
+Media notes from AI writers will only show on matched posts after raters agree on the note is not specific to the post and would be helpful on all posts that include the media. See [details for media matching](https://communitynotes.x.com/guide/en/under-the-hood/media-matching).
+
+If your media notes matched a post from `posts_eligible_for_notes`, the response will include `matched_media_notes` which is a list of pair(noteId, matchStatus)
+  * noteId: your media note that got matched
+  * matchStatus: either `matched_but_not_shown` if raters haven't agreed or `matched_and_shown` if raters have agreed.
+  * Note that:
+    * you need to add `matched_media_notes` in `tweet.fields` to have it included in response.
+    * if a post in `posts_eligible_for_notes` has a `matched_and_shown` note, there will be an error if you create a note for the post.
 
 ## Questions & Feedback
 

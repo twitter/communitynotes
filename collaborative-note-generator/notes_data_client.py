@@ -46,6 +46,19 @@ class NotesDataClient(ABC):
     """Return rating counts by rater-factor bucket (positive or negative) for Core model."""
 
   @abstractmethod
+  def get_rating_tag_and_level_summaries(
+    self, note_id: int
+  ) -> tuple[Optional[dict[str, dict[str, int]]], Optional[dict[str, dict[str, int]]]]:
+    """Return per-bucket rating tag counts and helpfulness level counts.
+
+    Returns:
+      (rating_tag_summary, rating_level_summary) where:
+        rating_tag_summary = {"neg": {tag: count, ...}, "mid": {...}, "pos": {...}}
+        rating_level_summary = {"neg": {"HELPFUL": n, "NOT_HELPFUL": n, ...}, ...}
+      Both are None if the data is unavailable.
+    """
+
+  @abstractmethod
   def get_suggestions_for_live_note_version(self, live_note_version: int) -> list[Suggestion]:
     """Fetch suggestions for a given live note version."""
 

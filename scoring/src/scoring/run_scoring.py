@@ -19,7 +19,9 @@ from typing import Callable, Dict, List, Optional, Set, Tuple
 from . import constants as c, contributor_state, note_ratings, note_status_history, scoring_rules
 from .constants import FinalScoringArgs, ModelResult, PrescoringArgs, ScoringArgs
 from .enums import Scorers, Topics
+from .gaussian_core_with_topics_scorer import GaussianCoreWithTopicsScorer
 from .gaussian_scorer import GaussianScorer, compute_empirical_prior_df
+from .gaussian_topic_scorer import GaussianTopicScorer
 from .matrix_factorization.normalized_loss import NormalizedLossHyperparameters
 from .mf_core_scorer import MFCoreScorer
 from .mf_core_with_topics_scorer import MFCoreWithTopicsScorer
@@ -77,6 +79,9 @@ def _get_scorers(
   scorers: Dict[Scorers, List[Scorer]] = dict()
   if final:
     scorers[Scorers.GaussianScorer] = [GaussianScorer(seed=seed, threads=12)]
+    scorers[Scorers.GaussianCoreWithTopicsScorer] = [
+      GaussianCoreWithTopicsScorer(seed=seed, threads=12)
+    ]
   scorers[Scorers.MFCoreWithTopicsScorer] = [
     MFCoreWithTopicsScorer(
       seed, pseudoraters, useStableInitialization=useStableInitialization, threads=12
@@ -147,9 +152,33 @@ def _get_scorers(
       seed=seed,
     )
   )
-  scorers[Scorers.MFTopicScorer] = [
-    MFTopicScorer(topicName=topic.name, seed=seed) for topic in Topics
-  ]
+  topicScorers: List[Scorer] = []
+  for topic in Topics:
+    if topic == Topics.InDimensionTwo:
+      if final:
+        topicScorers.append(
+          GaussianTopicScorer(
+            topicName=topic.name,
+            seed=seed,
+            useGlobalIntercept=False,
+            userInterceptLambda=5,
+            crhParams=c.GaussianParams(bandwidth=0.05),
+            numConfidenceRatings=0,
+          )
+        )
+      else:
+        topicScorers.append(
+          MFTopicScorer(
+            topicName=topic.name,
+            seed=seed,
+            useGlobalIntercept=False,
+            userInterceptLambda=5,
+          )
+        )
+    else:
+      topicScorers.append(MFTopicScorer(topicName=topic.name, seed=seed))
+  scorers[Scorers.MFTopicScorer] = topicScorers
+
   scorers[Scorers.MFMultiGroupScorer] = [
     MFMultiGroupScorer(includedGroups={4, 5, 7, 12, 26}, groupId=1, threads=4, seed=seed),
   ]
@@ -272,8 +301,11 @@ def _run_scorer_in_parallel(
   scoringArgs: ScoringArgs,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
   scoringArgsSharedMemory=None,
+  special_handler_process_name: Optional[str] = None,
 ) -> Tuple[ModelResult, float]:
-  return _run_scorer_parallelizable(scorer, True, scoringArgs, dataLoader, scoringArgsSharedMemory)
+  return _run_scorer_parallelizable(
+    scorer, True, scoringArgs, dataLoader, scoringArgsSharedMemory, special_handler_process_name
+  )
 
 
 def _run_scorer_in_series(
@@ -291,6 +323,7 @@ def _run_scorer_parallelizable(
   scoringArgs: ScoringArgs,
   dataLoader: Optional[CommunityNotesDataLoader] = None,
   scoringArgsSharedMemory=None,
+  special_handler_process_name: Optional[str] = None,
 ) -> Tuple[ModelResult, float]:
   """
   Run scoring (either prescoring or final scoring) for a single scorer.
@@ -307,6 +340,14 @@ def _run_scorer_parallelizable(
   or from the dataLoader if scoringArgsSharedMemory is None. However, using the dataLoader to
   re-read the dataframes from disk is much slower than using shared memory and is deprecated.
   """
+  # Ensure child processes have consistent log formatting.
+  if runParallel:
+    try:
+      from twitter.logging_config import configure_logging_for_child_process
+
+      configure_logging_for_child_process(special_handler_process_name)
+    except ImportError:
+      pass
   scorerStartTime = time.perf_counter()
 
   # Load data if multiprocessing
@@ -463,6 +504,19 @@ def _run_scorers(
   overallStartTime = time.perf_counter()
 
   if runParallel:
+    # Discover the SpecialHandler process name so child processes can create local
+    # FileHandlers whose output will be aggregated by SpecialHandler.close().
+    special_handler_process_name = None
+    try:
+      from twitter.data_util import SpecialHandler as _SH
+
+      for h in logging.getLogger("birdwatch").handlers:
+        if isinstance(h, _SH):
+          special_handler_process_name = h.processName
+          break
+    except ImportError:
+      pass
+
     shms, scoringArgsSharedMemory = _save_dfs_to_shared_memory(scoringArgs)
 
     with concurrent.futures.ProcessPoolExecutor(
@@ -481,6 +535,7 @@ def _run_scorers(
           scoringArgs=copy.deepcopy(scoringArgs),
           dataLoader=dataLoader,
           scoringArgsSharedMemory=copy.deepcopy(scoringArgsSharedMemory),
+          special_handler_process_name=special_handler_process_name,
         )
         for scorer in scorers
       ]
@@ -846,22 +901,48 @@ def meta_score(
           crnhCoverage=True,
         )
       )
+    if enabledScorers is None or Scorers.GaussianCoreWithTopicsScorer in enabledScorers:
+      rules.append(
+        scoring_rules.ApplyCoverageModelResult(
+          RuleID.GAUSSIAN_CORE_WITH_TOPICS_MODEL,
+          {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+          c.gaussianCoreWithTopicsRatingStatusKey,
+          checkFirmReject=True,
+          crnhCoverage=True,
+        )
+      )
     if enabledScorers is None or Scorers.MFTopicScorer in enabledScorers:
       for topic in Topics:
         if topic == Topics.Unassigned:
           continue
-        rules.append(
-          scoring_rules.ApplyTopicModelResult(
-            RuleID[f"TOPIC_MODEL_{topic.value}"],
-            {
-              RuleID.EXPANSION_PLUS_MODEL,
-              RuleID.EXPANSION_MODEL,
-              RuleID.CORE_MODEL,
-              RuleID.GAUSSIAN_MODEL,
-            },
-            topic,
+        elif topic == Topics.InDimensionTwo:
+          rules.append(
+            scoring_rules.ApplyTopicModelResult(
+              RuleID[f"TOPIC_MODEL_{topic.value}"],
+              {
+                RuleID.EXPANSION_PLUS_MODEL,
+                RuleID.EXPANSION_MODEL,
+                RuleID.CORE_MODEL,
+                RuleID.GAUSSIAN_MODEL,
+              },
+              topic,
+              topicNMRInterceptThreshold=0.51,
+              topicNMRFactorThreshold=1.0,
+            )
           )
-        )
+        else:
+          rules.append(
+            scoring_rules.ApplyTopicModelResult(
+              RuleID[f"TOPIC_MODEL_{topic.value}"],
+              {
+                RuleID.EXPANSION_PLUS_MODEL,
+                RuleID.EXPANSION_MODEL,
+                RuleID.CORE_MODEL,
+                RuleID.GAUSSIAN_MODEL,
+              },
+              topic,
+            )
+          )
 
     rules.append(
       scoring_rules.PopulationSampledIntercept(
@@ -995,6 +1076,46 @@ def _compute_note_stats(
   return scoredNotesCols, auxiliaryNoteInfoCols
 
 
+def _compute_14d_stats(
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+) -> pd.DataFrame:
+  """Helper function to compute 14d CRH, CRNH and NMR totals.
+
+  Only notes written in the last 14 days count, and a note must either have status or
+  at least 10 ratings to count towards the totals.
+  """
+  cutoff = noteStatusHistory[c.createdAtMillisKey].max() - (1000 * 60 * 60 * 24 * 14)
+  # Purge notes that are too old
+  recentStats = (
+    noteStatusHistory[noteStatusHistory[c.createdAtMillisKey] > cutoff][
+      [c.noteIdKey, c.noteAuthorParticipantIdKey, c.currentLabelKey]
+    ]
+    .rename(columns={c.noteAuthorParticipantIdKey: c.raterParticipantIdKey})
+    .copy()
+  )
+  # Purge notes that either lack status or too few ratings
+  ratingTotals = ratings[c.noteIdKey].value_counts().to_frame().reset_index(drop=False)
+  recentStats = recentStats.merge(
+    ratingTotals, how="inner", on=c.noteIdKey
+  )  # Implicitly drop notes with 0 ratings
+  recentStats = recentStats[
+    (recentStats["count"] >= 10)
+    | (recentStats[c.currentLabelKey].isin({c.currentlyRatedHelpful, c.currentlyRatedNotHelpful}))
+  ].drop(columns=[c.noteIdKey, "count"])
+  # Compute totals
+  recentStats[c.crhTotal14dKey] = recentStats[c.currentLabelKey] == c.currentlyRatedHelpful
+  recentStats[c.crnhTotal14dKey] = recentStats[c.currentLabelKey] == c.currentlyRatedNotHelpful
+  recentStats[c.nmrTotal14dKey] = recentStats[c.currentLabelKey] == c.needsMoreRatings
+  recentStats = (
+    recentStats.drop(columns=[c.currentLabelKey])
+    .groupby(c.raterParticipantIdKey)
+    .sum()
+    .reset_index(drop=False)
+  )
+  return recentStats
+
+
 def _compute_helpfulness_scores(
   ratings: pd.DataFrame,
   scoredNotes: pd.DataFrame,
@@ -1112,6 +1233,24 @@ def _compute_helpfulness_scores(
 
     # If field is not set by userEvent or by update script, ok to default to 1
     helpfulnessScores[c.timestampOfLastEarnOut].fillna(1, inplace=True)
+
+  with c.time_block("Computing 14d contributor stats"):
+    recentStats = _compute_14d_stats(ratings, noteStatusHistory)
+    helpfulnessScores = helpfulnessScores.merge(
+      recentStats,
+      how="left",
+      on=c.raterParticipantIdKey,
+      unsafeAllowed={c.crhTotal14dKey, c.crnhTotal14dKey, c.nmrTotal14dKey},
+    )
+    helpfulnessScores = helpfulnessScores.fillna(
+      {c.crhTotal14dKey: 0.0, c.crnhTotal14dKey: 0.0, c.nmrTotal14dKey: 0.0}
+    ).astype(
+      {
+        c.crhTotal14dKey: pd.Int64Dtype(),
+        c.crnhTotal14dKey: pd.Int64Dtype(),
+        c.nmrTotal14dKey: pd.Int64Dtype(),
+      }
+    )
 
   return helpfulnessScores
 
