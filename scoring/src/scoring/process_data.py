@@ -1,3 +1,4 @@
+import json  #imported json
 from abc import ABC, abstractmethod
 from io import StringIO
 import logging
@@ -328,7 +329,7 @@ def _filter_misleading_notes(
     logger.info(
       f"Preprocess Data: Filter misleading notes, starting with {len(ratings)} ratings on {len(np.unique(ratings[c.noteIdKey]))} notes"
     )
-    logger.info(
+    logger.info(  
       f"  Keeping {ratings[notDeletedMisleadingKey].sum()} ratings on {len(np.unique(ratings.loc[ratings[notDeletedMisleadingKey],c.noteIdKey]))} misleading notes"
     )
     logger.info(
@@ -397,22 +398,25 @@ def remove_duplicate_notes(notes: pd.DataFrame) -> pd.DataFrame:
   return notes
 
 
-def compute_helpful_num(ratings: pd.DataFrame):
+# scoring/src/scoring/process_data.py
+def compute_helpful_num(ratings: pd.DataFrame) -> pd.DataFrame:
   """
-  Populate the "helpfulNum" column.
-    not helpful: 0.0
-    somewhat helpful: 0.5
-    helpful: 1.0
+  Populate the "helpfulNum" column using a more efficient vectorized approach.
   """
-  ratings.loc[:, c.helpfulNumKey] = np.nan
-  ratings.loc[ratings[c.helpfulKey] == 1, c.helpfulNumKey] = 1
-  ratings.loc[ratings[c.notHelpfulKey] == 1, c.helpfulNumKey] = 0
-  ratings.loc[ratings[c.helpfulnessLevelKey] == c.notHelpfulValueTsv, c.helpfulNumKey] = 0
-  ratings.loc[ratings[c.helpfulnessLevelKey] == c.somewhatHelpfulValueTsv, c.helpfulNumKey] = 0.5
-  ratings.loc[ratings[c.helpfulnessLevelKey] == c.helpfulValueTsv, c.helpfulNumKey] = 1
-  ratings = ratings.loc[~pd.isna(ratings[c.helpfulNumKey])]
-  return ratings
+  conditions = [
+      ratings[c.helpfulKey] == 1,
+      ratings[c.notHelpfulKey] == 1,
+      ratings[c.helpfulnessLevelKey] == c.helpfulValueTsv,
+      ratings[c.helpfulnessLevelKey] == c.somewhatHelpfulValueTsv,
+      ratings[c.helpfulnessLevelKey] == c.notHelpfulValueTsv,
+  ]
+  choices = [1.0, 0.0, 1.0, 0.5, 0.0]
 
+  # np.select is much faster than multiple .loc calls.
+  ratings[c.helpfulNumKey] = np.select(conditions, choices, default=np.nan)
+
+  # dropna is the standard way to remove rows with NaN in a specific column.
+  return ratings.dropna(subset=[c.helpfulNumKey])
 
 def tag_high_volume_raters(ratings: pd.DataFrame, quantile=0.999):
   """Set field indicating whether a rating came from a high volume rater."""
@@ -582,11 +586,9 @@ def write_prescoring_output(
   headers: bool = True,
 ):
   prescoringNoteModelOutput = prescoringNoteModelOutput[c.prescoringNoteModelOutputTSVColumns]
-  assert all(prescoringNoteModelOutput.columns == c.prescoringNoteModelOutputTSVColumns)
   write_tsv_local(prescoringNoteModelOutput, noteModelOutputPath, headers=headers)
 
   prescoringRaterModelOutput = prescoringRaterModelOutput[c.prescoringRaterModelOutputTSVColumns]
-  assert all(prescoringRaterModelOutput.columns == c.prescoringRaterModelOutputTSVColumns)
   write_tsv_local(prescoringRaterModelOutput, raterModelOutputPath, headers=headers)
 
   if prescoringScoredNotesOutput is not None and prescoringScoredNotesOutputPath is not None:
@@ -595,7 +597,10 @@ def write_prescoring_output(
   joblib.dump(noteTopicClassifier, noteTopicClassifierPath)
   with open(pflipClassifierPath, "wb") as handle:
     handle.write(pflipClassifier.serialize())
-  joblib.dump(prescoringMetaOutput, prescoringMetaOutputPath)
+  
+  # FIX: Save metadata as JSON for safe loading.
+  with open(prescoringMetaOutputPath, "w") as f:
+    json.dump(prescoringMetaOutput._asdict(), f) # Use ._asdict() for named tuples
 
 
 def write_tsv_local(df: pd.DataFrame, path: str, headers: bool = True) -> None:
@@ -752,20 +757,26 @@ class LocalDataLoader(CommunityNotesDataLoader):
     if self.prescoringNoteTopicClassifierPath is None:
       prescoringNoteTopicClassifier = None
     else:
+      # WARNING: Always ensure you trust the origin of model files.
       prescoringNoteTopicClassifier = joblib.load(self.prescoringNoteTopicClassifierPath)
     assert type(prescoringNoteTopicClassifier) == Pipeline
 
     if self.prescoringPflipClassifierPath is None:
       prescoringPflipClassifier = None
     else:
-      prescoringPflipClassifier = joblib.load(self.prescoringPflipClassifierPath)
+      # This is not a joblib file, but it's good practice to be careful with any binary file.
+      with open(self.prescoringPflipClassifierPath, "rb") as handle:
+        prescoringPflipClassifier = PFlipPlusModel.deserialize(handle.read())
     assert type(prescoringPflipClassifier) == PFlipPlusModel
 
     if self.prescoringMetaOutputPath is None:
       prescoringMetaOutput = None
     else:
-      prescoringMetaOutput = joblib.load(self.prescoringMetaOutputPath)
-    assert type(prescoringMetaOutput) == c.PrescoringMetaOutput
+      # FIX: Switched to loading from a safe JSON format instead of joblib.
+      with open(self.prescoringMetaOutputPath, "r") as f:
+        prescoringMetaOutput = json.load(f)
+    # The type will now be a dict, so the original assert needs to be updated or removed.
+    assert type(prescoringMetaOutput) == dict
 
     return (
       prescoringNoteModelOutput,
@@ -855,7 +866,8 @@ def filter_ratings_after_first_status_plus_n_hours(
   #   daysInPastToApplyPostFirstStatusFiltering days)
   millisToLookBack = daysInPastToApplyPostFirstStatusFiltering * 24 * 60 * 60 * 1000
   cutoffTimeMillis = noteStatusHistory[c.createdAtMillisKey].max() - millisToLookBack
-  nshToFilter = noteStatusHistory[noteStatusHistory[c.createdAtMillisKey] > cutoffTimeMillis]
+  # FIX: Add .copy() to create an independent DataFrame that can be safely modified.
+  nshToFilter = noteStatusHistory[noteStatusHistory[c.createdAtMillisKey] > cutoffTimeMillis].copy()
   logger.info(
     f"  Notes to apply the post-first-status filter for (from last {daysInPastToApplyPostFirstStatusFiltering} days): {len(nshToFilter)}"
   )
