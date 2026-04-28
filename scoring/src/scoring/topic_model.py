@@ -485,15 +485,16 @@ class TopicModel(object):
 
         if seedLabelSets[i] is None:
           with c.time_block("Get Note Topics: Make Seed Labels"):
-            seedLabelSets[i], _ = self._make_seed_labels(postText[c.summaryKey].values)
+            seedLabelSets[i], conflictedTextSetsForAccuracyEval[i] = self._make_seed_labels(
+              postText[c.summaryKey].values
+            )
 
-        if conflictedTextSetsForAccuracyEval[i] is not None:
-          self.validate_note_topic_accuracy_on_seed_labels(
-            np.argmax(probs, axis=1),
-            seedLabelSets[i],
-            conflictedTextSetsForAccuracyEval[i],
-            exitOnLowAccuracy,
-          )
+        self.validate_note_topic_accuracy_on_seed_labels(
+          np.argmax(probs, axis=1),
+          seedLabelSets[i],
+          conflictedTextSetsForAccuracyEval[i],
+          exitOnLowAccuracy,
+        )
 
         with c.time_block("Get Note Topics: Merge and assign predictions"):
           topicAssignments = self._merge_predictions_and_labels(

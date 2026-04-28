@@ -1041,6 +1041,10 @@ class PFlipPlusModel(object):
       assert cutoff is not None
       # Prune to recent notes
       scoredNotes = scoredNotes[scoredNotes[c.tweetIdKey] > _MIN_TWEET_ID]
+      # Prune to notes that have ratings (ratings may have been reduced by upstream filtering
+      # such as --pct pruning or Post Selection Similarity, leaving some notes without ratings)
+      noteIdsWithRatings = set(ratings.merge(scoredNotes[[c.noteIdKey]])[c.noteIdKey])
+      scoredNotes = scoredNotes[scoredNotes[c.noteIdKey].isin(noteIdsWithRatings)]
       # Validate that stabilization timestamps are valid
       assert (
         noteStatusHistory[[c.noteIdKey, c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey]].merge(

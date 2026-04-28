@@ -13,6 +13,7 @@ class MFExpansionPlusScorer(MFBaseScorer):
     threads: int = c.defaultNumThreads,
     minMinorityNetHelpfulRatings: Optional[int] = 4,
     minMinorityNetHelpfulRatio: Optional[float] = 0.05,
+    crhSuperThreshold: Optional[float] = 0.5,
   ) -> None:
     """Configure MFExpansionPlusScorer object.
 
@@ -30,6 +31,7 @@ class MFExpansionPlusScorer(MFBaseScorer):
       threads=threads,
       minMinorityNetHelpfulRatings=minMinorityNetHelpfulRatings,
       minMinorityNetHelpfulRatio=minMinorityNetHelpfulRatio,
+      crhSuperThreshold=crhSuperThreshold,
     )
 
   def get_name(self):

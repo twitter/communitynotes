@@ -53,21 +53,31 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
   assert len(newNoteStatusHistory) == len(
     newNoteStatusHistory[[c.noteIdKey]].drop_duplicates()
   ), "noteStatusHistory must not contain duplicates"
-  assert len(notes) == len(
+  timestampMatches = len(
     newNoteStatusHistory[[c.noteIdKey, c.createdAtMillisKey]].merge(
       notes[[c.noteIdKey, c.createdAtMillisKey]],
       on=[c.noteIdKey, c.createdAtMillisKey],
       how="inner",
       unsafeAllowed=c.createdAtMillisKey,
     )
-  ), "timestamps from notes and noteStatusHistory must match"
-  assert len(notes) == len(
+  )
+  assert len(notes) == timestampMatches, (
+    f"timestamps from notes and noteStatusHistory must match: "
+    f"len(notes)={len(notes)}, matched={timestampMatches}, len(noteStatusHistory)={len(newNoteStatusHistory)}"
+  )
+  authorshipMatches = len(
     newNoteStatusHistory[[c.noteIdKey, c.noteAuthorParticipantIdKey]].merge(
       notes[[c.noteIdKey, c.noteAuthorParticipantIdKey]],
       on=[c.noteIdKey, c.noteAuthorParticipantIdKey],
       how="inner",
     )
-  ), "authorship from notes and noteStatusHistory must match"
+  )
+  assert len(notes) == authorshipMatches, (
+    f"authorship from notes and noteStatusHistory must match: "
+    f"len(notes)={len(notes)}, matched={authorshipMatches}, len(noteStatusHistory)={len(newNoteStatusHistory)}, "
+    f"notes.{c.noteAuthorParticipantIdKey}.dtype={notes[c.noteAuthorParticipantIdKey].dtype}, "
+    f"nsh.{c.noteAuthorParticipantIdKey}.dtype={newNoteStatusHistory[c.noteAuthorParticipantIdKey].dtype}"
+  )
 
   # Drop cols which were artifacts of the merge
   noteStatusHistory = newNoteStatusHistory.drop(
