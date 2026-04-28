@@ -34,6 +34,7 @@ from .mf_group_scorer import (
   groupScorerCount,
   groupScorerParalleism,
   nmrScoringGroup,
+  nmrTrialScoringGroup,
   trialScoringGroup,
 )
 from .mf_multi_group_scorer import (
@@ -94,7 +95,9 @@ def _get_scorers(
     MFExpansionScorer(seed, useStableInitialization=useStableInitialization, threads=12)
   ]
   scorers[Scorers.MFExpansionPlusScorer] = [
-    MFExpansionPlusScorer(seed, useStableInitialization=useStableInitialization, threads=12)
+    MFExpansionPlusScorer(
+      seed, useStableInitialization=useStableInitialization, threads=12, crhSuperThreshold=0.6
+    )
   ]
   scorers[Scorers.ReputationScorer] = [
     ReputationScorer(seed, useStableInitialization=useStableInitialization, threads=12)
@@ -124,7 +127,7 @@ def _get_scorers(
         globalSignNorm=True, noteSignAlpha=None, noteNormExp=0, raterNormExp=-0.25
       ),
       maxFinalMFTrainError=0.16,
-      groupThreshold=0.4,
+      groupThreshold=0.51,
       minMeanNoteScore=-0.01,
       crhThreshold=0.15,
       crhSuperThreshold=None,
@@ -150,6 +153,23 @@ def _get_scorers(
       groupId=nmrScoringGroup,
       threads=groupScorerParalleism.get(nmrScoringGroup, 4),
       seed=seed,
+    )
+  )
+  scorers[Scorers.MFGroupScorer].append(
+    MFGroupScorer(
+      includedGroups={nmrTrialScoringGroup},
+      groupId=nmrTrialScoringGroup,
+      threads=groupScorerParalleism.get(nmrTrialScoringGroup, 4),
+      seed=seed,
+      noteInterceptLambda=0.03 * 5,
+      userInterceptLambda=0.03,
+      globalInterceptLambda=0,
+      noteFactorLambda=0.03,
+      userFactorLambda=0.03,
+      crhThreshold=0.2,
+      crhThresholdNoHighVol=0.18,
+      crhThresholdNoCorrelated=0.18,
+      groupThreshold=0.51,
     )
   )
   topicScorers: List[Scorer] = []
@@ -217,9 +237,15 @@ def _merge_results(
       c.noteIdKey,
       c.defaultIndexKey,
     ]
-    + [f"{c.modelingGroupKey}_{group}" for group in range(groupScorerCount, 0, -1)]
+    + [
+      f"{c.modelingGroupKey}_{group}"
+      for group in list(range(groupScorerCount, 0, -1)) + [nmrTrialScoringGroup, nmrScoringGroup]
+    ]
     + [f"{c.topicNoteConfidentKey}_{topic.name}" for topic in Topics]
-    + [f"{c.groupNumFinalRoundRatingsKey}_{group}" for group in range(groupScorerCount, 0, -1)]
+    + [
+      f"{c.groupNumFinalRoundRatingsKey}_{group}"
+      for group in list(range(groupScorerCount, 0, -1)) + [nmrTrialScoringGroup, nmrScoringGroup]
+    ]
     + [f"{c.topicNumFinalRoundRatingsKey}_{topic.name}" for topic in Topics]
   )
   scoredNotes = scoredNotes.merge(
@@ -891,6 +917,24 @@ def meta_score(
           nmrScoringGroup,
         )
       )
+      # group 18 scorers
+      # rules.append(
+      #   scoring_rules.ApplyGroupModelResult(
+      #     RuleID[f"GROUP_MODEL_{nmrTrialScoringGroup}"],
+      #     {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+      #     nmrTrialScoringGroup,
+      #     None,
+      #     None,
+      #     minSafeguardThreshold=0.25,
+      #   )
+      # )
+      rules.append(
+        scoring_rules.ApplyNMRGroupModelResult(
+          RuleID[f"GROUP_MODEL_{nmrTrialScoringGroup}_NMR"],
+          {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+          nmrTrialScoringGroup,
+        )
+      )
     if enabledScorers is None or Scorers.GaussianScorer in enabledScorers:
       rules.append(
         scoring_rules.ApplyCoverageModelResult(
@@ -1076,16 +1120,22 @@ def _compute_note_stats(
   return scoredNotesCols, auxiliaryNoteInfoCols
 
 
-def _compute_14d_stats(
+def _compute_past_n_days_stats(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
+  nDays: int,
+  onlyIncludeNotesWithStatusOrEnoughRatings: bool,
+  crhCountColumn: str,
+  crnhCountColumn: str,
+  nmrCountColumn: str,
 ) -> pd.DataFrame:
-  """Helper function to compute 14d CRH, CRNH and NMR totals.
+  """Helper function to compute past n days' CRH, CRNH and NMR totals.
 
-  Only notes written in the last 14 days count, and a note must either have status or
-  at least 10 ratings to count towards the totals.
+  Only notes written in the last n days count, and if
+  onlyIncludeNotesWithStatusOrEnoughRatings is True, a note must either
+  have status or at least 10 ratings to count towards the totals.
   """
-  cutoff = noteStatusHistory[c.createdAtMillisKey].max() - (1000 * 60 * 60 * 24 * 14)
+  cutoff = noteStatusHistory[c.createdAtMillisKey].max() - (1000 * 60 * 60 * 24 * nDays)
   # Purge notes that are too old
   recentStats = (
     noteStatusHistory[noteStatusHistory[c.createdAtMillisKey] > cutoff][
@@ -1094,19 +1144,22 @@ def _compute_14d_stats(
     .rename(columns={c.noteAuthorParticipantIdKey: c.raterParticipantIdKey})
     .copy()
   )
-  # Purge notes that either lack status or too few ratings
-  ratingTotals = ratings[c.noteIdKey].value_counts().to_frame().reset_index(drop=False)
-  recentStats = recentStats.merge(
-    ratingTotals, how="inner", on=c.noteIdKey
-  )  # Implicitly drop notes with 0 ratings
-  recentStats = recentStats[
-    (recentStats["count"] >= 10)
-    | (recentStats[c.currentLabelKey].isin({c.currentlyRatedHelpful, c.currentlyRatedNotHelpful}))
-  ].drop(columns=[c.noteIdKey, "count"])
+  if onlyIncludeNotesWithStatusOrEnoughRatings:
+    # Purge notes that either lack status or too few ratings
+    ratingTotals = ratings[c.noteIdKey].value_counts().to_frame().reset_index(drop=False)
+    recentStats = recentStats.merge(
+      ratingTotals, how="inner", on=c.noteIdKey
+    )  # Implicitly drop notes with 0 ratings
+    recentStats = recentStats[
+      (recentStats["count"] >= 10)
+      | (recentStats[c.currentLabelKey].isin({c.currentlyRatedHelpful, c.currentlyRatedNotHelpful}))
+    ].drop(columns=[c.noteIdKey, "count"])
+  else:
+    recentStats = recentStats.drop(columns=[c.noteIdKey])
   # Compute totals
-  recentStats[c.crhTotal14dKey] = recentStats[c.currentLabelKey] == c.currentlyRatedHelpful
-  recentStats[c.crnhTotal14dKey] = recentStats[c.currentLabelKey] == c.currentlyRatedNotHelpful
-  recentStats[c.nmrTotal14dKey] = recentStats[c.currentLabelKey] == c.needsMoreRatings
+  recentStats[crhCountColumn] = recentStats[c.currentLabelKey] == c.currentlyRatedHelpful
+  recentStats[crnhCountColumn] = recentStats[c.currentLabelKey] == c.currentlyRatedNotHelpful
+  recentStats[nmrCountColumn] = recentStats[c.currentLabelKey] == c.needsMoreRatings
   recentStats = (
     recentStats.drop(columns=[c.currentLabelKey])
     .groupby(c.raterParticipantIdKey)
@@ -1235,7 +1288,9 @@ def _compute_helpfulness_scores(
     helpfulnessScores[c.timestampOfLastEarnOut].fillna(1, inplace=True)
 
   with c.time_block("Computing 14d contributor stats"):
-    recentStats = _compute_14d_stats(ratings, noteStatusHistory)
+    recentStats = _compute_past_n_days_stats(
+      ratings, noteStatusHistory, 14, True, c.crhTotal14dKey, c.crnhTotal14dKey, c.nmrTotal14dKey
+    )
     helpfulnessScores = helpfulnessScores.merge(
       recentStats,
       how="left",
@@ -1249,6 +1304,31 @@ def _compute_helpfulness_scores(
         c.crhTotal14dKey: pd.Int64Dtype(),
         c.crnhTotal14dKey: pd.Int64Dtype(),
         c.nmrTotal14dKey: pd.Int64Dtype(),
+      }
+    )
+  with c.time_block("Computing 90d contributor stats"):
+    recentStats = _compute_past_n_days_stats(
+      ratings,
+      noteStatusHistory,
+      90,
+      False,
+      c.crhTotal90dKey,
+      c.crnhTotal90dKey,
+      c.nmrTotal90dKey,
+    )
+    helpfulnessScores = helpfulnessScores.merge(
+      recentStats,
+      how="left",
+      on=c.raterParticipantIdKey,
+      unsafeAllowed={c.crhTotal90dKey, c.crnhTotal90dKey, c.nmrTotal90dKey},
+    )
+    helpfulnessScores = helpfulnessScores.fillna(
+      {c.crhTotal90dKey: 0.0, c.crnhTotal90dKey: 0.0, c.nmrTotal90dKey: 0.0}
+    ).astype(
+      {
+        c.crhTotal90dKey: pd.Int64Dtype(),
+        c.crnhTotal90dKey: pd.Int64Dtype(),
+        c.nmrTotal90dKey: pd.Int64Dtype(),
       }
     )
 
@@ -1610,8 +1690,6 @@ def run_contributor_scoring(
 
 
 def determine_which_notes_to_rescore(
-  notes: pd.DataFrame,
-  ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   previousRatingCutoffTimestampMillis: Optional[int] = None,
   scoreRecentNotesMinimumFrequencyMillis: Optional[int] = 1000 * 60 * 60 * 24,  # 1 day
@@ -1619,12 +1697,23 @@ def determine_which_notes_to_rescore(
   scoreRecentlyFlippedNotesMinimumFrequencyMillis: Optional[int] = 1000 * 60 * 60 * 1,  # 1 hour
   recentlyFlippedNoteAgeCutoffMillis: Optional[int] = 1000 * 60 * 60 * 24,  # 1 day
   lockingRescoreWindowMillis: int = 1000 * 60 * 60 * 24 * 7,  # 7 days
-) -> Tuple[List[c.NoteSubset], set]:
+  precomputedNotesWithNewRatings: Optional[set] = None,
+  ratings: Optional[
+    pd.DataFrame
+  ] = None,  # Required when precomputedNotesWithNewRatings is not provided.
+) -> c.NotesToRescore:
   notesToRescoreSet = set()
   noteSubsets = []
 
   # 1. Rescore all notes with a new rating since last scoring run.
-  if previousRatingCutoffTimestampMillis is not None:
+  if precomputedNotesWithNewRatings is not None:
+    notesWithNewRatings = precomputedNotesWithNewRatings
+    logger.info(f"1. Num notes with new ratings (precomputed): {len(notesWithNewRatings)}")
+    notesToRescoreSet.update(notesWithNewRatings)
+  elif previousRatingCutoffTimestampMillis is not None:
+    assert (
+      ratings is not None
+    ), "ratings required when precomputedNotesWithNewRatings is not provided"
     notesWithNewRatings = set(
       ratings.loc[ratings[c.createdAtMillisKey] > previousRatingCutoffTimestampMillis, c.noteIdKey]
     )
@@ -1800,10 +1889,10 @@ def determine_which_notes_to_rescore(
         * {len(recentlyFlippedNotesNotRescoredRecentlyEnough)} notes that flipped status recently and not rescored recently enough.
         * {len(nmrDueToMinStableCrhTimeNotes)} notes that were NMRed due to MinStableCrhTime was not met.
         * {len(lockingEligibleUnlockedNotes)} recent notes that are eligible to lock but haven't locked yet.
-      Overall: {len(notesToRescoreSet)} notes to rescore, out of {len(notes)} total.\n----"""
+      Overall: {len(notesToRescoreSet)} notes to rescore, out of {len(noteStatusHistory)} in noteStatusHistory.\n----"""
   )
 
-  return noteSubsets, notesToRescoreSet
+  return c.NotesToRescore(noteSubsets=noteSubsets, noteIds=notesToRescoreSet)
 
 
 def run_final_note_scoring(
@@ -1831,6 +1920,7 @@ def run_final_note_scoring(
   enableNmrDueToMinStableCrhTime: bool = True,
   maxWorkers: Optional[int] = None,
   empiricalTotals: Optional[pd.DataFrame] = None,
+  notesToRescore: Optional[c.NotesToRescore] = None,
 ):
   metrics = {}
   with c.time_block("Logging Final Scoring RAM usage"):
@@ -1924,10 +2014,13 @@ def run_final_note_scoring(
         ),
       ]
 
-      noteSubsetsForProdScoring, _ = determine_which_notes_to_rescore(
-        notes, ratings, noteStatusHistory, previousRatingCutoffTimestampMillis
-      )
-      for noteSubset in noteSubsetsForProdScoring:
+      if notesToRescore is None:
+        notesToRescore = determine_which_notes_to_rescore(
+          noteStatusHistory=noteStatusHistory,
+          previousRatingCutoffTimestampMillis=previousRatingCutoffTimestampMillis,
+          ratings=ratings,
+        )
+      for noteSubset in notesToRescore.noteSubsets:
         if noteSubset.description == c.RescoringRuleID.NEW_NOTES_NOT_RESCORED_RECENTLY_ENOUGH:
           noteSubsets.append(noteSubset)
     else:
@@ -1935,9 +2028,15 @@ def run_final_note_scoring(
       assert previousRatingCutoffTimestampMillis is not None
       logger.info("Previous scored notes passed; determining which notes to rescore.")
       # Filter all datasets to smaller versions which only contain notes which need to be scored.
-      noteSubsets, notesToRescoreSet = determine_which_notes_to_rescore(
-        notes, ratings, noteStatusHistory, previousRatingCutoffTimestampMillis
-      )
+      if notesToRescore is None:
+        notesToRescore = determine_which_notes_to_rescore(
+          noteStatusHistory=noteStatusHistory,
+          previousRatingCutoffTimestampMillis=previousRatingCutoffTimestampMillis,
+          ratings=ratings,
+        )
+      else:
+        logger.info("Using precomputed NotesToRescore from merge.")
+      noteSubsets, notesToRescoreSet = notesToRescore.noteSubsets, notesToRescore.noteIds
 
       scoredNotesPassthrough = previousScoredNotes[
         ~previousScoredNotes[c.noteIdKey].isin(notesToRescoreSet)

@@ -37,9 +37,10 @@ def read_from_strings(
   ratings = pd.read_csv(
     StringIO(ratingsStr),
     sep="\t",
-    names=c.ratingTSVColumns,
-    dtype=c.ratingTSVTypeMapping,
+    names=c.publicRatingTSVColumns,
+    dtype=c.publicRatingTSVTypeMapping,
   )
+  ratings = ratings.drop(columns=c.suggestionKey)
   noteStatusHistory = pd.read_csv(
     StringIO(noteStatusHistoryStr),
     sep="\t",
@@ -207,17 +208,18 @@ def read_from_tsv(
   else:
     ratings = tsv_reader(
       ratingsPath,
-      c.ratingTSVTypeMapping,
-      c.ratingTSVColumns,
+      c.publicRatingTSVTypeMapping,
+      c.publicRatingTSVColumns,
       header=headers,
       convertNAToNone=False,
     )
-    assert len(ratings.columns.values) == len(c.ratingTSVColumns) and all(
-      ratings.columns == c.ratingTSVColumns
+    assert len(ratings.columns.values) == len(c.publicRatingTSVColumns) and all(
+      ratings.columns == c.publicRatingTSVColumns
     ), (
-      f"ratings columns don't match: \n{[col for col in ratings.columns if not col in c.ratingTSVColumns]} are extra columns, "
-      + f"\n{[col for col in c.ratingTSVColumns if not col in ratings.columns]} are missing."
+      f"ratings columns don't match: \n{[col for col in ratings.columns if not col in c.publicRatingTSVColumns]} are extra columns, "
+      + f"\n{[col for col in c.publicRatingTSVColumns if not col in ratings.columns]} are missing."
     )  # ensure constants file is up to date.
+    ratings = ratings.drop(columns=c.suggestionKey)
 
   if noteStatusHistoryPath is None:
     noteStatusHistory = None

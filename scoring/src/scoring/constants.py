@@ -81,8 +81,8 @@ correlatedRaterKey = "correlatedRater"
 # Scoring Groups
 coreGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 21, 25}
 coverageGroups: Set[int] = {1, 2, 3, 6, 8, 9, 10, 11, 13, 14, 19, 25}
-expansionGroups: Set[int] = {0, 4, 5, 7, 12, 15, 16, 18, 20, 22, 23, 24, 26, 27, 28, 29, 33}
-expansionPlusGroups: Set[int] = {17, 30, 31, 32}
+expansionGroups: Set[int] = {0, 4, 5, 7, 12, 15, 16, 20, 22, 23, 24, 26, 27, 28, 29, 33}
+expansionPlusGroups: Set[int] = {17, 18, 30, 31, 32}
 
 # Bins for Gaussian Scorer
 quantileRange = np.array(
@@ -410,6 +410,9 @@ raterAgreeRatioWithHarassmentAbusePenaltyKey = "raterAgreeRatioKeyWithHarassment
 crhTotal14dKey = "crhTotal14d"
 crnhTotal14dKey = "crnhTotal14d"
 nmrTotal14dKey = "nmrTotal14d"
+crhTotal90dKey = "crhTotal90d"
+crnhTotal90dKey = "crnhTotal90d"
+nmrTotal90dKey = "nmrTotal90d"
 
 # Note Status Labels
 currentlyRatedHelpful = "CURRENTLY_RATED_HELPFUL"
@@ -631,6 +634,7 @@ agreeKey = "agree"
 disagreeKey = "disagree"
 ratedOnTweetIdKey = "ratedOnTweetId"
 ratingSourceBucketedKey = "ratingSourceBucketed"
+suggestionKey = "suggestion"
 ratingTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
@@ -651,6 +655,14 @@ ratingTSVColumnsAndTypes = (
 ratingTSVColumns = [col for (col, dtype) in ratingTSVColumnsAndTypes]
 ratingTSVTypes = [dtype for (col, dtype) in ratingTSVColumnsAndTypes]
 ratingTSVTypeMapping = {col: dtype for (col, dtype) in ratingTSVColumnsAndTypes}
+
+# The on-disk public ratings TSV has one extra trailing column ("suggestion",
+# added by BirdwatchTsvConverter in Jan 2026) that the scoring pipeline ignores.
+# Reading code uses these public-format constants and then drops the column;
+# downstream code keeps using ratingTSVColumns / ratingTSVTypeMapping.
+publicRatingTSVColumnsAndTypes = ratingTSVColumnsAndTypes + [(suggestionKey, object)]
+publicRatingTSVColumns = [col for (col, _) in publicRatingTSVColumnsAndTypes]
+publicRatingTSVTypeMapping = {col: dtype for (col, dtype) in publicRatingTSVColumnsAndTypes}
 
 timestampMillisOfNoteFirstNonNMRLabelKey = "timestampMillisOfFirstNonNMRStatus"
 firstNonNMRLabelKey = "firstNonNMRStatus"
@@ -1076,6 +1088,9 @@ raterModelOutputTSVColumnsAndTypes = [
   (crhTotal14dKey, pd.Int64Dtype()),
   (crnhTotal14dKey, pd.Int64Dtype()),
   (nmrTotal14dKey, pd.Int64Dtype()),
+  (crhTotal90dKey, pd.Int64Dtype()),
+  (crnhTotal90dKey, pd.Int64Dtype()),
+  (nmrTotal90dKey, pd.Int64Dtype()),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
@@ -1246,3 +1261,9 @@ class NoteSubset:
   maxNewCrhChurnRate: float
   maxOldCrhChurnRate: float
   description: RescoringRuleID
+
+
+@dataclass
+class NotesToRescore:
+  noteSubsets: list  # List[NoteSubset]
+  noteIds: set
