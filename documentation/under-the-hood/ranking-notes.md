@@ -433,6 +433,9 @@ For not-helpful notes:
 
 ## What’s New?
 
+**April 30, 2026**
+- For a limited group of people on X in the US, show note previews for notes whose score is decided by "NMRDueToStableCRHTime", indicating that they meet the CRH criteria but are still gathering ratings before being CRHed
+
 **Nov 10, 2025**
 - Introduce new Gaussian model to final scoring, testing new aggregation to identify additional helpful notes.
 
