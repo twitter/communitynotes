@@ -177,7 +177,6 @@ def parse_args():
   return parser.parse_args()
 
 
-@patch_pandas
 def _run_scorer(
   args=None,
   dataLoader=None,

@@ -142,7 +142,6 @@ class PseudoRatersRunner:
               }
             ),
           ],
-          unsafeAllowed=c.raterParticipantIdKey,
         )
 
       if not (
@@ -159,11 +158,6 @@ class PseudoRatersRunner:
               }
             ),
           ],
-          unsafeAllowed={
-            c.raterParticipantIdKey,
-            c.internalRaterInterceptKey,
-            c.internalRaterFactor1Key,
-          },
         )
 
   def _create_new_model_with_extreme_raters_from_original_params(
@@ -286,11 +280,6 @@ class PseudoRatersRunner:
   def _aggregate_note_params(self, noteParamsList, joinOrig=False):
     rawRescoredNotesWithEachExtraRater = pd.concat(
       noteParamsList,
-      unsafeAllowed={
-        Constants.extraRaterInterceptKey,
-        Constants.extraRaterFactor1Key,
-        Constants.extraRatingHelpfulNumKey,
-      },
     )
     rawRescoredNotesWithEachExtraRater.drop(mf_c.noteIndexKey, axis=1, inplace=True)
     rawRescoredNotesWithEachExtraRater = rawRescoredNotesWithEachExtraRater.sort_values(

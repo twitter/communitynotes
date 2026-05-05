@@ -75,7 +75,6 @@ def get_ratings_before_note_status_and_public_tsv(
   ratings: pd.DataFrame,
   noteStatusHistory: pd.DataFrame,
   log: bool = True,
-  doTypeCheck: bool = True,
 ) -> pd.DataFrame:
   """Determine which ratings are made before note's most recent non-NMR status,
   and before we could've released any information in the public TSV (48 hours after note creation).
@@ -86,7 +85,6 @@ def get_ratings_before_note_status_and_public_tsv(
       ratings (pd.DataFrame)
       noteStatusHistory (pd.DataFrame)
       log (bool, optional). Defaults to True.
-      doTypeCheck (bool): do asserts to check types.
   Returns:
       pd.DataFrame combinedRatingsBeforeStatus ratings that were created early enough to be valid ratings
   """
@@ -100,7 +98,6 @@ def get_ratings_before_note_status_and_public_tsv(
     on=c.noteIdKey,
     how="left",
     suffixes=("", right_suffix),
-    unsafeAllowed={c.createdAtMillisKey},
   )
   # Note that the column types for c.createdAtMillisKey and
   # c.timestampMillisOfNoteMostRecentNonNMRLabelKey are determined at runtime and cannot be statically
@@ -113,24 +110,6 @@ def get_ratings_before_note_status_and_public_tsv(
   ratingsWithNoteLabelInfo[
     [c.createdAtMillisKey + right_suffix, c.timestampMillisOfNoteMostRecentNonNMRLabelKey]
   ] *= 1.0
-
-  if doTypeCheck:
-    ratingsWithNoteLabelInfoTypes = c.ratingTSVTypeMapping
-    ratingsWithNoteLabelInfoTypes[
-      c.createdAtMillisKey + "_note"
-    ] = float  # float because nullable after merge.
-    ratingsWithNoteLabelInfoTypes[
-      c.timestampMillisOfNoteMostRecentNonNMRLabelKey
-    ] = float  # float because nullable.
-    ratingsWithNoteLabelInfoTypes[c.helpfulNumKey] = float
-
-    assert len(ratingsWithNoteLabelInfo) == len(ratings)
-    mismatches = [
-      (col, dtype, ratingsWithNoteLabelInfoTypes[col])
-      for col, dtype in zip(ratingsWithNoteLabelInfo, ratingsWithNoteLabelInfo.dtypes)
-      if ("participantid" not in col.lower()) and (dtype != ratingsWithNoteLabelInfoTypes[col])
-    ]
-    assert not len(mismatches), f"Mismatch columns: {mismatches}"
 
   ratingsWithNoteLabelInfo[c.ratingCreatedBeforeMostRecentNMRLabelKey] = (
     pd.isna(ratingsWithNoteLabelInfo[c.timestampMillisOfNoteMostRecentNonNMRLabelKey])
@@ -188,7 +167,6 @@ def get_ratings_with_scores(
   noteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
   log: bool = True,
-  doTypeCheck: bool = True,
 ) -> pd.DataFrame:
   """
   This funciton merges the note status history, ratings, and scores for later aggregation.
@@ -201,7 +179,7 @@ def get_ratings_with_scores(
       pd.DataFrame: binaryRatingsOnNotesWithStatusLabels Binary ratings with status labels
   """
   ratingsBeforeNoteStatus = get_ratings_before_note_status_and_public_tsv(
-    ratings, noteStatusHistory, log, doTypeCheck
+    ratings, noteStatusHistory, log
   )
 
   ratingsWithScores = ratingsBeforeNoteStatus[
@@ -225,7 +203,6 @@ def get_valid_ratings(
   noteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
   log: bool = True,
-  doTypeCheck: bool = True,
 ) -> pd.DataFrame:
   """Determine which ratings are "valid" (used to determine rater helpfulness score)
 
@@ -236,13 +213,10 @@ def get_valid_ratings(
       noteStatusHistory (pd.DataFrame)
       scoredNotes (pd.DataFrame)
       log (bool, optional): Defaults to True.
-      doTypeCheck (bool): do asserts to check types.
   Returns:
       pd.DataFrame: binaryRatingsOnNotesWithStatusLabels CRH/CRNH notes group by helpfulness
   """
-  ratingsWithScores = get_ratings_with_scores(
-    ratings, noteStatusHistory, scoredNotes, log, doTypeCheck
-  )
+  ratingsWithScores = get_ratings_with_scores(ratings, noteStatusHistory, scoredNotes, log)
   ratingsWithScores[c.ratingCountKey] = 1
 
   binaryRatingsOnNotesWithStatusLabels = ratingsWithScores[
@@ -363,15 +337,6 @@ def compute_note_stats(ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame) -
     ],
     on=c.noteIdKey,
     how="outer",
-    unsafeAllowed=set(
-      [
-        c.numRatingsKey,
-        c.numRatingsLast28DaysKey,
-        c.numPopulationSampledRatingsKey,
-      ]
-      + c.helpfulTagsTSVOrder
-      + c.notHelpfulTagsTSVOrder
-    ),
   )
 
   # Fill in nan values resulting from the outer merge with zero since these values were not
@@ -445,7 +410,7 @@ def get_note_counts_by_rater_sign(raterModelOutput, ratings):
   )
 
   noteCountsByRaterSign = noteCountsByRaterSign.merge(
-    meanHelpfulnessByRaterSign, on=[c.noteIdKey], how="left", unsafeAllowed=c.minSignCountKey
+    meanHelpfulnessByRaterSign, on=[c.noteIdKey], how="left"
   )
   if c.negFactorMeanHelpfulNumKey not in noteCountsByRaterSign.columns:
     noteCountsByRaterSign[c.negFactorMeanHelpfulNumKey] = np.nan
@@ -676,7 +641,6 @@ def compute_scored_notes(
     get_note_counts_by_rater_sign(raterParams, ratings),
     how="left",
     on=c.noteIdKey,
-    unsafeAllowed={c.minSignCountKey, c.netMinHelpfulKey},
   )
   noteStats[[c.minSignCountKey]] = noteStats[[c.minSignCountKey]].fillna(0).astype(np.int32)
   noteStats[[c.netMinHelpfulKey]] = noteStats[[c.netMinHelpfulKey]].fillna(0).astype(np.int32)
@@ -701,7 +665,6 @@ def compute_scored_notes(
     noteParams[noteParamsColsToKeep],
     on=c.noteIdKey,
     how="left",
-    unsafeAllowed={"ratingCount_all", "ratingCount_neg_fac", "ratingCount_pos_fac"},
   )
 
   # Merge per-sign population sampled counts
@@ -710,10 +673,6 @@ def compute_scored_notes(
     popSampledCounts,
     on=c.noteIdKey,
     how="left",
-    unsafeAllowed={
-      c.negFactorPopulationSampledRatingCountKey,
-      c.posFactorPopulationSampledRatingCountKey,
-    },
   )
 
   noteStats[
@@ -798,10 +757,6 @@ def compute_scored_notes(
         incorrectAggregates,
         on=c.noteIdKey,
         how="outer",
-        unsafeAllowed={
-          c.notHelpfulIncorrectIntervalKey,
-          c.numVotersIntervalKey,
-        },
       )
     assert tagFilterThresholds is not None
 

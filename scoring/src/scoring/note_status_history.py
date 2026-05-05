@@ -34,7 +34,6 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
     # use outer so we don't drop deleted notes from "oldNoteStatusHistory" or new notes from "notes"
     how="outer",
     suffixes=("", noteSuffix),
-    unsafeAllowed={c.createdAtMillisKey, c.createdAtMillisKey + noteSuffix},
   )
   newNotes = pd.isna(newNoteStatusHistory[c.createdAtMillisKey])
   logger.info(f"total notes added to noteStatusHistory: {sum(newNotes)}")
@@ -58,7 +57,6 @@ def merge_note_info(oldNoteStatusHistory: pd.DataFrame, notes: pd.DataFrame) -> 
       notes[[c.noteIdKey, c.createdAtMillisKey]],
       on=[c.noteIdKey, c.createdAtMillisKey],
       how="inner",
-      unsafeAllowed=c.createdAtMillisKey,
     )
   )
   assert len(notes) == timestampMatches, (

@@ -187,7 +187,6 @@ class MatrixFactorization:
         noteInit,
         on=c.noteIdKey,
         how="left",
-        unsafeAllowed={c.noteIdKey, "noteIndex_y"},
       )
 
       noteInit[c.internalNoteInterceptKey].fillna(0.0, inplace=True)

@@ -199,19 +199,12 @@ def _get_visible_rating_counts(
   ]
   historyCounts[c.ratingsAwaitingMoreRatings] = historyCounts[c.awaitingMoreRatingsBoolKey]
   ratedAfterDecision = _get_rated_after_decision(ratings, noteStatusHistory)
-  historyCounts = historyCounts.merge(
-    ratedAfterDecision,
-    on=c.raterParticipantIdKey,
-    how="left",
-    unsafeAllowed=c.ratedAfterDecision,
-  )
+  historyCounts = historyCounts.merge(ratedAfterDecision, on=c.raterParticipantIdKey, how="left")
   # Fill in zero for any rater who didn't rate any notes after status was assigned and consequently
   # doesn't appear in the dataframe.
   historyCounts = historyCounts.fillna({c.ratedAfterDecision: 0})
 
-  ratingCounts = ratingCounts.merge(
-    historyCounts, on=c.raterParticipantIdKey, how="outer", unsafeAllowed=set(ratingCountRows)
-  )
+  ratingCounts = ratingCounts.merge(historyCounts, on=c.raterParticipantIdKey, how="outer")
   for rowName in ratingCountRows:
     ratingCounts[rowName] = ratingCounts[rowName].fillna(0)
   return ratingCounts
@@ -414,12 +407,15 @@ def calculate_ri_to_earn_in(contributorScoresWithEnrollment: pd.DataFrame) -> pd
     == c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
   )
 
+  def _safe_val(v, default=0):
+    return default if pd.isna(v) else v
+
   contributorScoresWithEnrollment.loc[
     earnedOutUsers, c.successfulRatingNeededToEarnIn
   ] = contributorScoresWithEnrollment.apply(
     lambda row: c.ratingImpactForEarnIn
-    + max([row[c.ratingImpact], 0])
-    + (c.ratingImpactForEarnIn * max(row[c.numberOfTimesEarnedOutKey] - 1, 0)),
+    + max([_safe_val(row[c.ratingImpact]), 0])
+    + (c.ratingImpactForEarnIn * max(_safe_val(row[c.numberOfTimesEarnedOutKey]) - 1, 0)),
     axis=1,
   ).loc[earnedOutUsers]
 
@@ -429,7 +425,7 @@ def calculate_ri_to_earn_in(contributorScoresWithEnrollment: pd.DataFrame) -> pd
   contributorScoresWithEnrollment.loc[
     (earnedOutUsers) & (topWriters), c.successfulRatingNeededToEarnIn
   ] = contributorScoresWithEnrollment.apply(
-    lambda row: c.ratingImpactForEarnIn + max([row[c.ratingImpact], 0]),
+    lambda row: c.ratingImpactForEarnIn + max([_safe_val(row[c.ratingImpact]), 0]),
     axis=1,
   ).loc[(earnedOutUsers) & (topWriters)]
 
@@ -475,7 +471,6 @@ def get_contributor_state(
       left_on=c.noteAuthorParticipantIdKey,
       right_on=c.participantIdKey,
       how="left",
-      unsafeAllowed=c.timestampOfLastEarnOut,
     )
     # For users who don't appear in the userEnrollment file, set their timeStampOfLastEarnOut to default
     scoredNotesWithLastEarnOut[c.timestampOfLastEarnOut].fillna(1, inplace=True)
@@ -489,7 +484,13 @@ def get_contributor_state(
       countNMRNotesLast=True,
       sinceLastEarnOut=True,
     )
-    contributorScores.fillna(0, inplace=True)
+    contributorScores = contributorScores.fillna(
+      {
+        col: 0
+        for col in contributorScores.columns
+        if pd.api.types.is_numeric_dtype(contributorScores[col])
+      }
+    )
 
   contributorScores[c.hasCrnhSinceEarnOut] = contributorScores[c.notesCurrentlyRatedNotHelpful] > 0
 
@@ -503,7 +504,6 @@ def get_contributor_state(
       left_on=c.raterParticipantIdKey,
       right_on=c.noteAuthorParticipantIdKey,
       how="outer",
-      unsafeAllowed=c.hasCrnhSinceEarnOut,
     ).drop(columns=[c.noteAuthorParticipantIdKey])
 
   with c.time_block("Contributor State: Emerging Writers"):
@@ -514,24 +514,19 @@ def get_contributor_state(
       left_on=c.raterParticipantIdKey,
       right_on=c.noteAuthorParticipantIdKey,
       how="outer",
-      unsafeAllowed=c.isEmergingWriterKey,
     ).drop(columns=[c.noteAuthorParticipantIdKey])
 
   with c.time_block("Contributor State: Combining"):
     # We merge the current enrollment state
     contributorScoresWithEnrollment = contributorScores.merge(
-      userEnrollment,
-      left_on=c.raterParticipantIdKey,
-      right_on=c.participantIdKey,
-      how="outer",
-      unsafeAllowed={
-        c.successfulRatingNeededToEarnIn,
-        c.timestampOfLastStateChange,
-        c.numberOfTimesEarnedOutKey,
-        "coreBool",
-        "expansionBool",
-      },
+      userEnrollment, left_on=c.raterParticipantIdKey, right_on=c.participantIdKey, how="outer"
     )
+
+    # Cast enrollmentState to object so it can hold both string names (pre-transform)
+    # and integer thrift codes (post-transform) before _transform_to_thrift_code runs.
+    contributorScoresWithEnrollment[c.enrollmentState] = contributorScoresWithEnrollment[
+      c.enrollmentState
+    ].astype(object)
 
     # We set the new contributor state.
     contributorScoresWithEnrollment.fillna(
@@ -594,9 +589,9 @@ def get_contributor_state(
 
     mappedUserEnrollment = userEnrollment[
       [c.participantIdKey, c.timestampOfLastEarnOut, c.enrollmentState]
-    ]
-    mappedUserEnrollment[c.enrollmentState] = mappedUserEnrollment[c.enrollmentState].map(
-      _transform_to_thrift_code
+    ].copy()
+    mappedUserEnrollment[c.enrollmentState] = (
+      mappedUserEnrollment[c.enrollmentState].astype(object).map(_transform_to_thrift_code)
     )
     mappedUserEnrollment = mappedUserEnrollment.rename(
       columns={c.enrollmentState: c.enrollmentState + "_prev"}
@@ -661,19 +656,6 @@ def get_contributor_scores(
       lsuffix="note",
       rsuffix="rater",
       how="outer",
-      unsafeAllowed={
-        c.defaultIndexKey,
-        c.awaitingMoreRatingsBoolKey + "note",
-        c.ratingsAwaitingMoreRatings,
-        c.currentlyRatedHelpfulBoolKey,
-        c.currentlyRatedNotHelpfulBoolKey,
-        c.awaitingMoreRatingsBoolKey + "rater",
-        c.notesCurrentlyRatedHelpful,
-        c.notesCurrentlyRatedNotHelpful,
-        c.notesAwaitingMoreRatings,
-        c.numRatingsKey,
-        c.aggregateRatingReceivedTotal,
-      },
     )
     .reset_index()
     .rename({"index": c.raterParticipantIdKey}, axis=1)[
