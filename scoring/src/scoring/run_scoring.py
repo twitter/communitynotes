@@ -43,7 +43,7 @@ from .mf_multi_group_scorer import (
   coalesce_multi_group_model_scored_notes,
 )
 from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
-from .pandas_utils import get_df_fingerprint, get_df_info, keep_columns, patch_pandas
+from .pandas_utils import get_df_fingerprint, get_df_info, keep_columns
 from .pflip_plus_model import LABEL as PFLIP_LABEL, PFlipPlusModel
 from .post_selection_similarity import PostSelectionSimilarity, apply_post_selection_similarity
 from .process_data import CommunityNotesDataLoader, filter_input_data_for_testing, preprocess_data
@@ -232,28 +232,8 @@ def _merge_results(
     c.noteIdKey
   }, "column names must be globally unique"
   scoredNotesSize = len(scoredNotes)
-  unsafeAllowed = set(
-    [
-      c.noteIdKey,
-      c.defaultIndexKey,
-    ]
-    + [
-      f"{c.modelingGroupKey}_{group}"
-      for group in list(range(groupScorerCount, 0, -1)) + [nmrTrialScoringGroup, nmrScoringGroup]
-    ]
-    + [f"{c.topicNoteConfidentKey}_{topic.name}" for topic in Topics]
-    + [
-      f"{c.groupNumFinalRoundRatingsKey}_{group}"
-      for group in list(range(groupScorerCount, 0, -1)) + [nmrTrialScoringGroup, nmrScoringGroup]
-    ]
-    + [f"{c.topicNumFinalRoundRatingsKey}_{topic.name}" for topic in Topics]
-  )
-  scoredNotes = scoredNotes.merge(
-    modelScoredNotes,
-    on=c.noteIdKey,
-    how="outer",
-    unsafeAllowed=unsafeAllowed,
-  )
+  scoredNotes = scoredNotes.merge(modelScoredNotes, on=c.noteIdKey, how="outer")
+
   assert len(scoredNotes) == scoredNotesSize, "scoredNotes should not expand"
 
   # Merge auxiliaryNoteInfo
@@ -320,7 +300,6 @@ def _load_data_from_shared_memory_parallelizable(
 
 
 # patch_pandas is needed since we're using 'forkserver' to create new process.
-@patch_pandas
 def _run_scorer_in_parallel(
   args,
   scorer: Scorer,
@@ -443,7 +422,7 @@ def get_df_from_shared_memory(
   existing_shm = shared_memory.SharedMemory(name=sharedMemoryDfInfo.sharedMemoryName)
   size = sharedMemoryDfInfo.dataSize
   with io.BytesIO(existing_shm.buf[:size]) as buf:
-    return pd.read_parquet(buf)
+    return pd.read_parquet(buf, dtype_backend="pyarrow")
 
 
 def _save_dfs_to_shared_memory(
@@ -627,17 +606,7 @@ def combine_prescorer_scorer_results(
     if modelResult.metaScores is not None and modelResult.scorerName is not None:
       prescoringMetaOutput.metaScorerOutput[modelResult.scorerName] = modelResult.metaScores
 
-  prescoringNoteModelOutput = pd.concat(
-    prescoringNoteModelOutputList,
-    unsafeAllowed={
-      c.defaultIndexKey,
-      c.noteIdKey,
-      c.internalNoteInterceptKey,
-      c.internalNoteFactor1Key,
-      c.lowDiligenceNoteInterceptKey,
-      c.lowDiligenceNoteFactor1Key,
-    },
-  )
+  prescoringNoteModelOutput = pd.concat(prescoringNoteModelOutputList)
   # BUG: The type error for this concat operation shows a mix of Int64 and float64 values in
   # some columns, suggesting that an input may be emtpy.  The type error is preceeded by this
   # warning from Pandas, which also points to an empty input:
@@ -650,21 +619,6 @@ def combine_prescorer_scorer_results(
   # and raterParticipantId mixes Int64 and object.
   raterParamsUnfilteredMultiScorers = pd.concat(
     raterParamsUnfilteredMultiScorersList,
-    unsafeAllowed={
-      c.defaultIndexKey,
-      c.internalRaterInterceptKey,
-      c.internalRaterFactor1Key,
-      c.crhCrnhRatioDifferenceKey,
-      c.meanNoteScoreKey,
-      c.raterAgreeRatioKey,
-      c.aboveHelpfulnessThresholdKey,
-      c.internalRaterReputationKey,
-      c.lowDiligenceRaterInterceptKey,
-      c.lowDiligenceRaterFactor1Key,
-      c.lowDiligenceRaterReputationKey,
-      c.incorrectTagRatingsMadeByRaterKey,
-      c.raterParticipantIdKey,
-    },
   )
   return (
     prescoringNoteModelOutput[c.prescoringNoteModelOutputTSVColumns],
@@ -751,7 +705,6 @@ def convert_prescoring_rater_model_output_to_coalesced_helpfulness_scores(
         scorerOutputExternalNames,
         on=c.raterParticipantIdKey,
         how="outer",
-        unsafeAllowed=scorer._modelingGroupKey,
       )
     else:
       helpfulnessScores = helpfulnessScores.merge(
@@ -1223,6 +1176,14 @@ def _compute_helpfulness_scores(
       ]
     ]
     assert len(scoredNotesWithStats) == len(scoredNotes)
+    # Ensure boolean columns are bool dtype for downstream boolean operations.
+    # After TSV round-trip these may be int8[pyarrow] which doesn't support | operator.
+    for col in [
+      c.currentlyRatedHelpfulBoolKey,
+      c.currentlyRatedNotHelpfulBoolKey,
+      c.awaitingMoreRatingsBoolKey,
+    ]:
+      scoredNotesWithStats[col] = scoredNotesWithStats[col].astype(bool)
 
   with c.time_block("Meta Helpfulness Scores: Contributor Scores"):
     # Return one row per rater with stats including trackrecord identifying note labels.
@@ -1258,7 +1219,6 @@ def _compute_helpfulness_scores(
       ],
       on=c.raterParticipantIdKey,
       how="outer",
-      unsafeAllowed={c.enrollmentState, c.isEmergingWriterKey},
     )
     contributorScores = contributor_state.single_trigger_earn_out(contributorScores)
     contributorScores = contributor_state.calculate_ri_to_earn_in(contributorScores)
@@ -1275,7 +1235,6 @@ def _compute_helpfulness_scores(
       left_on=c.raterParticipantIdKey,
       right_on=c.participantIdKey,
       how="left",
-      unsafeAllowed=(c.enrollmentState + "_prev"),
     ).drop(c.participantIdKey, axis=1)
 
     # For users who did not earn a new enrollmentState, carry over the previous one
@@ -1295,7 +1254,6 @@ def _compute_helpfulness_scores(
       recentStats,
       how="left",
       on=c.raterParticipantIdKey,
-      unsafeAllowed={c.crhTotal14dKey, c.crnhTotal14dKey, c.nmrTotal14dKey},
     )
     helpfulnessScores = helpfulnessScores.fillna(
       {c.crhTotal14dKey: 0.0, c.crnhTotal14dKey: 0.0, c.nmrTotal14dKey: 0.0}
@@ -1320,7 +1278,6 @@ def _compute_helpfulness_scores(
       recentStats,
       how="left",
       on=c.raterParticipantIdKey,
-      unsafeAllowed={c.crhTotal90dKey, c.crnhTotal90dKey, c.nmrTotal90dKey},
     )
     helpfulnessScores = helpfulnessScores.fillna(
       {c.crhTotal90dKey: 0.0, c.crnhTotal90dKey: 0.0, c.nmrTotal90dKey: 0.0}
@@ -1346,9 +1303,9 @@ def _add_deprecated_columns(scoredNotes: pd.DataFrame) -> pd.DataFrame:
   """
   for column, columnType in c.deprecatedNoteModelOutputTSVColumnsAndTypes:
     assert column not in scoredNotes.columns
-    if columnType == np.double:
+    if columnType == "double[pyarrow]":
       scoredNotes[column] = np.nan
-    elif columnType == str:
+    elif columnType == "string[pyarrow]":
       scoredNotes[column] = ""
     elif columnType == "category":
       scoredNotes[column] = np.nan
@@ -1483,15 +1440,15 @@ def run_prescoring(
   try:
     # Complete all three conversions before doing any updates, so if there are any errors the
     # updates don't happen.
-    ratingIds = ratings[c.raterParticipantIdKey].astype(pd.Int64Dtype())
-    noteStatusHistoryIds = noteStatusHistory[c.noteAuthorParticipantIdKey].astype(pd.Int64Dtype())
-    userEnrollmentIds = userEnrollment[c.participantIdKey].astype(pd.Int64Dtype())
+    ratingIds = ratings[c.raterParticipantIdKey].astype("int64[pyarrow]")
+    noteStatusHistoryIds = noteStatusHistory[c.noteAuthorParticipantIdKey].astype("int64[pyarrow]")
+    userEnrollmentIds = userEnrollment[c.participantIdKey].astype("int64[pyarrow]")
     ratings[c.raterParticipantIdKey] = ratingIds
     noteStatusHistory[c.noteAuthorParticipantIdKey] = noteStatusHistoryIds
     userEnrollment[c.participantIdKey] = userEnrollmentIds
     del ratingIds, noteStatusHistoryIds, userEnrollmentIds
     logger.info(
-      "User IDs for ratings, noteStatusHistory and userEnrollment converted to Int64Dtype."
+      "User IDs for ratings, noteStatusHistory and userEnrollment converted to int64[pyarrow]."
     )
     conversion = True
   except ValueError as e:
@@ -1557,9 +1514,6 @@ def run_prescoring(
 
   prescoringRaterModelOutput = pd.concat(
     [prescoringRaterModelOutput, postSelectionSimilarityValues],
-    unsafeAllowed={
-      c.postSelectionValueKey,
-    },
   )
   with c.time_block("Logging Prescoring Results RAM usage (after concatenation)"):
     logger.info(get_df_info(prescoringRaterModelOutput, "prescoringRaterModelOutput"))
@@ -2100,6 +2054,27 @@ def run_final_note_scoring(
   # system tests run with full scale data and previousScoredNotes=None.
   maxWorkers = maxWorkers or (4 if previousScoredNotes is None else 6)
   logger.info(f"Number of concurrent scoring workers: {maxWorkers}")
+
+  # Convert participant IDs from strings to Int64 to reduce memory during parallel scoring.
+  # Same optimization used in run_prescoring.
+  idConversion = False
+  try:
+    ratingIds = ratings[c.raterParticipantIdKey].astype("int64[pyarrow]")
+    noteStatusHistoryIds = noteStatusHistory[c.noteAuthorParticipantIdKey].astype("int64[pyarrow]")
+    userEnrollmentIds = userEnrollment[c.participantIdKey].astype("int64[pyarrow]")
+    prescoringRaterIds = prescoringRaterModelOutput[c.raterParticipantIdKey].astype(
+      "int64[pyarrow]"
+    )
+    ratings[c.raterParticipantIdKey] = ratingIds
+    noteStatusHistory[c.noteAuthorParticipantIdKey] = noteStatusHistoryIds
+    userEnrollment[c.participantIdKey] = userEnrollmentIds
+    prescoringRaterModelOutput[c.raterParticipantIdKey] = prescoringRaterIds
+    del ratingIds, noteStatusHistoryIds, userEnrollmentIds, prescoringRaterIds
+    logger.info("Final scoring: converted participant IDs to int64[pyarrow] for memory reduction.")
+    idConversion = True
+  except ValueError as e:
+    logger.info(f"Final scoring: ID conversion to Int64 failed, IDs remain as strings. {repr(e)}")
+
   modelResults = _run_scorers(
     args,
     scorers=list(chain(*scorers.values())),
@@ -2117,6 +2092,18 @@ def run_final_note_scoring(
     dataLoader=dataLoader,
     maxWorkers=maxWorkers,
   )
+
+  # Restore string IDs now that parallel scoring is complete.
+  if idConversion:
+    ratings[c.raterParticipantIdKey] = ratings[c.raterParticipantIdKey].astype(str)
+    noteStatusHistory[c.noteAuthorParticipantIdKey] = noteStatusHistory[
+      c.noteAuthorParticipantIdKey
+    ].astype(str)
+    userEnrollment[c.participantIdKey] = userEnrollment[c.participantIdKey].astype(str)
+    prescoringRaterModelOutput[c.raterParticipantIdKey] = prescoringRaterModelOutput[
+      c.raterParticipantIdKey
+    ].astype(str)
+    logger.info("Final scoring: restored participant IDs to strings.")
 
   scoredNotes, auxiliaryNoteInfo = combine_final_scorer_results(modelResults, noteStatusHistory)
 
@@ -2157,7 +2144,6 @@ def run_final_note_scoring(
     scoredNotesPassthrough[c.rescoringActiveRulesKey] = ""
     scoredNotes = pd.concat(
       [scoredNotes, scoredNotesPassthrough],
-      unsafeAllowed=[c.topicNoteConfidentKey],  # concat 'O' with BooleanDtype
     )
 
     # Convert auxiliaryNoteInfo dtypes to match auxiliaryNoteInfoPassthrough

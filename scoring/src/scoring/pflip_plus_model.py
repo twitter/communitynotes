@@ -251,13 +251,13 @@ class PFlipPlusModel(object):
     )
     candidateNotes = candidateNotes.merge(notes[[c.noteIdKey, c.tweetIdKey, c.classificationKey]])
     candidateNotes[_TWEET_CREATION_MILLIS] = [
-      _get_timestamp_from_snowflake(tweetId) for tweetId in candidateNotes[c.tweetIdKey]
+      _get_timestamp_from_snowflake(tweetId) for tweetId in candidateNotes[c.tweetIdKey].tolist()
     ]
     # Prune candidates to require that associated tweet and classification are available, and possibly
     # that associated tweet is recent.
     candidateNotes = candidateNotes[
-      (candidateNotes[c.tweetIdKey] > 0) & (candidateNotes[c.classificationKey].notna())
-    ]
+      candidateNotes[c.tweetIdKey].gt(0).fillna(False) & candidateNotes[c.classificationKey].notna()
+    ].copy()
     return candidateNotes
 
   def _compute_scoring_cutoff(
@@ -317,11 +317,8 @@ class PFlipPlusModel(object):
           c.timestampMillisOfNoteFirstNonNMRLabelKey,
         ]
       ].min(axis=1)
-    # cutoffs doesn't contain any NaN values and has float type, but Pandas generates an
-    # error when casting directly to Int64Dtype.  There is no error if cast to int64 first.
-    assert cutoffs.dtype == np.float64
     assert cutoffs.isna().sum() == 0
-    scoringCutoff[_SCORING_CUTOFF_MTS] = cutoffs.astype(np.int64).astype(pd.Int64Dtype())
+    scoringCutoff[_SCORING_CUTOFF_MTS] = cutoffs.astype(np.int64).astype("int64[pyarrow]")
     scoringCutoff[_SCORING_CUTOFF_MTS] = (
       scoringCutoff[_SCORING_CUTOFF_MTS] - self._ratingRecencyCutoff
     )
@@ -332,14 +329,14 @@ class PFlipPlusModel(object):
       .max()
       .reset_index(drop=False)
       .rename(columns={c.createdAtMillisKey: "maxRatingMts"})
-      .astype(pd.Int64Dtype())
+      .astype("int64[pyarrow]")
     )
     cutoffByRatings = cutoffByRatings.merge(
       ratings.sort_values(c.createdAtMillisKey, ascending=True)
       .groupby(c.noteIdKey)
       .nth(minRatings - 1)
       .rename(columns={c.createdAtMillisKey: "nthRatingMts"})
-      .astype(pd.Int64Dtype()),
+      .astype("int64[pyarrow]"),
       how="left",
     )
     cutoffByRatings["ratingMin"] = cutoffByRatings[["maxRatingMts", "nthRatingMts"]].min(axis=1)
@@ -405,10 +402,10 @@ class PFlipPlusModel(object):
     # after being CRH and is now decided by ScoringDriftGuard (implying the note was once again
     # scored as CRH) because in that case the note is labeled as FLIP and the involvement of
     # ScoringDriftGuard only provides further evidence that the note flips status.
+    labels[c.currentDecidedByKey] = labels[c.currentDecidedByKey].astype("string[pyarrow]")
+
     dropRows = (labels[LABEL] == CRH) & (
-      np.array(
-        [decider.startswith("ScoringDriftGuard") for decider in labels[c.currentDecidedByKey]]
-      )
+      labels[c.currentDecidedByKey].fillna("").str.startswith("ScoringDriftGuard")
     )
     labels = labels[~dropRows][[c.noteIdKey, LABEL]]
     logger.info(f"labels after ScoringDriftGuard:\n{labels[LABEL].value_counts(dropna=False)}")
@@ -538,7 +535,7 @@ class PFlipPlusModel(object):
       .rename(columns={"count": "total"})
     )
     ratingTotals = notes[[c.noteIdKey]].merge(ratingTotals, how="left")
-    ratingTotals = ratingTotals.fillna({"total": 0}).astype(pd.Int64Dtype())
+    ratingTotals = ratingTotals.fillna({"total": 0}).astype("int64[pyarrow]")
     for cutoff in _RATING_TIME_BUCKETS:
       beforeCutoff = ratings[[c.noteIdKey, c.createdAtMillisKey]].rename(
         columns={c.createdAtMillisKey: "ratingCreationMts"}
@@ -556,7 +553,7 @@ class PFlipPlusModel(object):
         .rename(columns={"count": f"FIRST_{cutoff}_TOTAL"})
       )
       ratingTotals = ratingTotals.merge(cutoffCount, how="left").fillna(0)
-    ratingTotals = ratingTotals.astype(pd.Int64Dtype())
+    ratingTotals = ratingTotals.astype("int64[pyarrow]")
     for cutoff in _RATING_TIME_BUCKETS:
       ratingTotals[f"FIRST_{cutoff}_RATIO"] = ratingTotals[f"FIRST_{cutoff}_TOTAL"] / (
         ratingTotals["total"].clip(lower=1)
@@ -578,7 +575,7 @@ class PFlipPlusModel(object):
     )
     initialNotes = len(notes)
     ratingTotals = notes[[c.noteIdKey]].merge(ratingTotals, how="left")
-    ratingTotals = ratingTotals.fillna({"total": 0}).astype(pd.Int64Dtype())
+    ratingTotals = ratingTotals.fillna({"total": 0}).astype("int64[pyarrow]")
     for cutoff in _RATING_TIME_BUCKETS:
       ratingCounts = []
       for offset in range(cutoff):
@@ -601,7 +598,7 @@ class PFlipPlusModel(object):
         .max()
         .reset_index(drop=False)
         .rename(columns={"count": f"BURST_{cutoff}_TOTAL"})
-      ).astype(pd.Int64Dtype())
+      ).astype("int64[pyarrow]")
       ratingTotals = ratingTotals.merge(ratingCounts, how="left").fillna(
         {f"BURST_{cutoff}_TOTAL": 0}
       )
@@ -652,7 +649,7 @@ class PFlipPlusModel(object):
       .rename(columns={"count": "total"})
     )
     ratingTotals = scoredNotes[[c.noteIdKey]].merge(ratingTotals, how="left")
-    ratingTotals = ratingTotals.fillna({"total": 0}).astype(pd.Int64Dtype())
+    ratingTotals = ratingTotals.fillna({"total": 0}).astype("int64[pyarrow]")
     for cutoff in _RATING_TIME_BUCKETS:
       afterCutoff = ratings[
         ratings[c.createdAtMillisKey] > (ratings["effectivePresent"] - (1000 * 60 * cutoff))
@@ -665,7 +662,7 @@ class PFlipPlusModel(object):
         .rename(columns={"count": f"RECENT_{cutoff}_TOTAL"})
       )
       ratingTotals = ratingTotals.merge(cutoffCount, how="left").fillna(0)
-    ratingTotals = ratingTotals.astype(pd.Int64Dtype())
+    ratingTotals = ratingTotals.astype("int64[pyarrow]")
     for cutoff in _RATING_TIME_BUCKETS:
       ratingTotals[f"RECENT_{cutoff}_RATIO"] = ratingTotals[f"RECENT_{cutoff}_TOTAL"] / (
         ratingTotals["total"].clip(lower=1)
@@ -713,9 +710,11 @@ class PFlipPlusModel(object):
     total_ratings = "total_ratings"
     tags[total_ratings] = 1
     tags = tags.groupby(c.noteIdKey).sum().reset_index(drop=False)
-    tags[c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder] = tags[
-      c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder
-    ].divide(tags[total_ratings], axis=0)
+    tags[c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder] = (
+      tags[c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder]
+      .astype(float)
+      .divide(tags[total_ratings], axis=0)
+    )
     tags = notes[[c.noteIdKey]].merge(tags.drop(columns=total_ratings), how="left")
     return tags[[c.noteIdKey] + c.helpfulTagsTSVOrder + c.notHelpfulTagsTSVOrder]
 
@@ -783,7 +782,7 @@ class PFlipPlusModel(object):
       notes[[c.noteIdKey]]
       .merge(summary, on=c.noteIdKey, how="left")
       .fillna(0.0)
-      .astype(pd.Int64Dtype())
+      .astype("int64[pyarrow]")
     )
     return summary
 
@@ -905,7 +904,7 @@ class PFlipPlusModel(object):
       prepareForTraining: whether notes should be pruned to discard future data.
     """
     # Merge inputs into a single dataframe with relevant info
-    assert scoredNotes[c.tweetIdKey].min() > 0  # tweet should be set for all notes being scored
+    assert scoredNotes[c.tweetIdKey].gt(0).fillna(False).all()
     peerNotes = scoredNotes[[c.noteIdKey, c.tweetIdKey]].merge(
       notes[[c.tweetIdKey, c.noteIdKey, c.classificationKey]].rename(
         columns={c.noteIdKey: "peerNoteId"}
@@ -995,7 +994,7 @@ class PFlipPlusModel(object):
       .merge(totalPeerStabilizationNotes, how="left")
       .merge(totalPeerCrhNotes, how="left")
       .fillna(0)
-      .astype(pd.Int64Dtype())
+      .astype("int64[pyarrow]")
     )
 
   def _prepare_note_info(
@@ -1030,9 +1029,10 @@ class PFlipPlusModel(object):
     assert ((prepareForTraining == False) & (cutoff is None)) | (
       prepareForTraining & (cutoff in {_MIN, _MAX})
     )
-    notes[c.tweetIdKey] = notes[c.tweetIdKey].astype(pd.Int64Dtype())
+
+    notes[c.tweetIdKey] = notes[c.tweetIdKey].astype("int64[pyarrow]")
     noteStatusHistory[c.createdAtMillisKey] = noteStatusHistory[c.createdAtMillisKey].astype(
-      pd.Int64Dtype()
+      "int64[pyarrow]"
     )
 
     # Prep notes
@@ -1072,7 +1072,7 @@ class PFlipPlusModel(object):
 
     # Prep ratings
     # Prune ratings to only include scored notes and other notes on the same post
-    assert scoredNotes[c.tweetIdKey].min() > 0  # tweet should be set for all notes being scored
+    assert scoredNotes[c.tweetIdKey].gt(0).fillna(False).all()
     adjacentNotes = notes[[c.noteIdKey, c.tweetIdKey]].merge(
       scoredNotes[[c.tweetIdKey]].drop_duplicates()
     )[[c.noteIdKey]]
@@ -1168,9 +1168,9 @@ class PFlipPlusModel(object):
       {_LOCAL: 0, _PEER_MISLEADING: 0, _PEER_NON_MISLEADING: 0}
     ).astype(
       {
-        _LOCAL: pd.Int64Dtype(),
-        _PEER_MISLEADING: pd.Int64Dtype(),
-        _PEER_NON_MISLEADING: pd.Int64Dtype(),
+        _LOCAL: "int64[pyarrow]",
+        _PEER_MISLEADING: "int64[pyarrow]",
+        _PEER_NON_MISLEADING: "int64[pyarrow]",
       }
     )
     assert len(scoredNotes) == totalScoredNotes, f"{len(scoredNotes)} vs {totalScoredNotes}"
@@ -1498,10 +1498,13 @@ class PFlipPlusModel(object):
     This conversion is necessary for scikit-learn compatibility.
     """
     for col, dtype in noteInfo.dtypes.to_dict().items():
-      if isinstance(dtype, pd.Int64Dtype):
-        assert noteInfo[col].isna().sum() == 0
-        noteInfo[col] = noteInfo[col].astype(np.int64)
-      if isinstance(dtype, pd.Float64Dtype):
+      dtype_str = str(dtype)
+      if "int" in dtype_str.lower() and "pyarrow" in dtype_str:
+        if noteInfo[col].isna().any():
+          noteInfo[col] = noteInfo[col].astype(np.float64)
+        else:
+          noteInfo[col] = noteInfo[col].astype(np.int64)
+      elif "float" in dtype_str.lower() and "pyarrow" in dtype_str:
         noteInfo[col] = noteInfo[col].astype(np.float64)
     return noteInfo
 

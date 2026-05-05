@@ -1188,7 +1188,6 @@ class GaussianScorer(Scorer):
         scoredNoteFinalRoundRatings,
         on=c.noteIdKey,
         how="left",
-        unsafeAllowed=[c.defaultIndexKey, c.numFinalRoundRatingsKey],
       )
 
       noteScores = noteScores.rename(columns=self._get_note_col_mapping())

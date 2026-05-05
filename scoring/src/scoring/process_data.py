@@ -302,7 +302,6 @@ def _filter_misleading_notes(
     on=c.noteIdKey,
     how="left",
     suffixes=("", "_nsh"),
-    unsafeAllowed=c.createdAtMillisKey,
   )
 
   deletedNoteKey = "deletedNote"

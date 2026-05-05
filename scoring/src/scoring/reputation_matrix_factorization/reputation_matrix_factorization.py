@@ -60,7 +60,7 @@ def get_or_default_if_nan(lookupDict, key, default):
   if key not in lookupDict:
     return default
   val = lookupDict.get(key, default)
-  if np.isnan(val):
+  if pd.isna(val):
     return default
   return val
 

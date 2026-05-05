@@ -120,24 +120,6 @@ def compute_general_helpfulness_scores(
       how="outer",
       lsuffix="_author",
       rsuffix="_rater",
-      unsafeAllowed={
-        c.defaultIndexKey,
-        c.currentlyRatedHelpfulBoolKey,
-        c.currentlyRatedNotHelpfulBoolKey,
-        c.noteCountKey,
-        c.ratingAgreesWithNoteStatusKey,
-        # ratingCountKey was added with the migration to Pandas 2.2.2 because type checking showed
-        # a new conversion from int64 to float64.  Given the outer join and hte data involved, that
-        # type conversion is actually expected.  Additionally, we already have an exception for an
-        # int64 to float64 type conversion for ratingAgreesWithNoteStatusKey, which suggests the only
-        # reason we didn't see warnings for ratingCountKey before was that they type may have already
-        # been float64 going into the join.
-        c.ratingCountKey,
-        c.successfulRatingNotHelpfulCount,
-        c.successfulRatingHelpfulCount,
-        c.unsuccessfulRatingNotHelpfulCount,
-        c.unsuccessfulRatingHelpfulCount,
-      },
     )
     .reset_index()
     .rename({"index": c.raterParticipantIdKey}, axis=1)[
@@ -185,7 +167,6 @@ def compute_general_helpfulness_scores(
       helpfulRatingsOnBadNotesCount,
       on=c.raterParticipantIdKey,
       how="left",
-      unsafeAllowed=c.totalHelpfulHarassmentRatingsPenaltyKey,
     )
     helpfulnessScores[c.totalHelpfulHarassmentRatingsPenaltyKey].fillna(0, inplace=True)
 
