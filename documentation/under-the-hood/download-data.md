@@ -46,7 +46,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 {% accordionItem title="2026-05-28 - New columns for Collaborative Notes suggestions"  %}
 
 - We’ve updated the open-source ratings dataset to add a new `suggestionId`, which is the unique Id of the suggestion (for collaborative notes).
-- We've also updated the open-source note request dataset to add a new `suggestions`, which contains user-entered text suggestions when making note requests.
+- We've also updated the open-source note request dataset to add a new `suggestions`, which contains user-entered text explanations when making note requests for why they think the post might benefit from a note, with associated suggested URL (if there's any).
 
 {% /accordionItem %}
 
