@@ -230,6 +230,11 @@ If your media notes matched a post from `posts_eligible_for_notes`, the response
     * you need to add `matched_media_notes` in `tweet.fields` to have it included in response.
     * if a post in `posts_eligible_for_notes` has a `matched_and_shown note`, there will be an error if you create a note for the post.
 
+### 6. Getting note request suggestions
+When people request a Community Note on the post, they can optionally include both (a) URLs for X posts that they suggest as potential sources for a note, and (b) explanations for why they think the post might benefit from a note.
+You can add below fields in `tweet.fields` to get these data:
+  * `suggested_source_links_with_counts`: each suggested URLs and the number of times each URL was suggested by different people.
+  * `note_request_suggestions`: each explanation together with associated suggested URL (if there's any).
 
 ## Questions & Feedback
 
