@@ -248,6 +248,7 @@ def read_from_tsv(
         convertNAToNone=False,
       )
       noteStatusHistory[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = np.nan
+      noteStatusHistory[c.pcrhAboveThresholdTimeKey] = np.nan
       assert len(noteStatusHistory.columns.values) == len(c.noteStatusHistoryTSVColumns) and all(
         noteStatusHistory.columns == c.noteStatusHistoryTSVColumns
       ), (

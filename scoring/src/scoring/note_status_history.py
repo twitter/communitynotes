@@ -152,6 +152,8 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
   if pd.notna(mergedNote[c.lockedStatusKey]):
     # Clear timestampMillisOfNmrDueToMinStableCrhTimeKey if the note is locked.
     mergedNote[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = -1
+    # Clear pcrhAboveThresholdTimeKey if the note is locked.
+    mergedNote[c.pcrhAboveThresholdTimeKey] = -1
   else:
     # If note is unlocked, allow updates to the stabilization timestamp and first
     # stabilization timestamp.
@@ -163,6 +165,11 @@ def _update_single_note_status_history(mergedNote, currentTimeMillis, newScoredN
         mergedNote[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey] = mergedNote[
           c.timestampMillisOfNmrDueToMinStableCrhTimeKey
         ]
+    # If note is unlocked, allow updates to abovePcrhThresholdTime.
+    if not pd.isna(mergedNote[c.pcrhAboveThresholdTimeKey + newScoredNotesSuffix]):
+      mergedNote[c.pcrhAboveThresholdTimeKey] = mergedNote[
+        c.pcrhAboveThresholdTimeKey + newScoredNotesSuffix
+      ]
 
   if pd.isna(mergedNote[c.createdAtMillisKey + newScoredNotesSuffix]):
     # note used to be scored but isn't now; just retain old info
@@ -309,12 +316,14 @@ def merge_old_and_new_note_statuses(
         c.groupRatingStatusKey,
         c.modelingGroupKey,
         c.updatedTimestampMillisOfNmrDueToMinStableCrhTimeKey,
+        c.pcrhAboveThresholdTimeKey,
         c.multiGroupRatingStatusKey,
         c.modelingMultiGroupKey,
       ]
     ].rename(
       {
         c.createdAtMillisKey: c.createdAtMillisKey + newScoredNotesSuffix,
+        c.pcrhAboveThresholdTimeKey: c.pcrhAboveThresholdTimeKey + newScoredNotesSuffix,
       },
       axis=1,
     ),

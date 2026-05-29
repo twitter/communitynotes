@@ -9,8 +9,10 @@ This approach represents a prelimiary approach to topic assignment while Communi
 evaluates the efficacy of per-topic note scoring.
 """
 
+import concurrent.futures
 from itertools import product
 import logging
+import os
 import re
 from typing import List, Optional, Tuple
 
@@ -88,6 +90,40 @@ def get_seed_term_with_periods():
   return seedTermsWithPeriods
 
 
+def _label_text_chunk(args):
+  """Process a chunk of texts for seed label assignment (used by ProcessPoolExecutor)."""
+  texts_chunk, compiled_regex = args
+  n = len(texts_chunk)
+  labels = np.zeros(n, dtype=np.int64)
+  conflictedLabels = np.empty(n, dtype=object)
+  conflictedLabels[:] = None
+
+  for i, text in enumerate(texts_chunk):
+    matches = compiled_regex.finditer(text.lower())
+    found_topics = set()
+    for match in matches:
+      found_topics.update([Topics[grp].value for grp in match.groupdict() if match.group(grp)])
+
+    if len(found_topics) == 1:
+      labels[i] = found_topics.pop()
+    elif len(found_topics) > 1:
+      labels[i] = Topics.Unassigned.value
+      conflictedLabels[i] = found_topics
+
+  return labels, conflictedLabels
+
+
+def _get_stop_words_vocab_chunk(args):
+  """Extract vocabulary from a chunk of texts (used by ProcessPoolExecutor)."""
+  texts_chunk, custom_tokenizer = args
+  cv = CountVectorizer(tokenizer=custom_tokenizer, token_pattern=None)
+  cv.fit(texts_chunk)
+  return set(cv.vocabulary_.keys())
+
+
+_PARALLEL_CHUNK_MIN_SIZE = 50000
+
+
 class TopicModel(object):
   def __init__(self, unassignedThreshold=0.99):
     """Initialize a list of seed terms for each topic."""
@@ -95,6 +131,8 @@ class TopicModel(object):
     self._unassignedThreshold = {label: unassignedThreshold for label in range(1, len(Topics))}
     self._unassignedThreshold[Topics.InDimensionTwo.value] = 0.98
     self._compiled_regex = self._compile_regex()
+    self._cached_post_text = None
+    self._cached_post_text_notes = None
 
   def _compile_regex(self):
     """Compile a single regex from all seed terms grouped by topic."""
@@ -119,6 +157,8 @@ class TopicModel(object):
   def _make_seed_labels(self, texts: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Produce a label vector based on seed terms.
 
+    Parallelizes regex matching across multiple processes when the input is large enough.
+
     Args:
       texts: array containing strings for topic assignment
 
@@ -127,28 +167,26 @@ class TopicModel(object):
       Tuple[1]: array specifying conflicted labels for texts. Each element is None if not
                 conflicted, or a set of topic labels (ints) if multiple topics matched.
     """
-    labels = np.zeros(texts.shape[0], dtype=np.int64)
-    conflictedLabels = np.empty(texts.shape[0], dtype=object)
-    conflictedLabels[:] = None
+    n = texts.shape[0]
+    num_workers = min(os.cpu_count() or 1, max(1, n // _PARALLEL_CHUNK_MIN_SIZE))
 
-    for i, text in enumerate(texts):
-      matches = self._compiled_regex.finditer(text.lower())
-      found_topics = set()
-      for match in matches:
-        found_topics.update([Topics[grp].value for grp in match.groupdict() if match.group(grp)])
-
-      if len(found_topics) == 1:
-        labels[i] = found_topics.pop()
-      elif len(found_topics) > 1:
-        labels[i] = Topics.Unassigned.value
-        conflictedLabels[i] = found_topics
+    if num_workers <= 1:
+      labels, conflictedLabels = _label_text_chunk((texts, self._compiled_regex))
+    else:
+      chunks = np.array_split(texts, num_workers)
+      args = [(chunk, self._compiled_regex) for chunk in chunks]
+      with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as pool:
+        results = list(pool.map(_label_text_chunk, args))
+      labels = np.concatenate([r[0] for r in results])
+      conflictedLabels = np.concatenate([r[1] for r in results])
 
     conflictedMask = np.array([x is not None for x in conflictedLabels], dtype=bool)
     unassigned_count = np.sum(conflictedMask)
     logger.info(f"  Notes unassigned due to multiple matches: {unassigned_count}")
     return labels, conflictedLabels
 
-  def custom_tokenizer(self, text):
+  @staticmethod
+  def custom_tokenizer(text):
     # This pattern captures help.x.com or x.com/tos even if preceded by http(s):// and with optional trailing paths,
     # otherwise falls back to matching words of at least 2 characters.
     default_preprocessor = CountVectorizer(
@@ -180,16 +218,29 @@ class TopicModel(object):
     from the extracted features).  This prevents the model from training on the same
     tokens used to label the data.
 
+    Parallelizes vocabulary extraction across multiple processes when the input is
+    large enough, then merges the per-chunk vocabularies.
+
     Args:
       texts: array containing strings for topic assignment
 
     Returns:
       List specifying which tokens to exclude from the features.
     """
-    # Extract vocabulary
-    cv = CountVectorizer(tokenizer=self.custom_tokenizer, token_pattern=None)
-    cv.fit(texts)
-    rawVocabulary = cv.vocabulary_.keys()
+    # Extract vocabulary (parallelized over chunks)
+    num_workers = min(os.cpu_count() or 1, max(1, len(texts) // _PARALLEL_CHUNK_MIN_SIZE))
+
+    if num_workers <= 1:
+      cv = CountVectorizer(tokenizer=self.custom_tokenizer, token_pattern=None)
+      cv.fit(texts)
+      rawVocabulary = cv.vocabulary_.keys()
+    else:
+      chunks = np.array_split(texts, num_workers)
+      args = [(chunk, self.custom_tokenizer) for chunk in chunks]
+      with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as pool:
+        vocab_sets = list(pool.map(_get_stop_words_vocab_chunk, args))
+      rawVocabulary = set().union(*vocab_sets)
+
     logger.info(f"  Initial vocabulary length: {len(rawVocabulary)}")
     # Identify stop words
     blockedTokens = set()
@@ -281,12 +332,17 @@ class TopicModel(object):
   def _prepare_post_text(self, notes: pd.DataFrame) -> pd.DataFrame:
     """Concatenate all notes within each post into a single row associated with the post.
 
+    Returns a cached result when called again with the same DataFrame object.
+
     Args:
       notes: dataframe containing raw note text
 
     Returns:
       DataFrame with one post per row containing note text
     """
+    if self._cached_post_text is not None and self._cached_post_text_notes is notes:
+      return self._cached_post_text
+
     postNoteText = (
       notes[[c.tweetIdKey, c.summaryKey]]
       .fillna({c.summaryKey: ""})
@@ -306,6 +362,8 @@ class TopicModel(object):
     postNoteText[c.summaryKey] = [
       text.replace("_", " ").replace("/", " ") for text in postNoteText[c.summaryKey].values
     ]
+    self._cached_post_text = postNoteText
+    self._cached_post_text_notes_id = id(notes)
     return postNoteText
 
   def train_individual_note_topic_classifier(

@@ -248,7 +248,12 @@ class ApplyModelResult(ScoringRule):
     assert (
       noteStatusUpdates[statusColumn]
       .isin(
-        {c.currentlyRatedHelpful, c.currentlyRatedNotHelpful, c.needsMoreRatings, c.needsYourHelp}
+        {
+          c.currentlyRatedHelpful,
+          c.currentlyRatedNotHelpful,
+          c.needsMoreRatings,
+          c.needsYourHelp,
+        }
       )
       .all()
     ), "status must be set to CRH, CRNH, NMR or NYH"
@@ -1185,23 +1190,15 @@ class ApplyGroupModelResult(ScoringRule):
       )
     noteStats.loc[noteStats[c.expansionNoteInterceptKey].isna(), "expansion"] = np.nan
 
-    # Prioritize core over expansion intercepts when available
-    def _get_value(row):
-      idx = row.first_valid_index()
-      # If either core or expansion had an intercept then return whether it was in the valid
-      # range.  If neither had an intercept, return False.  Preference is given to core due
-      # to the ordering when selecting columns from noteStats below.
-      if idx is None:
-        return False
-      elif row[idx] == 1.0:
-        return True
-      elif row[idx] == 0.0:
-        return False
-      else:
-        assert False, f"unexpected value: {row[idx]}"
-
+    # Prioritize core over expansion intercepts when available.
+    # Use core when non-NaN, else fall back to expansion, else False.
     with c.time_block("Get value apply for group model"):
-      noteStats["actionable"] = noteStats[["core", "expansion"]].apply(_get_value, axis=1)
+      noteStats["actionable"] = (
+        noteStats["core"]
+        .where(noteStats["core"].notna(), noteStats["expansion"])
+        .fillna(False)
+        .astype(bool)
+      )
 
     # Filter set of note status updates to only include actionable notes
     actionableNotes = noteStats[noteStats["actionable"]][[c.noteIdKey]]
