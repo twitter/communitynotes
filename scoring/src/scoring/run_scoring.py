@@ -44,6 +44,12 @@ from .mf_multi_group_scorer import (
 )
 from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
 from .pandas_utils import get_df_fingerprint, get_df_info, keep_columns
+from .pcrh_model import (
+  PCRHModel,
+  compute_pcrh_predictions,
+  merge_pcrh_results,
+  suppress_pcrh_ineligible,
+)
 from .pflip_plus_model import LABEL as PFLIP_LABEL, PFlipPlusModel
 from .post_selection_similarity import PostSelectionSimilarity, apply_post_selection_similarity
 from .process_data import CommunityNotesDataLoader, filter_input_data_for_testing, preprocess_data
@@ -1391,6 +1397,7 @@ def run_prescoring(
   pd.DataFrame,
   sklearn.pipeline.Pipeline,
   PFlipPlusModel,
+  PCRHModel,
   c.PrescoringMetaOutput,
   pd.DataFrame,
   pd.DataFrame,
@@ -1522,6 +1529,17 @@ def run_prescoring(
     pflipPlusModel = PFlipPlusModel(seed=seed)
     pflipPlusModel.fit(notes, ratings, noteStatusHistory, prescoringRaterModelOutput)
 
+  with c.time_block("Fitting PCRH model"):
+    pcrhModel = PCRHModel(seed=seed)
+    pcrhModel.fit(
+      notes,
+      ratings,
+      noteStatusHistory,
+      prescoringRaterModelOutput,
+      userEnrollment=userEnrollment,
+      noteTopics=noteTopics,
+    )
+
   with c.time_block("Computing empirical prior."):
     currentTime = time.time()
     priorNotes = notes[
@@ -1593,6 +1611,7 @@ def run_prescoring(
       prescoringRaterModelOutput=prescoringRaterModelOutput,
       noteTopicClassifier=noteTopicClassifierPipe,
       pflipClassifier=pflipPlusModel,
+      pcrhClassifier=pcrhModel,
       prescoringMetaOutput=prescoringMetaOutput,
       checkFlips=checkFlips,
       enableNmrDueToMinStableCrhTime=enableNmrDueToMinStableCrhTime,
@@ -1607,6 +1626,7 @@ def run_prescoring(
     prescoringRaterModelOutput,
     noteTopicClassifierPipe,
     pflipPlusModel,
+    pcrhModel,
     prescoringMetaOutput,
     scoredNotes,
     empiricalTotals,
@@ -1874,6 +1894,8 @@ def run_final_note_scoring(
   enableNmrDueToMinStableCrhTime: bool = True,
   maxWorkers: Optional[int] = None,
   empiricalTotals: Optional[pd.DataFrame] = None,
+  pcrhClassifier: Optional[PCRHModel] = None,
+  pcrhRespectFirmReject: bool = True,
   notesToRescore: Optional[c.NotesToRescore] = None,
 ):
   metrics = {}
@@ -2032,6 +2054,19 @@ def run_final_note_scoring(
     topicModel = TopicModel()
     noteTopics = topicModel.get_note_topics(notesFull, noteTopicClassifiers=[noteTopicClassifier])
 
+  with c.time_block("Computing PCRH predictions."):
+    pcrhPredictions = compute_pcrh_predictions(
+      pcrhClassifier,
+      notes,
+      ratings,
+      noteStatusHistory,
+      prescoringRaterModelOutput,
+      previousScoredNotes,
+      c.epochMillis,
+      userEnrollment=userEnrollment,
+      noteTopics=noteTopics,
+    )
+
   with c.time_block("Post Selection Similarity: Final Scoring"):
     logger.info(f"Post Selection Similarity Final Scoring: begin with {len(ratings)} ratings.")
     ratings = apply_post_selection_similarity(
@@ -2118,6 +2153,9 @@ def run_final_note_scoring(
       auxiliaryNoteInfo[col] = auxiliaryNoteInfo[col].fillna(0).astype(np.int64)
 
   scoredNotes = scoredNotes.merge(pflipPredictions, how="left")
+  scoredNotes, auxiliaryNoteInfo = merge_pcrh_results(
+    pcrhPredictions, scoredNotes, auxiliaryNoteInfo
+  )
   scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo = post_note_scoring(
     scorers,
     scoredNotes,
@@ -2130,6 +2168,10 @@ def run_final_note_scoring(
     checkFlips,
     enableNmrDueToMinStableCrhTime,
   )
+
+  # Suppress PCRH for ineligible notes after passthrough concat so that
+  # passthrough notes whose decidedBy changed also get suppressed.
+  scoredNotes = suppress_pcrh_ineligible(scoredNotes)
 
   # Concat final scoring results for newly-scored notes with the results for old notes not scores.
   if scoredNotesPassthrough is not None:
@@ -2359,6 +2401,7 @@ def run_scoring(
     prescoringRaterModelOutput,
     prescoringNoteTopicClassifier,
     prescoringPflipClassifier,
+    prescoringPcrhClassifier,
     prescoringMetaOutput,
     prescoringScoredNotes,
     empiricalTotals,
@@ -2409,6 +2452,7 @@ def run_scoring(
     prescoringRaterModelOutput=prescoringRaterModelOutput,
     noteTopicClassifier=prescoringNoteTopicClassifier,
     pflipClassifier=prescoringPflipClassifier,
+    pcrhClassifier=prescoringPcrhClassifier,
     prescoringMetaOutput=prescoringMetaOutput,
     checkFlips=checkFlips,
     previousScoredNotes=previousScoredNotes,

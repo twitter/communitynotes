@@ -69,6 +69,17 @@ helpfulnessLevelKey = "helpfulnessLevel"
 createdAtMillisKey = "createdAtMillis"
 summaryKey = "summary"
 noteTopicKey = "noteTopic"
+
+# Predicted CRH (PCRH) early-exit model
+pcrhAboveThresholdTimeKey = "abovePcrhThresholdTime"
+pcrhExitNKey = "pcrhExitN"
+pcrhExitProbaKey = "pcrhExitProba"
+pcrhRevokedKey = "pcrhRevoked"
+pcrhRevokeNKey = "pcrhRevokeN"
+pcrhFinalPredKey = "pcrhFinalPred"
+pcrhPerNThresholds = {8: 0.77, 10: 0.78, 15: 0.76, 20: 0.74, 30: 0.70, 50: 0.67}
+pcrhRevokeThreshold = 0.5
+pcrhTrainingCutoffMillis = 1741564800000  # March 10, 2026 00:00:00 UTC
 authorTopNotHelpfulTagValues = "authorTopNotHelpfulTagValues"
 modelingPopulationKey = "modelingPopulation"
 modelingGroupKey = "modelingGroup"
@@ -712,6 +723,7 @@ noteStatusHistoryTSVColumnsAndTypes = [
   (currentModelingMultiGroupKey, np.double),  # TODO: int
   (timestampMinuteOfFinalScoringOutput, np.double),  # double because nullable.
   (timestampMillisOfFirstNmrDueToMinStableCrhTimeKey, np.double),  # double because nullable.
+  (pcrhAboveThresholdTimeKey, np.double),  # double because nullable.
 ]
 noteStatusHistoryTSVColumns = [col for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
 noteStatusHistoryTSVTypes = [dtype for (col, dtype) in noteStatusHistoryTSVColumnsAndTypes]
@@ -861,6 +873,11 @@ auxiliaryScoredNotesTSVColumnsAndTypes = (
   + [
     (coreNegFactorPopulationSampledRatingCountKey, np.int64),
     (corePosFactorPopulationSampledRatingCountKey, np.int64),
+    (pcrhExitNKey, np.double),
+    (pcrhExitProbaKey, np.double),
+    (pcrhRevokedKey, pd.BooleanDtype()),
+    (pcrhRevokeNKey, np.double),
+    (pcrhFinalPredKey, pd.BooleanDtype()),
   ]
 )
 auxiliaryScoredNotesTSVColumns = [col for (col, dtype) in auxiliaryScoredNotesTSVColumnsAndTypes]
@@ -996,6 +1013,7 @@ noteModelOutputTSVColumnsAndTypes = [
   (gaussianCoreWithTopicsNoteInterceptNoCorrelatedKey, np.double),
   (gaussianCoreWithTopicsNoteInterceptPopulationSampledKey, np.double),
   (gaussianCoreWithTopicsNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (pcrhAboveThresholdTimeKey, np.double),
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
