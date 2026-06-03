@@ -646,6 +646,7 @@ disagreeKey = "disagree"
 ratedOnTweetIdKey = "ratedOnTweetId"
 ratingSourceBucketedKey = "ratingSourceBucketed"
 suggestionKey = "suggestion"
+suggestionIdKey = "suggestionId"
 ratingTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
@@ -667,11 +668,17 @@ ratingTSVColumns = [col for (col, dtype) in ratingTSVColumnsAndTypes]
 ratingTSVTypes = [dtype for (col, dtype) in ratingTSVColumnsAndTypes]
 ratingTSVTypeMapping = {col: dtype for (col, dtype) in ratingTSVColumnsAndTypes}
 
-# The on-disk public ratings TSV has one extra trailing column ("suggestion",
-# added by BirdwatchTsvConverter in Jan 2026) that the scoring pipeline ignores.
-# Reading code uses these public-format constants and then drops the column;
-# downstream code keeps using ratingTSVColumns / ratingTSVTypeMapping.
-publicRatingTSVColumnsAndTypes = ratingTSVColumnsAndTypes + [(suggestionKey, object)]
+# The on-disk public ratings TSV has extra trailing columns the scoring pipeline
+# ignores: "suggestion" (added by BirdwatchTsvConverter in Jan 2026) and
+# "suggestionId" (added in May 2026). Reading code uses these public-format
+# constants and then drops the columns; downstream code keeps using
+# ratingTSVColumns / ratingTSVTypeMapping.
+publicRatingTSVColumnsAndTypes = ratingTSVColumnsAndTypes + [
+  (suggestionKey, object),
+  # Nullable Int64 so the reader tolerates the column being absent from older
+  # TSV inputs.
+  (suggestionIdKey, pd.Int64Dtype()),
+]
 publicRatingTSVColumns = [col for (col, _) in publicRatingTSVColumnsAndTypes]
 publicRatingTSVTypeMapping = {col: dtype for (col, dtype) in publicRatingTSVColumnsAndTypes}
 

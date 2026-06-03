@@ -2169,10 +2169,6 @@ def run_final_note_scoring(
     enableNmrDueToMinStableCrhTime,
   )
 
-  # Suppress PCRH for ineligible notes after passthrough concat so that
-  # passthrough notes whose decidedBy changed also get suppressed.
-  scoredNotes = suppress_pcrh_ineligible(scoredNotes)
-
   # Concat final scoring results for newly-scored notes with the results for old notes not scores.
   if scoredNotesPassthrough is not None:
     # Convert scoredNotes dtypes to match scoredNotesPassthrough
@@ -2198,6 +2194,18 @@ def run_final_note_scoring(
     )
 
     newNoteStatusHistory = pd.concat([newNoteStatusHistory, noteStatusHistoryPassthrough])
+
+  previousPcrhNoteIds = None
+  if previousScoredNotes is not None and c.pcrhAboveThresholdTimeKey in previousScoredNotes.columns:
+    previousPcrhNoteIds = set(
+      previousScoredNotes.loc[
+        previousScoredNotes[c.pcrhAboveThresholdTimeKey].fillna(0) > 0, c.noteIdKey
+      ]
+    )
+  scoredNotes = suppress_pcrh_ineligible(scoredNotes, previousPcrhNoteIds=previousPcrhNoteIds)
+  newNoteStatusHistory[c.pcrhAboveThresholdTimeKey] = newNoteStatusHistory[c.noteIdKey].map(
+    scoredNotes.set_index(c.noteIdKey)[c.pcrhAboveThresholdTimeKey]
+  )
 
   return scoredNotes, newNoteStatusHistory, auxiliaryNoteInfo, metrics
 
@@ -2257,6 +2265,8 @@ def post_note_scoring(
     assert len(auxiliaryNoteInfo) == len(
       noteStatusHistory
     ), "noteStatusHistory should be complete, and all notes should be scored."
+
+  scoredNotes = suppress_pcrh_ineligible(scoredNotes)
 
   # Merge scoring results into noteStatusHistory, check flip rates, and set rescoringActiveRules.
   with c.time_block("Post-scorers: Update note status history"):

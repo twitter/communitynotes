@@ -40,7 +40,7 @@ def read_from_strings(
     names=c.publicRatingTSVColumns,
     dtype=c.publicRatingTSVTypeMapping,
   )
-  ratings = ratings.drop(columns=c.suggestionKey)
+  ratings = ratings.drop(columns=[c.suggestionKey, c.suggestionIdKey])
   noteStatusHistory = pd.read_csv(
     StringIO(noteStatusHistoryStr),
     sep="\t",
@@ -219,7 +219,7 @@ def read_from_tsv(
       f"ratings columns don't match: \n{[col for col in ratings.columns if not col in c.publicRatingTSVColumns]} are extra columns, "
       + f"\n{[col for col in c.publicRatingTSVColumns if not col in ratings.columns]} are missing."
     )  # ensure constants file is up to date.
-    ratings = ratings.drop(columns=c.suggestionKey)
+    ratings = ratings.drop(columns=[c.suggestionKey, c.suggestionIdKey])
 
   if noteStatusHistoryPath is None:
     noteStatusHistory = None

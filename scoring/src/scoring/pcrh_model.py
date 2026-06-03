@@ -760,12 +760,13 @@ def compute_pcrh_predictions(
   return _convert_predictions_to_timestamps(preds, previousPcrhTimes, currentTimeMillis)
 
 
-def suppress_pcrh_ineligible(scoredNotes: pd.DataFrame) -> pd.DataFrame:
+def suppress_pcrh_ineligible(
+  scoredNotes: pd.DataFrame, previousPcrhNoteIds: Optional[Set] = None
+) -> pd.DataFrame:
   """Set pcrhAboveThresholdTime to -1 for notes not eligible for PCRH.
 
   Ineligible: not decided by CoreModel, firm-rejected by core, or
-  classified NOT_MISLEADING. Must be called after all scoredNotes
-  (including passthrough) are assembled.
+  classified NOT_MISLEADING. Must be called after decidedBy is assigned.
   """
   if c.pcrhAboveThresholdTimeKey not in scoredNotes.columns:
     return scoredNotes
@@ -782,9 +783,10 @@ def suppress_pcrh_ineligible(scoredNotes: pd.DataFrame) -> pd.DataFrame:
     if c.classificationKey in scoredNotes.columns
     else False
   )
-  suppress = (notCore | coreFirmRejected | notMisleading) & (
-    scoredNotes[c.pcrhAboveThresholdTimeKey].fillna(0) > 0
-  )
+  hadPositive = scoredNotes[c.pcrhAboveThresholdTimeKey].fillna(0) > 0
+  if previousPcrhNoteIds is not None:
+    hadPositive |= scoredNotes[c.noteIdKey].isin(previousPcrhNoteIds)
+  suppress = (notCore | coreFirmRejected | notMisleading) & hadPositive
   scoredNotes.loc[suppress.values, c.pcrhAboveThresholdTimeKey] = -1.0
   return scoredNotes
 
@@ -798,7 +800,7 @@ def merge_pcrh_results(
 
   Ensures all PCRH auxiliary columns exist in auxiliaryNoteInfo.
   Does NOT apply eligibility suppression -- call suppress_pcrh_ineligible
-  after assembling final scoredNotes (including passthrough notes).
+  after decidedBy is assigned.
   """
   if c.pcrhAboveThresholdTimeKey in pcrhPredictions.columns and len(pcrhPredictions) > 0:
     pcrhMain = pcrhPredictions[[c.noteIdKey, c.pcrhAboveThresholdTimeKey]]
