@@ -30,7 +30,6 @@ from .notes_data_client import NotesDataClient
 from .prompts import (
   build_generation_prompt,
   build_update_decider_prompt,
-  get_evaluate_whether_single_suggestion_is_incorporated_prompt,
   get_grok_rejector_prompt,
   get_live_note_candidate_rejector_prompt,
   get_live_note_generation_prompt,
@@ -48,11 +47,15 @@ class LiveNoteGenerator:
     max_retries: int = 10,
     media_eligibility_llm_client: GrokClient = None,
     rejector_llm_client: Optional[GrokClient] = None,
+    generation_llm_client: Optional[GrokClient] = None,
   ):
     self.logger = logger
     if llm_client is None:
       llm_client = SimpleGrokEAPIClient()
     self.llm_client = llm_client
+    # Client used for the live note generation step (initial candidate and
+    # media-pipeline regeneration). Defaults to the main client when not set.
+    self.generation_llm_client = generation_llm_client or self.llm_client
     self.media_eligibility_llm_client = media_eligibility_llm_client or self.llm_client
     if notes_data_client is None:
       raise ValueError("notes_data_client must be provided")
@@ -69,7 +72,7 @@ class LiveNoteGenerator:
         past_live_note_versions_with_suggestions=[],
       ),
     )
-    version_info_str = f"{self.llm_client.get_model_info()}/{prompt_base}"
+    version_info_str = f"{self.generation_llm_client.get_model_info()}/{prompt_base}"
     self.version_info = hashlib.sha256(version_info_str.encode("utf-8")).hexdigest()
 
   def hydrate_context_for_tweet(
@@ -90,12 +93,20 @@ class LiveNoteGenerator:
         self.notes_data_client.get_previous_live_note_versions(tweet_id)
       )
     note_contents = self.notes_data_client.get_note_contents(tweet_id)
+    try:
+      note_request_and_reply_info = self.notes_data_client.get_note_request_and_reply_info(tweet_id)
+    except Exception as e:
+      self.logger.warning(
+        f"Failed to fetch note request and reply info for tweet {tweet_id} (non-fatal): {e}"
+      )
+      note_request_and_reply_info = None
     self._increment_stat(tracking_stats, "hydrate_context.successes")
     return ContextForGeneration(
       tweet_id=tweet_id,
       live_note_version_id=live_note_version_id,
       note_contents=note_contents,
       past_live_note_versions_with_suggestions=past_live_note_versions_with_suggestions,
+      note_request_and_reply_info=note_request_and_reply_info,
     )
 
   def generate_candidate_live_note(
@@ -119,43 +130,6 @@ class LiveNoteGenerator:
 
     self._increment_stat(tracking_stats, "generate_candidate.successes")
     return grok_live_note_result
-
-  def merge_post_hoc_suggestion_evaluations_with_grok_generated_suggestion_evaluations(
-    self,
-    grok_generated_suggestion_evaluations: dict[int, SuggestionEvaluation],
-    post_hoc_suggestion_evaluations: dict[int, SuggestionEvaluation],
-  ) -> dict[int, SuggestionEvaluation]:
-    """
-    Merge post-hoc suggestion evaluations with Grok-generated suggestion evaluations.
-    Enables the rest of the code to work whether Grok-generated suggestion evaluations are requested or not.
-    """
-    if grok_generated_suggestion_evaluations is None:
-      grok_generated_suggestion_evaluations = {}
-
-    for suggestion_id, suggestion_evaluation in post_hoc_suggestion_evaluations.items():
-      if suggestion_id in grok_generated_suggestion_evaluations:
-        grok_generated_suggestion_evaluations[
-          suggestion_id
-        ].post_hoc_incorporated_status = suggestion_evaluation.incorporated_status
-        grok_generated_suggestion_evaluations[
-          suggestion_id
-        ].post_hoc_incorporated_explanation = suggestion_evaluation.incorporated_explanation
-        grok_generated_suggestion_evaluations[
-          suggestion_id
-        ].post_hoc_decision_explanation = suggestion_evaluation.decision_explanation
-        if grok_generated_suggestion_evaluations[suggestion_id].incorporated_status is None:
-          grok_generated_suggestion_evaluations[
-            suggestion_id
-          ].incorporated_status = suggestion_evaluation.incorporated_status
-          grok_generated_suggestion_evaluations[
-            suggestion_id
-          ].incorporated_explanation = suggestion_evaluation.incorporated_explanation
-          grok_generated_suggestion_evaluations[
-            suggestion_id
-          ].decision_explanation = suggestion_evaluation.decision_explanation
-      else:
-        grok_generated_suggestion_evaluations[suggestion_id] = suggestion_evaluation
-    return grok_generated_suggestion_evaluations
 
   def check_if_post_has_few_enough_previous_crnh_live_note_versions(
     self,
@@ -296,15 +270,6 @@ class LiveNoteGenerator:
         context, new_live_note_version, tracking_stats=tracking_stats
       )
 
-    post_hoc_suggestion_evaluations = self.determine_if_suggestions_are_incorporated_post_hoc(
-      context, new_live_note_version, tracking_stats=tracking_stats
-    )
-    new_live_note_version.suggestion_evaluations = (
-      self.merge_post_hoc_suggestion_evaluations_with_grok_generated_suggestion_evaluations(
-        new_live_note_version.suggestion_evaluations, post_hoc_suggestion_evaluations
-      )
-    )
-
     if new_live_note_version.update_decision.should_update:
       new_live_note_version.notifications = self.determine_notifications(
         context, new_live_note_version, tracking_stats=tracking_stats
@@ -416,69 +381,6 @@ class LiveNoteGenerator:
     )
     self._increment_stat(tracking_stats, "determine_notifications.successes")
     return result
-
-  def determine_if_suggestions_are_incorporated_post_hoc(
-    self,
-    context: ContextForGeneration,
-    new_live_note_result: LiveNoteVersion,
-    tracking_stats: LiveNoteTrackingStats,
-    only_check_suggestions_from_latest_version: bool = False,
-  ) -> dict[int, SuggestionEvaluation]:
-    """
-    Parallelizable. Currently written in series for simplicity.
-    Also, can use a simpler model for this (e.g. small model if no tool use)
-    """
-    if (
-      only_check_suggestions_from_latest_version
-      and len(context.past_live_note_versions_with_suggestions) > 0
-    ):
-      previous_versions_to_use = [context.past_live_note_versions_with_suggestions[0]]
-    else:
-      previous_versions_to_use = context.past_live_note_versions_with_suggestions
-
-    self._increment_stat(tracking_stats, "post_hoc_suggestions_eval.attempts")
-    suggestion_evaluations = {}
-    for previous_live_note_version in previous_versions_to_use:
-      for suggestion in previous_live_note_version.suggestions:
-        suggestion_evaluations[
-          suggestion.suggestion_id
-        ] = self.determine_if_suggestion_is_incorporated_post_hoc(
-          previous_live_note_version,
-          new_live_note_result,
-          suggestion,
-          tracking_stats=tracking_stats,
-        )
-    self._increment_stat(tracking_stats, "post_hoc_suggestions_eval.successes")
-    return suggestion_evaluations
-
-  def determine_if_suggestion_is_incorporated_post_hoc(
-    self,
-    previous_live_note_version: LiveNoteVersion,
-    new_live_note_result: LiveNoteVersion,
-    suggestion: Suggestion,
-    tracking_stats: LiveNoteTrackingStats,
-  ) -> SuggestionEvaluation:
-    try:
-      self._increment_stat(tracking_stats, "post_hoc_suggestions.llm_call.attempts")
-      prompt = get_evaluate_whether_single_suggestion_is_incorporated_prompt(
-        previous_live_note_version, new_live_note_result, suggestion
-      )
-      self.logger.info(
-        f"Evaluating whether suggestion {suggestion.suggestion_id} is incorporated. Prompt:\n{format_prompt_for_logging(prompt)}"
-      )
-      grok_response = self.llm_client.call(prompt)
-      self.logger.info(
-        f"Grok response for suggestion {suggestion.suggestion_id} evaluation:\n{format_response_for_logging(grok_response)}"
-      )
-      result = parse_answer_from_grok_post_hoc_suggestion_evaluation_response(grok_response)
-      self._increment_stat(tracking_stats, "post_hoc_suggestions.llm_call.successes")
-      return result
-    except Exception as e:
-      self._increment_stat(tracking_stats, "post_hoc_suggestions.llm_call.failures")
-      self._increment_stat(tracking_stats, "post_hoc_suggestions.llm_call.exceptions")
-      if isinstance(e, ValueError):
-        self._increment_stat(tracking_stats, "post_hoc_suggestions.llm_call.parse_errors")
-      raise
 
   def decide_whether_to_update(
     self,
@@ -836,14 +738,14 @@ class LiveNoteGenerator:
         self.logger.info(
           f"Getting Grok draft live note generation for post {context.tweet_id}. Prompt:\n{format_prompt_for_logging(prompt)}"
         )
-        full_resp = self.llm_client.call(prompt, full_response=True)
+        full_resp = self.generation_llm_client.call(prompt, full_response=True)
         grok_response, citation_urls = _extract_text_and_citations(full_resp)
         self.logger.info(
           f"Grok response for live note generation for post {context.tweet_id}:\n{format_response_for_logging(grok_response)}"
         )
 
         try:
-          result = parse_answer_from_grok_generation_response(grok_response, self.logger)
+          result = parse_json_generation_response(grok_response, self.logger)
         except ValueError:
           self._increment_stat(tracking_stats, f"{stat_prefix}.llm_call.parse_errors")
           self._increment_stat(tracking_stats, f"{stat_prefix}.llm_call.failures")
@@ -853,11 +755,14 @@ class LiveNoteGenerator:
         # Merge citation URLs into parsed_sources
         _merge_citation_urls(result, citation_urls)
 
-        story_assessment_match = re.search(
-          r"<STORY_ASSESSMENT>(.*?)</STORY_ASSESSMENT>", grok_response, re.DOTALL
-        )
-        if story_assessment_match:
-          result.story_assessment = story_assessment_match.group(1).strip()
+        # JSON parser extracts story_assessment from the JSON payload; fall
+        # back to XML tag extraction for responses that used XML format.
+        if not result.story_assessment:
+          story_assessment_match = re.search(
+            r"<STORY_ASSESSMENT>(.*?)</STORY_ASSESSMENT>", grok_response, re.DOTALL
+          )
+          if story_assessment_match:
+            result.story_assessment = story_assessment_match.group(1).strip()
 
         if not self.notes_data_client.check_note_character_limit(result.short_live_note):
           self._increment_stat(
@@ -885,131 +790,156 @@ class LiveNoteGenerator:
     return None
 
 
-def _parse_str_from_tag(response: str, tag_name: str, missing_ok: bool = False) -> str:
-  tag_match = re.search(rf"<{tag_name}>(.*?)</{tag_name}>", response, re.DOTALL)
-  if not tag_match:
-    if missing_ok:
-      return None
-    raise ValueError(f"Could not find {tag_name} in response: {response}")
-  tag_str = tag_match.group(1).strip()
-  return tag_str
+def parse_json_generation_response(response, logger):
+  """Parse a JSON generation response into a LiveNoteVersion.
 
+  Expects raw JSON (or JSON with code fences stripped as a safety fallback).
+  Raises ValueError if JSON parsing fails.
+  """
+  text = response.strip()
 
-def parse_answer_from_grok_post_hoc_suggestion_evaluation_response(
-  response: str,
-) -> SuggestionEvaluation:
-  incorporated_status_str = _parse_str_from_tag(response, "INCORPORATED")
-  explanation_str = _parse_str_from_tag(response, "INCORPORATED_EXPLANATION")
-  return SuggestionEvaluation(
-    is_incorporated=incorporated_status_str in set(["YES", "PARTIALLY"]),
-    incorporated_status=incorporated_status_str,
-    incorporated_explanation=explanation_str,
-  )
+  # Strip markdown code fences
+  if "```json" in text:
+    start = text.find("```json") + 7
+    end = text.find("```", start)
+    if end > start:
+      text = text[start:end].strip()
+  elif "```" in text:
+    start = text.find("```") + 3
+    end = text.find("```", start)
+    if end > start:
+      text = text[start:end].strip()
 
-
-def parse_answer_from_grok_update_decision_response(response: str) -> UpdateDecision:
-  should_update_str = _parse_str_from_tag(response, "SHOULD_UPDATE")
-  update_explanation_str = _parse_str_from_tag(response, "UPDATE_EXPLANATION")
-  difference_from_previous_str = _parse_str_from_tag(response, "DIFFERENCE_EXPLANATION")
-  return UpdateDecision(
-    should_update=(should_update_str == "YES"),
-    update_explanation=update_explanation_str,
-    difference_from_previous=difference_from_previous_str,
-  )
-
-
-def parse_answer_from_grok_reject_response(response: str) -> RejectionDecision:
-  should_reject_str = _parse_str_from_tag(response, "REJECT")
-  reject_reason_str = _parse_str_from_tag(response, "REJECT_REASON")
-  retryable_str = _parse_str_from_tag(response, "RETRYABLE")
-  if should_reject_str not in set(["YES", "NO"]):
-    raise ValueError(f"Invalid should_reject value: {should_reject_str} (must be YES or NO)")
-  if retryable_str not in set(["YES", "NO"]):
-    raise ValueError(f"Invalid retryable value: {retryable_str} (must be YES or NO)")
-  return RejectionDecision(
-    should_reject=should_reject_str == "YES", rejection_reason=reject_reason_str
-  )
-
-
-def parse_suggestion_explanations_from_grok_response(
-  response: str, logger
-) -> dict[int, SuggestionEvaluation]:
-  suggestion_explanations_str = _parse_str_from_tag(
-    response, "SUGGESTION_EXPLANATIONS", missing_ok=True
-  )
-  if suggestion_explanations_str is None:
-    return {}
   try:
-    suggestion_explanations_list = json.loads(suggestion_explanations_str)
-
-    suggestion_evaluations_dict = {}
-    for explanation in suggestion_explanations_list:
-      suggestion_evaluations_dict[int(explanation["suggestion_id"])] = SuggestionEvaluation(
-        is_incorporated=explanation["incorporated_status"] == "YES"
-        or explanation["incorporated_status"] == "PARTIALLY",
-        incorporated_status=explanation["incorporated_status"],
-        incorporated_explanation=explanation["incorporated_explanation"]
-        if "incorporated_explanation" in explanation
-        else None,
-        decision_explanation=explanation["decision_explanation"],
-      )
-    return suggestion_evaluations_dict
-  except Exception as e:
-    logger.error(
-      f"Error parsing suggestion explanations from Grok response: {e}. Response: {suggestion_explanations_str}",
-      exc_info=True,
-    )
-    return {}
-
-
-def _parse_date_to_ms(date_str: str) -> Optional[int]:
-  if not date_str or not date_str.strip():
-    return None
-  s = date_str.strip()
-  for fmt in [
-    "%Y-%m-%d",
-    "%Y-%m-%d %H:%M",
-    "%B %d, %Y",
-    "%b %d, %Y",
-    "%d %B %Y",
-    "%d %b %Y",
-    "%m/%d/%Y",
-    "%d/%m/%Y",
-  ]:
-    try:
-      return int(datetime.datetime.strptime(s, fmt).timestamp() * 1000)
-    except ValueError:
-      continue
-  return None
-
-
-def _parse_sources_json(sources_str: str) -> list[Source]:
-  if not sources_str:
-    return []
-
-  sources_str = sources_str.strip()
-  try:
-    data = json.loads(sources_str)
+    data = json.loads(text)
   except json.JSONDecodeError:
-    return []
+    json_match = re.search(r"\{[\s\S]*\}", text)
+    if json_match:
+      try:
+        data = json.loads(json_match.group())
+      except json.JSONDecodeError:
+        raise ValueError("Failed to parse JSON from generation response")
+    else:
+      raise ValueError("No JSON object found in generation response")
 
-  if not isinstance(data, list):
-    return []
+  classification = data.get("classification", "")
+  category = data.get("category", "")
+  proposed_note = data.get("proposed_note", "")
+  detail = data.get("detail", "")
+  sources_considered_raw = data.get("sources_considered", [])
+  story_assessment = data.get("story_assessment")
+  suggestion_explanations_raw = data.get("suggestion_explanations")
 
+  if not proposed_note:
+    raise ValueError("JSON response missing 'proposed_note'")
+  if not classification:
+    raise ValueError("JSON response missing 'classification'")
+  if not category:
+    raise ValueError("JSON response missing 'category'")
+
+  sources_considered_str = (
+    json.dumps(sources_considered_raw, indent=2) if sources_considered_raw else "[]"
+  )
+  parsed_sources = _parse_sources_from_json(sources_considered_raw)
+
+  suggestion_evaluations = {}
+  if suggestion_explanations_raw and isinstance(suggestion_explanations_raw, list):
+    for item in suggestion_explanations_raw:
+      if not isinstance(item, dict):
+        continue
+      try:
+        sid = int(item["suggestion_id"])
+        status = item.get("incorporated_status", "NO")
+        suggestion_evaluations[sid] = SuggestionEvaluation(
+          is_incorporated=status in ("YES", "PARTIALLY"),
+          incorporated_status=status,
+          incorporated_explanation=item.get("incorporated_explanation"),
+          decision_explanation=item.get("decision_explanation"),
+        )
+      except (KeyError, ValueError):
+        continue
+
+  return LiveNoteVersion(
+    live_note_classification=classification,
+    category=category,
+    short_live_note=proposed_note,
+    long_live_note=detail,
+    sources_considered=sources_considered_str,
+    suggestion_evaluations=suggestion_evaluations if suggestion_evaluations else {},
+    parsed_sources=parsed_sources,
+    story_assessment=story_assessment,
+  )
+
+
+def _parse_sources_from_json(sources_list):
+  """Parse sources from JSON array into Source objects."""
+  if not sources_list or not isinstance(sources_list, list):
+    return []
   sources = []
-  for item in data:
+  for item in sources_list:
     if not isinstance(item, dict):
       continue
     sources.append(
       Source(
         url=item.get("url"),
         explanation=item.get("summary_and_impact_on_analysis"),
-        created_at_ms=_parse_date_to_ms(item.get("date")),
         source_type=item.get("source_type"),
         source_detail=item.get("source_detail"),
       )
     )
   return sources
+
+
+def _parse_json_response(response: str) -> dict:
+  """Extract and parse a JSON object from an LLM response.
+
+  Handles responses with ```json code fences, bare JSON, or JSON embedded
+  in other text.
+  """
+  text = response.strip()
+
+  if "```json" in text:
+    start = text.find("```json") + 7
+    end = text.find("```", start)
+    if end > start:
+      text = text[start:end].strip()
+  elif "```" in text:
+    start = text.find("```") + 3
+    end = text.find("```", start)
+    if end > start:
+      text = text[start:end].strip()
+
+  try:
+    return json.loads(text)
+  except json.JSONDecodeError:
+    json_match = re.search(r"\{[\s\S]*\}", text)
+    if json_match:
+      return json.loads(json_match.group())
+    raise ValueError("No JSON object found in response")
+
+
+def parse_answer_from_grok_update_decision_response(response: str) -> UpdateDecision:
+  data = _parse_json_response(response)
+  should_update_str = data.get("should_update", "NO")
+  return UpdateDecision(
+    should_update=(should_update_str == "YES"),
+    update_explanation=data.get("update_explanation", ""),
+    difference_from_previous=data.get("difference_explanation", ""),
+  )
+
+
+def parse_answer_from_grok_reject_response(response: str) -> RejectionDecision:
+  data = _parse_json_response(response)
+  should_reject_str = data.get("reject", "YES")
+  retryable_str = data.get("retryable", "NO")
+  if should_reject_str not in ("YES", "NO"):
+    raise ValueError(f"Invalid reject value: {should_reject_str} (must be YES or NO)")
+  if retryable_str not in ("YES", "NO"):
+    raise ValueError(f"Invalid retryable value: {retryable_str} (must be YES or NO)")
+  return RejectionDecision(
+    should_reject=should_reject_str == "YES",
+    rejection_reason=data.get("reject_reason", ""),
+  )
 
 
 def _extract_text_and_citations(full_resp) -> tuple[str, list[str]]:
@@ -1044,23 +974,3 @@ def _merge_citation_urls(result: LiveNoteVersion, citation_urls: list[str]) -> N
     if url and url not in existing_urls:
       result.parsed_sources.append(Source(url=url, source_type="grok_citation"))
       existing_urls.add(url)
-
-
-def parse_answer_from_grok_generation_response(response: str, logger) -> LiveNoteVersion:
-  live_note_classification_str = _parse_str_from_tag(response, "CLASSIFICATION")
-  proposed_note_str = _parse_str_from_tag(response, "PROPOSED_NOTE")
-  category_str = _parse_str_from_tag(response, "CATEGORY")
-  detail_str = _parse_str_from_tag(response, "DETAIL")
-  sources_considered_str = _parse_str_from_tag(response, "SOURCES_CONSIDERED")
-  suggestion_evaluations = parse_suggestion_explanations_from_grok_response(response, logger)
-  parsed_sources = _parse_sources_json(sources_considered_str)
-
-  return LiveNoteVersion(
-    live_note_classification=live_note_classification_str,
-    category=category_str,
-    short_live_note=proposed_note_str,
-    long_live_note=detail_str,
-    sources_considered=sources_considered_str,
-    suggestion_evaluations=suggestion_evaluations,
-    parsed_sources=parsed_sources,
-  )
