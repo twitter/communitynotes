@@ -104,9 +104,6 @@ class SuggestionEvaluation:
   incorporated_status: Optional[str] = None
   incorporated_explanation: Optional[str] = None
   decision_explanation: Optional[str] = None
-  post_hoc_incorporated_status: Optional[str] = None
-  post_hoc_incorporated_explanation: Optional[str] = None
-  post_hoc_decision_explanation: Optional[str] = None
 
 
 @dataclass
@@ -201,12 +198,36 @@ class UrlMediaComparisonResult:
 
 
 @dataclass
+class NoteRequestSuggestion:
+  suggestion_id: int
+  suggestion_text: str
+  source_link: Optional[str] = None
+
+
+@dataclass
+class Reply:
+  reply_tweet_id: int
+  text: str
+  user_id: Optional[int] = None
+
+
+@dataclass
+class NoteRequestAndReplyInfo:
+  explicit_request_count: int = 0
+  reply_count: Optional[int] = None
+  source_links: Optional[dict[str, int]] = None
+  suggestions: Optional[list[NoteRequestSuggestion]] = None
+  replies: Optional[list[Reply]] = None
+
+
+@dataclass
 class ContextForGeneration:
   tweet_id: str
   note_contents: list[NoteContent]
   past_live_note_versions_with_suggestions: list[LiveNoteVersion]
   live_note_version_id: Optional[int] = None
   media_comparison_results: Optional[list[UrlMediaComparisonResult]] = None
+  note_request_and_reply_info: Optional[NoteRequestAndReplyInfo] = None
 
 
 # =============================================================================

@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import re
 from typing import Optional
 
 from .constants import (
@@ -8,6 +9,7 @@ from .constants import (
   MediaComparisonVotes,
   MediaMatchVerdict,
   NoteContent,
+  NoteRequestAndReplyInfo,
   Suggestion,
   UrlMediaComparisonResult,
   liveNoteCategoryMisleading,
@@ -79,10 +81,14 @@ def live_note_version_to_str(live_note_version: LiveNoteVersion) -> str:
 
 
 def get_previous_versions_with_feedback(context: ContextForGeneration) -> list:
-  return [v for v in context.past_live_note_versions_with_suggestions if len(v.suggestions) > 0]
+  return [
+    v
+    for v in context.past_live_note_versions_with_suggestions
+    if v.suggestions and len(v.suggestions) > 0
+  ]
 
 
-def _format_previous_versions_str(context: ContextForGeneration) -> str:
+def get_previous_versions_str(context: ContextForGeneration) -> str:
   """Format previous versions for the generator prompt.
 
   When versions have user suggestions, includes feedback-specific framing.
@@ -130,44 +136,123 @@ Previous Live Note Versions (displayed in reverse chronological order):
 
 
 # ===========================================================================
-# 2. Generation
+# 2. Note request and reply helpers
 # ===========================================================================
 
 
-def _suggestion_explanations_prompt():
-  return """
-At the end of your response, please provide explanations for why you incorporated or did not incorporate each suggestion. \
-The explanations should valid JSON inside <SUGGESTION_EXPLANATIONS> tags, with these fields:
-"suggestion_id": The suggestion_id is the id of the suggestion.
-"incorporated_status": The incorporated_status is the status of whether the suggestion was incorporated into the new version of the response. The possible values are "YES", "NO", or "PARTIALLY".
-"decision_explanation": The decision_explanation is the explanation of why you incorporated or did not incorporate the suggestion.
+def _extract_x_post_ids_from_urls(urls) -> list[str]:
+  """Extract X post IDs from URLs (e.g. https://x.com/user/status/123), preserving order
+  and deduplicating."""
+  if not urls:
+    return []
+  post_ids: list[str] = []
+  seen: set[str] = set()
+  for url in urls:
+    if not url:
+      continue
+    match = re.search(r"(?:twitter\.com|x\.com)/\w+/status(?:es)?/(\d+)", url)
+    if match:
+      pid = match.group(1)
+      if pid not in seen:
+        seen.add(pid)
+        post_ids.append(pid)
+  return post_ids
 
-Example output:
-<SUGGESTION_EXPLANATIONS>
-[
-  {
-    "suggestion_id": 100,
-    "incorporated_status": "YES",
-    "decision_explanation": "Example... be detailed and cite specific logic/reasoning, sources, facts, etc. that led to your decision."
-  },
-  {
-    "suggestion_id": 200,
-    "incorporated_status": "NO",
-    "decision_explanation": "Example... be detailed and cite specific logic/reasoning, sources, facts, etc. that led to your decision."
-  }
-]
-</SUGGESTION_EXPLANATIONS>
-"""
+
+def _extract_x_post_ids_from_note_request_and_reply_info(
+  info: Optional[NoteRequestAndReplyInfo],
+) -> list[str]:
+  """Combine post IDs from source_links and per-suggestion source_links, deduplicated."""
+  if info is None:
+    return []
+  urls: list[str] = []
+  if info.source_links:
+    urls.extend(info.source_links.keys())
+  if info.suggestions:
+    for sug in info.suggestions:
+      if sug.source_link:
+        urls.append(sug.source_link)
+  return _extract_x_post_ids_from_urls(urls)
+
+
+def _format_note_request_and_reply_info_for_prompt(
+  info: Optional[NoteRequestAndReplyInfo],
+) -> str:
+  if info is None:
+    return "No note request or reply data is available for this post."
+
+  parts = []
+  parts.append(f"Users who explicitly requested a note on this post: {info.explicit_request_count}")
+  if info.reply_count is not None:
+    parts.append(
+      f"Relevant replies on the post (e.g. users asking about the post's accuracy): "
+      f"{info.reply_count}"
+    )
+  if info.source_links:
+    parts.append("Source links provided by note requestors (URL -> request count):")
+    for url, count in info.source_links.items():
+      parts.append(f"  - {url} ({count} request(s))")
+
+  if info.suggestions:
+    parts.append(
+      "Suggestions provided by note requestors (free-text rationale for why this post may need a "
+      "note):"
+    )
+    for sug in info.suggestions:
+      sanitized = sanitize_user_input(sug.suggestion_text or "")
+      if sug.source_link:
+        parts.append(f'  - "{sanitized}" (source: {sug.source_link})')
+      else:
+        parts.append(f'  - "{sanitized}"')
+
+  if info.replies:
+    parts.append(
+      "Reply tweets on this post asking about its accuracy or otherwise indicating "
+      "users want context (the text below is the reply text, not the original post):"
+    )
+    for reply in info.replies:
+      sanitized = sanitize_user_input(reply.text or "")
+      parts.append(f'  - reply_tweet_id={reply.reply_tweet_id}: "{sanitized}"')
+
+  source_post_ids = _extract_x_post_ids_from_note_request_and_reply_info(info)
+  if source_post_ids:
+    parts.append(
+      "X post IDs extracted from note-requestor URLs (you MUST call x_thread_fetch on each): "
+      + ", ".join(source_post_ids)
+    )
+  return "\n".join(parts)
+
+
+def get_note_request_and_reply_info_str(info: Optional[NoteRequestAndReplyInfo]) -> str:
+  """Return the full prompt block for note request and reply info: a labeled header,
+  the formatted summary, and (when any X post URLs were linked) an appended
+  x_thread_fetch instruction listing each linked X post id."""
+  description = (
+    "**Note request and reply data** (signals from users on X who requested a community note on this post "
+    "-- including any free-text suggestions they wrote and any relevant reply text from users asking about "
+    'the post\'s accuracy, e.g. "@grok is this true?"):\n'
+  )
+  formatted = _format_note_request_and_reply_info_for_prompt(info)
+  post_ids = _extract_x_post_ids_from_note_request_and_reply_info(info)
+  if not post_ids:
+    return description + formatted
+  fetch_instructions = (
+    "\nNote: in addition to fetching this post's thread, you MUST also call x_thread_fetch on "
+    "each of the X post IDs above linked by note requestors to understand the context they "
+    "were pointing to:\n" + "\n".join(f"- x_thread_fetch(post_id={pid})" for pid in post_ids) + "\n"
+  )
+  return description + formatted + fetch_instructions
+
+
+# ===========================================================================
+# 3. Generation
+# ===========================================================================
 
 
 def get_live_note_generation_prompt(context: ContextForGeneration) -> str:
-  previous_versions_with_feedback = get_previous_versions_with_feedback(context)
-  previous_versions_str = _format_previous_versions_str(context)
-  suggestion_explanations_prompt = (
-    _suggestion_explanations_prompt() if len(previous_versions_with_feedback) > 0 else ""
-  )
+  return f"""Total Assistant function-call turns limit: no limit (make plenty of function calls so you make sure to thoroughly research the post using all available tools)
 
-  return f"""Check out the X post with post id = {context.tweet_id}
+Check out the X post with post id = {context.tweet_id}
 
 I could use your help. People on X want to know if this post is accurate. I could use your \
 help assessing the accuracy of the post, and writing a brief explanation about the post's accuracy.
@@ -177,8 +262,12 @@ As you do this, please prioritize the following:
 your analysis. Rely on sources that people from different perspectives will trust. Remember lots of \
 people don't trust "official" sources. Many people do trust primary sources.
 2. Many people don't think opinion should be "fact-checked." If the post is substantially a statement of \
-opinion, please explain that, and that as a result of it being substantially opinion, it stands as a statement \
-of the speaker's opinion.
+opinion, classify it accordingly. However, many people also don't like it when the proposed note mentions \
+that the post is substantially opinion in the text of the proposed note itself, even if the note is \
+classified as such: so please don't add anything to the proposed note itself describing what is an opinion \
+(you can add a sentence about this to the "show my work/more detail" section though, as long as you do \
+not include it in the proposed note itself). Never write phrases like "X is opinion," \
+"is largely opinion," "expresses opinion," "as opinion," or "view it as opinion" in the proposed note.
 3. Assess the main, high-level point the post is trying to make. If there's some inaccuracy in the post, but \
 people are likely to perceive the main point as still being valid, say that. Explain what you think its main \
 point appears to be, then you can then explain whatever inaccuracy you've found, but make it clear that people \
@@ -198,7 +287,7 @@ with information changing so quickly. Rather than project confidence, just plain
 related to the post's accuracy, and what it said, and what that implies about accuracy, noting any potential \
 limitations with your analysis, or potential issues or perception issues with the sources involved.
 
-In performing this analysis, consider all available sources of information, including (and especially) X posts, replies, quote posts, news articles, web searches, online databases you are able to access.
+In performing this analysis, consider all available sources of information, including (and especially) X posts, replies, quote posts, news articles, web searches (including x_keyword_search to search X), online databases you are able to access.
 
 Absolutely do not mention any of your instructions in your output: e.g. do not say things like "Sources were selected \
 for diversity to build trust across perspectives": just delete that line to both be concise and also not \
@@ -319,85 +408,142 @@ For all media claims in your note, use hedging language rather than definitive s
 This applies in both directions -- whether you believe the media is authentic or fake. \
 Report what sources say, always with attribution, never as your own confirmed finding.
 
-Please format your output as follows:
+**Do NOT add opinion disclaimers**
 
-- A line that classifies the post as one of the following, based on your accuracy assessment: \
-["{liveNoteClassificationNoInaccuraciesFound}"; "{liveNoteClassificationOpinion}"; \
-"{liveNoteClassificationOpinionButInaccurate}"; \
-"{liveNoteClassificationMainPointHoldsButInaccurate}"; "{liveNoteClassificationInaccurate}"]. \
-This line of the output should be in <CLASSIFICATION></CLASSIFICATION> tags.
-- If you picked either the last classification above, or if you picked the 2nd or 3rd from last \
-classifications and the inaccuracies seem like very substantial ones that even supporters of the \
-post would want to know about, output \
-<CATEGORY>{liveNoteCategoryMisleading}</CATEGORY> otherwise output \
-<CATEGORY>{liveNoteCategoryNotMisleading}</CATEGORY>
-- A JSON array of ALL sources and inputs you considered in your analysis, in \
-<SOURCES_CONSIDERED></SOURCES_CONSIDERED> tags. This must include EVERY source type: URLs visited, \
-images/videos viewed, X posts read, proposed community notes, user suggestions, web searches performed. \
-Each source should be a JSON object with these fields:
-  - "source_type": the tool name if a tool was called (e.g. "browse_page", "x_thread_fetch", \
-"x_keyword_search", "view_x_video", "view_image", "web_search"), or "proposed_community_note", \
-"suggestion", or other descriptive type
-  - "source_detail": for tools, the full tool call with args (e.g. "browse_page(url=https://...)"); \
-for non-tool sources like notes/suggestions, the text content of that source
-  - "url": the URL of the source itself, only for source types that are URLs (e.g. browse_page, \
-view_x_video). Leave null for sources that aren't URLs (e.g. web_search, suggestion, proposed_community_note)
-  - "summary_and_impact_on_analysis": summary of what the source said and how it affected your analysis
-  - "date": date of creation of the source (not when accessed), or null if unknown
-Example: [{{"source_type": "browse_page", "source_detail": "browse_page(url=https://example.com)", \
-"url": "https://example.com", "summary_and_impact_on_analysis": "Confirmed the claim...", "date": "2024-01-15"}}]
-- A "proposed note": if the post is misleading (per the category above), write a note in the style \
-of a great community note. Jump directly into explaining why — do NOT lead with redundant statements \
-like "This post is misleading" or "This claim is false." If the post is not misleading (per the \
-category above), write in a style closer to a helpful reply on X. You may start with phrases like \
-"Indeed," or "This post is correct that..." that acknowledge the post before adding context. \
-This should be as concise as possible, with a maximum of 270 characters (counting each URL as just \
-1 character each), and it should be followed by \
-link(s) to the best source(s) that support the note. Write using clear, complete sentences: don't \
-use sentence fragments or shorthand. Readability is better than covering every claim — focus on the \
-most important claims. Be concise by choosing what to say, not by compressing how you say it. \
-Ensure all points in the note are supported by at least one source. \
-Cite as few sources as possible while still supporting all the points in the note. \
-When selecting sources, prioritize sources that are likely to be trusted by people from both sides \
-of the political spectrum, prioritizing primary sources over secondary sources when possible. It \
-should include the full URL of the source(s) selected to support the note. Usually, each URL should \
-be on its own line, with a line break between each URL, and two line breaks between the note text \
-and URLs (to add a visual space between the note and URLs). However, for a good stylistic reason \
-you may deviate from these URL display conventions: e.g. if there are plenty of extra characters, \
-it may be useful to indicate what the source is by describing it inline (e.g.: "Original image: \
-<image_url>"). Each URL only counts as 1 character each. \
-Please use code to count characters, and iterate until it's under 270 characters. \
-Please call code_interpreter to count characters, and iterate until it's under 270 characters, \
-treating each URL as 1 character each. \
-When you call code_interpreter to get the character count, your code should get the character \
-count by computing the length of the PROPOSED_NOTE text, excluding URLs. \
-Then after-the-fact, add 1 for each URL to get the final URL-adjusted character count, and use \
-that. If the final URL-adjusted character count is 270 or more, then try again until the \
-PROPOSED_NOTE has 270 URL-adjusted characters or less.
-Example: "code": "print(len(\\"Example PROPOSED_NOTE text here with all URLs removed\\"))"
-Then manually add 1 for each URL in the raw PROPOSED_NOTE text. \
-(But never output the count of the \
-characters.) This line of the output should be in <PROPOSED_NOTE></PROPOSED_NOTE> tags.
-- A "Show my work" section: Roughly 1-4 paragraphs going into more detail about your findings (following guidance \
-above on optimizing for it to be found helpful and trustworthy to people from different perspectives). \
-You can assume that anyone reading it will have just read the above summary (in PROPOSED_NOTE tags) immediately \
-before this section, so please write it to be read as a continuation of the summary. \
-Try to make it clear, straightforward, and easy to understand. \
-Each paragraph must be supported by sources, and the URLs of these sources must be included \
-within or immediately after the paragraph. Do not number the source citations.\
-The "show my work" section should be a max of 840 characters, ignoring the characters used by URLs. \
-Feel free to use the full 840 characters, but also write in a concise way and do not use filler language. \
-If there isn't 840 characters worth of useful information to include, prefer to write less than 840 characters \
-rather than add filler. \
-Include line breaks between paragraphs for easier readability (in a full 840 character response, there should likely be
-at least 3 line breaks). \
-Please use code to count characters, and iterate until it's under 840 characters, ensuring that it
-includes URLs to supporting sources for each paragraph. (However, never output the count of the characters.) \
-This line of the output should be in <SHOW_MY_WORK><DETAIL></DETAIL></SHOW_MY_WORK> tags.
+When writing your PROPOSED_NOTE, do not include sentences that label parts of the post as \
+"opinion" or attribute subjective language to the poster. For example, do not write sentences \
+like "Opinion elements like 'X' are the poster's view" or "'X' reflects the poster's opinion" \
+or "The characterization of X is the poster's view."
 
+**Required Tool Calls**
+
+Before writing anything, you MUST execute these tool calls in order. Do NOT skip any.
+
+1. Call x_keyword_search with keywords about this post's topic -- search X for posts \
+about this topic. Run at least 2 different keyword searches with varied terms relating \
+to what you may need to know. Call x_keyword_search as many times as you need to get an \
+extremely complete amount of information.
+2. Call x_thread_fetch on this post to read replies and quote-tweets. Also call \
+x_thread_fetch on any other posts that seem possibly relevant, err on the side of \
+calling this a lot.
+3. Call web_search at least twice with different queries about the claimed event. The \
+more calls the better.
+4. Call browse_page on every URL cited in proposed community notes, on any URL that \
+seems relevant from web search results or from a post on X, and any other URL that you \
+may consider citing as a source or is cited as a source by any relevant existing analyses.
+5. If the post has images/video, call view_x_video or view_image to examine all of them.
+
+Only after completing ALL tool calls above should you write your response. If you skip \
+x_keyword_search, your analysis will miss critical context from X and will be incomplete.
+
+Your x_keyword_search queries should cover things like the event/claim, key \
+people/entities, and counter-arguments. Example queries for a post about "Company Y \
+lays off 500":
+- "Company Y layoffs"
+- "Company Y fired"
+- "Company Y"
+
+**Thorough Research Required**
+
+You must make extensive use of your research tools. Err on the side of making \
+extra function calls rather than too few -- do extra-thorough research. \
+Specifically, call x_keyword_search, x_thread_fetch, web_search, and browse_page \
+way more than you think you should by default. Also feel free to use \
+x_semantic_search and x_user_search as needed to look up things on X. \
+The quality of your output depends on the thoroughness of your research, \
+so make many more tool calls than you think is necessary.
+
+Please format your final output as a single valid JSON object with exactly these keys. \
+Output ONLY the raw JSON object with no code fences or other text. The JSON must be valid and parseable.
+
+{{"classification": "<one of: \\"{liveNoteClassificationNoInaccuraciesFound}\\", \\"{liveNoteClassificationOpinion}\\", \\"{liveNoteClassificationOpinionButInaccurate}\\", \\"{liveNoteClassificationMainPointHoldsButInaccurate}\\", \\"{liveNoteClassificationInaccurate}\\">",
+  "category": "<\\"{liveNoteCategoryMisleading}\\" if misleading, \\"{liveNoteCategoryNotMisleading}\\" if not misleading>",
+  "sources_considered": [
+    {{"source_type": "<tool name or 'proposed_community_note' or 'suggestion'>",
+      "source_detail": "<full tool call or source text>",
+      "url": "<URL or null>",
+      "summary_and_impact_on_analysis": "<summary>",
+      "date": "<date or null>"
+    }}
+  ],
+  "proposed_note": "<your proposed note text>",
+  "detail": "<your show-my-work section>",
+  "story_assessment": "<your story assessment (SAME_STORY, STORY_CHANGED, STORY_CORRECTION, QUALITY_ISSUE, or SOURCE_UPGRADE with explanation) or null if first version>",
+  "suggestion_explanations": <JSON array of suggestion evaluations or null>
+}}
+
+FIELD GUIDANCE:
+
+"classification": Pick based on your accuracy assessment of the post.
+
+"category": If you picked "{liveNoteClassificationInaccurate}" (inaccurate), or if you picked "{liveNoteClassificationOpinionButInaccurate}" or \
+"{liveNoteClassificationMainPointHoldsButInaccurate}" and the inaccuracies seem like very substantial ones that even supporters \
+of the post would want to know about, output "{liveNoteCategoryMisleading}". Otherwise output "{liveNoteCategoryNotMisleading}".
+
+"sources_considered": Must include EVERY source: URLs visited, images/videos viewed, \
+X posts read, proposed community notes, user suggestions, web searches performed.
+
+"proposed_note": Max 260 characters (counting each URL as 1 character each). \
+If the post is misleading (category M), write in the style of a great community note -- \
+jump directly into explaining why. Do NOT lead with "This post is misleading" or \
+"This claim is false." If not misleading (category NM), write in a style closer to a \
+helpful reply on X. You may start with "Indeed," or "This post is correct that..." \
+But still keep using hedging language when appropriate, e.g. for all media content, or \
+when your confidence is not high. \
+Write using clear, complete sentences -- no fragments or shorthand. Readability is better \
+than covering every claim -- focus on the most important claims. Be concise by choosing \
+what to say, not by compressing how you say it. \
+Ensure all points are supported by at least one source. Cite as few sources as possible \
+while still supporting all points. Prioritize sources trusted by both sides of the \
+political spectrum, primary sources over secondary. \
+Include the full URL(s) of supporting sources. Usually, each URL on its own line, with \
+a line break between URLs and two line breaks between note text and URLs. \
+You MUST call code_interpreter to verify the character count before finalizing. Do this \
+EVERY time -- do not estimate or skip this step. To count characters: \
+1. Write your proposed_note text, excluding URLs. \
+2. Call code_interpreter with code like this: \
+   print(len(\\"Your proposed note text here with all URLs removed\\")) \
+3. The output tells you the character count (excluding URLs), then manually add 1 for each URL in your \
+note to get the URL-adjusted count. \
+4. If the URL-adjusted count is 260 or more, revise and re-count. Repeat until under 260. \
+Do NOT finalize your proposed_note without calling code_interpreter to verify the count.
+
+"detail": Show-my-work section. 2-4 short paragraphs, each paragraph separated by blank lines (two newline characters) \
+for readability. Written as a continuation of the proposed_note (reader will have just read \
+it). Each paragraph should end with at least one source URL that supports its claims. \
+No parens, brackets, or any markdown formatting around the URL, just the URL itself. \
+No line break between the text in a paragraph and the URLs; just a space. Nearly every \
+paragraph should have a supporting URL, though it is acceptable to omit \
+one if no relevant URL exists for that specific point. Keep paragraphs to 2-3 sentences each; \
+wall-of-text paragraphs are hard to read. Do not number citations. Max 840 characters \
+(ignoring URL characters). 
+
+You MUST call code_interpreter to verify the character count before finalizing. To count: \
+1. Call code_interpreter with: print(len(\\"\\"\\"Your detail text with URLs removed\\"\\"\\")) \
+2. If 840 or more, revise and re-count. Repeat until under 840. \
+Do NOT finalize the detail section without calling code_interpreter.
+
+"suggestion_explanations": For each suggestion from users (if any), include a JSON array \
+with "suggestion_id", "incorporated_status" (YES/NO/PARTIALLY), and "decision_explanation".
+
+CRITICAL FORMATTING RULES:
+- Output ONLY the raw JSON object. No code fences, no other text before or after the JSON.
+- The JSON must be valid -- properly escaped quotes, no trailing commas.
+- Do NOT use ** (asterisks) anywhere in any field value.
+- The "proposed_note" MUST contain at least one full URL (https://...).
+- Match the confidence of your language to evidence strength. Use hedging ("appears to," \
+"suggests") unless evidence is very strong from multiple trustworthy sources.
+- Always use hedging language for claims about images or video -- you cannot fully trust \
+media descriptions from tools.
+
+IMPORTANT: When deciding whether to update/publish a new live note version, do not be \
+overly conservative. If you have found meaningfully new information, corrected a factual \
+error, improved the sourcing, or the previous version has quality issues, you should \
+publish the update.
+
+{get_note_request_and_reply_info_str(context.note_request_and_reply_info)}
 {get_note_content_str(context.note_contents)}
-{previous_versions_str}
-{suggestion_explanations_prompt}
+{get_previous_versions_str(context)}
 """
 
 
@@ -648,6 +794,15 @@ new happened after the previous version was written that changes what the note s
 that needs correcting, regardless of whether new events occurred.
 - "QUALITY_ISSUE: [describe the problem and why your own analysis supports this conclusion]" ONLY if \
 the conditions above are met. When in doubt, use SAME_STORY.
+
+IMPORTANT: SAME_STORY and QUALITY_ISSUE are independent assessments. The story being \
+unchanged does NOT mean there is no quality issue. If the previous version has a \
+significant quality problem (wrong focus, biased framing, missing the main point, poor \
+sources, opinion language in the note text, missing source URLs), you should output \
+QUALITY_ISSUE even if the underlying story has not changed. SAME_STORY means the previous \
+version is good enough to keep as-is. QUALITY_ISSUE means the previous version has \
+problems that your new version fixes.
+
 - "SOURCE_UPGRADE: [describe the source improvement]" if the previous version's narrative is \
 factually correct and the story hasn't changed, BUT the previous version relies on sources that \
 are generic, tangential, or unconvincing when substantially more authoritative or directly \
@@ -774,7 +929,7 @@ def _inject_media_guidance(prompt: str, guidance: str) -> str:
   """Inject media comparison guidance just before the output format instructions."""
   if not guidance:
     return prompt
-  marker = "Please format your output as follows:"
+  marker = "**Required Tool Calls**"
   idx = prompt.find(marker)
   if idx >= 0:
     return prompt[:idx] + guidance + "\n" + prompt[idx:]
@@ -782,17 +937,14 @@ def _inject_media_guidance(prompt: str, guidance: str) -> str:
 
 
 def build_generation_prompt(context: ContextForGeneration) -> str:
-  """Build the complete generation prompt, including all contextual augmentations.
+  """Build the complete generation prompt with all contextual augmentations.
 
-  This is the single entry point for building the prompt sent to the LLM for
-  note generation. It assembles the base prompt and conditionally appends
-  suggestion feedback, rating data, categorization guidance, the
-  story assessment instruction, and media comparison results based on what
-  context is available.
+  Assembles the core prompt (from get_live_note_generation_prompt) and
+  conditionally appends suggestion feedback, rating data, categorization
+  guidance, story assessment, and media comparison results.
   """
   prompt = get_live_note_generation_prompt(context)
 
-  # Inject media comparison results if available (before other augmentations)
   if context.media_comparison_results:
     media_guidance_text = format_media_comparison_results(context.media_comparison_results)
     prompt = _inject_media_guidance(prompt, media_guidance_text)
@@ -831,7 +983,7 @@ def build_generation_prompt(context: ContextForGeneration) -> str:
 
 
 # ===========================================================================
-# 3. Update decider
+# 4. Update decider
 # ===========================================================================
 
 
@@ -855,8 +1007,8 @@ def get_update_decider_prompt(context, new_live_note_result) -> str:
 
   return f"""Your job is to determine what's different between the previous and new versions of a response, whether a new version of a response is a non-trivial \
 improvement over the previous version, and whether it's worth updating the published version given the existing scoring status and ratings on the existing published version. \
-You should output a concise, end-user-readable explanation of what's different in the new version vs. the previous version in \
-<DIFFERENCE_EXPLANATION></DIFFERENCE_EXPLANATION> tags (keep it under 280 characters; ignore minor changes like capitalization, punctuation, etc. except in the very rare \
+You should output a concise, end-user-readable explanation of what's different in the new version vs. the previous version \
+(keep it under 280 characters; ignore minor changes like capitalization, punctuation, etc. except in the very rare \
 cases where those are the only things that changed or they're particularly important).
 
 
@@ -904,7 +1056,7 @@ same core message is NOT sufficient to justify an update, even with null ratings
 
 To avoid excess detail in the output, please do not ever include the note intercept or rating counts in your output.
 But whenever it was relevant to your choice of whether to update, you can mention whichever of these states, if any, \
-applied to the version (in a plain English explanation in <UPDATE_EXPLANATION>):
+applied to the version (in a plain English explanation):
 - If it didn't have many ratings yet [never mention the exact number of ratings or whether there were any ratings]
 - If its status was "Currently Rated Helpful", "Currently Rated Not Helpful", or was nearly "Currently Rated Helpful" (NmrDueToMinStableCrhTime)
 - If it had some ratings but no clear signal yet on whether it's on track to be "Currently Rated Helpful"
@@ -912,12 +1064,11 @@ applied to the version (in a plain English explanation in <UPDATE_EXPLANATION>):
 - If the note has a real chance of becoming "Currently Rated Helpful"
 
 If the new version is a non-trivial improvement over the previous version, and the guidelines above based on the scoring status and ratings indicate that it's worth updating, \
-then output <SHOULD_UPDATE>YES</SHOULD_UPDATE>. Otherwise, output <SHOULD_UPDATE>NO</SHOULD_UPDATE>.
-Primarily you should make your decision based on the text inside the <PROPOSED_NOTE> tag in each version. If the new version says the same thing as the previous version, \
-then by default you should output <SHOULD_UPDATE>NO</SHOULD_UPDATE>. Only output <SHOULD_UPDATE>YES</SHOULD_UPDATE> if the new version improves in a meaningful way over \
+then should_update should be "YES". Otherwise "NO".
+Primarily you should make your decision based on the proposed_note in each version. If the new version says the same thing as the previous version, \
+then by default should_update should be "NO". Only set it to "YES" if the new version improves in a meaningful way over \
 the previous version, e.g. by including updated information, becoming more accurate, etc. (in addition to meeting the guidelines above based on the scoring status and ratings).
 If new information is included, consider whether the new information is meaningful and helpful: does the new information make the proposed note more helpful, or is the new information distracting and unnecessary?
-Give a full explanation of your decision in <UPDATE_EXPLANATION></UPDATE_EXPLANATION> tags.
 To evaluate this, please do a full round of research using tools to check the factual accuracy of all information.
 
 Here are the guidelines for the new task:
@@ -939,16 +1090,13 @@ New version:
 {new_live_note_version_str}
 ```
 
-Remember to output your explanation of what's different in <DIFFERENCE_EXPLANATION></DIFFERENCE_EXPLANATION> tags,
-your decision in <SHOULD_UPDATE>YES</SHOULD_UPDATE> or <SHOULD_UPDATE>NO</SHOULD_UPDATE> tags, \
-and your explanation of why you made your decision in <UPDATE_EXPLANATION></UPDATE_EXPLANATION> tags.
-The only possible values inside the <SHOULD_UPDATE> tags are "YES" and "NO".
+Output ONLY a single valid raw JSON object with no code fences or other text:
 
-Example output:
-
-<SHOULD_UPDATE>YES</SHOULD_UPDATE>
-<UPDATE_EXPLANATION>Example explanation of why you decided to update</UPDATE_EXPLANATION>
-<DIFFERENCE_EXPLANATION>Example concise explanation of what's different in the new version</DIFFERENCE_EXPLANATION>
+{{
+  "should_update": "YES or NO",
+  "update_explanation": "Full explanation of why you decided to update or not",
+  "difference_explanation": "Concise end-user-readable explanation of what's different (under 280 chars)"
+}}
 """
 
 
@@ -977,7 +1125,7 @@ The bar for updating is VERY HIGH. Updating resets rating counts to zero, destro
 - Only update if the new version fixes a meaningful factual error, OR contains critically important breaking news.
 - Rewording, rephrasing, restructuring, or swapping equivalent sources is NOT sufficient to update.
 - Small factual additions that don't change the core message are NOT sufficient to update.
-- If the new version conveys essentially the same core message, output <SHOULD_UPDATE>NO</SHOULD_UPDATE>.
+- If the new version conveys essentially the same core message, should_update should be "NO".
 
 ## When the current version is doing POORLY (CRNH, or NMR with poor rating trajectory):
 The bar for updating is LOWER. The current version is failing, so a meaningful improvement is worth the reset.
@@ -1056,13 +1204,23 @@ def build_update_decider_prompt(
 
 
 # ===========================================================================
-# 4. Rejector
+# 5. Rejector
 # ===========================================================================
 
 
 def get_live_note_candidate_rejector_prompt(
   new_live_note_result: LiveNoteVersion,
 ) -> str:
+  candidate_json = json.dumps(
+    {
+      "proposed_note": new_live_note_result.short_live_note,
+      "detail": new_live_note_result.long_live_note,
+      "classification": new_live_note_result.live_note_classification,
+      "category": new_live_note_result.category,
+    },
+    indent=2,
+  )
+
   return f"""You are a strict quality rejector for candidate collaborative X community notes. Your job is to decide whether the candidate note version should be rejected.
 
 Reject the candidate if ANY of the following are true:
@@ -1078,29 +1236,22 @@ Reject the candidate if ANY of the following are true:
 
 Otherwise, accept the candidate.
 
-Here is the candidate collaborative X community note:
-<PROPOSED_NOTE>{new_live_note_result.short_live_note}</PROPOSED_NOTE>
-<DETAIL>{new_live_note_result.long_live_note}</DETAIL>
-<CLASSIFICATION>{new_live_note_result.live_note_classification}</CLASSIFICATION>
-<CATEGORY>{new_live_note_result.category}</CATEGORY>
+Here is a JSON-formatted candidate collaborative X community note:
 
-Respond with:
-<REJECT>YES</REJECT> if you reject the candidate collaborative community note, or <REJECT>NO</REJECT> if you accept it.
-<REJECT_REASON>Explanation of why you did or did not reject the candidate collaborative community note</REJECT_REASON>
-<RETRYABLE>YES</RETRYABLE> if the issue is retryable, or <RETRYABLE>NO</RETRYABLE> if it is not retryable or if the candidate wasn't rejected \
-  (The only things that are retryable are things like error messages, tool failures, etc.). 
+{candidate_json}
 
-Example output:
-<REJECT>YES</REJECT>
-<REJECT_REASON>The note contained an error message: "Invalid noteID; request failed".</REJECT_REASON>
-<RETRYABLE>YES</RETRYABLE>
+Output ONLY a single valid raw JSON object with no code fences or other text:
 
-All three tags are required in your output (<REJECT>, <REJECT_REASON>, and <RETRYABLE>).
+{{
+  "reject": "YES or NO",
+  "reject_reason": "Explanation of why you did or did not reject",
+  "retryable": "YES or NO (YES only for error messages, tool failures, etc.; NO otherwise)"
+}}
 """
 
 
 # ===========================================================================
-# 5. Grok Rejector Model Evaluation
+# 6. Grok Rejector Model Evaluation
 # ===========================================================================
 
 
@@ -1139,51 +1290,4 @@ JSON {{
   "score": ...,
   "reasoning": ...,
 }}
-"""
-
-
-# ===========================================================================
-# 6. Post-hoc Suggestion Incorporation Evaluation
-# ===========================================================================
-
-
-def get_evaluate_whether_single_suggestion_is_incorporated_prompt(
-  previous_live_note_version: LiveNoteVersion,
-  new_live_note_result: LiveNoteVersion,
-  suggestion: Suggestion,
-) -> str:
-  return f"""You are a helpful assistant that evaluates whether a single suggestion from a user is incorporated into a new version of a response.
-
-Here is the previous version of the response:
-```Previous version:```
-{live_note_version_to_str(previous_live_note_version)}
-```
-
-Here is the new version of the response:
-```New version:```
-{live_note_version_to_str(new_live_note_result)}
-```
-
-Here is the suggestion to evaluate. A user suggested this on the previous version of the response.
-Your task is to evaluate whether the new version of the response incorporates this suggestion,
-primarily considering the PROPOSED_NOTE field, but also considering the other fields if the 
-suggestion particularly pertains to one of the other fields:
-```Suggestion ID: {suggestion.suggestion_id}```
-{suggestion.suggestion_text}
-```
-
-Return your evaluation of whether the suggestion is incorporated into the new version in 
-<INCORPORATED> tags. The possible values are "YES", "NO", or "PARTIALLY".
-The new version will be likely different from the previous version in multiple ways; you should
-only respond with "YES" or "PARTIALLY" if the new version is different from the previous version
-in a way that was specifically suggested in the suggestion. Only respond with "YES" if new version
-fully incorporates the suggestion. Default to "NO" if in doubt.
-Also give an explanation of why you made your decision in <INCORPORATED_EXPLANATION> tags.
-
-Example output:
-
-<INCORPORATED>YES</INCORPORATED>
-<INCORPORATED_EXPLANATION>
-Example explanation
-</INCORPORATED_EXPLANATION>
 """

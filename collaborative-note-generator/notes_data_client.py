@@ -2,7 +2,13 @@ from abc import ABC, abstractmethod
 import logging
 from typing import Optional
 
-from .constants import LiveNoteVersion, NoteContent, ScoringResult, Suggestion
+from .constants import (
+  LiveNoteVersion,
+  NoteContent,
+  NoteRequestAndReplyInfo,
+  ScoringResult,
+  Suggestion,
+)
 
 
 class NotesDataClient(ABC):
@@ -65,3 +71,8 @@ class NotesDataClient(ABC):
   @abstractmethod
   def get_note_contents(self, tweet_id: int) -> list[NoteContent]:
     """Fetch note contents for a tweet, including status/intercept if available."""
+
+  @abstractmethod
+  def get_note_request_and_reply_info(self, tweet_id: int) -> Optional[NoteRequestAndReplyInfo]:
+    """Fetch note request info (counts, source links, suggestions) and relevant reply text
+    for a tweet."""
