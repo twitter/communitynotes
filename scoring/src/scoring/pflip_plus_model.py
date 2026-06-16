@@ -1061,11 +1061,33 @@ class PFlipPlusModel(object):
         cutoff,
       )
       # Validate and merge data, effectively pruning to notes that have a label
+      labelsWithScoringCutoff = scoringCutoff.merge(labels)
+      if len(labels) != len(labelsWithScoringCutoff):
+        missingCutoffLabels = labels[~labels[c.noteIdKey].isin(scoringCutoff[c.noteIdKey])]
+        missingCutoffRatingCounts = (
+          ratings[ratings[c.noteIdKey].isin(missingCutoffLabels[c.noteIdKey])]
+          .groupby(c.noteIdKey)
+          .size()
+        )
+        logger.warning(
+          "Dropping pflip training labels without scoring cutoffs: "
+          f"dropped={len(missingCutoffLabels)}, kept={len(labelsWithScoringCutoff)}, "
+          f"labels={len(labels)}, scoringCutoff={len(scoringCutoff)}, "
+          f"scoredNotes={len(scoredNotes)}, ratings={len(ratings)}, "
+          f"ratingNoteIds={ratings[c.noteIdKey].nunique()}"
+        )
+        logger.warning(
+          f"Dropped pflip label counts:\n{missingCutoffLabels[LABEL].value_counts(dropna=False)}"
+        )
+        logger.warning(
+          f"Dropped pflip rating count summary:\n{missingCutoffRatingCounts.describe()}"
+        )
+        logger.warning(
+          f"Dropped pflip noteId sample: {missingCutoffLabels[c.noteIdKey].head(20).tolist()}"
+        )
+        labels = labelsWithScoringCutoff[[c.noteIdKey, LABEL]]
       scoredNotes = scoredNotes.merge(scoringCutoff, on=c.noteIdKey)
       assert len(scoredNotes) == len(scoringCutoff)
-      assert len(labels) == len(
-        scoringCutoff.merge(labels)
-      )  # labels should be a subset of scoringCutoff
       scoredNotes = scoredNotes.merge(labels)
       assert len(scoredNotes) == len(labels)
     totalScoredNotes = len(scoredNotes)

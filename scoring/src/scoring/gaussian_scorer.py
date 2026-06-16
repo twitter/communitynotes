@@ -394,6 +394,7 @@ class GaussianScorer(Scorer):
     quantileRange: np.array,
     isCrh=True,
     empiricalPriors=None,
+    additionalRows: Optional[pd.DataFrame] = None,
   ) -> pd.DataFrame:
     params = self._crhParams if isCrh else self._crnhParams
 
@@ -401,11 +402,29 @@ class GaussianScorer(Scorer):
     quantileCols = [f"{x:5.3f}" for x in quantileRange]
     quantileArray = np.array(quantileRange, dtype=np.float32)
 
+    # Only three columns are read from the ratings frame below. To keep extra
+    # memory minimal when injecting additional rows (e.g. author HELPFUL self-
+    # ratings on the CRH path), build a narrow scoring frame instead of copying
+    # the full wide ratings DataFrame. When no additional rows are provided we
+    # reuse the original object to avoid any allocation.
+    neededCols = [c.noteIdKey, c.helpfulNumKey, c.internalRaterFactor1Key]
+    if additionalRows is not None and len(additionalRows) > 0:
+      scoringRatings = pd.concat(
+        [
+          ratingsForTrainingWithFactors[neededCols],
+          additionalRows[neededCols],
+        ],
+        ignore_index=True,
+        copy=False,
+      )
+    else:
+      scoringRatings = ratingsForTrainingWithFactors
+
     assert (
-      ratingsForTrainingWithFactors[c.internalRaterFactor1Key].isna().sum() == 0
+      scoringRatings[c.internalRaterFactor1Key].isna().sum() == 0
     ), "all rater factors must be non nan"
-    noteIds = ratingsForTrainingWithFactors[c.noteIdKey].values
-    helpfulScores = ratingsForTrainingWithFactors[c.helpfulNumKey].values.astype(np.float32)
+    noteIds = scoringRatings[c.noteIdKey].values
+    helpfulScores = scoringRatings[c.helpfulNumKey].values.astype(np.float32)
     # Adjust helpful for somewhat helpful (original helpful used below for priors)
     somewhatMask = helpfulScores == 0.5
     helpfulScores[somewhatMask] = params.somewhatHelpfulValue
@@ -413,30 +432,24 @@ class GaussianScorer(Scorer):
     if params.flip:
       helpfulScores = 1 - helpfulScores
 
-    raterFactors = ratingsForTrainingWithFactors[c.internalRaterFactor1Key].values.astype(
-      np.float32
-    )
+    raterFactors = scoringRatings[c.internalRaterFactor1Key].values.astype(np.float32)
     notHelpfulVariances = (
-      ratingsForTrainingWithFactors.loc[
-        ratingsForTrainingWithFactors[c.helpfulNumKey] == (0 if not params.flip else 1)
-      ]
+      scoringRatings.loc[scoringRatings[c.helpfulNumKey] == (0 if not params.flip else 1)]
       .groupby(c.noteIdKey)[c.internalRaterFactor1Key]
       .agg("mean")
       .reset_index()
     )
     notHelpfulVariances.rename(columns={c.internalRaterFactor1Key: "mean"}, inplace=True)
     allRatings = (
-      ratingsForTrainingWithFactors[[c.noteIdKey, c.internalRaterFactor1Key]]
-      .groupby(c.noteIdKey)
-      .agg("count")
+      scoringRatings[[c.noteIdKey, c.internalRaterFactor1Key]].groupby(c.noteIdKey).agg("count")
     )
     allRatings.rename(columns={c.internalRaterFactor1Key: "count"}, inplace=True)
     notHelpfulVariances = notHelpfulVariances.merge(allRatings, on=c.noteIdKey)
 
     stdWindow = 0.28
-    counts = ratingsForTrainingWithFactors.loc[
-      ratingsForTrainingWithFactors["helpfulNum"] == (0 if not params.flip else 1)
-    ][[c.noteIdKey, c.internalRaterFactor1Key]].merge(notHelpfulVariances, on=c.noteIdKey)
+    counts = scoringRatings.loc[scoringRatings["helpfulNum"] == (0 if not params.flip else 1)][
+      [c.noteIdKey, c.internalRaterFactor1Key]
+    ].merge(notHelpfulVariances, on=c.noteIdKey)
     counts["dist"] = np.abs(counts[c.internalRaterFactor1Key] - counts["mean"])
 
     counts[c.internalRaterFactor1Key] = 1 / (1 + np.exp(-200 * (counts["dist"] - stdWindow / 2)))
@@ -503,7 +516,7 @@ class GaussianScorer(Scorer):
       )
 
     # Compute note priors using average of helpful rater factors - NH rater factors
-    originalHelpful = ratingsForTrainingWithFactors[c.helpfulNumKey].values.astype(np.float32)
+    originalHelpful = scoringRatings[c.helpfulNumKey].values.astype(np.float32)
     if params.flip:
       originalHelpful = 1 - originalHelpful
     adjustedHelpful = (originalHelpful - 0.5) * 2 * raterFactors
@@ -526,9 +539,9 @@ class GaussianScorer(Scorer):
 
     # Ensure notes with fewer than 3 ratings on each side get 0.1 smoothing
     signCounts = (
-      ratingsForTrainingWithFactors.assign(
-        neg=ratingsForTrainingWithFactors[c.internalRaterFactor1Key] < 0,
-        pos=ratingsForTrainingWithFactors[c.internalRaterFactor1Key] > 0,
+      scoringRatings.assign(
+        neg=scoringRatings[c.internalRaterFactor1Key] < 0,
+        pos=scoringRatings[c.internalRaterFactor1Key] > 0,
       )
       .groupby(c.noteIdKey)[["neg", "pos"]]
       .sum()
@@ -575,18 +588,24 @@ class GaussianScorer(Scorer):
     quantileRange: np.array,
     isCrh: bool = True,
     empiricalTotals: Optional[pd.DataFrame] = None,
+    additionalRows: Optional[pd.DataFrame] = None,
   ):
     clippedValues = self._return_all_pts(
       ratingsForTrainingWithFactors,
       quantileRange,
       isCrh=isCrh,
+      additionalRows=additionalRows,
     )
     if empiricalTotals is not None:
       empiricalPriors = lookup_empirical_priors(
         empiricalTotals, ratingsForTrainingWithFactors, clippedValues
       )
       clippedValues = self._return_all_pts(
-        ratingsForTrainingWithFactors, quantileRange, isCrh=isCrh, empiricalPriors=empiricalPriors
+        ratingsForTrainingWithFactors,
+        quantileRange,
+        isCrh=isCrh,
+        empiricalPriors=empiricalPriors,
+        additionalRows=additionalRows,
       )
 
     quantileCols = [f"{x:5.3f}" for x in quantileRange]
@@ -607,6 +626,75 @@ class GaussianScorer(Scorer):
 
     return weightedMean
 
+  def _build_author_helpful_rows(
+    self,
+    ratingsForTrainingWithFactors: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    prescoringRaterModelOutput: pd.DataFrame,
+  ) -> pd.DataFrame:
+    """Build a small DataFrame containing one synthetic HELPFUL rating per note,
+    cast by that note's author.
+
+    Returned columns are exactly
+    [noteIdKey, raterParticipantIdKey, helpfulNumKey, internalRaterFactor1Key].
+
+    Excluded:
+      - notes whose author has no rater factor (or NaN factor) in
+        prescoringRaterModelOutput,
+      - (note, author) pairs where the author already rated the note in
+        ratingsForTrainingWithFactors (avoids duplicates).
+
+    All intermediate operations use minimal column projections to avoid
+    materializing the full ratings table.
+    """
+    # Narrow projections only.
+    notes = pd.unique(ratingsForTrainingWithFactors[c.noteIdKey])
+    authorMap = noteStatusHistory.loc[
+      noteStatusHistory[c.noteIdKey].isin(notes),
+      [c.noteIdKey, c.noteAuthorParticipantIdKey],
+    ]
+    raterFactors = prescoringRaterModelOutput.loc[
+      prescoringRaterModelOutput[c.internalRaterFactor1Key].notna(),
+      [c.raterParticipantIdKey, c.internalRaterFactor1Key],
+    ]
+    candidate = authorMap.merge(
+      raterFactors,
+      left_on=c.noteAuthorParticipantIdKey,
+      right_on=c.raterParticipantIdKey,
+      how="inner",
+    )
+    # Dedup against existing ratings via MultiIndex.isin on two narrow columns
+    # only (no full-frame copy, no left-merge with NaN dtype side effects).
+    existingIndex = pd.MultiIndex.from_arrays(
+      [
+        ratingsForTrainingWithFactors[c.noteIdKey].values,
+        ratingsForTrainingWithFactors[c.raterParticipantIdKey].values,
+      ]
+    )
+    candidateIndex = pd.MultiIndex.from_arrays(
+      [candidate[c.noteIdKey].values, candidate[c.raterParticipantIdKey].values]
+    )
+    candidate = candidate.loc[~candidateIndex.isin(existingIndex)]
+    candidate = candidate[[c.noteIdKey, c.raterParticipantIdKey, c.internalRaterFactor1Key]].copy()
+    # Match dtypes of the ratings frame so concat does not upcast.
+    helpfulDtype = ratingsForTrainingWithFactors[c.helpfulNumKey].dtype
+    factorDtype = ratingsForTrainingWithFactors[c.internalRaterFactor1Key].dtype
+    candidate[c.helpfulNumKey] = pd.Series(1.0, index=candidate.index, dtype=helpfulDtype)
+    candidate[c.internalRaterFactor1Key] = candidate[c.internalRaterFactor1Key].astype(factorDtype)
+    candidate = candidate[
+      [c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey, c.internalRaterFactor1Key]
+    ]
+    # Guardrail: no candidate row should overlap an existing (note, rater) pair.
+    assert (
+      candidate.merge(
+        ratingsForTrainingWithFactors[[c.noteIdKey, c.raterParticipantIdKey]],
+        on=[c.noteIdKey, c.raterParticipantIdKey],
+        how="inner",
+      ).shape[0]
+      == 0
+    ), "author HELPFUL rows must not duplicate existing ratings"
+    return candidate.reset_index(drop=True)
+
   def _calculate_gaussian_scores(
     self,
     ratingsForTraining: pd.DataFrame,
@@ -614,6 +702,7 @@ class GaussianScorer(Scorer):
     crnhQuantileRange: np.array,
     prescoringRaterModelOutput: pd.DataFrame,
     empiricalTotals: Optional[pd.DataFrame] = None,
+    noteStatusHistory: Optional[pd.DataFrame] = None,
   ):
     """Calculate Gaussian convolution scores  on the ratingsForTraining data.
 
@@ -631,8 +720,22 @@ class GaussianScorer(Scorer):
     assert (
       ratingsForTrainingWithFactors.shape[0] == ratingsForTraining.shape[0]
     ), "number of ratings changed"
+    # Author HELPFUL self-rating rows are injected into the CRH pass only.
+    # Skipped when noteStatusHistory is unavailable (e.g. scenario unit tests
+    # that exercise the convolution math directly).
+    authorRows = (
+      self._build_author_helpful_rows(
+        ratingsForTrainingWithFactors, noteStatusHistory, prescoringRaterModelOutput
+      )
+      if noteStatusHistory is not None
+      else None
+    )
     noteParams = self._gaussian_kernel_extrapolator_vectorized(
-      ratingsForTrainingWithFactors, crhQuantileRange, isCrh=True, empiricalTotals=None
+      ratingsForTrainingWithFactors,
+      crhQuantileRange,
+      isCrh=True,
+      empiricalTotals=None,
+      additionalRows=authorRows,
     )
     crnhNoteParams = self._gaussian_kernel_extrapolator_vectorized(
       ratingsForTrainingWithFactors, crnhQuantileRange, isCrh=False, empiricalTotals=empiricalTotals
@@ -821,7 +924,11 @@ class GaussianScorer(Scorer):
       np.unique(raterParams[c.raterParticipantIdKey])
     ), "duplicate rater ids in prescoring rmo"
     noteParams = self._calculate_gaussian_scores(
-      finalRoundRatings, crhQuantileRange, crnhQuantileRange, prescoringRaterModelOutput
+      finalRoundRatings,
+      crhQuantileRange,
+      crnhQuantileRange,
+      prescoringRaterModelOutput,
+      noteStatusHistory=noteStatusHistory,
     )
     if self._useMfNoteParams:
       with self.time_block("Get Note Factor from MF"):
