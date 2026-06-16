@@ -579,10 +579,12 @@ class MFBaseScorer(Scorer):
         ]
       )
     if len(ratingsForTraining) == 0:
-      # This is only expected to occur for MFTopicScorer_MessiRonaldo in --recent runs
-      assert (
-        self.get_name() == "MFTopicScorer_MessiRonaldo"
-      ), f"Unexpected scorer: {self.get_name()}"
+      # This is expected to occur for sparse topic scorers in --recent runs.
+      allowedEmptyRatingScorers = {
+        "MFTopicScorer_MessiRonaldo",
+        "MFTopicScorer_InDimensionTwo",
+      }
+      assert self.get_name() in allowedEmptyRatingScorers, f"Unexpected scorer: {self.get_name()}"
       raise EmptyRatingException
     logger.info(
       f"ratingsForTraining summary {self.get_name()}: {get_df_fingerprint(ratingsForTraining, [c.noteIdKey, c.raterParticipantIdKey])}"

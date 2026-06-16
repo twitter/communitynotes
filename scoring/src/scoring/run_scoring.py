@@ -52,7 +52,12 @@ from .pcrh_model import (
 )
 from .pflip_plus_model import LABEL as PFLIP_LABEL, PFlipPlusModel
 from .post_selection_similarity import PostSelectionSimilarity, apply_post_selection_similarity
-from .process_data import CommunityNotesDataLoader, filter_input_data_for_testing, preprocess_data
+from .process_data import (
+  CommunityNotesDataLoader,
+  ensure_int64_participant_ids,
+  filter_input_data_for_testing,
+  preprocess_data,
+)
 from .quasi_clique_detection import QuasiCliqueDetection
 from .reputation_scorer import ReputationScorer
 from .scorer import Scorer
@@ -66,6 +71,27 @@ import sklearn
 
 logger = logging.getLogger("birdwatch.run_scoring")
 logger.setLevel(logging.INFO)
+
+
+def _align_participant_id_dtypes_with_notes(
+  notes: pd.DataFrame,
+  ratings: pd.DataFrame,
+  noteStatusHistory: pd.DataFrame,
+  userEnrollment: pd.DataFrame,
+  prescoringRaterModelOutput: Optional[pd.DataFrame] = None,
+) -> None:
+  participantIdDtype = (
+    np.int64 if pd.api.types.is_integer_dtype(notes[c.noteAuthorParticipantIdKey].dtype) else str
+  )
+  ratings[c.raterParticipantIdKey] = ratings[c.raterParticipantIdKey].astype(participantIdDtype)
+  noteStatusHistory[c.noteAuthorParticipantIdKey] = noteStatusHistory[
+    c.noteAuthorParticipantIdKey
+  ].astype(participantIdDtype)
+  userEnrollment[c.participantIdKey] = userEnrollment[c.participantIdKey].astype(participantIdDtype)
+  if prescoringRaterModelOutput is not None:
+    prescoringRaterModelOutput[c.raterParticipantIdKey] = prescoringRaterModelOutput[
+      c.raterParticipantIdKey
+    ].astype(participantIdDtype)
 
 
 def _get_scorers(
@@ -1441,25 +1467,14 @@ def run_prescoring(
     useStableInitialization=useStableInitialization,
   )
 
-  # Attempt to convert IDs to Int64 before prescoring.  We expect this to succeed in production,
-  # fail when running on public data and fail in some unit tests.
-  conversion = False
-  try:
-    # Complete all three conversions before doing any updates, so if there are any errors the
-    # updates don't happen.
-    ratingIds = ratings[c.raterParticipantIdKey].astype("int64[pyarrow]")
-    noteStatusHistoryIds = noteStatusHistory[c.noteAuthorParticipantIdKey].astype("int64[pyarrow]")
-    userEnrollmentIds = userEnrollment[c.participantIdKey].astype("int64[pyarrow]")
-    ratings[c.raterParticipantIdKey] = ratingIds
-    noteStatusHistory[c.noteAuthorParticipantIdKey] = noteStatusHistoryIds
-    userEnrollment[c.participantIdKey] = userEnrollmentIds
-    del ratingIds, noteStatusHistoryIds, userEnrollmentIds
-    logger.info(
-      "User IDs for ratings, noteStatusHistory and userEnrollment converted to int64[pyarrow]."
+  if runParallel:
+    ensure_int64_participant_ids(
+      [
+        (ratings, c.raterParticipantIdKey),
+        (noteStatusHistory, c.noteAuthorParticipantIdKey),
+        (userEnrollment, c.participantIdKey),
+      ]
     )
-    conversion = True
-  except ValueError as e:
-    logger.info(f"Error converting user IDs to ints.  IDs will remain as strings. {repr(e)}")
   with c.time_block("Logging Prescoring Inputs RAM usage before _run_scorers"):
     logger.info(get_df_info(notes, "notes"))
     logger.info(get_df_info(ratings, "ratings"))
@@ -1490,28 +1505,21 @@ def run_prescoring(
   del scorers
   gc.collect()
 
-  with c.time_block("Logging Prescoring Results RAM usage (before conversion)"):
+  if runParallel:
+    logger.info("Aligning participant ID dtypes after parallel prescoring.")
+    _align_participant_id_dtypes_with_notes(
+      notes, ratings, noteStatusHistory, userEnrollment, prescoringRaterModelOutput
+    )
+    logger.info("Aligned participant ID dtypes after parallel prescoring.")
+
+  with c.time_block("Logging Prescoring Results RAM usage before fitting post-prescoring models"):
     logger.info(get_df_info(notes, "notes"))
     logger.info(get_df_info(ratings, "ratings"))
     logger.info(get_df_info(noteStatusHistory, "noteStatusHistory"))
     logger.info(get_df_info(userEnrollment, "userEnrollment"))
     logger.info(get_df_info(prescoringNoteModelOutput, "prescoringNoteModelOutput"))
     logger.info(get_df_info(prescoringRaterModelOutput, "prescoringRaterModelOutput"))
-  # Restore IDs as string objects now that prescoring is over and memory pressure is relaxed.
-  if conversion:
-    logger.info("Restoring string IDs.")
-    ratings[c.raterParticipantIdKey] = ratings[c.raterParticipantIdKey].astype(str)
-    noteStatusHistory[c.noteAuthorParticipantIdKey] = noteStatusHistory[
-      c.noteAuthorParticipantIdKey
-    ].astype(str)
-    userEnrollment[c.participantIdKey] = userEnrollment[c.participantIdKey].astype(str)
-    # Notice that we also do conversion on the prescoring results.
-    prescoringRaterModelOutput[c.raterParticipantIdKey] = prescoringRaterModelOutput[
-      c.raterParticipantIdKey
-    ].astype(str)
-    logger.info("Restoration of original string IDs complete.")
-
-  with c.time_block("Logging Prescoring Results RAM usage (after conversion)"):
+  with c.time_block("Logging Prescoring Results RAM usage after parallel scoring"):
     logger.info(get_df_info(notes, "notes"))
     logger.info(get_df_info(ratings, "ratings"))
     logger.info(get_df_info(noteStatusHistory, "noteStatusHistory"))
@@ -1572,7 +1580,9 @@ def run_prescoring(
       ].dropna(),
     )
     logger.info(f"recent core ratings for empirical prior {len(priorRatings)}")
-    priorRatings[c.raterParticipantIdKey] = priorRatings[c.raterParticipantIdKey].astype(str)
+    priorRatings[c.raterParticipantIdKey] = priorRatings[c.raterParticipantIdKey].astype(
+      prescoringRaterModelOutput[c.raterParticipantIdKey].dtype
+    )
     priorRatings = (
       priorRatings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]]
       .merge(
@@ -1642,6 +1652,23 @@ def run_contributor_scoring(
   userEnrollment: pd.DataFrame,
   strictColumns: bool = True,
 ) -> pd.DataFrame:
+  ratings[c.raterParticipantIdKey] = ratings[c.raterParticipantIdKey].astype(str)
+  prescoringRaterModelOutput[c.raterParticipantIdKey] = prescoringRaterModelOutput[
+    c.raterParticipantIdKey
+  ].astype(str)
+  noteStatusHistory[c.noteAuthorParticipantIdKey] = noteStatusHistory[
+    c.noteAuthorParticipantIdKey
+  ].astype(str)
+  userEnrollment[c.participantIdKey] = userEnrollment[c.participantIdKey].astype(str)
+  if c.noteAuthorParticipantIdKey in scoredNotes.columns:
+    scoredNotes[c.noteAuthorParticipantIdKey] = scoredNotes[c.noteAuthorParticipantIdKey].astype(
+      str
+    )
+  if c.noteAuthorParticipantIdKey in auxiliaryNoteInfo.columns:
+    auxiliaryNoteInfo[c.noteAuthorParticipantIdKey] = auxiliaryNoteInfo[
+      c.noteAuthorParticipantIdKey
+    ].astype(str)
+
   helpfulnessScores = convert_prescoring_rater_model_output_to_coalesced_helpfulness_scores(
     prescoringRaterModelOutput, userEnrollment
   )
@@ -2090,25 +2117,15 @@ def run_final_note_scoring(
   maxWorkers = maxWorkers or (4 if previousScoredNotes is None else 6)
   logger.info(f"Number of concurrent scoring workers: {maxWorkers}")
 
-  # Convert participant IDs from strings to Int64 to reduce memory during parallel scoring.
-  # Same optimization used in run_prescoring.
-  idConversion = False
-  try:
-    ratingIds = ratings[c.raterParticipantIdKey].astype("int64[pyarrow]")
-    noteStatusHistoryIds = noteStatusHistory[c.noteAuthorParticipantIdKey].astype("int64[pyarrow]")
-    userEnrollmentIds = userEnrollment[c.participantIdKey].astype("int64[pyarrow]")
-    prescoringRaterIds = prescoringRaterModelOutput[c.raterParticipantIdKey].astype(
-      "int64[pyarrow]"
+  if runParallel:
+    ensure_int64_participant_ids(
+      [
+        (ratings, c.raterParticipantIdKey),
+        (noteStatusHistory, c.noteAuthorParticipantIdKey),
+        (userEnrollment, c.participantIdKey),
+        (prescoringRaterModelOutput, c.raterParticipantIdKey),
+      ]
     )
-    ratings[c.raterParticipantIdKey] = ratingIds
-    noteStatusHistory[c.noteAuthorParticipantIdKey] = noteStatusHistoryIds
-    userEnrollment[c.participantIdKey] = userEnrollmentIds
-    prescoringRaterModelOutput[c.raterParticipantIdKey] = prescoringRaterIds
-    del ratingIds, noteStatusHistoryIds, userEnrollmentIds, prescoringRaterIds
-    logger.info("Final scoring: converted participant IDs to int64[pyarrow] for memory reduction.")
-    idConversion = True
-  except ValueError as e:
-    logger.info(f"Final scoring: ID conversion to Int64 failed, IDs remain as strings. {repr(e)}")
 
   modelResults = _run_scorers(
     args,
@@ -2128,17 +2145,12 @@ def run_final_note_scoring(
     maxWorkers=maxWorkers,
   )
 
-  # Restore string IDs now that parallel scoring is complete.
-  if idConversion:
-    ratings[c.raterParticipantIdKey] = ratings[c.raterParticipantIdKey].astype(str)
-    noteStatusHistory[c.noteAuthorParticipantIdKey] = noteStatusHistory[
-      c.noteAuthorParticipantIdKey
-    ].astype(str)
-    userEnrollment[c.participantIdKey] = userEnrollment[c.participantIdKey].astype(str)
-    prescoringRaterModelOutput[c.raterParticipantIdKey] = prescoringRaterModelOutput[
-      c.raterParticipantIdKey
-    ].astype(str)
-    logger.info("Final scoring: restored participant IDs to strings.")
+  if runParallel:
+    logger.info("Aligning participant ID dtypes after parallel final scoring.")
+    _align_participant_id_dtypes_with_notes(
+      notes, ratings, noteStatusHistory, userEnrollment, prescoringRaterModelOutput
+    )
+    logger.info("Aligned participant ID dtypes after parallel final scoring.")
 
   scoredNotes, auxiliaryNoteInfo = combine_final_scorer_results(modelResults, noteStatusHistory)
 
@@ -2196,13 +2208,23 @@ def run_final_note_scoring(
     newNoteStatusHistory = pd.concat([newNoteStatusHistory, noteStatusHistoryPassthrough])
 
   previousPcrhNoteIds = None
+  previousPcrhTimes = None
   if previousScoredNotes is not None and c.pcrhAboveThresholdTimeKey in previousScoredNotes.columns:
     previousPcrhNoteIds = set(
       previousScoredNotes.loc[
         previousScoredNotes[c.pcrhAboveThresholdTimeKey].fillna(0) > 0, c.noteIdKey
       ]
     )
-  scoredNotes = suppress_pcrh_ineligible(scoredNotes, previousPcrhNoteIds=previousPcrhNoteIds)
+    prevPcrh = previousScoredNotes[[c.noteIdKey, c.pcrhAboveThresholdTimeKey]].dropna(
+      subset=[c.pcrhAboveThresholdTimeKey]
+    )
+    previousPcrhTimes = dict(zip(prevPcrh[c.noteIdKey], prevPcrh[c.pcrhAboveThresholdTimeKey]))
+  scoredNotes = suppress_pcrh_ineligible(
+    scoredNotes,
+    previousPcrhNoteIds=previousPcrhNoteIds,
+    previousPcrhTimes=previousPcrhTimes,
+    currentTimeMillis=c.epochMillis,
+  )
   newNoteStatusHistory[c.pcrhAboveThresholdTimeKey] = newNoteStatusHistory[c.noteIdKey].map(
     scoredNotes.set_index(c.noteIdKey)[c.pcrhAboveThresholdTimeKey]
   )
@@ -2359,6 +2381,8 @@ def run_scoring(
   previousScoredNotes: Optional[pd.DataFrame] = None,
   previousAuxiliaryNoteInfo: Optional[pd.DataFrame] = None,
   previousRatingCutoffTimestampMillis: Optional[int] = 0,
+  maxWorkers: Optional[int] = None,
+  skipPss: bool = False,
 ):
   """Runs both phases of scoring consecutively. Only for adhoc/testing use.
   In prod, we run each phase as a separate binary.
@@ -2404,7 +2428,19 @@ def run_scoring(
     filterPrescoringInputToSimulateDelayInHours,
   )
 
-  postSelectionSimilarityValues = run_rater_clustering(notes=notes, ratings=ratings)
+  if skipPss:
+    # Validation / debug path: skip the multi-hour PSS pair-counts step and feed
+    # an empty PSS DataFrame downstream. `apply_post_selection_similarity`
+    # tolerates this (no correlated raters identified, no filtering applied) and
+    # `prescoringRaterModelOutput`'s concat with PSS values becomes a no-op.
+    # Output scores will differ slightly from a full run because PSS-based
+    # correlated-rater suppression is disabled.
+    logger.info("skipPss=True: skipping run_rater_clustering; using empty PSS DataFrame.")
+    postSelectionSimilarityValues = pd.DataFrame(
+      columns=[c.raterParticipantIdKey, c.postSelectionValueKey, c.quasiCliqueValueKey]
+    )
+  else:
+    postSelectionSimilarityValues = run_rater_clustering(notes=notes, ratings=ratings)
 
   (
     prescoringNoteModelOutput,
@@ -2429,6 +2465,7 @@ def run_scoring(
     useStableInitialization=useStableInitialization,
     checkFlips=False,
     previousRatingCutoffTimestampMillis=previousRatingCutoffTimestampMillis,
+    maxWorkers=maxWorkers,
   )
 
   logger.info("We invoked run_scoring and are now in between prescoring and scoring.")
@@ -2469,6 +2506,7 @@ def run_scoring(
     previousAuxiliaryNoteInfo=previousAuxiliaryNoteInfo,
     previousRatingCutoffTimestampMillis=previousRatingCutoffTimestampMillis,
     empiricalTotals=empiricalTotals,
+    maxWorkers=maxWorkers,
   )
 
   logger.info("Starting contributor scoring")

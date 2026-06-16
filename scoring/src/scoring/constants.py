@@ -13,6 +13,11 @@ import pandas as pd
 logger = logging.getLogger("birdwatch.constants")
 logger.setLevel(logging.INFO)
 
+try:
+  participantIdDtype = pd.StringDtype("pyarrow")
+except TypeError:
+  participantIdDtype = object
+
 
 # Default number of threads to use in torch if os.cpu_count() is unavailable
 # and no value is specified.
@@ -619,7 +624,7 @@ isCollaborativeNoteKey = "isCollaborativeNote"
 noteTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
-    (noteAuthorParticipantIdKey, object),
+    (noteAuthorParticipantIdKey, participantIdDtype),
     (createdAtMillisKey, np.int64),
     (tweetIdKey, np.int64),
     (classificationKey, object),
@@ -650,7 +655,7 @@ suggestionIdKey = "suggestionId"
 ratingTSVColumnsAndTypes = (
   [
     (noteIdKey, np.int64),
-    (raterParticipantIdKey, object),
+    (raterParticipantIdKey, participantIdDtype),
     (createdAtMillisKey, np.int64),
     (versionKey, pd.Int8Dtype()),
     (agreeKey, pd.Int8Dtype()),
@@ -708,7 +713,7 @@ timestampMillisOfFirstNmrDueToMinStableCrhTimeKey = "timestampMillisOfFirstNmrDu
 
 noteStatusHistoryTSVColumnsAndTypes = [
   (noteIdKey, np.int64),
-  (noteAuthorParticipantIdKey, object),
+  (noteAuthorParticipantIdKey, participantIdDtype),
   (createdAtMillisKey, np.int64),
   (timestampMillisOfNoteFirstNonNMRLabelKey, np.double),  # double because nullable.
   (firstNonNMRLabelKey, "category"),
@@ -790,7 +795,7 @@ topWriterHitRate = 0.04
 hasCrnhSinceEarnOut = "hasCrnhSinceEarnOut"
 
 userEnrollmentTSVColumnsAndTypes = [
-  (participantIdKey, str),
+  (participantIdKey, participantIdDtype),
   (enrollmentState, str),
   (successfulRatingNeededToEarnIn, np.int64),
   (timestampOfLastStateChange, np.int64),

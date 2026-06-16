@@ -44,6 +44,9 @@ _TOPIC_SCORED_PREFIX = "pcrh_topic_scored_"
 _AUTHOR_PREFIX = "pcrh_author_"
 _UNASSIGNED_TOPIC = "Unassigned"
 
+# Notes whose previous pcrhAboveThresholdTime is older than this are suppressed to -1.
+_PCRH_STALE_SUPPRESSION_MILLIS = 12 * 60 * 60 * 1000
+
 _RATINGS_BASE_COLS = [
   c.noteIdKey,
   c.raterParticipantIdKey,
@@ -761,12 +764,20 @@ def compute_pcrh_predictions(
 
 
 def suppress_pcrh_ineligible(
-  scoredNotes: pd.DataFrame, previousPcrhNoteIds: Optional[Set] = None
+  scoredNotes: pd.DataFrame,
+  previousPcrhNoteIds: Optional[Set] = None,
+  previousPcrhTimes: Optional[Dict[int, float]] = None,
+  currentTimeMillis: Optional[float] = None,
 ) -> pd.DataFrame:
   """Set pcrhAboveThresholdTime to -1 for notes not eligible for PCRH.
 
   Ineligible: not decided by CoreModel, firm-rejected by core, or
   classified NOT_MISLEADING. Must be called after decidedBy is assigned.
+
+  Additionally, any note whose previous pcrhAboveThresholdTime (from
+  previousPcrhTimes) is not -1 and is more than 12 hours before
+  currentTimeMillis is suppressed to -1 -- a note may not remain above the
+  PCRH threshold indefinitely.
   """
   if c.pcrhAboveThresholdTimeKey not in scoredNotes.columns:
     return scoredNotes
@@ -787,7 +798,12 @@ def suppress_pcrh_ineligible(
   if previousPcrhNoteIds is not None:
     hadPositive |= scoredNotes[c.noteIdKey].isin(previousPcrhNoteIds)
   suppress = (notCore | coreFirmRejected | notMisleading) & hadPositive
-  scoredNotes.loc[suppress.values, c.pcrhAboveThresholdTimeKey] = -1.0
+  suppressMask = suppress.values
+  if previousPcrhTimes is not None and currentTimeMillis is not None:
+    prevTimes = scoredNotes[c.noteIdKey].map(previousPcrhTimes).values.astype(np.double)
+    stale = (prevTimes != -1.0) & ((currentTimeMillis - prevTimes) > _PCRH_STALE_SUPPRESSION_MILLIS)
+    suppressMask = suppressMask | stale
+  scoredNotes.loc[suppressMask, c.pcrhAboveThresholdTimeKey] = -1.0
   return scoredNotes
 
 

@@ -52,7 +52,16 @@ class PostSelectionSimilarity:
       smoothedNpmiThreshold=smoothedNpmiThreshold,
       minimumRatingProportionThreshold=minimumRatingProportionThreshold,
     )
-    self.suspectPairs = set(self.suspectPairs + list(self.pairCountsDict.keys()))
+    # _get_pair_counts_dict may have packed pair keys as a single int64 (see
+    # _can_pack_rater_ids); downstream consumers (aggregate_into_cliques)
+    # expect (left, right) tuples. At this point the dict has been filtered
+    # down to pairs that passed PMI/minSim thresholds, so unpacking is cheap.
+    if self.pairCountsDict and not isinstance(next(iter(self.pairCountsDict)), tuple):
+      _ID_MASK = (1 << 32) - 1
+      pssPairs = [(k >> 32, k & _ID_MASK) for k in self.pairCountsDict.keys()]
+    else:
+      pssPairs = list(self.pairCountsDict.keys())
+    self.suspectPairs = set(self.suspectPairs + pssPairs)
 
   # Define helper to get affinity and coverage for a pair over a time window
   def _compute_affinity_and_coverage(self, ratings, notes, latencyMins, minDenom):
@@ -286,16 +295,26 @@ def _join_rater_totals_compute_pmi_and_filter_edges_below_threshold(
   minimumRatingProportionThreshold: float,
 ):
   keys_to_delete = []
+  # _get_pair_counts_dict either packs (left, right) into a single int64 key
+  # (production path) or uses (left, right) tuples (tests / unpackable IDs).
+  # Detect once here so the inner loop stays unconditional.
+  use_packed_keys = bool(pairCountsDict) and not isinstance(next(iter(pairCountsDict)), tuple)
+  _ID_MASK = (1 << 32) - 1
 
   with c.time_block("Compute PMI and minSim"):
-    for leftRaterId, rightRaterId in pairCountsDict:
+    for pairKey in pairCountsDict:
+      if use_packed_keys:
+        leftRaterId = pairKey >> 32
+        rightRaterId = pairKey & _ID_MASK
+      else:
+        leftRaterId, rightRaterId = pairKey
       if leftRaterId not in raterTotalsDict or rightRaterId not in raterTotalsDict:
-        keys_to_delete.append((leftRaterId, rightRaterId))
+        keys_to_delete.append(pairKey)
         continue
 
       leftTotal = raterTotalsDict[leftRaterId]
       rightTotal = raterTotalsDict[rightRaterId]
-      coRatings = pairCountsDict[(leftRaterId, rightRaterId)]
+      coRatings = pairCountsDict[pairKey]
 
       if type(coRatings) != int:
         # already processed (should only occur when re-running...)
@@ -314,9 +333,9 @@ def _join_rater_totals_compute_pmi_and_filter_edges_below_threshold(
       if (smoothedNpmi >= smoothedNpmiThreshold) or (
         minSimRatingProp >= minimumRatingProportionThreshold
       ):
-        pairCountsDict[(leftRaterId, rightRaterId)] = (smoothedNpmi, minSimRatingProp)
+        pairCountsDict[pairKey] = (smoothedNpmi, minSimRatingProp)
       else:
-        keys_to_delete.append((leftRaterId, rightRaterId))
+        keys_to_delete.append(pairKey)
 
     print(f"Pairs dict used {sys.getsizeof(pairCountsDict) * 1e-9}GB RAM at max")
 
@@ -374,45 +393,96 @@ def aggregate_into_cliques(suspectPairs):
   return cliqueToUserMap, userToCliqueMap
 
 
+def _can_pack_rater_ids(ratings) -> bool:
+  """Whether rater IDs can be packed as a single int64 dict key.
+
+  Packing requires non-negative integer IDs strictly less than 2**32 so we can
+  encode ``(smaller_id << 32) | larger_id`` without collisions. The upstream
+  participant-ID normalization step produces a dense ``int64`` range starting
+  at 0 that satisfies this; callers using raw string IDs (e.g. unit tests with
+  toy data) fall through to the slower tuple-keyed path.
+  """
+  rater_col = ratings[c.raterParticipantIdKey]
+  if len(rater_col) == 0:
+    return False
+  if not pd.api.types.is_integer_dtype(rater_col):
+    return False
+  return int(rater_col.min()) >= 0 and int(rater_col.max()) < (1 << 32)
+
+
 def _get_pair_counts_dict(ratings, windowMillis):
-  pair_counts = dict()
+  """Count co-rating events within a sliding time window, per tweet.
+
+  Pair keys are stored as a single packed Python int rather than a
+  ``(left, right)`` tuple when rater IDs are non-negative ints < 2**32:
+  ``(smaller_id << 32) | larger_id``. This roughly halves the per-entry memory
+  of the dict (which can reach ~10^9 entries at scoring scale) by removing the
+  tuple object and the two boxed scalars per pair. When IDs can't be packed
+  (string IDs, negative IDs, or IDs >= 2**32), the function falls back to
+  tuple-keyed counts. ``_join_rater_totals_...`` and the ``__init__`` caller
+  detect which key format was used and unpack on demand.
+  """
+  pack_keys = _can_pack_rater_ids(ratings)
+
+  pair_counts: Dict = dict()
 
   # Group by tweetIdKey to process each tweet individually
   grouped_by_tweet = ratings.groupby(c.tweetIdKey, sort=False)
 
-  for _, tweet_group in grouped_by_tweet:
-    # Keep track of pairs we've already counted for this tweetId
-    pairs_counted_in_tweet = set()
-
-    # Group by noteIdKey within the tweet
-    grouped_by_note = tweet_group.groupby(c.noteIdKey, sort=False)
-
-    for _, note_group in grouped_by_note:
-      note_group.sort_values(c.createdAtMillisKey, inplace=True)
-
-      # Extract relevant columns as numpy arrays for efficient computation
-      times = note_group[c.createdAtMillisKey].values
-      raters = note_group[c.raterParticipantIdKey].values
-
-      n = len(note_group)
-      window_start = 0
-
-      for i in range(n):
-        # Move the window start forward if the time difference exceeds windowMillis
-        while times[i] - times[window_start] > windowMillis:
-          window_start += 1
-
-        # For all indices within the sliding window (excluding the current index)
-        for j in range(window_start, i):
-          if raters[i] != raters[j]:
-            left_rater, right_rater = tuple(sorted((raters[i], raters[j])))
-            pair = (left_rater, right_rater)
-            # Only count this pair once per tweetId
+  if pack_keys:
+    for _, tweet_group in grouped_by_tweet:
+      # Keep track of pairs we've already counted for this tweetId
+      pairs_counted_in_tweet: set = set()
+      grouped_by_note = tweet_group.groupby(c.noteIdKey, sort=False)
+      for _, note_group in grouped_by_note:
+        note_group.sort_values(c.createdAtMillisKey, inplace=True)
+        # Convert raters to a Python list of ints once per note group so the
+        # inner loop avoids per-iteration numpy.int64 boxing (each fresh
+        # scalar would be 32 bytes and would be retained by the dict entries
+        # that reference it).
+        times = note_group[c.createdAtMillisKey].values
+        raters = note_group[c.raterParticipantIdKey].values.tolist()
+        n = len(note_group)
+        window_start = 0
+        for i in range(n):
+          while times[i] - times[window_start] > windowMillis:
+            window_start += 1
+          a = raters[i]
+          for j in range(window_start, i):
+            b = raters[j]
+            if a == b:
+              continue
+            pair = (a << 32) | b if a < b else (b << 32) | a
             if pair not in pairs_counted_in_tweet:
               pairs_counted_in_tweet.add(pair)
-              # Update the count for this pair
               if pair not in pair_counts:
                 pair_counts[pair] = 0
               pair_counts[pair] += 1
+  else:
+    # Fallback path: IDs are strings or don't fit in 32 bits, so dict keys
+    # are ``(left, right)`` tuples. Slower and more memory-hungry; used by
+    # tests with toy string IDs and by any caller that skips upstream
+    # participant-ID normalization.
+    for _, tweet_group in grouped_by_tweet:
+      pairs_counted_in_tweet = set()
+      grouped_by_note = tweet_group.groupby(c.noteIdKey, sort=False)
+      for _, note_group in grouped_by_note:
+        note_group.sort_values(c.createdAtMillisKey, inplace=True)
+        times = note_group[c.createdAtMillisKey].values
+        raters = note_group[c.raterParticipantIdKey].values
+        n = len(note_group)
+        window_start = 0
+        for i in range(n):
+          while times[i] - times[window_start] > windowMillis:
+            window_start += 1
+          for j in range(window_start, i):
+            if raters[i] != raters[j]:
+              left_rater, right_rater = tuple(sorted((raters[i], raters[j])))
+              pair = (left_rater, right_rater)
+              if pair not in pairs_counted_in_tweet:
+                pairs_counted_in_tweet.add(pair)
+                if pair not in pair_counts:
+                  pair_counts[pair] = 0
+                pair_counts[pair] += 1
 
   return pair_counts

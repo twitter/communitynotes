@@ -18,6 +18,116 @@ logger = logging.getLogger("birdwatch.process_data")
 logger.setLevel(logging.INFO)
 
 
+def _factorize_participant_ids(
+  dfs_and_cols: List[Tuple[pd.DataFrame, str]],
+) -> Dict[int, str]:
+  """Replace participant ID columns with shared sequential int64 codes."""
+  all_unique: set = set()
+  for df, col in dfs_and_cols:
+    all_unique.update(df[col].unique())
+  categories = sorted(all_unique)
+  reverse: Dict[int, str] = {idx: id_str for idx, id_str in enumerate(categories)}
+  logger.info(f"Factorized {len(categories)} unique participant IDs to sequential int64.")
+
+  for df, col in dfs_and_cols:
+    df[col] = pd.Categorical(df[col], categories=categories).codes.astype(np.int64)
+
+  del all_unique, categories
+  return reverse
+
+
+def _restore_participant_ids(
+  dfs_and_cols: List[Tuple[pd.DataFrame, str]],
+  reverse_mapping: Dict[int, str],
+) -> None:
+  """Restore factorized int64 participant ID columns to their original string values."""
+  for df, col in dfs_and_cols:
+    original = df[col]
+    if pd.api.types.is_integer_dtype(original.dtype):
+      restored = original.astype(object).map(reverse_mapping)
+      df[col] = restored.where(restored.notna(), original)
+    else:
+      numeric = pd.to_numeric(original, errors="coerce")
+      restored = numeric.astype("Int64").astype(object).map(reverse_mapping)
+      df[col] = restored.where(restored.notna(), original)
+  logger.info("Restored participant IDs from int64 to original strings.")
+
+
+def _get_numeric_participant_ids(
+  dfs_and_cols: List[Tuple[pd.DataFrame, str]],
+) -> Optional[List[pd.Series]]:
+  """Return int64 participant ID Series, or None if any ID is non-numeric."""
+  converted = []
+  try:
+    for df, col in dfs_and_cols:
+      converted.append(df[col].astype(np.int64))
+  except (ValueError, TypeError):
+    return None
+  return converted
+
+
+def _convert_participant_ids_to_int64(dfs_and_cols: List[Tuple[pd.DataFrame, str]]) -> bool:
+  converted = _get_numeric_participant_ids(dfs_and_cols)
+  if converted is None:
+    return False
+  for (df, col), values in zip(dfs_and_cols, converted):
+    df[col] = values
+  logger.info("Converted participant IDs to int64.")
+  return True
+
+
+def ensure_int64_participant_ids(dfs_and_cols: List[Tuple[pd.DataFrame, str]]) -> None:
+  """Convert numeric participant ID columns to int64, raising on non-numeric IDs."""
+  if all(pd.api.types.is_integer_dtype(df[col].dtype) for df, col in dfs_and_cols):
+    for df, col in dfs_and_cols:
+      if df[col].dtype != np.int64:
+        df[col] = df[col].astype(np.int64)
+    return
+  converted = _get_numeric_participant_ids(dfs_and_cols)
+  if converted is None:
+    raise ValueError("Participant IDs must be normalized before scoring.")
+  for (df, col), values in zip(dfs_and_cols, converted):
+    df[col] = values
+  logger.info("Converted participant IDs to int64.")
+
+
+def normalize_participant_ids(
+  dfs_and_cols: List[Tuple[pd.DataFrame, str]],
+) -> Optional[Dict[int, str]]:
+  """Normalize participant ID columns for scoring.
+
+  Numeric IDs are cast to int64 and need no reverse mapping. Non-numeric public
+  IDs are factorized to shared sequential int64 codes; the returned mapping must
+  be used to restore public outputs.
+  """
+  if all(pd.api.types.is_integer_dtype(df[col].dtype) for df, col in dfs_and_cols):
+    ensure_int64_participant_ids(dfs_and_cols)
+    return None
+  if _convert_participant_ids_to_int64(dfs_and_cols):
+    return None
+  return _factorize_participant_ids(dfs_and_cols)
+
+
+def apply_participant_id_mapping(
+  dfs_and_cols: List[Tuple[pd.DataFrame, str]],
+  reverse_mapping: Dict[int, str],
+) -> None:
+  """Apply an existing original-ID -> int64-code mapping to additional frames."""
+  forward_mapping = {id_str: idx for idx, id_str in reverse_mapping.items()}
+  for df, col in dfs_and_cols:
+    if col not in df.columns:
+      continue
+    if pd.api.types.is_integer_dtype(df[col].dtype):
+      continue
+    mapped = df[col].map(forward_mapping)
+    missing = mapped.isna() & df[col].notna()
+    if missing.any():
+      examples = df.loc[missing, col].head(5).tolist()
+      raise ValueError(f"Found participant IDs missing from factorization mapping: {examples}")
+    df[col] = mapped.astype(np.int64)
+  logger.info("Applied existing participant ID factorization mapping.")
+
+
 def read_from_strings(
   notesStr: str, ratingsStr: str, noteStatusHistoryStr: str
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -64,7 +174,7 @@ def read_prescoring_from_strings(
 
 def tsv_parser(
   rawTSV: str,
-  mapping: Dict[str, type],
+  mapping: Dict[str, object],
   columns: List[str],
   header: bool,
   useCols: Optional[List[str]] = None,
@@ -139,15 +249,31 @@ def tsv_parser(
 
 
 def tsv_reader_single(
-  path: str, mapping, columns, header=False, parser=tsv_parser, convertNAToNone=True
+  path: str,
+  mapping,
+  columns,
+  header=False,
+  parser=tsv_parser,
+  convertNAToNone=True,
 ):
   """Read a single TSV file."""
   with open(path, "r", encoding="utf-8") as handle:
-    return tsv_parser(handle.read(), mapping, columns, header, convertNAToNone=convertNAToNone)
+    return tsv_parser(
+      handle.read(),
+      mapping,
+      columns,
+      header,
+      convertNAToNone=convertNAToNone,
+    )
 
 
 def tsv_reader(
-  path: str, mapping, columns, header=False, parser=tsv_parser, convertNAToNone=True
+  path: str,
+  mapping,
+  columns,
+  header=False,
+  parser=tsv_parser,
+  convertNAToNone=True,
 ) -> pd.DataFrame:
   """Read a single TSV file or a directory of TSV files."""
   if os.path.isdir(path):
@@ -166,7 +292,12 @@ def tsv_reader(
     return pd.concat(dfs, ignore_index=True)
   else:
     return tsv_reader_single(
-      path, mapping, columns, header, parser, convertNAToNone=convertNAToNone
+      path,
+      mapping,
+      columns,
+      header,
+      parser,
+      convertNAToNone=convertNAToNone,
     )
 
 
@@ -665,6 +796,7 @@ class LocalDataLoader(CommunityNotesDataLoader):
     headers: bool,
     shouldFilterNotMisleadingNotes: bool = True,
     log: bool = True,
+    normalizeParticipantIds: bool = False,
     prescoringNoteModelOutputPath: Optional[str] = None,
     prescoringRaterModelOutputPath: Optional[str] = None,
     prescoringNoteTopicClassifierPath: Optional[str] = None,
@@ -693,6 +825,11 @@ class LocalDataLoader(CommunityNotesDataLoader):
     self.headers = headers
     self.shouldFilterNotMisleadingNotes = shouldFilterNotMisleadingNotes
     self.log = log
+    self.normalizeParticipantIds = normalizeParticipantIds
+    self.participantIdReverseMapping: Optional[Dict[int, str]] = None
+
+  def get_participant_id_reverse_mapping(self) -> Optional[Dict[int, str]]:
+    return self.participantIdReverseMapping
 
   def get_data(self) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """All-in-one function for reading Birdwatch notes and ratings from TSV files.
@@ -708,6 +845,15 @@ class LocalDataLoader(CommunityNotesDataLoader):
       self.userEnrollmentPath,
       self.headers,
     )
+    if self.normalizeParticipantIds:
+      self.participantIdReverseMapping = normalize_participant_ids(
+        [
+          (notes, c.noteAuthorParticipantIdKey),
+          (ratings, c.raterParticipantIdKey),
+          (noteStatusHistory, c.noteAuthorParticipantIdKey),
+          (userEnrollment, c.participantIdKey),
+        ]
+      )
     notes, ratings, noteStatusHistory = preprocess_data(
       notes, ratings, noteStatusHistory, self.shouldFilterNotMisleadingNotes, self.log
     )
