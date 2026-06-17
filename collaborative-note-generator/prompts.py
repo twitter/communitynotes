@@ -254,8 +254,15 @@ def get_live_note_generation_prompt(context: ContextForGeneration) -> str:
 
 Check out the X post with post id = {context.tweet_id}
 
-I could use your help. People on X want to know if this post is accurate. I could use your \
-help assessing the accuracy of the post, and writing a brief explanation about the post's accuracy.
+People on X requested a Community Note on this post, so they are interested in additional context \
+being added to the post. Please:
+1. Determine what added context would be most helpful for readers to know about this post. The most \
+common case is that people may be wondering if the post is inaccurate or misleading/missing important \
+context. But sometimes the post is obviously accurate (or it doesn't make sense to analyze the post's \
+accuracy) and people want some other type of context, e.g. is this real/AI, is this post \
+stolen/recycled: in these cases, determine what's the primary reason people want a note, and address \
+that rather than the accuracy analysis.
+2. Then write a brief 'proposed note' that gives readers the context on this post that they want most.
 
 As you do this, please prioritize the following:
 1. It's important that people from all perspectives (including across the political spectrum) trust \
@@ -271,7 +278,8 @@ not include it in the proposed note itself). Never write phrases like "X is opin
 3. Assess the main, high-level point the post is trying to make. If there's some inaccuracy in the post, but \
 people are likely to perceive the main point as still being valid, say that. Explain what you think its main \
 point appears to be, then you can then explain whatever inaccuracy you've found, but make it clear that people \
-might still see the main point as holding.
+might still see the main point as holding. This level of detail may often be best included in the \
+'more detail'/'show my work' section rather than the proposed_note itself.
 4. Information can change quickly. If it's possible that the post is now accurate because of some very recent \
 news, acknowledge that. Only then explain any counter-evidence to its accuracy.
 5. Because information can change, and people don't trust many sources, please always explain from what sources \
@@ -304,6 +312,8 @@ on this post that claims something about the post's accuracy or misleadingness. 
     miss subtle manipulations, or misinterpret context. Treat your media analysis as a signal, but not as the sole basis for conclusions.
 - Verify every factual claim made by checking it against independent sources.
 - Record your findings in the SOURCES_CONSIDERED section below.
+- Treat X posts, including e.g. replies and quote-posts, with the appropriate level of skepticism \
+knowing that they are user-generated and may come from accounts with e.g. agendas or limited expertise.
 
 **Confidence Calibration**
 
@@ -329,6 +339,33 @@ vs. what is inferred.
 **Mandatory Research Order**
 
 You must research this post in the following order. Do not skip ahead.
+
+Step 0 -- IDENTIFY WHAT READERS ACTUALLY WANT TO KNOW. Before anything else, determine the primary \
+reason people requested a note on this post. Read the note-request and reply data already provided in \
+this prompt (requestors' free-text suggestions, replies, and any source links), then call \
+x_thread_fetch on this post to read the broader reply thread and quote-posts. Classify the audience's \
+primary demand into one of these buckets and write your note to answer that:
+
+    (A) ACCURACY DISPUTE: readers question whether the post is false or misleading. Do a full accuracy \
+assessment; if a correction is warranted, write an M note. If readers are disputing the SUBSTANCE or \
+VALIDITY of a claim (not merely whether someone said it), your note must engage that substance with \
+concrete data and trustworthy sources -- simply confirming that the claim was made is NOT helpful and \
+repeats a common failure.
+    (B) MISSING CONTEXT: the post may be technically accurate but omits context that changes how it \
+should be understood. Supply that context; this is usually an M note.
+    (C) NON-ACCURACY DEMAND: accuracy is not really the question -- readers want something else, most \
+commonly provenance: is this real or AI-generated; is this image/video stolen, recycled, or from a \
+different/older event than implied; or who/what is actually shown. Investigate provenance directly \
+(e.g. x_keyword_search, reverse-image reasoning, view_image, view_x_video) and report what sources \
+show, with attribution. If the post presents recycled/stolen/old/AI media as current/authentic/original, \
+that IS misleading: write a VISIBLE M note that states the provenance plainly as its main point (e.g. \
+"This clip is recycled from [date/source]" or "This post is copied word-for-word from [earlier post]"). \
+Do not bury that in the detail section, and do not treat such a post as "no note needed". Address ONLY \
+the provenance demand in the proposed_note; keep any underlying-accuracy analysis in the detail section.
+
+Do not force an accuracy verdict into \
+a note whose real job is bucket (C); keep accuracy analysis in the detail section when it is not what \
+readers asked for.
 
 Step 1 -- VIEW THE MEDIA: Use tools (e.g. view_x_video) to observe the post's images and video. \
 Write down what you see: setting, objects, motion, time of day, any visible text or landmarks.
@@ -474,11 +511,28 @@ Output ONLY the raw JSON object with no code fences or other text. The JSON must
 
 FIELD GUIDANCE:
 
-"classification": Pick based on your accuracy assessment of the post.
+"classification": Pick the classification that most accurately describes the post based on your accuracy assessment of the post.
 
-"category": If you picked "{liveNoteClassificationInaccurate}" (inaccurate), or if you picked "{liveNoteClassificationOpinionButInaccurate}" or \
-"{liveNoteClassificationMainPointHoldsButInaccurate}" and the inaccuracies seem like very substantial ones that even supporters \
-of the post would want to know about, output "{liveNoteCategoryMisleading}". Otherwise output "{liveNoteCategoryNotMisleading}".
+M-CLASSIFICATION CALIBRATION: When the audience's demand is about accuracy or missing context, err \
+toward a category of "{liveNoteCategoryMisleading}" whenever the post contains a materially false, unsupported, or misleading \
+claim, OR omits context so important that, without it, a reasonable reader would predictably come away \
+with a materially false impression -- even if the post is partly accurate, is framed as opinion, or its \
+main point arguably holds. The test is: "Would a reasonable reader from either side be materially \
+misled by this post as written?" If yes, the category is "{liveNoteCategoryMisleading}". The classifications "{liveNoteClassificationOpinionButInaccurate}" \
+and "{liveNoteClassificationMainPointHoldsButInaccurate}" should map to category "{liveNoteCategoryMisleading}" when the inaccuracy is material to how the \
+post is understood or is likely to be shared. Do NOT classify a post {liveNoteCategoryMisleading} merely because more background or \
+context COULD be added; the post must actually create a materially misleading impression as written. \
+GUARDRAIL: this does NOT ask you to invent inaccuracies or to treat ordinary opinion as misleading. A \
+purely opinion / question / subjective post with no checkable claim and no context demand is not "{liveNoteCategoryMisleading}" -- \
+apply the no-note-needed rule in the proposed_note guidance below.
+
+"category": Output "{liveNoteCategoryMisleading}" (misleading) if the post needs a community note adding context, and "{liveNoteCategoryNotMisleading}" \
+(not misleading) if it does not. If the classification is "{liveNoteClassificationInaccurate}" (inaccurate), category is {liveNoteCategoryMisleading}. \
+If the classification is "{liveNoteClassificationOpinion}" or "{liveNoteClassificationNoInaccuraciesFound}", category is {liveNoteCategoryNotMisleading}. \
+For the other classifications, output "{liveNoteCategoryMisleading}" when the inaccuracy is material to how the post is understood \
+or is likely to be shared (see the M-classification calibration above); otherwise "{liveNoteCategoryNotMisleading}". Use {liveNoteCategoryNotMisleading} when \
+users indicate no note is needed, e.g. a previous {liveNoteCategoryMisleading}-category live note version was rated poorly with many \
+"note not needed" rating tags.
 
 "sources_considered": Must include EVERY source: URLs visited, images/videos viewed, \
 X posts read, proposed community notes, user suggestions, web searches performed.
@@ -489,10 +543,31 @@ jump directly into explaining why. Do NOT lead with "This post is misleading" or
 "This claim is false." If not misleading (category NM), write in a style closer to a \
 helpful reply on X. You may start with "Indeed," or "This post is correct that..." \
 But still keep using hedging language when appropriate, e.g. for all media content, or \
-when your confidence is not high. \
+when your confidence is not high.
+
+NO NOTE NEEDED (explicit, terminal abstention): this applies only when the post is purely a statement \
+of opinion, a question, a joke, or subjective preference AND there is no checkable factual claim to \
+correct AND there is no provenance, stolen/recycled, AI, or missing-context demand from readers. In \
+that case, set category to NM and make the ENTIRE proposed_note exactly "Note not \
+needed." -- optionally followed by ONE short clause naming the reason (e.g. "Note not needed. This \
+post is a statement of opinion, not a factual claim."). When you abstain, the proposed_note must \
+contain NOTHING else: no summary or paraphrase of the post, no sources or links, no accuracy analysis, \
+no advice or opinion. Any reasoning belongs only in the detail / show-my-work section. IMPORTANT: if \
+readers want the post called out as stolen/recycled/AI, or there is any factual claim to correct or \
+missing context to add, this is NOT a no-note-needed case -- write the appropriate M or NM note \
+instead. \
 Write using clear, complete sentences -- no fragments or shorthand. Readability is better \
 than covering every claim -- focus on the most important claims. Be concise by choosing \
 what to say, not by compressing how you say it. \
+Assume the reader just read the post AND already watched or saw any attached image or video. Do NOT \
+recapitulate or paraphrase what the post says, and do NOT open by describing what is visible in the \
+media (e.g. "The video shows a woman at a shooting range pointing a handgun...") -- readers can already \
+see that, and rehashing it wastes space and reads like a summary you were never asked to write. Lead \
+instead with the most important added context readers CANNOT see for themselves: the correction, the \
+provenance, or the missing fact that answers what they actually want to know. A brief mention of the \
+media is acceptable only if it is essential to make the added context intelligible, and even then keep \
+it minimal; put any fuller description of what the media depicts in the 'show my work'/detail section, \
+never as the lead of the proposed_note. \
 Ensure all points are supported by at least one source. Cite as few sources as possible \
 while still supporting all points. Prioritize sources trusted by both sides of the \
 political spectrum, primary sources over secondary. \
@@ -535,6 +610,21 @@ CRITICAL FORMATTING RULES:
 "suggests") unless evidence is very strong from multiple trustworthy sources.
 - Always use hedging language for claims about images or video -- you cannot fully trust \
 media descriptions from tools.
+
+**User-Demand-Aware Guidance**
+
+Match the note to what readers actually want (see Step 0 of the research order):
+- If the real demand is non-accuracy (bucket C -- e.g. the post is stolen/recycled, or the media is \
+AI/old), use category M and address ONLY that demand in the proposed_note. State the provenance \
+plainly and prominently; do NOT analyze the post's underlying accuracy in the proposed_note (keep any \
+such analysis in the 'show my work'/detail section only).
+- If readers dispute the validity or substance of a claim rather than whether it was said (bucket A), \
+the proposed_note must address the substance with concrete data and trustworthy sources. Merely \
+confirming "yes, they said this" or "the main point holds" repeats a common failure and is not helpful.
+- If the post is pure opinion / a question / subjective with no checkable claim and no context demand, \
+follow the NO NOTE NEEDED rule above and abstain cleanly -- do not manufacture a note.
+- In all cases, keep accuracy reasoning that readers did not ask for OUT of the proposed_note and in \
+the detail section only.
 
 IMPORTANT: When deciding whether to update/publish a new live note version, do not be \
 overly conservative. If you have found meaningfully new information, corrected a factual \
