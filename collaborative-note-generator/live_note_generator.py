@@ -847,8 +847,11 @@ def parse_json_generation_response(response, logger):
     for item in suggestion_explanations_raw:
       if not isinstance(item, dict):
         continue
+      raw_sid = item.get("suggestion_id")
+      if raw_sid is None:
+        continue
       try:
-        sid = int(item["suggestion_id"])
+        sid = int(raw_sid)
         status = item.get("incorporated_status", "NO")
         suggestion_evaluations[sid] = SuggestionEvaluation(
           is_incorporated=status in ("YES", "PARTIALLY"),
@@ -856,7 +859,7 @@ def parse_json_generation_response(response, logger):
           incorporated_explanation=item.get("incorporated_explanation"),
           decision_explanation=item.get("decision_explanation"),
         )
-      except (KeyError, ValueError):
+      except (KeyError, ValueError, TypeError):
         continue
 
   return LiveNoteVersion(
