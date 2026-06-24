@@ -21,6 +21,24 @@ from .constants import (
   UpdateDecision,
   format_prompt_for_logging,
   format_response_for_logging,
+  liveNoteClassificationInaccurate,
+  liveNoteClassificationMainPointHoldsButInaccurate,
+  liveNoteClassificationNoInaccuraciesFound,
+  liveNoteClassificationOpinion,
+  liveNoteClassificationOpinionButInaccurate,
+)
+
+
+# Canonical classification strings the model must emit; anything else cannot be
+# persisted (maps to a null classification thrift-side), so we retry generation.
+_VALID_CLASSIFICATIONS = frozenset(
+  {
+    liveNoteClassificationOpinion,
+    liveNoteClassificationOpinionButInaccurate,
+    liveNoteClassificationMainPointHoldsButInaccurate,
+    liveNoteClassificationInaccurate,
+    liveNoteClassificationNoInaccuraciesFound,
+  }
 )
 from .media_pipeline import (
   check_media_comparison_pipeline_eligibility,
@@ -36,6 +54,29 @@ from .prompts import (
 )
 
 from llm.grok_client import GrokClient, SimpleGrokEAPIClient
+
+
+def _category_is_misleading(category) -> bool:
+  """True for an M / Misleading category in any form (M, MISINFORMED_..., MISLEADING)."""
+  norm = str(category or "").strip().upper().replace("_", "").replace(" ", "")
+  if norm in ("NM", "NOTMISLEADING"):
+    return False
+  return norm in ("M", "MISLEADING") or "MISLEAD" in norm or "MISINFORM" in norm
+
+
+def _category_is_not_misleading(category) -> bool:
+  norm = str(category or "").strip().upper().replace("_", "").replace(" ", "")
+  return norm in ("NM", "NOTMISLEADING")
+
+
+def _is_m_to_nm_transition(context, new_live_note_result) -> bool:
+  """True when the previous published version was M and the new candidate is NM."""
+  versions = context.past_live_note_versions_with_suggestions
+  if not versions:
+    return False
+  return _category_is_misleading(versions[0].category) and _category_is_not_misleading(
+    new_live_note_result.category
+  )
 
 
 class LiveNoteGenerator:
@@ -193,11 +234,25 @@ class LiveNoteGenerator:
 
     tracking_stats = self.initialize_tracking_stats()
 
-    context = self.hydrate_context_for_tweet(
-      tweet_id,
-      tracking_stats=tracking_stats,
-      include_suggestions=include_suggestions,
-    )
+    # Hydration touches external stores (Strato/MH) and previously could raise an
+    # uncaught exception that escaped the generation future entirely -- leaving the
+    # completion callback with no tracking_stats ("no generator stats"). Catch it
+    # and return a proper failure result so the failure is recorded with stats.
+    try:
+      context = self.hydrate_context_for_tweet(
+        tweet_id,
+        tracking_stats=tracking_stats,
+        include_suggestions=include_suggestions,
+      )
+    except Exception as e:
+      self.logger.error(
+        f"Error hydrating context for tweet {tweet_id}: {e}. Skipping generation.",
+        exc_info=True,
+      )
+      return LiveNoteGenerationResult(
+        live_note_version=None,
+        tracking_stats=self.end_tracking_stats(tracking_stats, f"Error hydrating context: {e}"),
+      )
 
     if not self.check_if_post_has_few_enough_previous_crnh_live_note_versions(
       context, tracking_stats=tracking_stats
@@ -408,7 +463,15 @@ class LiveNoteGenerator:
       "SAME_STORY"
     )
     if story_unchanged and assessment:
-      if self._should_bypass_hard_gate_for_suggestion(context, new_live_note_result):
+      if _is_m_to_nm_transition(context, new_live_note_result):
+        # Switching an over-classified M note to NM is valuable even with no new
+        # info, so don't let the SAME_STORY/NO_NEW_INFO gate block it -- fall
+        # through to the normal update decider below.
+        self.logger.info(
+          f"M->NM transition for post {context.tweet_id} -- bypassing SAME_STORY hard gate."
+        )
+        self._increment_stat(local_tracking_stats, "decide_update.m_to_nm_bypass")
+      elif self._should_bypass_hard_gate_for_suggestion(context, new_live_note_result):
         self.logger.info(
           f"Suggestion bypass: story assessment says SAME_STORY for post {context.tweet_id} "
           f"but incorporated suggestion — letting decider decide."
@@ -752,6 +815,22 @@ class LiveNoteGenerator:
           retries += 1
           continue
 
+        # The classification must be one of the canonical values, otherwise it
+        # cannot be persisted (it maps to a null classification thrift-side).
+        # Strip whitespace; if it still isn't valid, retry the generation rather
+        # than publishing a note with an unrecognized/non-persistable classification.
+        normalized_classification = (result.live_note_classification or "").strip()
+        if normalized_classification not in _VALID_CLASSIFICATIONS:
+          self.logger.warning(
+            f"Invalid classification {result.live_note_classification!r} for post "
+            f"{context.tweet_id}; retrying generation. Retries left: {self.max_retries - retries}"
+          )
+          self._increment_stat(tracking_stats, f"{stat_prefix}.llm_call.invalid_classification")
+          self._increment_stat(tracking_stats, f"{stat_prefix}.llm_call.failures")
+          retries += 1
+          continue
+        result.live_note_classification = normalized_classification
+
         # Merge citation URLs into parsed_sources
         _merge_citation_urls(result, citation_urls)
 
@@ -810,13 +889,16 @@ def parse_json_generation_response(response, logger):
     if end > start:
       text = text[start:end].strip()
 
+  # strict=False tolerates literal control characters (e.g. the blank lines the
+  # prompt instructs the model to put in "detail"), which are invalid in strict
+  # JSON strings and were the dominant cause of generation parse failures.
   try:
-    data = json.loads(text)
+    data = json.loads(text, strict=False)
   except json.JSONDecodeError:
     json_match = re.search(r"\{[\s\S]*\}", text)
     if json_match:
       try:
-        data = json.loads(json_match.group())
+        data = json.loads(json_match.group(), strict=False)
       except json.JSONDecodeError:
         raise ValueError("Failed to parse JSON from generation response")
     else:
@@ -913,11 +995,11 @@ def _parse_json_response(response: str) -> dict:
       text = text[start:end].strip()
 
   try:
-    return json.loads(text)
+    return json.loads(text, strict=False)
   except json.JSONDecodeError:
     json_match = re.search(r"\{[\s\S]*\}", text)
     if json_match:
-      return json.loads(json_match.group())
+      return json.loads(json_match.group(), strict=False)
     raise ValueError("No JSON object found in response")
 
 

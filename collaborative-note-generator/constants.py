@@ -73,6 +73,7 @@ class NoteContent:
   core_intercept: Optional[float] = None
   rating_tag_summary: Optional[dict] = None  # bucket → {tag: count}
   rating_level_summary: Optional[dict] = None  # bucket → {level: count}
+  total_ratings: Optional[int] = None
 
 
 @dataclass
