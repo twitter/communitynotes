@@ -66,6 +66,7 @@ logger.setLevel(logging.INFO)
 LABEL = "LABEL"
 CRH = "CRH"
 FLIP = "FLIP"
+PFLIP_PROBA = "PFLIP_PROBA"
 
 # Internal constants
 _MAX = "MAX"
@@ -1005,6 +1006,7 @@ class PFlipPlusModel(object):
     prescoringRaterModelOutput: pd.DataFrame,
     prepareForTraining: bool,
     cutoff: Optional[str],
+    explicitScoringCutoff: Optional[pd.DataFrame] = None,
   ) -> pd.DataFrame:
     """Generate a DataFrame with one row per note containing all feature information.
 
@@ -1025,10 +1027,33 @@ class PFlipPlusModel(object):
     Returns:
       pd.DataFrame containing all feature information with one row per note.
     """
-    # Validate and normalize types
-    assert ((prepareForTraining == False) & (cutoff is None)) | (
-      prepareForTraining & (cutoff in {_MIN, _MAX})
-    )
+    # Validate and normalize types. Masking (reconstructing features as of a cutoff) is driven
+    # by `cutoff`; label computation is driven by `prepareForTraining`. Training uses both
+    # (cutoff + labels); prod inference uses neither; point-in-time inference uses cutoff only.
+    assert (cutoff is None) or (cutoff in {_MIN, _MAX})
+    assert (not prepareForTraining) or (cutoff is not None)
+    # Point-in-time re-scoring at an arbitrary timestamp (e.g. first CRH + X hours) supplies an
+    # explicit per-note SCORING_CUTOFF_MTS and is inference-only (no labels). Used by adaptive
+    # rules that re-score a note some hours after it first reached CRH.
+    assert explicitScoringCutoff is None or not prepareForTraining
+    applyCutoff = (cutoff is not None) or (explicitScoringCutoff is not None)
+
+    # Detailed per-step "feature funnel" logging so it is clear EXACTLY which step drops a note
+    # before it can receive a pflip prediction. Scoped to inference (prepareForTraining=False) to
+    # avoid noise during training, which intentionally drops large populations.
+    def _log_funnel(stepName: str, beforeDf: pd.DataFrame, afterDf: pd.DataFrame) -> None:
+      if prepareForTraining:
+        return
+      beforeIds = set(beforeDf[c.noteIdKey])
+      afterIds = set(afterDf[c.noteIdKey])
+      dropped = beforeIds - afterIds
+      if dropped:
+        logger.info(
+          f"pflip feature funnel: {stepName} dropped {len(dropped)}/{len(beforeIds)} notes "
+          f"(kept {len(afterIds)}); sample dropped noteIds={sorted(dropped)[:20]}"
+        )
+      else:
+        logger.info(f"pflip feature funnel: {stepName} kept all {len(afterIds)} notes")
 
     notes[c.tweetIdKey] = notes[c.tweetIdKey].astype("int64[pyarrow]")
     noteStatusHistory[c.createdAtMillisKey] = noteStatusHistory[c.createdAtMillisKey].astype(
@@ -1036,60 +1061,80 @@ class PFlipPlusModel(object):
     )
 
     # Prep notes
+    inputNoteCount = notes[c.noteIdKey].nunique()
     scoredNotes = self._get_notes(notes, noteStatusHistory)
-    if prepareForTraining:
-      assert cutoff is not None
+    if not prepareForTraining:
+      logger.info(
+        f"pflip feature funnel: _get_notes kept {len(scoredNotes)}/{inputNoteCount} input notes "
+        "(drops notes lacking tweetId>0 or a non-null classification)"
+      )
+    if applyCutoff:
       # Prune to recent notes
       scoredNotes = scoredNotes[scoredNotes[c.tweetIdKey] > _MIN_TWEET_ID]
       # Prune to notes that have ratings (ratings may have been reduced by upstream filtering
       # such as --pct pruning or Post Selection Similarity, leaving some notes without ratings)
       noteIdsWithRatings = set(ratings.merge(scoredNotes[[c.noteIdKey]])[c.noteIdKey])
       scoredNotes = scoredNotes[scoredNotes[c.noteIdKey].isin(noteIdsWithRatings)]
-      # Validate that stabilization timestamps are valid
-      assert (
-        noteStatusHistory[[c.noteIdKey, c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey]].merge(
-          scoredNotes[[c.noteIdKey]]
-        )[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey]
-        < 0
-      ).sum() == 0
-      # Compute flip labels
-      labels = self._label_notes(noteStatusHistory.merge(scoredNotes[[c.noteIdKey]]))
-      # Compute scoring cutoffs based on when the note entered and left stabilization
-      scoringCutoff = self._compute_scoring_cutoff(
-        noteStatusHistory.merge(scoredNotes[[c.noteIdKey]]),
-        ratings.merge(scoredNotes[[c.noteIdKey]]),
-        cutoff,
-      )
-      # Validate and merge data, effectively pruning to notes that have a label
-      labelsWithScoringCutoff = scoringCutoff.merge(labels)
-      if len(labels) != len(labelsWithScoringCutoff):
-        missingCutoffLabels = labels[~labels[c.noteIdKey].isin(scoringCutoff[c.noteIdKey])]
-        missingCutoffRatingCounts = (
-          ratings[ratings[c.noteIdKey].isin(missingCutoffLabels[c.noteIdKey])]
-          .groupby(c.noteIdKey)
-          .size()
+      if explicitScoringCutoff is not None:
+        # Use the caller-supplied per-note cutoff timestamps; skip the stabilization-derived cutoff.
+        scoringCutoff = explicitScoringCutoff[
+          [c.noteIdKey, _SCORING_CUTOFF_MTS, _SCORING_CUTOFF_MODE]
+        ].copy()
+        scoringCutoff[_SCORING_CUTOFF_MTS] = scoringCutoff[_SCORING_CUTOFF_MTS].astype(
+          "int64[pyarrow]"
         )
-        logger.warning(
-          "Dropping pflip training labels without scoring cutoffs: "
-          f"dropped={len(missingCutoffLabels)}, kept={len(labelsWithScoringCutoff)}, "
-          f"labels={len(labels)}, scoringCutoff={len(scoringCutoff)}, "
-          f"scoredNotes={len(scoredNotes)}, ratings={len(ratings)}, "
-          f"ratingNoteIds={ratings[c.noteIdKey].nunique()}"
+      else:
+        # narrow for _compute_scoring_cutoff(mode: str)
+        assert cutoff is not None
+        # Compute scoring cutoffs based on when the note entered and left stabilization
+        scoringCutoff = self._compute_scoring_cutoff(
+          noteStatusHistory.merge(scoredNotes[[c.noteIdKey]]),
+          ratings.merge(scoredNotes[[c.noteIdKey]]),
+          cutoff,
         )
-        logger.warning(
-          f"Dropped pflip label counts:\n{missingCutoffLabels[LABEL].value_counts(dropna=False)}"
-        )
-        logger.warning(
-          f"Dropped pflip rating count summary:\n{missingCutoffRatingCounts.describe()}"
-        )
-        logger.warning(
-          f"Dropped pflip noteId sample: {missingCutoffLabels[c.noteIdKey].head(20).tolist()}"
-        )
-        labels = labelsWithScoringCutoff[[c.noteIdKey, LABEL]]
+      if prepareForTraining:
+        # Validate that stabilization timestamps are valid
+        assert (
+          noteStatusHistory[
+            [c.noteIdKey, c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey]
+          ].merge(scoredNotes[[c.noteIdKey]])[c.timestampMillisOfFirstNmrDueToMinStableCrhTimeKey]
+          < 0
+        ).sum() == 0
+        # Compute flip labels
+        labels = self._label_notes(noteStatusHistory.merge(scoredNotes[[c.noteIdKey]]))
+        # Validate against scoring cutoffs, dropping (and logging) any training labels that lack
+        # a scoring cutoff.
+        labelsWithScoringCutoff = scoringCutoff.merge(labels)
+        if len(labels) != len(labelsWithScoringCutoff):
+          missingCutoffLabels = labels[~labels[c.noteIdKey].isin(scoringCutoff[c.noteIdKey])]
+          missingCutoffRatingCounts = (
+            ratings[ratings[c.noteIdKey].isin(missingCutoffLabels[c.noteIdKey])]
+            .groupby(c.noteIdKey)
+            .size()
+          )
+          logger.warning(
+            "Dropping pflip training labels without scoring cutoffs: "
+            f"dropped={len(missingCutoffLabels)}, kept={len(labelsWithScoringCutoff)}, "
+            f"labels={len(labels)}, scoringCutoff={len(scoringCutoff)}, "
+            f"scoredNotes={len(scoredNotes)}, ratings={len(ratings)}, "
+            f"ratingNoteIds={ratings[c.noteIdKey].nunique()}"
+          )
+          logger.warning(
+            f"Dropped pflip label counts:\n{missingCutoffLabels[LABEL].value_counts(dropna=False)}"
+          )
+          logger.warning(
+            f"Dropped pflip rating count summary:\n{missingCutoffRatingCounts.describe()}"
+          )
+          logger.warning(
+            f"Dropped pflip noteId sample: {missingCutoffLabels[c.noteIdKey].head(20).tolist()}"
+          )
+          labels = labelsWithScoringCutoff[[c.noteIdKey, LABEL]]
       scoredNotes = scoredNotes.merge(scoringCutoff, on=c.noteIdKey)
-      assert len(scoredNotes) == len(scoringCutoff)
-      scoredNotes = scoredNotes.merge(labels)
-      assert len(scoredNotes) == len(labels)
+      if explicitScoringCutoff is None:
+        assert len(scoredNotes) == len(scoringCutoff)
+      if prepareForTraining:
+        scoredNotes = scoredNotes.merge(labels)
+        assert len(scoredNotes) == len(labels)
     totalScoredNotes = len(scoredNotes)
 
     # Prep ratings
@@ -1118,7 +1163,7 @@ class PFlipPlusModel(object):
     peerNonMisleadingRatings = peerRatings[
       peerRatings[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey
     ]
-    if prepareForTraining:
+    if applyCutoff:
       localRatings = self._apply_cutoff(localRatings, scoredNotes)
       peerMisleadingRatings = self._apply_cutoff(peerMisleadingRatings, scoredNotes)
       peerNonMisleadingRatings = self._apply_cutoff(peerNonMisleadingRatings, scoredNotes)
@@ -1128,25 +1173,35 @@ class PFlipPlusModel(object):
     writingLatency = self._get_note_writing_latency(
       scoredNotes[[c.noteIdKey, _TWEET_CREATION_MILLIS, _NOTE_CREATION_MILLIS]]
     )
+    _prevScoredNotes = scoredNotes
     scoredNotes = scoredNotes.merge(writingLatency, how="inner")
+    _log_funnel("note_writing_latency", _prevScoredNotes, scoredNotes)
     noteAuthors = noteStatusHistory[[c.noteIdKey, c.noteAuthorParticipantIdKey]]
+    _prevScoredNotes = scoredNotes
     scoredNotes = scoredNotes.merge(noteAuthors, how="inner")
+    _log_funnel("note_authors", _prevScoredNotes, scoredNotes)
     quickRatings = self._get_quick_rating_stats(
       scoredNotes[[c.noteIdKey, _NOTE_CREATION_MILLIS]], localRatings
     )
+    _prevScoredNotes = scoredNotes
     scoredNotes = scoredNotes.merge(quickRatings, how="inner")
+    _log_funnel("quick_rating_stats (requires local ratings)", _prevScoredNotes, scoredNotes)
     burstRatings = self._get_burst_rating_stats(
       scoredNotes[[c.noteIdKey]], localRatings[[c.noteIdKey, c.createdAtMillisKey]]
     )
+    _prevScoredNotes = scoredNotes
     scoredNotes = scoredNotes.merge(burstRatings, how="inner")
+    _log_funnel("burst_rating_stats (requires local ratings)", _prevScoredNotes, scoredNotes)
     recentRatings = self._get_recent_rating_stats(
-      scoredNotes, localRatings[[c.noteIdKey, c.createdAtMillisKey]], prepareForTraining
+      scoredNotes, localRatings[[c.noteIdKey, c.createdAtMillisKey]], applyCutoff
     )
+    _prevScoredNotes = scoredNotes
     scoredNotes = scoredNotes.merge(recentRatings, how="inner")
-    peerNoteCounts = self._get_note_counts(
-      scoredNotes, notes, noteStatusHistory, prepareForTraining
-    )
+    _log_funnel("recent_rating_stats (requires local ratings)", _prevScoredNotes, scoredNotes)
+    peerNoteCounts = self._get_note_counts(scoredNotes, notes, noteStatusHistory, applyCutoff)
+    _prevScoredNotes = scoredNotes
     scoredNotes = scoredNotes.merge(peerNoteCounts, how="inner")
+    _log_funnel("peer_note_counts", _prevScoredNotes, scoredNotes)
     # Generate features based on self and peer ratings
     for df, prefix in [
       (localRatings, _LOCAL),
@@ -1669,7 +1724,8 @@ class PFlipPlusModel(object):
       prescoringRaterModelOutput: pd.DataFrame
 
     Returns:
-      pd.DataFrame containing noteIds and predicted labels
+      pd.DataFrame containing noteIds, predicted labels (LABEL), and the flip probability
+      (PFLIP_PROBA, P(flip) from predict_proba) used by downstream notification-timing logic.
     """
     assert self._pipeline is not None, "pipeline must be initialized prior to prediction"
     assert (
@@ -1678,8 +1734,12 @@ class PFlipPlusModel(object):
     # Build list of unique tweetIds
     tweetIds = notes[[c.tweetIdKey]].drop_duplicates()
     tweetIds = tweetIds[tweetIds[c.tweetIdKey] != "-1"]
-    # Iterate through batches
-    results = [pd.DataFrame({c.noteIdKey: [], LABEL: []})]
+    # Iterate through batches.
+    # NB: do NOT seed `results` with an empty float-typed DataFrame. Concatenating an empty
+    # float64 noteId column with real int64 noteIds upcasts them to float64, which silently
+    # corrupts 19-digit snowflake noteIds (e.g. 2067543274789753098 -> 2067543274789753088) and
+    # then fails to join back onto scoredNotes, leaving pflipProba null for nearly every note.
+    results = []
     start = 0
     while start < len(tweetIds):
       logger.info(f"processing prediction batch: {start}")
@@ -1699,13 +1759,206 @@ class PFlipPlusModel(object):
       noteInfo = self._convert_col_types(noteInfo)
       noteInfo = self._transform_note_info(noteInfo)
       predictions = self._pipeline.decision_function(noteInfo)
-      results.append(
-        pd.DataFrame(
-          {
-            c.noteIdKey: noteInfo[c.noteIdKey],
-            LABEL: [FLIP if p > self._predictionThreshold else CRH for p in predictions],
-          }
-        )
+      batchResult = pd.DataFrame(
+        {
+          c.noteIdKey: noteInfo[c.noteIdKey],
+          LABEL: [FLIP if p > self._predictionThreshold else CRH for p in predictions],
+        }
       )
+      batchResult[PFLIP_PROBA] = self._pipeline.predict_proba(noteInfo)[:, 1]
+      results.append(batchResult)
       start += maxBatchSize
-    return pd.concat(results)
+    if not results:
+      # No candidate tweets were scored; return an explicitly-typed empty frame whose noteId
+      # dtype matches the populated path (int64) so the downstream merge stays type-consistent.
+      result = pd.DataFrame(
+        {
+          c.noteIdKey: pd.Series([], dtype="int64"),
+          LABEL: pd.Series([], dtype="object"),
+          PFLIP_PROBA: pd.Series([], dtype="float64"),
+        }
+      )
+    else:
+      result = pd.concat(results, ignore_index=True)
+    logger.info(
+      f"pflip predict(): produced {result[c.noteIdKey].nunique()} note predictions "
+      f"({int(result[PFLIP_PROBA].notna().sum())} with non-null {PFLIP_PROBA}) "
+      f"from {len(tweetIds)} candidate tweets"
+    )
+    return result
+
+  def predict_at_cutoff(
+    self,
+    notes: pd.DataFrame,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    prescoringRaterModelOutput: pd.DataFrame,
+    cutoffMode: str = _MIN,
+    maxBatchSize: int = 10000,
+  ) -> pd.DataFrame:
+    """Predict flip/CRH using features reconstructed as of each note's historical cutoff.
+
+    Unlike predict(), which uses all currently-available ratings, this reconstructs the
+    feature vector as it would have appeared at the moment the note entered stabilization /
+    first reached CRH, reusing the exact leakage-prevention cutoff that the model is trained
+    with (_compute_scoring_cutoff / _apply_cutoff, plus nulling of peer scoring events after
+    the cutoff).  cutoffMode=_MIN anchors to the start of stabilization (earliest CRH-relevant
+    timestamp); cutoffMode=_MAX anchors to the end of stabilization.
+
+    A prediction is produced for every note that reached CRH / stabilization (not only locked
+    notes), so recent, not-yet-locked notes are included.  The realized lock-based label
+    (LOCKED_FLIP_LABEL) is left-joined where it exists and is null for notes that have not locked
+    yet, enabling prediction-vs-outcome analysis on the subset that has finalized.
+
+    Returns:
+      pd.DataFrame with columns: noteId, PFLIP_SCORE (decision_function margin, higher => more
+      likely to flip), PFLIP_PROB (P(locked-flip), if the estimator exposes predict_proba),
+      PFLIP_PREDICTED_LOCKED_LABEL (CRH/FLIP at the model's own threshold; the model is trained on
+      the locked definition), LOCKED_FLIP_LABEL (realized lock-based outcome: CRH/FLIP/<NA>).
+    """
+    assert self._pipeline is not None, "pipeline must be initialized prior to prediction"
+    assert (
+      self._predictionThreshold is not None
+    ), "threshold must be initialized prior to prediction"
+    assert cutoffMode in {_MIN, _MAX}, f"unexpected cutoffMode: {cutoffMode}"
+    tweetIds = notes[[c.tweetIdKey]].drop_duplicates()
+    tweetIds = tweetIds[tweetIds[c.tweetIdKey] != "-1"]
+    # NB: do NOT seed `results` with an empty float-typed DataFrame. Concatenating an empty
+    # float64 noteId column with real int64 noteIds upcasts them to float64, which silently
+    # corrupts 19-digit snowflake noteIds (e.g. 1.23e+18) and breaks downstream joins.
+    results = []
+    start = 0
+    while start < len(tweetIds):
+      logger.info(f"processing predict_at_cutoff batch: {start}")
+      # All peer tweets must be co-batched for correct peer feature extraction.
+      tweetBatch = tweetIds.iloc[start : (start + maxBatchSize)]
+      noteBatch = (
+        notes[[c.noteIdKey, c.tweetIdKey]].merge(tweetBatch)[[c.noteIdKey]].drop_duplicates()
+      )
+      nshBatch = noteStatusHistory.merge(noteBatch)
+      # Reconstruct masked features at the cutoff WITHOUT requiring a lock label, so all
+      # CRH/stabilization notes get a prediction (not just locked ones).
+      noteInfo = self._prepare_note_info(
+        notes.merge(noteBatch),
+        ratings.merge(noteBatch),
+        nshBatch,
+        prescoringRaterModelOutput,
+        prepareForTraining=False,
+        cutoff=cutoffMode,
+      )
+      if len(noteInfo) == 0:
+        start += maxBatchSize
+        continue
+      # Realized lock-based outcome, defined only for notes that have locked.
+      realizedLabels = self._label_notes(nshBatch).rename(columns={LABEL: "LOCKED_FLIP_LABEL"})
+      noteInfo = self._convert_col_types(noteInfo)
+      noteInfo = self._transform_note_info(noteInfo)
+      scores = self._pipeline.decision_function(noteInfo)
+      batchResult = pd.DataFrame(
+        {
+          # Keep noteId as string to avoid any float upcasting / precision loss.
+          c.noteIdKey: pd.Series(noteInfo[c.noteIdKey].values).astype(str),
+          "PFLIP_SCORE": scores,
+          "PFLIP_PREDICTED_LOCKED_LABEL": [
+            FLIP if s > self._predictionThreshold else CRH for s in scores
+          ],
+        }
+      )
+      batchResult["PFLIP_PROB"] = self._pipeline.predict_proba(noteInfo)[:, 1]
+      labels = realizedLabels.copy()
+      labels[c.noteIdKey] = labels[c.noteIdKey].astype(str)
+      batchResult = batchResult.merge(labels, on=c.noteIdKey, how="left")
+      results.append(batchResult)
+      start += maxBatchSize
+    if not results:
+      return pd.DataFrame(
+        {
+          c.noteIdKey: pd.Series([], dtype="object"),
+          "PFLIP_SCORE": pd.Series([], dtype="float64"),
+          "PFLIP_PROB": pd.Series([], dtype="float64"),
+          "PFLIP_PREDICTED_LOCKED_LABEL": pd.Series([], dtype="object"),
+          "LOCKED_FLIP_LABEL": pd.Series([], dtype="object"),
+        }
+      )
+    return pd.concat(results, ignore_index=True)
+
+  def predict_at_offset_hours(
+    self,
+    notes: pd.DataFrame,
+    ratings: pd.DataFrame,
+    noteStatusHistory: pd.DataFrame,
+    prescoringRaterModelOutput: pd.DataFrame,
+    offsetHours: float,
+    maxBatchSize: int = 10000,
+  ) -> pd.DataFrame:
+    """Re-score pflip with features reconstructed as of (first CRH + offsetHours).
+
+    Enables ADAPTIVE rules that re-check a note some hours after it first reached CRH and decide
+    based on the updated prediction. Mirrors predict_at_cutoff but injects an explicit per-note
+    cutoff = first-CRH timestamp + offsetHours (instead of the stabilization-derived MIN/MAX
+    cutoff). offsetHours=0 reconstructs features as of first CRH.
+
+    Returns:
+      pd.DataFrame with columns: noteId, PFLIP_SCORE, PFLIP_PROB (P(flip) as of first CRH +
+      offsetHours). One row per CRH note that still has data at the cutoff.
+    """
+    assert self._pipeline is not None, "pipeline must be initialized prior to prediction"
+    assert (
+      self._predictionThreshold is not None
+    ), "threshold must be initialized prior to prediction"
+    msOffset = int(round(offsetHours * 60 * 60 * 1000))
+    # Per-note cutoff = first-CRH timestamp + offsetHours, for notes that actually reached CRH.
+    firstCrh = noteStatusHistory[
+      noteStatusHistory[c.firstNonNMRLabelKey] == c.currentlyRatedHelpful
+    ][[c.noteIdKey, c.timestampMillisOfNoteFirstNonNMRLabelKey]].copy()
+    firstCrh[_SCORING_CUTOFF_MTS] = (
+      pd.to_numeric(firstCrh[c.timestampMillisOfNoteFirstNonNMRLabelKey], errors="coerce")
+      + msOffset
+    ).astype("int64[pyarrow]")
+    firstCrh[_SCORING_CUTOFF_MODE] = f"OFFSET_{offsetHours}h"
+    explicit = firstCrh[[c.noteIdKey, _SCORING_CUTOFF_MTS, _SCORING_CUTOFF_MODE]]
+
+    tweetIds = notes[[c.tweetIdKey]].drop_duplicates()
+    tweetIds = tweetIds[tweetIds[c.tweetIdKey] != "-1"]
+    results = []
+    start = 0
+    while start < len(tweetIds):
+      logger.info(f"processing predict_at_offset_hours({offsetHours}h) batch: {start}")
+      tweetBatch = tweetIds.iloc[start : (start + maxBatchSize)]
+      noteBatch = (
+        notes[[c.noteIdKey, c.tweetIdKey]].merge(tweetBatch)[[c.noteIdKey]].drop_duplicates()
+      )
+      nshBatch = noteStatusHistory.merge(noteBatch)
+      noteInfo = self._prepare_note_info(
+        notes.merge(noteBatch),
+        ratings.merge(noteBatch),
+        nshBatch,
+        prescoringRaterModelOutput,
+        prepareForTraining=False,
+        cutoff=None,
+        explicitScoringCutoff=explicit.merge(noteBatch),
+      )
+      if len(noteInfo) == 0:
+        start += maxBatchSize
+        continue
+      noteInfo = self._convert_col_types(noteInfo)
+      noteInfo = self._transform_note_info(noteInfo)
+      scores = self._pipeline.decision_function(noteInfo)
+      batchResult = pd.DataFrame(
+        {
+          c.noteIdKey: pd.Series(noteInfo[c.noteIdKey].values).astype(str),
+          "PFLIP_SCORE": scores,
+        }
+      )
+      batchResult["PFLIP_PROB"] = self._pipeline.predict_proba(noteInfo)[:, 1]
+      results.append(batchResult)
+      start += maxBatchSize
+    if not results:
+      return pd.DataFrame(
+        {
+          c.noteIdKey: pd.Series([], dtype="object"),
+          "PFLIP_SCORE": pd.Series([], dtype="float64"),
+          "PFLIP_PROB": pd.Series([], dtype="float64"),
+        }
+      )
+    return pd.concat(results, ignore_index=True)

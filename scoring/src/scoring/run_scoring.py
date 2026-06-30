@@ -20,6 +20,7 @@ from . import constants as c, contributor_state, note_ratings, note_status_histo
 from .constants import FinalScoringArgs, ModelResult, PrescoringArgs, ScoringArgs
 from .enums import Scorers, Topics
 from .gaussian_core_with_topics_scorer import GaussianCoreWithTopicsScorer
+from .gaussian_group_scorer import GaussianGroupScorer
 from .gaussian_scorer import GaussianScorer, compute_empirical_prior_df
 from .gaussian_topic_scorer import GaussianTopicScorer
 from .matrix_factorization.normalized_loss import NormalizedLossHyperparameters
@@ -33,6 +34,7 @@ from .mf_group_scorer import (
   coalesce_group_model_scored_notes,
   groupScorerCount,
   groupScorerParalleism,
+  nmrGaussGroupScoringGroup,
   nmrScoringGroup,
   nmrTrialScoringGroup,
   trialScoringGroup,
@@ -46,11 +48,12 @@ from .mf_topic_scorer import MFTopicScorer, coalesce_topic_models
 from .pandas_utils import get_df_fingerprint, get_df_info, keep_columns
 from .pcrh_model import (
   PCRHModel,
+  collect_previous_pcrh_state,
   compute_pcrh_predictions,
   merge_pcrh_results,
   suppress_pcrh_ineligible,
 )
-from .pflip_plus_model import LABEL as PFLIP_LABEL, PFlipPlusModel
+from .pflip_plus_model import LABEL as PFLIP_LABEL, PFLIP_PROBA, PFlipPlusModel
 from .post_selection_similarity import PostSelectionSimilarity, apply_post_selection_similarity
 from .process_data import (
   CommunityNotesDataLoader,
@@ -114,6 +117,16 @@ def _get_scorers(
     scorers[Scorers.GaussianScorer] = [GaussianScorer(seed=seed, threads=12)]
     scorers[Scorers.GaussianCoreWithTopicsScorer] = [
       GaussianCoreWithTopicsScorer(seed=seed, threads=12)
+    ]
+    scorers[Scorers.GaussianGroupScorer] = [
+      GaussianGroupScorer(
+        includedGroups={nmrGaussGroupScoringGroup},
+        groupId=nmrGaussGroupScoringGroup,
+        threads=4,
+        seed=seed,
+        saveIntermediateState=True,
+        crhThreshold=0.25,
+      )
     ]
   scorers[Scorers.MFCoreWithTopicsScorer] = [
     MFCoreWithTopicsScorer(
@@ -204,6 +217,22 @@ def _get_scorers(
       groupThreshold=0.51,
     )
   )
+  if not final:
+    scorers[Scorers.MFGroupScorer].append(
+      MFGroupScorer(
+        includedGroups={nmrGaussGroupScoringGroup},
+        groupId=nmrGaussGroupScoringGroup,
+        threads=groupScorerParalleism.get(nmrGaussGroupScoringGroup, 4),
+        seed=seed,
+        saveIntermediateState=True,
+        noteInterceptLambda=0.03 * 3,
+        userInterceptLambda=0.03,
+        globalInterceptLambda=0,
+        noteFactorLambda=0.03,
+        userFactorLambda=0.03,
+        crhThreshold=0.25,
+      )
+    )
   topicScorers: List[Scorer] = []
   for topic in Topics:
     if topic == Topics.InDimensionTwo:
@@ -918,6 +947,14 @@ def meta_score(
           RuleID[f"GROUP_MODEL_{nmrTrialScoringGroup}_NMR"],
           {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
           nmrTrialScoringGroup,
+        )
+      )
+    if enabledScorers is None or Scorers.GaussianGroupScorer in enabledScorers:
+      rules.append(
+        scoring_rules.ApplyNMRGroupModelResult(
+          RuleID[f"GROUP_MODEL_{nmrGaussGroupScoringGroup}_NMR"],
+          {RuleID.EXPANSION_MODEL, RuleID.CORE_MODEL},
+          nmrGaussGroupScoringGroup,
         )
       )
     if enabledScorers is None or Scorers.GaussianScorer in enabledScorers:
@@ -1942,12 +1979,48 @@ def run_final_note_scoring(
   # any note scored by pflip, we  compute pflip predictions before pruning the notes and
   # ratings datasets.
   with c.time_block("Computing pflip scores."):
-    # Identify set of adjacent notes to scope notes and ratings datasets.
-    pflipNoteIds = noteStatusHistory[
-      noteStatusHistory[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0
-    ][[c.noteIdKey]]  # Compute pflip for any note currently in stabilization.
-    logger.info(f"computing pflip for {len(pflipNoteIds)} notes in stabilization")
+    # Identify the TARGET set of notes that should receive a pflipProba score:
+    #   (1) notes currently in stabilization (held by NmrDueToMinStableCrhTime), and
+    #   (2) notes that are currently CRH and (re)gained CRH within the past 24 hours.
+    # These are the notes whose flip risk matters for correction-notification timing. pflip
+    # additionally requires every note colocated on the same tweet for peer features, so we
+    # expand to adjacent notes below -- but we track the target set itself for coverage logging.
+    pflipCrhRecencyMillis = 24 * 60 * 60 * 1000
+    firstNonNmrMillis = pd.to_numeric(
+      noteStatusHistory[c.timestampMillisOfNoteFirstNonNMRLabelKey], errors="coerce"
+    )
+    mostRecentNonNmrMillis = pd.to_numeric(
+      noteStatusHistory[c.timestampMillisOfNoteMostRecentNonNMRLabelKey], errors="coerce"
+    )
+    inStabilizationMask = noteStatusHistory[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] > 0
+    isCurrentlyCrhMask = noteStatusHistory[c.currentLabelKey] == c.currentlyRatedHelpful
+    crhRecencyCutoff = c.epochMillis - pflipCrhRecencyMillis
+    recentlyCrhMask = isCurrentlyCrhMask & (
+      firstNonNmrMillis.ge(crhRecencyCutoff) | mostRecentNonNmrMillis.ge(crhRecencyCutoff)
+    )
+    pflipTargetMask = inStabilizationMask | recentlyCrhMask
+    pflipNoteIds = noteStatusHistory[pflipTargetMask][[c.noteIdKey]]
     assert len(pflipNoteIds) == pflipNoteIds[c.noteIdKey].nunique()
+    # Keep an immutable copy of the target set (pflipNoteIds is expanded to peers below).
+    pflipTargetNoteIds = pflipNoteIds.copy()
+    logger.info(
+      "pflip target selection: total=%d (in_stabilization=%d, currently_crh=%d, "
+      "recently_crh_within_24h=%d, stabilization_and_recent_crh_overlap=%d). "
+      "epochMillis=%d, crhRecencyCutoffMillis=%d (window=24h)"
+      % (
+        int(pflipTargetMask.sum()),
+        int(inStabilizationMask.sum()),
+        int(isCurrentlyCrhMask.sum()),
+        int(recentlyCrhMask.sum()),
+        int((inStabilizationMask & recentlyCrhMask).sum()),
+        c.epochMillis,
+        crhRecencyCutoff,
+      )
+    )
+    logger.info(
+      f"computing pflip for {len(pflipNoteIds)} target notes "
+      "(stabilization + recently-CRH); peers on the same tweets added next"
+    )
     pflipTweetIds = (
       notes[[c.noteIdKey, c.tweetIdKey]].merge(pflipNoteIds)[[c.tweetIdKey]].drop_duplicates()
     )
@@ -1974,6 +2047,66 @@ def run_final_note_scoring(
       pflipNotes, pflipRatings, pflipNoteStatusHistory, prescoringRaterModelOutput
     )
     logger.info(f"pflip prediction summary:\n{pflipPredictions[PFLIP_LABEL].value_counts()}")
+    # Persist the flip PROBABILITY (used by correction-notification timing) as the canonical
+    # scored-notes `pflipProba` column; PFLIP_LABEL is consumed by scoring rules then dropped below.
+    pflipPredictions = pflipPredictions.rename(columns={PFLIP_PROBA: c.pflipProbaKey})
+
+    # --- pflip target coverage diagnostics ---
+    # Reconcile which of the TARGET notes (stabilization + recently-CRH) actually received a
+    # non-null pflipProba, and bucket the misses by likely cause so the gap is explainable from
+    # stdout alone. Note IDs are canonicalized to Int64 to avoid join-key dtype mismatches.
+    def _canonical_note_ids(series):
+      return set(pd.to_numeric(series, errors="coerce").astype("Int64").dropna())
+
+    targetIds = _canonical_note_ids(pflipTargetNoteIds[c.noteIdKey])
+    if c.pflipProbaKey in pflipPredictions.columns:
+      scoredSeries = pflipPredictions.loc[pflipPredictions[c.pflipProbaKey].notna(), c.noteIdKey]
+    else:
+      # predict() produced no pflipProba column (e.g. no candidate tweets were scored at all).
+      scoredSeries = pd.Series([], dtype="object")
+    scoredIds = _canonical_note_ids(scoredSeries)
+    coveredIds = targetIds & scoredIds
+    missingIds = targetIds - scoredIds
+    logger.info(
+      f"pflip coverage: {len(coveredIds)}/{len(targetIds)} target notes received a non-null "
+      f"pflipProba; {len(missingIds)} target notes did NOT."
+    )
+    if missingIds:
+      ratingNoteIds = _canonical_note_ids(pflipRatings[c.noteIdKey])
+      tweetById = notes[[c.noteIdKey, c.tweetIdKey, c.classificationKey]].copy()
+      tweetById["_cid"] = pd.to_numeric(tweetById[c.noteIdKey], errors="coerce").astype("Int64")
+      missingMeta = tweetById[tweetById["_cid"].isin(missingIds)]
+      # tweetId may be a string in some pipelines (e.g. prescoring's internal scoring call), so
+      # coerce to numeric before the > 0 sentinel check.
+      missingTweetNumeric = pd.to_numeric(missingMeta[c.tweetIdKey], errors="coerce")
+      sentinelTweetIds = set(
+        missingMeta.loc[~missingTweetNumeric.gt(0).fillna(False), "_cid"].dropna()
+      )
+      missingClassIds = set(
+        missingMeta.loc[missingMeta[c.classificationKey].isna(), "_cid"].dropna()
+      )
+      noRatingIds = missingIds - ratingNoteIds
+      notInNotesIds = missingIds - set(tweetById["_cid"].dropna())
+      explainedIds = sentinelTweetIds | missingClassIds | noRatingIds | notInNotesIds
+      otherIds = missingIds - explainedIds
+      logger.info(
+        "pflip missing-target breakdown (reasons may overlap): sentinel_tweetId<=0_or_null=%d, "
+        "classification_null=%d, no_ratings_after_pruning=%d, note_absent_from_notes_df=%d, "
+        "other_dropped_in_feature_extraction=%d"
+        % (
+          len(sentinelTweetIds),
+          len(missingClassIds),
+          len(noRatingIds),
+          len(notInNotesIds),
+          len(otherIds),
+        )
+      )
+      logger.info(f"pflip missing-target sample noteIds (up to 30): {sorted(missingIds)[:30]}")
+      if otherIds:
+        logger.info(
+          "pflip missing-target notes dropped in feature extraction (see 'pflip feature funnel' "
+          f"lines above for the exact step); sample (up to 30): {sorted(otherIds)[:30]}"
+        )
 
   with c.time_block("Determine which notes to score."):
     if previousScoredNotes is None:
@@ -2165,6 +2298,11 @@ def run_final_note_scoring(
       auxiliaryNoteInfo[col] = auxiliaryNoteInfo[col].fillna(0).astype(np.int64)
 
   scoredNotes = scoredNotes.merge(pflipPredictions, how="left")
+  # Guarantee the pflip column exists even when no notes were in stabilization: in that case
+  # predict() returns an empty frame whose pflip column is dropped by pd.concat, so the merge
+  # above adds nothing. Mirrors how merge_pcrh_results guarantees pcrhAboveThresholdTime.
+  if c.pflipProbaKey not in scoredNotes.columns:
+    scoredNotes[c.pflipProbaKey] = np.nan
   scoredNotes, auxiliaryNoteInfo = merge_pcrh_results(
     pcrhPredictions, scoredNotes, auxiliaryNoteInfo
   )
@@ -2207,22 +2345,13 @@ def run_final_note_scoring(
 
     newNoteStatusHistory = pd.concat([newNoteStatusHistory, noteStatusHistoryPassthrough])
 
-  previousPcrhNoteIds = None
-  previousPcrhTimes = None
-  if previousScoredNotes is not None and c.pcrhAboveThresholdTimeKey in previousScoredNotes.columns:
-    previousPcrhNoteIds = set(
-      previousScoredNotes.loc[
-        previousScoredNotes[c.pcrhAboveThresholdTimeKey].fillna(0) > 0, c.noteIdKey
-      ]
-    )
-    prevPcrh = previousScoredNotes[[c.noteIdKey, c.pcrhAboveThresholdTimeKey]].dropna(
-      subset=[c.pcrhAboveThresholdTimeKey]
-    )
-    previousPcrhTimes = dict(zip(prevPcrh[c.noteIdKey], prevPcrh[c.pcrhAboveThresholdTimeKey]))
+  previousPcrhNoteIds, previousPcrhTimes = collect_previous_pcrh_state(
+    previousScoredNotes, noteStatusHistory
+  )
   scoredNotes = suppress_pcrh_ineligible(
     scoredNotes,
-    previousPcrhNoteIds=previousPcrhNoteIds,
-    previousPcrhTimes=previousPcrhTimes,
+    previousPcrhNoteIds=previousPcrhNoteIds or None,
+    previousPcrhTimes=previousPcrhTimes or None,
     currentTimeMillis=c.epochMillis,
   )
   newNoteStatusHistory[c.pcrhAboveThresholdTimeKey] = newNoteStatusHistory[c.noteIdKey].map(
@@ -2330,6 +2459,8 @@ def post_note_scoring(
     scoredNotes[c.timestampMillisOfNmrDueToMinStableCrhTimeKey] = newNoteStatusHistory[
       c.timestampMillisOfNmrDueToMinStableCrhTimeKey
     ]
+    # Set by run_combine_scoring_outputs from the minute partition path.
+    scoredNotes[c.timestampMinuteOfFinalScoringOutput] = np.nan
 
     scoredNotes = _add_deprecated_columns(scoredNotes)
     scoredNotes = scoredNotes.drop(columns=PFLIP_LABEL)

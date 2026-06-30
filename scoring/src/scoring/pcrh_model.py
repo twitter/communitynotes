@@ -44,8 +44,82 @@ _TOPIC_SCORED_PREFIX = "pcrh_topic_scored_"
 _AUTHOR_PREFIX = "pcrh_author_"
 _UNASSIGNED_TOPIC = "Unassigned"
 
-# Notes whose previous pcrhAboveThresholdTime is older than this are suppressed to -1.
+# A note may only hold abovePcrhThreshold status within this window after its first
+# positive timestamp (T0). Outside the window the field is stored as -T0 (not -1) so
+# the first-time is preserved and re-entry is blocked. -1 (_PCRH_CLEARED_TIME) means
+# lock/legacy clear with no recoverable first-time (a new positive is allowed).
 _PCRH_STALE_SUPPRESSION_MILLIS = 12 * 60 * 60 * 1000
+_PCRH_CLEARED_TIME = -1.0
+
+
+def _pcrh_first_times_array(times: np.ndarray) -> np.ndarray:
+  """Absolute first-above times; NaN where missing, NaN input, or cleared (-1)."""
+  t = np.asarray(times, dtype=np.double)
+  first = np.abs(t)
+  first[np.isnan(t) | (t == _PCRH_CLEARED_TIME)] = np.nan
+  return first
+
+
+def _pcrh_mapped_first_times(
+  noteIds: pd.Series, previousPcrhTimes: Optional[Dict[int, float]]
+) -> np.ndarray:
+  """First-times from previousPcrhTimes aligned to noteIds (NaN if unknown)."""
+  if not previousPcrhTimes:
+    return np.full(len(noteIds), np.nan, dtype=np.double)
+  return _pcrh_first_times_array(noteIds.map(previousPcrhTimes).to_numpy(dtype=np.double))
+
+
+def _pcrh_time_rows(df: Optional[pd.DataFrame]) -> pd.DataFrame:
+  """noteId + pcrhAboveThresholdTime rows with non-null times, or empty frame."""
+  if df is None or c.pcrhAboveThresholdTimeKey not in df.columns or c.noteIdKey not in df.columns:
+    return pd.DataFrame(
+      {
+        c.noteIdKey: pd.Series(dtype=np.int64),
+        c.pcrhAboveThresholdTimeKey: pd.Series(dtype=np.double),
+      }
+    )
+  return (
+    df[[c.noteIdKey, c.pcrhAboveThresholdTimeKey]]
+    .dropna(subset=[c.pcrhAboveThresholdTimeKey])
+    .astype({c.pcrhAboveThresholdTimeKey: np.double}, copy=False)
+  )
+
+
+def collect_previous_pcrh_state(
+  previousScoredNotes: Optional[pd.DataFrame],
+  noteStatusHistory: Optional[pd.DataFrame],
+) -> Tuple[Set[int], Dict[int, float]]:
+  """Merge PCRH timestamp history from previous scored notes and note status history.
+
+  Per note, prefers: non-sentinel over -1, positive over non-positive, then earlier
+  |t| (first show window). Returns currently-positive note ids and a noteId->time map.
+  """
+  combined = pd.concat(
+    [_pcrh_time_rows(previousScoredNotes), _pcrh_time_rows(noteStatusHistory)],
+    ignore_index=True,
+  )
+  if len(combined) == 0:
+    return set(), {}
+
+  t = combined[c.pcrhAboveThresholdTimeKey]
+  # Sort so the preferred value is first per note, then keep one row per noteId.
+  combined = combined.assign(
+    _is_sentinel=t == _PCRH_CLEARED_TIME,
+    _is_non_positive=t <= 0,
+    _abs_time=t.abs(),
+  ).sort_values(
+    [c.noteIdKey, "_is_sentinel", "_is_non_positive", "_abs_time"],
+    kind="mergesort",
+  )
+  best = combined.drop_duplicates(c.noteIdKey, keep="first")
+  previousPcrhTimes: Dict[int, float] = dict(
+    zip(best[c.noteIdKey].tolist(), best[c.pcrhAboveThresholdTimeKey].tolist())
+  )
+  previousPcrhNoteIds: Set[int] = set(
+    best.loc[best[c.pcrhAboveThresholdTimeKey] > 0, c.noteIdKey].tolist()
+  )
+  return previousPcrhNoteIds, previousPcrhTimes
+
 
 _RATINGS_BASE_COLS = [
   c.noteIdKey,
@@ -688,23 +762,37 @@ def _convert_predictions_to_timestamps(
 ) -> pd.DataFrame:
   """Convert boolean pcrhAboveThresholdTime values to millis timestamps.
 
-  Returns pcrhPredictions with pcrhAboveThresholdTimeKey replaced by:
-    positive millis (maintained or newly above), -1 (revoked), or NaN (never above).
-  """
-  prevSeries = pcrhPredictions[c.noteIdKey].map(previousPcrhTimes)
-  aboveNow = pcrhPredictions[c.pcrhAboveThresholdTimeKey].astype(bool)
-  hadPositive = prevSeries.notna() & (prevSeries > 0)
+  Encoding for pcrhAboveThresholdTimeKey:
+    positive millis T0  -- currently above; T0 is first time ever above (one show window)
+    negative -T0 (T0>1) -- not currently above, but was; preserves first-time for gating
+    NaN                 -- never achieved above-threshold
+    -1                  -- lock/legacy clear only (produced elsewhere); treated as no history
 
+  A note may only be positive within [T0, T0+12h]. Re-entry inside the window restores
+  +T0 (not now). Outside the window, even model-above is forced to -T0.
+  """
+  aboveNow = pcrhPredictions[c.pcrhAboveThresholdTimeKey].astype(bool).to_numpy()
+  firstTime = _pcrh_mapped_first_times(pcrhPredictions[c.noteIdKey], previousPcrhTimes)
+  hasFirst = ~np.isnan(firstTime)
+  withinWindow = hasFirst & ((currentTimeMillis - firstTime) <= _PCRH_STALE_SUPPRESSION_MILLIS)
+  # above+hasFirst+in window -> +T0; above+hasFirst+stale -> -T0;
+  # above+no history -> now; not above+hasFirst -> -T0; else NaN.
   timeVals = np.where(
-    aboveNow,
-    np.where(hadPositive, prevSeries, currentTimeMillis),
-    np.where(hadPositive, -1.0, np.nan),
+    aboveNow & hasFirst & withinWindow,
+    firstTime,
+    np.where(
+      aboveNow & hasFirst,
+      -firstTime,
+      np.where(aboveNow, currentTimeMillis, np.where(hasFirst, -firstTime, np.nan)),
+    ),
   )
-  pcrhPredictions = pcrhPredictions.copy()
-  pcrhPredictions[c.pcrhAboveThresholdTimeKey] = timeVals.astype(np.double)
-  nAbove = (pcrhPredictions[c.pcrhAboveThresholdTimeKey] > 0).sum()
-  nRevoked = (pcrhPredictions[c.pcrhAboveThresholdTimeKey] == -1).sum()
-  logger.info(f"PCRH prediction summary: {nAbove} above, {nRevoked} revoked")
+
+  pcrhPredictions[c.pcrhAboveThresholdTimeKey] = timeVals
+  nAbove = int((timeVals > 0).sum())
+  nHistorical = int(((timeVals < 0) & (timeVals != _PCRH_CLEARED_TIME)).sum())
+  logger.info(
+    f"PCRH prediction summary: {nAbove} above, {nHistorical} historical (negated first-time)"
+  )
   return pcrhPredictions
 
 
@@ -735,18 +823,13 @@ def compute_pcrh_predictions(
 ) -> pd.DataFrame:
   """Run PCRH prediction and convert to timestamps in one call.
 
-  Handles first-run (previousScoredNotes is None or lacks the column),
-  missing classifier, and timestamp conversion.
+  Previous state is taken from previousScoredNotes and noteStatusHistory so
+  negated first-times survive across runs. previousPcrhNoteIds is only notes
+  currently positive (for revoke-vs-entry threshold in predict).
   """
-  previousPcrhNoteIds: Set = set()
-  previousPcrhTimes: Dict[int, float] = {}
-  if previousScoredNotes is not None and c.pcrhAboveThresholdTimeKey in previousScoredNotes.columns:
-    prev = previousScoredNotes[[c.noteIdKey, c.pcrhAboveThresholdTimeKey]].dropna(
-      subset=[c.pcrhAboveThresholdTimeKey]
-    )
-    above = prev[prev[c.pcrhAboveThresholdTimeKey] > 0]
-    previousPcrhNoteIds = set(above[c.noteIdKey])
-    previousPcrhTimes = dict(zip(above[c.noteIdKey], above[c.pcrhAboveThresholdTimeKey]))
+  previousPcrhNoteIds, previousPcrhTimes = collect_previous_pcrh_state(
+    previousScoredNotes, noteStatusHistory
+  )
 
   if pcrhClassifier is None:
     return pd.DataFrame(_EMPTY_PCRH_PREDICTIONS)
@@ -763,21 +846,50 @@ def compute_pcrh_predictions(
   return _convert_predictions_to_timestamps(preds, previousPcrhTimes, currentTimeMillis)
 
 
+def _write_suppressed_pcrh_times(
+  times: np.ndarray,
+  suppressMask: np.ndarray,
+  firstTime: np.ndarray,
+) -> np.ndarray:
+  """For suppressed rows, set -T0 when first-time is known; else -1 if clearing a positive.
+
+  Does not overwrite an existing historical negative (-T0) with -1.
+  `firstTime` is aligned to `times` (NaN where no recoverable first-time).
+  """
+  if not suppressMask.any():
+    return times
+  hasFirst = ~np.isnan(firstTime)
+  # Prefer -T0 when recoverable; else -1 for positive or missing current values.
+  # Leave existing historical negatives and cleared -1 unchanged when no first-time.
+  return np.where(
+    suppressMask & hasFirst,
+    -firstTime,
+    np.where(
+      suppressMask & (np.isnan(times) | (times > 0)),
+      _PCRH_CLEARED_TIME,
+      times,
+    ),
+  )
+
+
 def suppress_pcrh_ineligible(
   scoredNotes: pd.DataFrame,
   previousPcrhNoteIds: Optional[Set] = None,
   previousPcrhTimes: Optional[Dict[int, float]] = None,
   currentTimeMillis: Optional[float] = None,
 ) -> pd.DataFrame:
-  """Set pcrhAboveThresholdTime to -1 for notes not eligible for PCRH.
+  """Clear ineligible or out-of-window PCRH above-threshold status.
 
   Ineligible: not decided by CoreModel, firm-rejected by core, or
   classified NOT_MISLEADING. Must be called after decidedBy is assigned.
 
-  Additionally, any note whose previous pcrhAboveThresholdTime (from
-  previousPcrhTimes) is not -1 and is more than 12 hours before
-  currentTimeMillis is suppressed to -1 -- a note may not remain above the
-  PCRH threshold indefinitely.
+  On loss, writes -T0 (negated first-time) when a recoverable first-time is known,
+  preserving the single show window for future gating. Falls back to -1 only when
+  there is no recoverable first-time (legacy / previousPcrhNoteIds-only).
+
+  Additionally, any note whose first-time is more than 12 hours before
+  currentTimeMillis cannot remain positive -- forced to -T0 even if model-above.
+  Existing historical negatives are left intact (not clobbered to -1).
   """
   if c.pcrhAboveThresholdTimeKey not in scoredNotes.columns:
     return scoredNotes
@@ -790,20 +902,34 @@ def suppress_pcrh_ineligible(
     c.coreRatingStatusKey
   ].isin({c.firmReject, c.currentlyRatedNotHelpful})
   notMisleading = (
-    scoredNotes[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey
+    (scoredNotes[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey).fillna(False)
     if c.classificationKey in scoredNotes.columns
     else False
   )
-  hadPositive = scoredNotes[c.pcrhAboveThresholdTimeKey].fillna(0) > 0
+  # Current positive, or was positive last run but has no positive time this run
+  # (e.g. missing prediction + ineligible decidedBy).
+  wasPositive = scoredNotes[c.pcrhAboveThresholdTimeKey].fillna(0) > 0
   if previousPcrhNoteIds is not None:
-    hadPositive |= scoredNotes[c.noteIdKey].isin(previousPcrhNoteIds)
-  suppress = (notCore | coreFirmRejected | notMisleading) & hadPositive
-  suppressMask = suppress.values
-  if previousPcrhTimes is not None and currentTimeMillis is not None:
-    prevTimes = scoredNotes[c.noteIdKey].map(previousPcrhTimes).values.astype(np.double)
-    stale = (prevTimes != -1.0) & ((currentTimeMillis - prevTimes) > _PCRH_STALE_SUPPRESSION_MILLIS)
+    wasPositive = wasPositive | scoredNotes[c.noteIdKey].isin(previousPcrhNoteIds)
+  suppressMask = ((notCore | coreFirmRejected | notMisleading) & wasPositive).to_numpy()
+
+  times = scoredNotes[c.pcrhAboveThresholdTimeKey].to_numpy(dtype=np.double)
+  firstFromCur = _pcrh_first_times_array(times)
+  firstFromPrev = _pcrh_mapped_first_times(scoredNotes[c.noteIdKey], previousPcrhTimes)
+  firstTime = np.where(np.isnan(firstFromCur), firstFromPrev, firstFromCur)
+
+  if currentTimeMillis is not None:
+    # Stale window: force non-positive if first-time is outside [T0, T0+12h].
+    stale = (
+      (times > 0)
+      & ~np.isnan(firstTime)
+      & ((currentTimeMillis - firstTime) > _PCRH_STALE_SUPPRESSION_MILLIS)
+    )
     suppressMask = suppressMask | stale
-  scoredNotes.loc[suppressMask, c.pcrhAboveThresholdTimeKey] = -1.0
+
+  scoredNotes[c.pcrhAboveThresholdTimeKey] = _write_suppressed_pcrh_times(
+    times, suppressMask, firstTime
+  )
   return scoredNotes
 
 

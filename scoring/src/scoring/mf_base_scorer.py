@@ -579,10 +579,11 @@ class MFBaseScorer(Scorer):
         ]
       )
     if len(ratingsForTraining) == 0:
-      # This is expected to occur for sparse topic scorers in --recent runs.
+      # This is expected for sparse topic scorers and NMR group scorer in --recent runs.
       allowedEmptyRatingScorers = {
         "MFTopicScorer_MessiRonaldo",
         "MFTopicScorer_InDimensionTwo",
+        "MFGroupScorer_33",
       }
       assert self.get_name() in allowedEmptyRatingScorers, f"Unexpected scorer: {self.get_name()}"
       raise EmptyRatingException

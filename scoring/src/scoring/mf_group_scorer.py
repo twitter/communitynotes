@@ -19,6 +19,9 @@ nmrScoringGroup = 33
 # Group ID for NMR trial group scorer
 nmrTrialScoringGroup = 18
 
+# Group ID for Gaussian NMR trial group scorer
+nmrGaussGroupScoringGroup = 15
+
 
 # Mapping of how many threads to assign to each group scorer
 groupScorerParalleism = {
