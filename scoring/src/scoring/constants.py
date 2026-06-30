@@ -75,6 +75,8 @@ createdAtMillisKey = "createdAtMillis"
 summaryKey = "summary"
 noteTopicKey = "noteTopic"
 
+pflipProbaKey = "pflipProba"
+
 # Predicted CRH (PCRH) early-exit model
 pcrhAboveThresholdTimeKey = "abovePcrhThresholdTime"
 pcrhExitNKey = "pcrhExitN"
@@ -1017,6 +1019,9 @@ noteModelOutputTSVColumnsAndTypes = [
   (gaussianNoteInterceptNoHighVolKey, np.double),
   (gaussianNoteInterceptPopulationSampledKey, np.double),
   (gaussianNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  # Index 88 must be timestampMinuteOfFinalScoringOutput to match
+  # NoteModelOutput.fromStrings in BirdwatchTsvSchema.scala. Set by combine job.
+  (timestampMinuteOfFinalScoringOutput, np.double),  # double because nullable.
   (gaussianCoreWithTopicsNoteInterceptKey, np.double),
   (gaussianCoreWithTopicsNoteFactor1Key, np.double),
   (gaussianCoreWithTopicsRatingStatusKey, "category"),
@@ -1026,6 +1031,7 @@ noteModelOutputTSVColumnsAndTypes = [
   (gaussianCoreWithTopicsNoteInterceptPopulationSampledKey, np.double),
   (gaussianCoreWithTopicsNumFinalRoundRatingsKey, np.double),  # double because nullable.
   (pcrhAboveThresholdTimeKey, np.double),
+  (pflipProbaKey, np.double),  # double because nullable.
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}

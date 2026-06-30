@@ -17,6 +17,7 @@ class Scorers(Enum):
   MFMultiGroupScorer = auto()
   GaussianScorer = auto()
   GaussianCoreWithTopicsScorer = auto()
+  GaussianGroupScorer = auto()
 
 
 class Topics(Enum):
