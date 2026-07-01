@@ -433,6 +433,9 @@ For not-helpful notes:
 
 ## What’s New?
 
+**June 30, 2026**
+- Introduced a new GroupModel architecture that uses GaussianModel-based scores to set status to "Needs More Ratings" based on the ratings from the contributors in the given GroupModel
+ 
 **April 30, 2026**
 - For a limited group of people on X in the US, show note previews for notes whose score is decided by "NMRDueToStableCRHTime", indicating that they meet the CRH criteria but are still gathering ratings before being CRHed
 
