@@ -163,7 +163,7 @@ class GaussianScorer(Scorer):
     crnhThresholdNoteFactorMultiplier: float = 0,
     crnhThresholdNMIntercept: float = -0.6,
     crnhThresholdUCBIntercept: float = -0.5,
-    crhSuperThreshold: Optional[float] = 0.65,
+    crhSuperThreshold: Optional[float] = None,
     crhThresholdNoHighVol: float = 0.45,
     crhThresholdNoCorrelated: float = 0.45,
     lowDiligenceThreshold: float = 0.263,

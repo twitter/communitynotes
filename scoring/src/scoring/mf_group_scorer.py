@@ -90,7 +90,7 @@ class MFGroupScorer(MFBaseScorer):
     crnhThresholdIntercept: float = -0.05,
     crnhThresholdNoteFactorMultiplier: float = -0.8,
     crnhThresholdNMIntercept: float = -0.15,
-    crhSuperThreshold: Optional[float] = 0.5,
+    crhSuperThreshold: Optional[float] = None,
     crhThresholdNoHighVol: float = 0.37,
     crhThresholdNoCorrelated: float = 0.37,
     lowDiligenceThreshold: float = 0.263,
