@@ -13,7 +13,7 @@ class MFExpansionPlusScorer(MFBaseScorer):
     threads: int = c.defaultNumThreads,
     minMinorityNetHelpfulRatings: Optional[int] = 4,
     minMinorityNetHelpfulRatio: Optional[float] = 0.05,
-    crhSuperThreshold: Optional[float] = 0.5,
+    crhSuperThreshold: Optional[float] = None,
   ) -> None:
     """Configure MFExpansionPlusScorer object.
 

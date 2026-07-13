@@ -140,9 +140,7 @@ def _get_scorers(
     MFExpansionScorer(seed, useStableInitialization=useStableInitialization, threads=12)
   ]
   scorers[Scorers.MFExpansionPlusScorer] = [
-    MFExpansionPlusScorer(
-      seed, useStableInitialization=useStableInitialization, threads=12, crhSuperThreshold=0.6
-    )
+    MFExpansionPlusScorer(seed, useStableInitialization=useStableInitialization, threads=12)
   ]
   scorers[Scorers.ReputationScorer] = [
     ReputationScorer(seed, useStableInitialization=useStableInitialization, threads=12)
@@ -175,7 +173,6 @@ def _get_scorers(
       groupThreshold=0.51,
       minMeanNoteScore=-0.01,
       crhThreshold=0.15,
-      crhSuperThreshold=None,
       crnhThresholdIntercept=-0.01,
       crnhThresholdNoteFactorMultiplier=0,
       crnhThresholdNMIntercept=-0.02,
