@@ -33,7 +33,7 @@ Collaborative Notes can be rated just like any other Community Note. Your rating
 
 When rating a Collaborative Note, you can also suggest an improvement. Suggestions appear as part of the rating form — tap the same "submit" button to submit both your rating and suggestion.
 
-Currently, suggesting improvements is available to contributors with 2+ [Writing Impact](./writing-and-rating-impact.md). Availability will likely expand over time.
+Currently, suggesting improvements is available to contributors with 0+ [Writing Impact](./writing-and-rating-impact.md). Availability will likely expand over time.
 
 To edit or delete a suggestion, edit or delete your rating on the note.
 
