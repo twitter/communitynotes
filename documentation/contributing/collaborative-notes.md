@@ -15,12 +15,12 @@ This is a new, experimental feature, and we expect it to evolve based on contrib
 
 Collaborative Notes are generated when contributors tap "Request a Note" on a post. This alerts other contributors (as it always has), and now also kicks off creation of a Collaborative Note. The requester is notified when the note is ready, and can rate and suggest improvements to it.
 
-Currently, Collaborative notes are generated in response to note requests on English-language posts from contributors who meet at least one of the following criteria:
-- [Writing Impact](./writing-and-rating-impact.md) >= 5 (this includes all [Top Writers](./top-contributors.md))
-- OR all 3 of these criteria:
-  - [Writing Impact](./writing-and-rating-impact.md) >= 0
-  - Above ['Medium' note requestor helpfulness](../under-the-hood/note-requests.md)
-  - Meet the minimum [Contributor Helpfulness Score threshold](../under-the-hood/contributor-scores.md) in the Core Scoring Model
+Currently, Collaborative notes are generated in response to note requests on English-language posts if all of the following criteria are met:
+- Requestor has [Writing Impact](./writing-and-rating-impact.md) >= 5 (this includes all [Top Writers](./top-contributors.md))
+- OR if the request includes a free-text suggestion and the requestor meets all of these 3 criteria:
+    - [Writing Impact](./writing-and-rating-impact.md) >= 0
+    - Above ['Medium' note requestor helpfulness](../under-the-hood/note-requests.md)
+    - Above the minimum [Contributor Helpfulness Score threshold](../under-the-hood/contributor-scores.md) in the Core Scoring Model
 Over time, we expect to expand this so requests from more contributors generate them as well.
 
 ## How to interact with Collaborative Notes
