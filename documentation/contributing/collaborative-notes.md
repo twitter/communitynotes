@@ -19,7 +19,7 @@ Currently, Collaborative notes are generated in response to note requests on Eng
 - Requestor has [Writing Impact](./writing-and-rating-impact.md) >= 5 (this includes all [Top Writers](./top-contributors.md))
 - OR if the request includes a free-text suggestion and the requestor meets all of these 3 criteria:
     - [Writing Impact](./writing-and-rating-impact.md) >= 0
-    - Above ['Medium' note requestor helpfulness](../under-the-hood/note-requests.md)
+    - At least ['Medium' note requestor helpfulness](../under-the-hood/note-requests.md)
     - Above the minimum [Contributor Helpfulness Score threshold](../under-the-hood/contributor-scores.md) in the Core Scoring Model
 Over time, we expect to expand this so requests from more contributors generate them as well.
 
