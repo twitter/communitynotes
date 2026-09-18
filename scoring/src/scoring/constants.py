@@ -445,6 +445,8 @@ nmrTotal14dKey = "nmrTotal14d"
 crhTotal90dKey = "crhTotal90d"
 crnhTotal90dKey = "crnhTotal90d"
 nmrTotal90dKey = "nmrTotal90d"
+ratingsMade14dKey = "ratingsMade14d"
+ratingsMade90dKey = "ratingsMade90d"
 
 # Note Status Labels
 currentlyRatedHelpful = "CURRENTLY_RATED_HELPFUL"
@@ -1056,6 +1058,7 @@ noteModelOutputTSVColumnsAndTypes = [
   (gaussianExpansionNoteInterceptNoCorrelatedKey, np.double),
   (gaussianExpansionNoteInterceptPopulationSampledKey, np.double),
   (gaussianExpansionNumFinalRoundRatingsKey, np.double),  # double because nullable.
+  (pcrhExitProbaKey, np.double),  # double because nullable.
 ]
 noteModelOutputTSVColumns = [col for (col, dtype) in noteModelOutputTSVColumnsAndTypes]
 noteModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in noteModelOutputTSVColumnsAndTypes}
@@ -1151,6 +1154,8 @@ raterModelOutputTSVColumnsAndTypes = [
   (crhTotal90dKey, pd.Int64Dtype()),
   (crnhTotal90dKey, pd.Int64Dtype()),
   (nmrTotal90dKey, pd.Int64Dtype()),
+  (ratingsMade14dKey, pd.Int64Dtype()),
+  (ratingsMade90dKey, pd.Int64Dtype()),
 ]
 raterModelOutputTSVColumns = [col for (col, dtype) in raterModelOutputTSVColumnsAndTypes]
 raterModelOutputTSVTypeMapping = {col: dtype for (col, dtype) in raterModelOutputTSVColumnsAndTypes}
