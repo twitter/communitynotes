@@ -1219,6 +1219,22 @@ def _compute_past_n_days_stats(
   return recentStats
 
 
+def _compute_past_n_days_rating_counts(
+  ratings: pd.DataFrame,
+  nDays: int,
+  countColumn: str,
+) -> pd.DataFrame:
+  """Helper function to compute the number of ratings made in the past n days."""
+  cutoff = ratings[c.createdAtMillisKey].max() - (1000 * 60 * 60 * 24 * nDays)
+  return (
+    ratings[ratings[c.createdAtMillisKey] > cutoff]
+    .groupby(c.raterParticipantIdKey)
+    .size()
+    .to_frame(countColumn)
+    .reset_index(drop=False)
+  )
+
+
 def _compute_helpfulness_scores(
   ratings: pd.DataFrame,
   scoredNotes: pd.DataFrame,
@@ -1385,6 +1401,16 @@ def _compute_helpfulness_scores(
         c.nmrTotal90dKey: pd.Int64Dtype(),
       }
     )
+  with c.time_block("Computing 14d and 90d rating counts"):
+    for nDays, countColumn in [(14, c.ratingsMade14dKey), (90, c.ratingsMade90dKey)]:
+      helpfulnessScores = helpfulnessScores.merge(
+        _compute_past_n_days_rating_counts(ratings, nDays, countColumn),
+        how="left",
+        on=c.raterParticipantIdKey,
+      )
+      helpfulnessScores = helpfulnessScores.fillna({countColumn: 0.0}).astype(
+        {countColumn: pd.Int64Dtype()}
+      )
 
   return helpfulnessScores
 

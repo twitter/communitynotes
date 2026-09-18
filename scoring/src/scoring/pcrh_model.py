@@ -1079,9 +1079,15 @@ def merge_pcrh_results(
   after decidedBy is assigned.
   """
   if c.pcrhAboveThresholdTimeKey in pcrhPredictions.columns and len(pcrhPredictions) > 0:
-    pcrhMain = pcrhPredictions[[c.noteIdKey, c.pcrhAboveThresholdTimeKey]]
-    if c.pcrhAboveThresholdTimeKey in scoredNotes.columns:
-      scoredNotes = scoredNotes.drop(columns=[c.pcrhAboveThresholdTimeKey])
+    mainCols = [c.noteIdKey, c.pcrhAboveThresholdTimeKey] + (
+      [c.pcrhExitProbaKey] if c.pcrhExitProbaKey in pcrhPredictions.columns else []
+    )
+    pcrhMain = pcrhPredictions[mainCols]
+    dropCols = [
+      col for col in (c.pcrhAboveThresholdTimeKey, c.pcrhExitProbaKey) if col in scoredNotes.columns
+    ]
+    if dropCols:
+      scoredNotes = scoredNotes.drop(columns=dropCols)
     scoredNotes = scoredNotes.merge(pcrhMain, on=c.noteIdKey, how="left")
     pcrhAux = pcrhPredictions[
       [c.noteIdKey] + [col for col in PCRH_AUX_COLS if col in pcrhPredictions.columns]
@@ -1089,6 +1095,9 @@ def merge_pcrh_results(
     auxiliaryNoteInfo = auxiliaryNoteInfo.merge(pcrhAux, on=c.noteIdKey, how="left")
   else:
     scoredNotes[c.pcrhAboveThresholdTimeKey] = np.nan
+  # Guarantee the raw-proba column exists on scoredNotes even when PCRH didn't run.
+  if c.pcrhExitProbaKey not in scoredNotes.columns:
+    scoredNotes[c.pcrhExitProbaKey] = np.nan
 
   # Ensure aux columns exist with correct dtypes even when PCRH didn't run,
   # so downstream TSV column-validation assertions don't fail.
