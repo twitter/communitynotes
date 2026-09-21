@@ -1490,7 +1490,12 @@ class InsufficientExplanation(ScoringRule):
 
 class NMtoCRNH(ScoringRule):
   def __init__(
-    self, ruleID: RuleID, dependencies: Set[RuleID], status: str, crnhThresholdNMIntercept: float
+    self,
+    ruleID: RuleID,
+    dependencies: Set[RuleID],
+    status: str,
+    crnhThresholdNMIntercept: float,
+    minSignCount: int = 0,
   ):
     """Configure a ScoringRule to set low scoring, non-misleading notes to CRNH.
 
@@ -1499,20 +1504,29 @@ class NMtoCRNH(ScoringRule):
       dependencies: Rules which must run before this rule can run.
       status: the status which each note should be set to (e.g. CRH, CRNH, NMR).
       crnhThresholdNMIntercept: Intercept for setting notes on non-misleading tweets to CRNH.
+      minSignCount: Minimum ratings from raters on each side of the factor spectrum required
+        for CRNH.  0 disables the requirement.
     """
     super().__init__(ruleID, dependencies)
     self._status = status
     self._crnhThresholdNMIntercept = crnhThresholdNMIntercept
+    self._minSignCount = minSignCount
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Returns noteIds for low scoring notes on non-misleading tweets."""
+    hasMinSignCount = (
+      noteStats[c.minSignCountKey] >= self._minSignCount
+      if self._minSignCount > 0
+      else pd.Series(True, index=noteStats.index)
+    )
     noteStatusUpdates = noteStats.loc[
       (noteStats[c.internalNoteInterceptKey] < self._crnhThresholdNMIntercept)
       # Require that that the classification is "not misleading" to explicitly exclude deleted
       # notes where the classification is nan.
       & (noteStats[c.classificationKey] == c.noteSaysTweetIsNotMisleadingKey)
+      & hasMinSignCount
     ][[c.noteIdKey]]
     noteStatusUpdates[statusColumn] = self._status
     return (noteStatusUpdates, None)

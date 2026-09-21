@@ -188,6 +188,7 @@ class GaussianScorer(Scorer):
     crhParams: c.GaussianParams = c.gaussianCrhParams,
     crnhParams: c.GaussianParams = c.gaussianCrnhParams,
     useMfNoteParams=True,
+    crnhMinSignCount: int = 3,
   ):
     """Configure GaussianScorer object.
 
@@ -211,7 +212,8 @@ class GaussianScorer(Scorer):
         often a rater must predict the eventual outcome when rating before a note is assigned status.
       crhThreshold: Minimum intercept for most notes to achieve CRH status.
       crnhThresholdIntercept: Maximum intercept for most notes to achieve CRNH status.
-
+      crnhMinSignCount: Minimum ratings from raters on each side of the factor spectrum required
+        for GeneralCRNH, UcbCRNH and NmCRNH (RatioCRNH already requires it).
     """
     super().__init__(
       includedTopics=includedTopics,
@@ -257,6 +259,7 @@ class GaussianScorer(Scorer):
     self._crhParams = crhParams
     self._crnhParams = crnhParams
     self._useMfNoteParams = useMfNoteParams
+    self._crnhMinSignCount = crnhMinSignCount
 
   def get_prescoring_name(self):
     return "MFCoreScorer"
@@ -1069,6 +1072,7 @@ class GaussianScorer(Scorer):
         crhThresholdNoCorrelated=crhThresholdNoCorrelated,
         enableRatioCrnh=self._enableRatioCrnh,
         largeFactorRequiresCrh=self._largeFactorRequiresCrh,
+        crnhMinSignCount=self._crnhMinSignCount,
       )
       logger.info(f"sn cols: {scoredNotes.columns}")
 
