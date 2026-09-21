@@ -22,6 +22,7 @@ If a note is deleted, the algorithm will still score it (using all non-deleted r
 
 Notes marking posts as "potentially misleading" with a Note Helpfulness Score of 0.40 and above earn the status of Helpful. At this time, only notes that indicate a post is “potentially misleading” and earn the status of Helpful are eligible to be displayed on posts.
 Notes with a Note Helpfulness Score less than -0.05 -0.8 \* abs(noteFactorScore) are assigned Not Helpful, where noteFactorScore is described in [Matrix Factorization](#matrix-factorization). Additionally, notes with an upper confidence bound estimate of their Note Helpfulness Score (as computed via pseudo-raters) less than -0.04 are assigned Not Helpful, as described in [Modeling Uncertainty](#modeling-uncertainty).
+In all cases, a note must have received at least 3 ratings from raters with positive factors and at least 3 ratings from raters with negative factors before it can be assigned Not Helpful.
 Notes with scores in between remain with a status of Needs more Ratings.
 
 Identifying notes as Not Helpful improves contributor helpfulness scoring and reduces the time contributors spend reviewing low quality notes.
@@ -432,6 +433,9 @@ For not-helpful notes:
 5. Assign the top two explanation tags that match the note’s final status label as in [Determining Note Status Explanation Tags](#determining-note-status-explanation-tags), or if two such tags don’t exist, then revert the note status label to “Needs More Ratings”.
 
 ## What’s New?
+
+**September 21, 2026**
+- Require at least 3 ratings from raters on each side of the factor spectrum (positive and negative factors) before a note can become "Currently Rated Not Helpful".
 
 **August 3, 2026**
 - Introduce a GaussianModel for Expansion Groups
