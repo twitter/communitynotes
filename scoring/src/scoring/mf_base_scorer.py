@@ -209,6 +209,7 @@ class MFBaseScorer(Scorer):
     minMinorityNetHelpfulRatio: Optional[float] = None,
     populationSampledRatingPerNoteLossRatio: Optional[float] = 10.0,
     useGlobalIntercept: bool = True,
+    crnhMinSignCount: int = 3,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -248,6 +249,9 @@ class MFBaseScorer(Scorer):
       maxFirstMFTrainError: maximum error allowed for the first MF training process
       maxFinalMFTrainError: maximum error allowed for the final MF training process
       populationSampledRatingPerNoteLossRatio: optional override for ratingPerNoteLossRatio when computing the population sampled intercept
+      crnhMinSignCount: minimum ratings from raters on each side of the factor spectrum required
+        for CRNH in final scoring (applied to GeneralCRNH, UcbCRNH and NmCRNH; RatioCRNH already
+        requires it).  Prescoring rounds are unaffected, mirroring RatioCRNH.
     """
     super().__init__(
       includedTopics=includedTopics,
@@ -291,6 +295,7 @@ class MFBaseScorer(Scorer):
     self._minMinorityNetHelpfulRatings = minMinorityNetHelpfulRatings
     self._minMinorityNetHelpfulRatio = minMinorityNetHelpfulRatio
     self._populationSampledRatingPerNoteLossRatio = populationSampledRatingPerNoteLossRatio
+    self._crnhMinSignCount = crnhMinSignCount
     mfArgs = dict(
       [
         pair
@@ -1281,6 +1286,7 @@ class MFBaseScorer(Scorer):
         minMinorityNetHelpfulRatio=self._minMinorityNetHelpfulRatio,
         crhThresholdNoHighVol=crhThresholdNoHighVol,
         crhThresholdNoCorrelated=crhThresholdNoCorrelated,
+        crnhMinSignCount=self._crnhMinSignCount,
       )
       logger.info(f"sn cols: {scoredNotes.columns}")
 

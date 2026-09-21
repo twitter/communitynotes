@@ -595,6 +595,7 @@ def compute_scored_notes(
   enableRatioCrnh: bool = True,
   # If False, FilterLargeFactor applies to all non-CRNH notes (not only CRH).
   largeFactorRequiresCrh: bool = True,
+  crnhMinSignCount: int = 0,
 ) -> pd.DataFrame:
   """
   Merges note status history, ratings, and model output. It annotes the data frame with
@@ -627,6 +628,9 @@ def compute_scored_notes(
       is_crnh_diamond_function: Function specifying default CRNH critierai.
       is_crnh_ucb_function: Function specifying default CRNH critierai, ORed together with previous.
       is_crnh_ratio_function:
+      crnhMinSignCount: Minimum number of ratings from raters on each side of the factor spectrum
+        (minSignCount) required for GeneralCRNH, UcbCRNH and NmCRNH to assign CRNH.  RatioCRNH
+        already imposes its own minimum.  0 disables the requirement.
   Returns:
       pd.DataFrame: scoredNotes The scored notes
   """
@@ -694,6 +698,9 @@ def compute_scored_notes(
     .astype(np.int64)
   )
 
+  def has_crnh_min_sign_count(noteStats: pd.DataFrame) -> pd.Series:
+    return noteStats[c.minSignCountKey] >= crnhMinSignCount
+
   rules = [
     scoring_rules.DefaultRule(RuleID.INITIAL_NMR, set(), c.needsMoreRatings),
     scoring_rules.RuleFromFunction(
@@ -709,16 +716,16 @@ def compute_scored_notes(
       c.currentlyRatedNotHelpful,
       lambda noteStats: is_crnh_diamond_function(
         noteStats, minRatingsNeeded, crnhThresholdIntercept, crnhThresholdNoteFactorMultiplier
-      ),
+      )
+      & has_crnh_min_sign_count(noteStats),
       onlyApplyToNotesThatSayTweetIsMisleading=False,
     ),
     scoring_rules.RuleFromFunction(
       RuleID.UCB_CRNH,
       {RuleID.INITIAL_NMR},
       c.currentlyRatedNotHelpful,
-      lambda noteStats: is_crnh_ucb_function(
-        noteStats, minRatingsNeeded, crnhThresholdUCBIntercept
-      ),
+      lambda noteStats: is_crnh_ucb_function(noteStats, minRatingsNeeded, crnhThresholdUCBIntercept)
+      & has_crnh_min_sign_count(noteStats),
       onlyApplyToNotesThatSayTweetIsMisleading=False,
     ),
     scoring_rules.RuleFromFunction(
@@ -731,7 +738,11 @@ def compute_scored_notes(
       onlyApplyToNotesThatSayTweetIsMisleading=False,
     ),
     scoring_rules.NMtoCRNH(
-      RuleID.NM_CRNH, {RuleID.INITIAL_NMR}, c.currentlyRatedNotHelpful, crnhThresholdNMIntercept
+      RuleID.NM_CRNH,
+      {RuleID.INITIAL_NMR},
+      c.currentlyRatedNotHelpful,
+      crnhThresholdNMIntercept,
+      minSignCount=crnhMinSignCount,
     ),
   ]
   if finalRound:
