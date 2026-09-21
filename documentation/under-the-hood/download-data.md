@@ -45,7 +45,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 
 {% accordionItem title="2026-09-18 - New Note Status History column for PCRH"  %}
 
-- We've updated the open-source note status history dataset to add `timestampMillisAbovePcrhThreshold`, the time when a note first exceeded the Predicted Currently Rated Helpful (PCRH) scoring threshold.
+- We've updated the open-source note status history dataset to add `timestampMillisAbovePcrhThreshold`, the time when a note first exceeded the Probability Currently Rated Helpful (PCRH) scoring threshold.
 
 {% /accordionItem %}
 
@@ -194,7 +194,7 @@ As we iterate and improve Community Notes, we will occasionally make changes to 
 | `currentModelingMultiGroup` | Int | The ID of the multi-modeling group that this note would be scored by, if eligible to be scored by a multi group model (determined by the modeling groups of its raters, from the user enrollment file). 0 is a placeholder for no multi modeling group. | nonnegative int |
 | `timestampMinuteOfFinalScoringOutput` | None | For internal use. Timestamp of scoring run. | None |
 | `timestampMillisOfFirstNmrDueToMinStableCrhTime` | Long | The timestamp, in milliseconds since epoch (UTC), of when the note first met the necessary scoring rules to become CRH, but was set to a final NMR status in order to wait for the minimum amount of stable time before finally CRHing the note. |
-| `timestampMillisAbovePcrhThreshold` | Long | The timestamp, in milliseconds since epoch (UTC), of when the note first exceeded the Predicted Currently Rated Helpful (PCRH) scoring threshold. Empty if the note has never exceeded that threshold. A value of -1 indicates the timestamp was cleared (for example after the note's status was locked). If the note previously exceeded the threshold but is not currently above it, the original first-exceeded time is stored as a negative number. _New as of 2026-09-18_. |
+| `timestampMillisAbovePcrhThreshold` | Long | The timestamp, in milliseconds since epoch (UTC), of when the note first exceeded the Probability Currently Rated Helpful (PCRH) scoring threshold. Empty if the note has never exceeded that threshold. A value of -1 indicates the timestamp was cleared (for example after the note's status was locked). If the note previously exceeded the threshold but is not currently above it, the original first-exceeded time is stored as a negative number. _New as of 2026-09-18_. |
 
 
 
