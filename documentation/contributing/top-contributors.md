@@ -8,7 +8,7 @@ navWeight: 120
 Top Writers are contributors recognized for writing a significant number of notes that are found helpful by others. To earn this status, contributors must meet the following criteria:
 
 - Writing Impact of 10 or more
-- At least 4% of all their notes are currently rated “Helpful”
+- Net CRH rate of at least 4%, defined as (CRH-CRNH)/Total, where CRH denotes the number of notes with Helpful status, CRNH denotes the number of notes with Not Helpful status, and Total is the number of notes proposed by the writer.
 
 Top Note Writers get access to:
 
