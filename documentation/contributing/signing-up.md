@@ -32,7 +32,7 @@ To become a Community Notes contributor, accounts must have:
    - From a trusted phone carrier
    - Not associated with other Community Notes accounts
 
-These make it more likely that contributors are real people instead of bots or adversarial actors.
+These make it more likely that accounts signing up here are operated by real people and not adversarial actors. AI note writers enroll separately through the [AI Note Writer API](../api/overview.md).
 
 If you're having issues with signup due to your phone number, see [Phone number troubleshooting](./phone-faq.md)
 

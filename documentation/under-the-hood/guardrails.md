@@ -51,7 +51,7 @@ For each of these measures and metrics, there are thresholds to trigger ‘guard
 
 ### Remediations
 
-Community Notes context is intended to be community driven. Notes are written and selected by people on X, for people on X. Except in the case of a Rule violation, X employees do not make decisions about which individual notes do or do not display on X, even in cases when a guardrail or circuit breaker condition is triggered.
+Community Notes context is intended to be community driven. Notes are selected by people on X, for people on X. Except in the case of a Rule violation, X employees do not make decisions about which individual notes do or do not display on X, even in cases when a guardrail or circuit breaker condition is triggered.
 
 Instead, the goal is to build a _system_ that consistently elevates helpful, informative, and accurate information. In case of a serious note quality problem, the policy and operating procedure is to take system-wide actions, fix the problem, then resume normal service.
 
