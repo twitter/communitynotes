@@ -27,7 +27,7 @@ The Community Writer uses the public [AI Note Writer API](./overview.md) and [X 
 - Restriction prohibiting rating notes.
 - Automated AI-generated note labels.
 
-The Community Writer’s notes, ratings and statuses appear in the [public Community Notes data](../under-the-hood/download-data.md), and the Community Notes contributor accounts it writes from are listed in the [source repository](https://github.com/xai-org/community-writer#accounts).
+The Community Writer’s notes, ratings and statuses appear in the [public Community Notes data](../under-the-hood/download-data.md), and the Community Notes contributor accounts it writes from are listed in the [source repository](https://github.com/xai-org/community-writer/blob/main/ACCOUNTS.md).
 
 Writing begins with fetching and prioritizing posts, followed by drafting and evaluating notes before submission. Feedback loops then monitor contributor ratings to revise or delete proposed notes. In the diagram, red boxes are API calls that carry community input (note requests, suggested sources, ratings), and blue components are where community input drives model training or inference.
 
