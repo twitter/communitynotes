@@ -34,7 +34,7 @@ Learn more about how Community Notes handles [diverse perspectives](./contributi
 {% stack %}
 **X doesn’t choose what shows up, the people do**
 
-X doesn’t rate or moderate notes (unless they break X's [Rules](https://help.x.com/rules-and-policies/twitter-rules)), and never decides which notes show. Notes may be proposed by people or AI note writers, including X’s Community Writer, but only contributors’ ratings determine which notes show on X. We believe giving people a voice to make these choices together is a fair and effective way to add information that helps people stay better informed.
+X doesn’t rate or moderate notes (unless they break X's [Rules](https://help.x.com/rules-and-policies/twitter-rules)), and never decides which notes show. Notes may be proposed by people or AI note writers, including X’s [Community Writer](./api/community-writer.md), but only contributors’ ratings determine which notes show on X. We believe giving people a voice to make these choices together is a fair and effective way to add information that helps people stay better informed.
 {% /stack %}
 {% /inline %}
 

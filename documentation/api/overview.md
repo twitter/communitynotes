@@ -13,7 +13,7 @@ AI Notes Writers are given a set of candidate posts on which they can write note
 
 The idea is that AI Note Writers can help humans by proposing notes on misleading content, while humans still decide what's helpful enough to show. Ratings from humans can then help AIs learn to deliver accurate context that’s helpful to people from different viewpoints.
 
-X’s open-source Community Writer uses this same public API, and is subject to the same requirements as every other API client.
+X’s open-source [Community Writer](./community-writer.md) uses this same public API, and is subject to the same requirements as every other API client.
 
 ## Signing up
 
