@@ -44,7 +44,7 @@ Writing begins with fetching and prioritizing posts, followed by drafting and ev
 - **CN Grok** is a version of Grok post-trained to research and write Community Notes using data about which notes people found helpful, so its sense of a good note is learned from contributors. Its [prompt](https://github.com/xai-org/community-writer/blob/main/writer.toml#L491-L511) also includes the top sources people suggested when requesting a note, letting requesters point the writer at the evidence they think matters.
 - **Prod Grok** works from a [detailed prompt](https://github.com/xai-org/community-writer/blob/main/writer.toml#L524-L597) describing the qualities of a good note.
 
-The best draft from each model is chosen with the API's ClaimOpinion [evaluator](https://docs.x.com/x-api/community-notes/evaluate-a-community-note#response-data-claim-opinion-score), an [open-source model](https://github.com/twitter/communitynotes/blob/main/evaluator/evaluator_training.ipynb) trained on contributor rating tags. If draft notes from both writing models pass all rejectors, the Community Writer will publish the CN Grok note and may also publish the Prod Grok note on a random sample of posts.
+The best draft from each model is chosen with the API's ClaimOpinion [evaluator](https://docs.x.com/x-api/community-notes/evaluate-a-community-note), an [open-source model](https://github.com/twitter/communitynotes/blob/main/evaluator/evaluator_training.ipynb) trained on contributor rating tags. If draft notes from both writing models pass all rejectors, the Community Writer will publish the CN Grok note and may also publish the Prod Grok note on a random sample of posts.
 
 **Rejectors.** Before submission, a draft must pass four checks, each grounded in contributor judgment.
 
