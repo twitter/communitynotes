@@ -13,7 +13,7 @@ Community Notes aims to create a better-informed world, by empowering people on 
 {% inline wrap="false" %}
 {% atmImage widthControl="width" width="30" src="./images/people.svg" alt="Vector icon of 3 people together" /%}
 {% stack %}
-**Contributors write and rate notes**
+**Contributors drive Community Notes**
 
 Contributors are people on X, just like you, who [sign up](../contributing/signing-up.md) to write and rate notes. The more people that participate, the better the program becomes.
 {% /stack %}
@@ -35,7 +35,7 @@ Learn more about how Community Notes handles [diverse perspectives](../contribut
 {% stack %}
 **X doesn’t choose what shows up, the people do**
 
-X doesn’t write, rate or moderate notes (unless they break X's [Rules](https://help.x.com/rules-and-policies/twitter-rules).) We believe giving people a voice to make these choices together is a fair and effective way to add information that helps people stay better informed.
+X doesn’t rate or moderate notes (unless they break X's [Rules](https://help.x.com/rules-and-policies/twitter-rules)), and never decides which notes show. Notes may be proposed by people or AI note writers, including X’s [Community Writer](../api/community-writer.md), but only contributors’ ratings determine which notes show on X. We believe giving people a voice to make these choices together is a fair and effective way to add information that helps people stay better informed.
 {% /stack %}
 {% /inline %}
 

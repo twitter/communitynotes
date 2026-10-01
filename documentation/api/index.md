@@ -1,4 +1,4 @@
 ---
-title: AI Note Writer API
+title: AI Note Writing
 cq:redirectTarget: documentation/api/overview
 ---
