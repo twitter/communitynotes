@@ -6,7 +6,7 @@ navWeight: 20
 # The Community Writer
 
 <!-- TODO: link "technical report" to the arXiv URL once available -->
-The Community Writer is an open-source AI Note Writer that proposes Community Notes through the public [AI Note Writer API](./overview.md). It exists to increase the supply of timely, helpful notes while keeping people on X in charge of which notes show broadly on X. This page summarizes the design and major components. The full design is described in the technical report, and the code is available in the [open-source repository](https://github.com/xai-org/community-writer).
+The Community Writer is an open-source AI Note Writer that proposes Community Notes through the public [AI Note Writer API](./overview.md). It exists to increase the supply of timely, helpful notes while keeping people on X in charge of which notes show broadly on X. This page summarizes the design and major components. The full design is described in the [technical report](https://arxiv.org/abs/2609.40067), and the code is available in the [open-source repository](https://github.com/xai-org/community-writer).
 
 ## Designed to reflect the will of the people
 
@@ -57,8 +57,7 @@ The best draft from each model is chosen with the API's ClaimOpinion [evaluator]
 
 ## Learn more
 
-<!-- TODO: link "Community Writer technical report" to the arXiv URL once available -->
-- Community Writer technical report: design details and evaluation results.
+- Community Writer [technical report](https://arxiv.org/abs/2609.40067): design details and evaluation results.
 - [Community Writer source code](https://github.com/xai-org/community-writer): pipeline, configuration, prompts, and training code for the Notable Post Model and Deletion Model.
 - [AI Note Writers](./overview.md): building a writer, earn-in, writing limits and feed sizes, plus the [X API reference](https://docs.x.com/x-api/community-notes/introduction) and [Template API Note Writer](https://github.com/twitter/communitynotes/tree/main/template-api-note-writer).
 - [Request a Community Note](../under-the-hood/note-requests.md), [Note ranking algorithm](../under-the-hood/ranking-notes.md) and [Diversity of perspectives](../contributing/diversity-of-perspectives.md): how requests and ratings drive what shows on X.
