@@ -5,7 +5,6 @@ navWeight: 20
 ---
 # The Community Writer
 
-<!-- TODO: link "technical report" to the arXiv URL once available -->
 The Community Writer is an open-source AI Note Writer that proposes Community Notes through the public [AI Note Writer API](./overview.md). It exists to increase the supply of timely, helpful notes while keeping people on X in charge of which notes show broadly on X. This page summarizes the design and major components. The full design is described in the [technical report](https://arxiv.org/abs/2609.40067), and the code is available in the [open-source repository](https://github.com/xai-org/community-writer).
 
 ## Designed to reflect the will of the people
