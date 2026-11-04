@@ -13,6 +13,8 @@ import logging
 import multiprocessing
 from multiprocessing import shared_memory  # type: ignore
 import os
+import resource
+import sys
 import time
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
@@ -418,7 +420,11 @@ def _run_scorer_parallelizable(
 
       configure_logging_for_child_process(special_handler_process_name)
     except ImportError:
-      pass
+      # forkserver children don't inherit the parent's logging config, so without this the
+      # public entrypoint silently drops every INFO log emitted by the scorers.
+      logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s:%(name)s:[pid %(process)d] %(message)s"
+      )
   scorerStartTime = time.perf_counter()
 
   # Load data if multiprocessing
@@ -456,8 +462,31 @@ def _run_scorer_parallelizable(
   else:
     raise ValueError(f"Unknown scoringArgs type: {type(scoringArgs)}")
   scorerEndTime = time.perf_counter()
+  if runParallel:
+    # Workers are reused across scorers, so peak RSS is the max over every scorer this
+    # worker has run so far; current RSS shows what is retained between scorers.
+    logger.info(
+      f"{scorer.get_name()} finished in {(scorerEndTime - scorerStartTime) / 60:.1f} mins. "
+      f"Worker pid {os.getpid()} RSS: {_current_rss_gb():.1f} GB current, {_peak_rss_gb():.1f} GB peak."
+    )
 
   return scoringResults, (scorerEndTime - scorerStartTime)
+
+
+def _current_rss_gb() -> float:
+  """Current resident set size of this process in GB (Linux only; NaN elsewhere)."""
+  try:
+    with open("/proc/self/statm") as f:
+      return int(f.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") / 2**30
+  except (OSError, ValueError, IndexError):
+    return float("nan")
+
+
+def _peak_rss_gb() -> float:
+  """Lifetime peak resident set size of this process in GB."""
+  maxRss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+  # ru_maxrss is reported in KB on Linux and bytes on macOS.
+  return maxRss / (2**30 if sys.platform == "darwin" else 2**20)
 
 
 def save_df_to_shared_memory(df: pd.DataFrame, shms: List) -> c.SharedMemoryDataframeInfo:
@@ -468,9 +497,11 @@ def save_df_to_shared_memory(df: pd.DataFrame, shms: List) -> c.SharedMemoryData
   """
   with io.BytesIO() as buf:
     df.to_parquet(buf, compression="gzip", engine="pyarrow")
-    size = len(buf.getvalue())
-    shm = shared_memory.SharedMemory(create=True, size=size)
-    shm.buf[:size] = buf.getvalue()
+    # getbuffer() is a zero-copy view; getvalue() would copy the whole serialized frame.
+    with buf.getbuffer() as view:
+      size = view.nbytes
+      shm = shared_memory.SharedMemory(create=True, size=size)
+      shm.buf[:size] = view
   shms.append(shm)  # save the shared memory object so we can close it later
   return c.SharedMemoryDataframeInfo(
     sharedMemoryName=shm.name,
@@ -501,27 +532,25 @@ def _save_dfs_to_shared_memory(
   noteTopics = save_df_to_shared_memory(scoringArgs.noteTopics, shms)
   # Order ratings by highVolumeRaterKey so that later we can split ratings
   # to remove ratings from high volume users without having to make a copy.
-  sortedRatings = scoringArgs.ratings.sort_values(
-    [c.highVolumeRaterKey, c.correlatedRaterKey], ascending=True
-  )
-  ratings = save_df_to_shared_memory(
-    keep_columns(
-      sortedRatings,
-      [
-        c.noteIdKey,
-        c.raterParticipantIdKey,
-        c.helpfulNumKey,
-        c.helpfulnessLevelKey,
-        c.createdAtMillisKey,
-        c.highVolumeRaterKey,
-        c.correlatedRaterKey,
-        c.ratingSourceBucketedKey,
-      ]
-      + c.notHelpfulTagsTSVOrder
-      + c.helpfulTagsTSVOrder,
-    ),
-    shms,
-  )
+  # Prune columns before sorting so the sort copies only the kept columns; the multi-key sort is
+  # stable, so row order is identical either way.
+  sortedRatings = keep_columns(
+    scoringArgs.ratings,
+    [
+      c.noteIdKey,
+      c.raterParticipantIdKey,
+      c.helpfulNumKey,
+      c.helpfulnessLevelKey,
+      c.createdAtMillisKey,
+      c.highVolumeRaterKey,
+      c.correlatedRaterKey,
+      c.ratingSourceBucketedKey,
+    ]
+    + c.notHelpfulTagsTSVOrder
+    + c.helpfulTagsTSVOrder,
+  ).sort_values([c.highVolumeRaterKey, c.correlatedRaterKey], ascending=True)
+  ratings = save_df_to_shared_memory(sortedRatings, shms)
+  del sortedRatings
   noteStatusHistory = save_df_to_shared_memory(scoringArgs.noteStatusHistory, shms)
   userEnrollment = save_df_to_shared_memory(scoringArgs.userEnrollment, shms)
 
@@ -742,15 +771,17 @@ def convert_prescoring_rater_model_output_to_coalesced_helpfulness_scores(
 
   scorersEnumDict = _get_scorers(seed=None, pseudoraters=None)
   scorers = chain(*scorersEnumDict.values())
-  uniqueScorerNames = prescoringRaterModelOutput[c.scorerNameKey].unique()
+  # Index rows by scorer once instead of scanning the full (rater x scorer) frame per scorer.
+  outputByScorerName = prescoringRaterModelOutput.groupby(
+    c.scorerNameKey, sort=False, observed=True
+  )
+  rowsByScorerName = outputByScorerName.indices
   for scorer in scorers:
     scorerName = scorer.get_name()
-    if scorerName not in uniqueScorerNames:
+    if scorerName not in rowsByScorerName:
       continue
 
-    scorerOutputInternalNames = prescoringRaterModelOutput[
-      (prescoringRaterModelOutput[c.scorerNameKey] == scorerName)
-    ]
+    scorerOutputInternalNames = outputByScorerName.get_group(scorerName)
     scorerOutputExternalNames = scorerOutputInternalNames.rename(
       columns=scorer._get_user_col_mapping()
     )
@@ -1298,12 +1329,21 @@ def _compute_helpfulness_scores(
     ]:
       scoredNotesWithStats[col] = scoredNotesWithStats[col].astype(bool)
 
+  with c.time_block("Meta Helpfulness Scores: Visible Rating Counts"):
+    # Rating-level counts are shared by the contributor scores and contributor state below, and
+    # require several passes over all ratings, so compute them once.
+    visibleRatingCounts = contributor_state.get_visible_rating_counts(
+      scoredNotesWithStats,
+      ratings,
+      noteStatusHistory,
+    )
   with c.time_block("Meta Helpfulness Scores: Contributor Scores"):
     # Return one row per rater with stats including trackrecord identifying note labels.
     contributorScores = contributor_state.get_contributor_scores(
       scoredNotesWithStats,
       ratings,
       noteStatusHistory,
+      visibleRatingCounts=visibleRatingCounts,
     )
   with c.time_block("Meta Helpfulness Scorers: Contributor State"):
     contributorState, prevState = contributor_state.get_contributor_state(
@@ -1311,7 +1351,9 @@ def _compute_helpfulness_scores(
       ratings,
       noteStatusHistory,
       userEnrollment,
+      visibleRatingCounts=visibleRatingCounts,
     )
+    del visibleRatingCounts
 
   with c.time_block("Meta Helpfulness Scorers: Combining"):
     # We need to do an outer merge because the contributor can have a state (be a new user)
@@ -1492,6 +1534,17 @@ def run_rater_clustering(notes: pd.DataFrame, ratings: pd.DataFrame) -> pd.DataF
   return postSelectionSimilarityValues.merge(quasiCliques, how="outer")
 
 
+def get_rater_clustering_values(prescoringRaterModelOutput: pd.DataFrame) -> pd.DataFrame:
+  """Extract the PSS / quasi-clique assignments concatenated onto prescoring rater output.
+
+  The two columns come from an outer merge, so a rater in a PSS group but not in a
+  quasi-clique (or vice versa) has NaN in the other column and must be kept.
+  """
+  return prescoringRaterModelOutput[
+    [c.raterParticipantIdKey, c.postSelectionValueKey, c.quasiCliqueValueKey]
+  ].dropna(subset=[c.postSelectionValueKey, c.quasiCliqueValueKey], how="all")
+
+
 def run_prescoring(
   args,
   notes: pd.DataFrame,
@@ -1666,9 +1719,7 @@ def run_prescoring(
     priorRatings = apply_post_selection_similarity(
       priorNotes,
       priorRatings,
-      prescoringRaterModelOutput[
-        [c.raterParticipantIdKey, c.postSelectionValueKey, c.quasiCliqueValueKey]
-      ].dropna(),
+      get_rater_clustering_values(prescoringRaterModelOutput),
     )
     logger.info(f"recent core ratings for empirical prior {len(priorRatings)}")
     priorRatings[c.raterParticipantIdKey] = priorRatings[c.raterParticipantIdKey].astype(
@@ -2015,7 +2066,23 @@ def run_final_note_scoring(
   pcrhClassifier: Optional[PCRHModel] = None,
   pcrhRespectFirmReject: bool = True,
   notesToRescore: Optional[c.NotesToRescore] = None,
+  inputsPreprocessed: bool = False,
+  ratingsHandoff: Optional[List[pd.DataFrame]] = None,
 ):
+  """
+  Args:
+    inputsPreprocessed: set when notes, ratings and noteStatusHistory already went through
+      preprocess_data (e.g. the public LocalDataLoader). The second pass is then skipped when all
+      notes are scored, since it would re-run on identical rows; when previousScoredNotes selects
+      a subset it still runs so high-volume raters are recomputed on the rescored notes.
+    ratingsHandoff: alternative to `ratings` (pass ratings=None): a one-element list whose frame
+      is popped, so the caller keeps no reference and the unfiltered frame is freed once scoring
+      derives its filtered copy. A frame passed directly as an argument stays referenced by the
+      caller's frame until this function returns.
+  """
+  if ratingsHandoff is not None:
+    assert ratings is None, "Pass ratings either directly or via ratingsHandoff, not both."
+    ratings = ratingsHandoff.pop()
   metrics = {}
   with c.time_block("Logging Final Scoring RAM usage"):
     logger.info(get_df_info(notes, "notes"))
@@ -2092,9 +2159,7 @@ def run_final_note_scoring(
     pflipRatings = apply_post_selection_similarity(
       pflipNotes,
       pflipRatings,
-      prescoringRaterModelOutput[
-        [c.raterParticipantIdKey, c.postSelectionValueKey, c.quasiCliqueValueKey]
-      ].dropna(),
+      get_rater_clustering_values(prescoringRaterModelOutput),
     )
     # Compute pflip scores
     pflipPredictions = pflipClassifier.predict(
@@ -2255,8 +2320,11 @@ def run_final_note_scoring(
       metrics["num_ratings_on_notes_to_rescore"] = len(ratings)
       metrics["latest_rating_created_ms"] = ratings["createdAtMillis"].max()
 
-  with c.time_block("Preprocess smaller dataset since we skipped preprocessing at read time"):
-    notes, ratings, noteStatusHistory = preprocess_data(notes, ratings, noteStatusHistory)
+  if inputsPreprocessed and previousScoredNotes is None:
+    logger.info("Skipping preprocess_data: inputs were preprocessed at read time.")
+  else:
+    with c.time_block("Preprocess smaller dataset since we skipped preprocessing at read time"):
+      notes, ratings, noteStatusHistory = preprocess_data(notes, ratings, noteStatusHistory)
 
   with c.time_block("Note Topic Assignment"):
     # Prune notesFull to include all notes on any post that is having a note scored.  Recall that
@@ -2286,9 +2354,7 @@ def run_final_note_scoring(
     ratings = apply_post_selection_similarity(
       notes,
       ratings,
-      prescoringRaterModelOutput[
-        [c.raterParticipantIdKey, c.postSelectionValueKey, c.quasiCliqueValueKey]
-      ].dropna(),
+      get_rater_clustering_values(prescoringRaterModelOutput),
     )
     logger.info(f"Post Selection Similarity Final Scoring: {len(ratings)} ratings remaining.")
 

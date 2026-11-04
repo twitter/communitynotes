@@ -8,6 +8,19 @@ import numpy as np
 import pandas as pd
 
 
+def _has_not_helpful_tag(ratings: pd.DataFrame) -> np.ndarray:
+  """Boolean mask of ratings with at least one not-helpful tag (missing values count as 0).
+
+  Equivalent to `ratings[c.notHelpfulTagsTSVOrder].sum(axis=1) > 0`, but accumulates one column
+  at a time. The row-wise DataFrame sum over pyarrow-backed tag columns (as loaded in parallel
+  scorer workers) allocates ~6x the size of the entire ratings frame.
+  """
+  total = np.zeros(len(ratings), dtype=np.float64)
+  for col in c.notHelpfulTagsTSVOrder:
+    total += ratings[col].to_numpy(dtype=np.float64, na_value=0.0)
+  return total > 0
+
+
 def get_user_incorrect_ratio(ratings: pd.DataFrame) -> pd.DataFrame:
   """Computes empirical p(incorrect | not helpful tags assigned) per rater.
   Called during prescoring only, since it uses entire rating history.
@@ -20,7 +33,7 @@ def get_user_incorrect_ratio(ratings: pd.DataFrame) -> pd.DataFrame:
     to assign "incorrect" tag
   """
   # Filter down to just ratings with some nh tags used.
-  nhTagRatings = ratings.loc[ratings[c.notHelpfulTagsTSVOrder].sum(axis=1) > 0]
+  nhTagRatings = ratings.loc[_has_not_helpful_tag(ratings)]
 
   user_incorrect = (
     (
@@ -143,7 +156,7 @@ def get_incorrect_aggregates_final_scoring(
     distance between the rater and the note and ratios based on the adjusted weight totals.
   """
   # consider only ratings with some NH tag
-  notHelpfulTaggedRatings = ratings.loc[ratings[c.notHelpfulTagsTSVOrder].sum(axis=1) > 0]
+  notHelpfulTaggedRatings = ratings.loc[_has_not_helpful_tag(ratings)]
 
   # join user totals, note factors, and rater factors with each rating
   ratings_w_user_totals = (

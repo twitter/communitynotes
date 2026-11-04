@@ -197,6 +197,8 @@ gaussianCrnhParams = GaussianParams(
   weightLim=5e-4,
 )
 
+defaultCrnhMinNotHelpfulSignCount: Optional[int] = 2
+
 # TSV Values
 notHelpfulValueTsv = "NOT_HELPFUL"
 somewhatHelpfulValueTsv = "SOMEWHAT_HELPFUL"
@@ -838,6 +840,7 @@ posFactorRatingCountKey = "posFactor_ratingCount"
 negFactorMeanHelpfulNumKey = "negFactor_meanHelpfulNum"
 posFactorMeanHelpfulNumKey = "posFactor_meanHelpfulNum"
 minSignCountKey = "minSignCount"
+minNotHelpfulSignCountKey = "minNotHelpfulSignCount"
 maxSignCountKey = "maxSignCount"
 netMinHelpfulKey = "netMinHelpful"
 netMinHelpfulRatioKey = "netMinHelpfulRatio"
@@ -1070,6 +1073,10 @@ deprecatedNoteModelOutputTSVColumnsAndTypes = [
 
 postSelectionValueKey = "postSelectionValue"
 quasiCliqueValueKey = "quasiCliqueValue"
+# Frame-local columns used while applying post selection similarity to ratings.
+pssRaterGroupKey = "pssRaterGroup"
+pssNoteAuthorKey = "pssNoteAuthor"
+pssAuthorGroupKey = "pssAuthorGroup"
 
 prescoringRaterModelOutputTSVColumnsAndTypes = [
   (raterParticipantIdKey, object),

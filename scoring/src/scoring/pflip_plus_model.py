@@ -184,6 +184,7 @@ class PFlipPlusModel(object):
     burst_bins: int = 5,
     latency_bins: int = 10,
     peer_note_count_bins: int = 4,
+    trainingWindowDays: Optional[int] = 365,
   ):
     """Configure PFlipModel.
 
@@ -194,6 +195,9 @@ class PFlipPlusModel(object):
         rating creation through to when a rating becomes available in final scoring (e.g. if we know
         a note was set CRH at a particular point in time then we require ratings be created at least
         ratingRecencyCutoffMinutes minutes earlier).
+      trainingWindowDays: Only train on notes created within this many days of the newest note.
+        Bounds training set growth: liblinear requires the sparse feature matrix to have fewer
+        than 2^31 non-zero entries.  None trains on all notes after _MIN_TWEET_ID.
     """
     self._pipeline: Optional[Pipeline] = None
     self._predictionThreshold: Optional[float] = None
@@ -218,6 +222,7 @@ class PFlipPlusModel(object):
     self._burst_bins = burst_bins
     self._latency_bins = latency_bins
     self._peer_note_count_bins = peer_note_count_bins
+    self._trainingWindowDays = trainingWindowDays
     self._column_thresholds: Dict[str, float] = dict()
 
   def _get_notes(
@@ -1071,6 +1076,16 @@ class PFlipPlusModel(object):
     if applyCutoff:
       # Prune to recent notes
       scoredNotes = scoredNotes[scoredNotes[c.tweetIdKey] > _MIN_TWEET_ID]
+      if prepareForTraining and self._trainingWindowDays is not None:
+        windowStartMillis = (
+          noteStatusHistory[c.createdAtMillisKey].max()
+          - self._trainingWindowDays * 24 * 60 * 60 * 1000
+        )
+        scoredNotes = scoredNotes[scoredNotes[_NOTE_CREATION_MILLIS] >= windowStartMillis]
+        logger.info(
+          f"pflip training window: kept {len(scoredNotes)} notes created within "
+          f"{self._trainingWindowDays} days of the newest note"
+        )
       # Prune to notes that have ratings (ratings may have been reduced by upstream filtering
       # such as --pct pruning or Post Selection Similarity, leaving some notes without ratings)
       noteIdsWithRatings = set(ratings.merge(scoredNotes[[c.noteIdKey]])[c.noteIdKey])

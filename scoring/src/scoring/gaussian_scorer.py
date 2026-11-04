@@ -189,6 +189,7 @@ class GaussianScorer(Scorer):
     crnhParams: c.GaussianParams = c.gaussianCrnhParams,
     useMfNoteParams=True,
     crnhMinSignCount: int = 3,
+    crnhMinNotHelpfulSignCount: Optional[int] = c.defaultCrnhMinNotHelpfulSignCount,
   ):
     """Configure GaussianScorer object.
 
@@ -214,6 +215,8 @@ class GaussianScorer(Scorer):
       crnhThresholdIntercept: Maximum intercept for most notes to achieve CRNH status.
       crnhMinSignCount: Minimum ratings from raters on each side of the factor spectrum required
         for GeneralCRNH, UcbCRNH and NmCRNH (RatioCRNH already requires it).
+      crnhMinNotHelpfulSignCount: If set, replaces crnhMinSignCount (and RatioCRNH's minimum
+        ratings per side) with this many NOT_HELPFUL ratings per side.
     """
     super().__init__(
       includedTopics=includedTopics,
@@ -260,6 +263,7 @@ class GaussianScorer(Scorer):
     self._crnhParams = crnhParams
     self._useMfNoteParams = useMfNoteParams
     self._crnhMinSignCount = crnhMinSignCount
+    self._crnhMinNotHelpfulSignCount = crnhMinNotHelpfulSignCount
 
   def get_prescoring_name(self):
     return "MFCoreScorer"
@@ -864,6 +868,8 @@ class GaussianScorer(Scorer):
       ]
     if self._saveIntermediateState:
       self.finalRoundRatings = finalRoundRatings
+    # Unused from here on; release it before model fitting builds its own copies.
+    del ratingsForTraining
     assert ratersWithParams.shape[0] == len(np.unique(ratersWithParams[c.raterParticipantIdKey]))
     if self._calculateBins:
       if (
@@ -1073,6 +1079,7 @@ class GaussianScorer(Scorer):
         enableRatioCrnh=self._enableRatioCrnh,
         largeFactorRequiresCrh=self._largeFactorRequiresCrh,
         crnhMinSignCount=self._crnhMinSignCount,
+        crnhMinNotHelpfulSignCount=self._crnhMinNotHelpfulSignCount,
       )
       logger.info(f"sn cols: {scoredNotes.columns}")
 

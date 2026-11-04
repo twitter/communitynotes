@@ -12,6 +12,7 @@ evaluates the efficacy of per-topic note scoring.
 import concurrent.futures
 from itertools import product
 import logging
+import multiprocessing
 import os
 import re
 from typing import List, Optional, Tuple
@@ -124,6 +125,15 @@ def _get_stop_words_vocab_chunk(args):
 _PARALLEL_CHUNK_MIN_SIZE = 50000
 
 
+def _make_process_pool(num_workers: int) -> concurrent.futures.ProcessPoolExecutor:
+  # forkserver rather than fork: the scoring process is multithreaded by this point (logging,
+  # memory monitor, pyarrow/HDFS), and a forked child can inherit a lock held by another thread
+  # and block forever, which leaves the pool waiting on it.
+  return concurrent.futures.ProcessPoolExecutor(
+    max_workers=num_workers, mp_context=multiprocessing.get_context("forkserver")
+  )
+
+
 class TopicModel(object):
   def __init__(self, unassignedThreshold=0.99):
     """Initialize a list of seed terms for each topic."""
@@ -175,7 +185,7 @@ class TopicModel(object):
     else:
       chunks = np.array_split(texts, num_workers)
       args = [(chunk, self._compiled_regex) for chunk in chunks]
-      with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as pool:
+      with _make_process_pool(num_workers) as pool:
         results = list(pool.map(_label_text_chunk, args))
       labels = np.concatenate([r[0] for r in results])
       conflictedLabels = np.concatenate([r[1] for r in results])
@@ -237,7 +247,7 @@ class TopicModel(object):
     else:
       chunks = np.array_split(texts, num_workers)
       args = [(chunk, self.custom_tokenizer) for chunk in chunks]
-      with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as pool:
+      with _make_process_pool(num_workers) as pool:
         vocab_sets = list(pool.map(_get_stop_words_vocab_chunk, args))
       rawVocabulary = set().union(*vocab_sets)
 
@@ -363,7 +373,7 @@ class TopicModel(object):
       text.replace("_", " ").replace("/", " ") for text in postNoteText[c.summaryKey].values
     ]
     self._cached_post_text = postNoteText
-    self._cached_post_text_notes_id = id(notes)
+    self._cached_post_text_notes = notes
     return postNoteText
 
   def train_individual_note_topic_classifier(

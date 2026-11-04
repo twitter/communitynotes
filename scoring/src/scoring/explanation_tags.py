@@ -1,4 +1,3 @@
-from collections import Counter
 from typing import List
 
 from . import constants as c
@@ -90,9 +89,8 @@ def get_top_nonhelpful_tags_per_author(
   # Finds the top two non-helpful tags per note.
   with c.time_block("NH Tags: Top 2 per note"):
     # Aggregate ratings by note ID
-    noteTagTotals = reputationFilteredRatings.groupby(c.noteIdKey).sum(numeric_only=True)[
-      c.notHelpfulTagsTiebreakOrder[::-1]  # Put winning tags at front.
-    ]
+    tagCols = c.notHelpfulTagsTiebreakOrder[::-1]  # Put winning tags at front.
+    noteTagTotals = reputationFilteredRatings[[c.noteIdKey] + tagCols].groupby(c.noteIdKey).sum()
 
     # Filter tags and apply minimum rating threshold
     filteredTags = noteTagTotals.where(lambda x: x >= c.minRatingsToGetTag)
@@ -122,30 +120,51 @@ def get_top_nonhelpful_tags_per_author(
     noteTopTags[c.noteIdKey] = filteredTags.index
 
   with c.time_block("NH Tags: Top 2 per author"):
-    # Aggregates top two tags per author.
+    # Count how often each tag appears as a note's first or second tag across each author's
+    # notes, then keep the two most frequent tags per author (ties broken by tiebreak priority).
     notesToUse = noteStatusHistory[[c.noteAuthorParticipantIdKey, c.noteIdKey]]
-    authorTagsAgg = (
-      notesToUse.merge(noteTopTags, on=[c.noteIdKey], how="left")
-      .groupby(c.noteAuthorParticipantIdKey)
-      .agg(Counter)
+    authorNoteTags = notesToUse.merge(noteTopTags, on=[c.noteIdKey], how="inner")
+    tagKey = "tag"
+    countKey = "count"
+    tieBreakKey = "tieBreak"
+    authorTagCounts = (
+      pd.concat(
+        [
+          authorNoteTags[[c.noteAuthorParticipantIdKey, tagCol]].rename(columns={tagCol: tagKey})
+          for tagCol in [c.firstTagKey, c.secondTagKey]
+        ]
+      )
+      .groupby([c.noteAuthorParticipantIdKey, tagKey], sort=False, dropna=True)
+      .size()
+      .rename(countKey)
+      .reset_index()
     )
-
-  # Chooses top two tags per author.
-  def _set_top_tags(row: pd.Series) -> pd.Series:
-    # Note that row[c.firstTagKey] and row[c.secondTagKey] are both Counter
-    # objects mapping tags to counts due to the aggregation above.
-    tagTuples = [
-      (count, c.notHelpfulTagsTiebreakMapping[tag], c.notHelpfulTagsEnumMapping[tag])
-      for tag, count in (row[c.firstTagKey] + row[c.secondTagKey]).items()
-      if (tag is not None) and not pd.isna(tag)
-    ]
-    tags = [tsvId for (_, tieBreakId, tsvId) in sorted(tagTuples, reverse=True)[:2]]
-    topNotHelpfulTags = ",".join([str(tag) for tag in tags])
-    row[c.authorTopNotHelpfulTagValues] = topNotHelpfulTags
-    return row
+    authorTagCounts[tieBreakKey] = authorTagCounts[tagKey].map(c.notHelpfulTagsTiebreakMapping)
+    authorTagCounts[c.authorTopNotHelpfulTagValues] = (
+      authorTagCounts[tagKey].map(c.notHelpfulTagsEnumMapping).astype(str)
+    )
+    topTags = (
+      authorTagCounts.sort_values([countKey, tieBreakKey], ascending=False)
+      .groupby(c.noteAuthorParticipantIdKey, sort=False)
+      .head(2)
+    )
+    topTagValues = topTags.groupby(c.noteAuthorParticipantIdKey, sort=False)[
+      c.authorTopNotHelpfulTagValues
+    ].agg(",".join)
 
   with c.time_block("NH Tags: Set Top Tags"):
-    topTwoPerAuthor = authorTagsAgg.apply(_set_top_tags, axis=1).reset_index()[
-      [c.noteAuthorParticipantIdKey, c.authorTopNotHelpfulTagValues]
-    ]
+    # One row per author (sorted, matching groupby semantics); authors without tags get "".
+    authors = (
+      notesToUse[c.noteAuthorParticipantIdKey]
+      .dropna()
+      .drop_duplicates()
+      .sort_values()
+      .reset_index(drop=True)
+    )
+    topTwoPerAuthor = pd.DataFrame(
+      {
+        c.noteAuthorParticipantIdKey: authors,
+        c.authorTopNotHelpfulTagValues: authors.map(topTagValues).fillna("").astype(object),
+      }
+    )
   return topTwoPerAuthor

@@ -107,16 +107,17 @@ def get_note_tag_aggregates(
   # Add weights to ratings, which will inherently filter out ratings where either the note or
   # rater were not included in matrix factorization.
   ratings = ratings.merge(ratingWeights, on=[c.noteIdKey, c.raterParticipantIdKey], how="inner")
-  # Introduce scaled tag columns, and drop original columns
-  adjustedRatings = ratings[c.notHelpfulTagsTSVOrder].multiply(
-    ratings[c.ratingWeightKey], axis="rows"
-  )
-  adjustedRatings.columns = c.notHelpfulTagsAdjustedColumns
-  ratings = ratings.drop(columns=c.notHelpfulTagsTSVOrder)
-  ratings = pd.concat([ratings, adjustedRatings], axis="columns")
-  # Aggregate by note to get adjusted tag and weight totals for each note.
-  ratings = ratings.drop(columns=c.raterParticipantIdKey)
-  noteTagAggregates = ratings.groupby(c.noteIdKey).sum().reset_index()
+  # Aggregate by note to get adjusted tag and weight totals for each note. Each scaled tag column
+  # is built and summed one at a time: materializing all of them at once (as pyarrow doubles when
+  # the tags are pyarrow-backed) costs ~1.6x the size of the entire ratings frame.
+  grouper = ratings.groupby(c.noteIdKey)
+  noteTagAggregates = grouper[[c.ratingWeightKey]].sum()
+  for tagCol, adjustedCol in zip(c.notHelpfulTagsTSVOrder, c.notHelpfulTagsAdjustedColumns):
+    adjusted = ratings[tagCol].multiply(ratings[c.ratingWeightKey])
+    noteTagAggregates[adjustedCol] = adjusted.groupby(ratings[c.noteIdKey]).sum()
+    del adjusted
+  del grouper
+  noteTagAggregates = noteTagAggregates.reset_index()
   adjustedRatioRatings = noteTagAggregates[c.notHelpfulTagsAdjustedColumns].divide(
     noteTagAggregates[c.ratingWeightKey], axis="rows"
   )

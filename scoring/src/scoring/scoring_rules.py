@@ -1496,6 +1496,7 @@ class NMtoCRNH(ScoringRule):
     status: str,
     crnhThresholdNMIntercept: float,
     minSignCount: int = 0,
+    minNotHelpfulSignCount: Optional[int] = None,
   ):
     """Configure a ScoringRule to set low scoring, non-misleading notes to CRNH.
 
@@ -1506,21 +1507,25 @@ class NMtoCRNH(ScoringRule):
       crnhThresholdNMIntercept: Intercept for setting notes on non-misleading tweets to CRNH.
       minSignCount: Minimum ratings from raters on each side of the factor spectrum required
         for CRNH.  0 disables the requirement.
+      minNotHelpfulSignCount: If set, replaces minSignCount: minimum NOT_HELPFUL ratings from
+        raters on each side of the factor spectrum (minNotHelpfulSignCountKey).
     """
     super().__init__(ruleID, dependencies)
     self._status = status
     self._crnhThresholdNMIntercept = crnhThresholdNMIntercept
     self._minSignCount = minSignCount
+    self._minNotHelpfulSignCount = minNotHelpfulSignCount
 
   def score_notes(
     self, noteStats: pd.DataFrame, currentLabels: pd.DataFrame, statusColumn: str
   ) -> Tuple[pd.DataFrame, Optional[pd.DataFrame]]:
     """Returns noteIds for low scoring notes on non-misleading tweets."""
-    hasMinSignCount = (
-      noteStats[c.minSignCountKey] >= self._minSignCount
-      if self._minSignCount > 0
-      else pd.Series(True, index=noteStats.index)
-    )
+    if self._minNotHelpfulSignCount is not None:
+      hasMinSignCount = noteStats[c.minNotHelpfulSignCountKey] >= self._minNotHelpfulSignCount
+    elif self._minSignCount > 0:
+      hasMinSignCount = noteStats[c.minSignCountKey] >= self._minSignCount
+    else:
+      hasMinSignCount = pd.Series(True, index=noteStats.index)
     noteStatusUpdates = noteStats.loc[
       (noteStats[c.internalNoteInterceptKey] < self._crnhThresholdNMIntercept)
       # Require that that the classification is "not misleading" to explicitly exclude deleted

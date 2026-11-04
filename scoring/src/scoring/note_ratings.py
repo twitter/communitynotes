@@ -52,16 +52,24 @@ def is_crnh_ratio(
   maxAvgHelpfulNumPerSide=0.3,
   minMinSignCount=3,
   do=True,
+  minNotHelpfulSignCount: Optional[int] = None,
 ):
+  """If minNotHelpfulSignCount is set, it replaces minMinSignCount: each side of the factor
+  spectrum needs that many NOT_HELPFUL ratings instead of minMinSignCount ratings."""
   if not do:
     # return all False
     return (scoredNotes[c.numRatingsKey] < 0) & (scoredNotes[c.numRatingsKey] > 0)
+  if minNotHelpfulSignCount is None:
+    hasSignSupport = (~pd.isna(scoredNotes[c.minSignCountKey])) & (
+      scoredNotes[c.minSignCountKey] >= minMinSignCount
+    )
+  else:
+    hasSignSupport = scoredNotes[c.minNotHelpfulSignCountKey] >= minNotHelpfulSignCount
   return (
     (scoredNotes[c.numRatingsKey] >= minRatingsNeeded)
-    & (~pd.isna(scoredNotes[c.minSignCountKey]))
+    & hasSignSupport
     & (~pd.isna(scoredNotes[c.negFactorMeanHelpfulNumKey]))
     & (~pd.isna(scoredNotes[c.posFactorMeanHelpfulNumKey]))
-    & (scoredNotes[c.minSignCountKey] >= minMinSignCount)
     & (scoredNotes[c.negFactorMeanHelpfulNumKey] <= maxHelpfulNumPerSide)
     & (scoredNotes[c.posFactorMeanHelpfulNumKey] <= maxHelpfulNumPerSide)
     & (
@@ -203,6 +211,7 @@ def get_valid_ratings(
   noteStatusHistory: pd.DataFrame,
   scoredNotes: pd.DataFrame,
   log: bool = True,
+  ratingsWithScores: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
   """Determine which ratings are "valid" (used to determine rater helpfulness score)
 
@@ -213,11 +222,13 @@ def get_valid_ratings(
       noteStatusHistory (pd.DataFrame)
       scoredNotes (pd.DataFrame)
       log (bool, optional): Defaults to True.
+      ratingsWithScores (pd.DataFrame, optional): precomputed output of get_ratings_with_scores
+        for the same inputs; avoids recomputing it when the caller already has it. Not modified.
   Returns:
       pd.DataFrame: binaryRatingsOnNotesWithStatusLabels CRH/CRNH notes group by helpfulness
   """
-  ratingsWithScores = get_ratings_with_scores(ratings, noteStatusHistory, scoredNotes, log)
-  ratingsWithScores[c.ratingCountKey] = 1
+  if ratingsWithScores is None:
+    ratingsWithScores = get_ratings_with_scores(ratings, noteStatusHistory, scoredNotes, log)
 
   binaryRatingsOnNotesWithStatusLabels = ratingsWithScores[
     (
@@ -226,6 +237,7 @@ def get_valid_ratings(
     )
     & ((ratingsWithScores[c.helpfulNumKey] == 1) | (ratingsWithScores[c.helpfulNumKey] == 0))
   ].copy()
+  binaryRatingsOnNotesWithStatusLabels[c.ratingCountKey] = 1
 
   helpfulRatingOnCrhNote = (
     binaryRatingsOnNotesWithStatusLabels[c.currentlyRatedHelpfulBoolKey]
@@ -378,12 +390,15 @@ def get_note_counts_by_rater_sign(raterModelOutput, ratings):
   posFactorKey = "posFactor"
   raterFactorBucketKey = "raterFactorBucket"
 
-  mergedRatings["raterFactorBucket"] = np.where(
-    mergedRatings[c.internalRaterFactor1Key] < 0, negFactorKey, posFactorKey
+  # Categorical rather than np.where(..., negFactorKey, posFactorKey): a per-rating string column
+  # costs ~2x the size of the entire ratings frame at full scale.
+  mergedRatings[raterFactorBucketKey] = pd.Categorical.from_codes(
+    np.where(mergedRatings[c.internalRaterFactor1Key] < 0, 0, 1).astype(np.int8),
+    categories=[negFactorKey, posFactorKey],
   )
 
   noteCountsByRaterSign = (
-    mergedRatings.groupby([c.noteIdKey, raterFactorBucketKey])
+    mergedRatings.groupby([c.noteIdKey, raterFactorBucketKey], observed=True)
     .size()
     .unstack(fill_value=0)
     .reset_index()
@@ -401,7 +416,7 @@ def get_note_counts_by_rater_sign(raterModelOutput, ratings):
   ].min(axis=1)
 
   meanHelpfulnessByRaterSign = (
-    mergedRatings.groupby([c.noteIdKey, raterFactorBucketKey])[c.helpfulNumKey]
+    mergedRatings.groupby([c.noteIdKey, raterFactorBucketKey], observed=True)[c.helpfulNumKey]
     .mean()
     .unstack()
     .reset_index()
@@ -447,8 +462,11 @@ def get_note_counts_by_rater_sign(raterModelOutput, ratings):
     .rename(columns={"count": "total"})
   )
   counts[c.netMinHelpfulRatioKey] = counts[c.netMinHelpfulKey] / counts["total"]
+  counts[c.minNotHelpfulSignCountKey] = counts[[f"{negFactorKey}_0.0", f"{posFactorKey}_0.0"]].min(
+    axis=1
+  )
   noteCountsByRaterSign = noteCountsByRaterSign.merge(
-    counts[[c.noteIdKey, c.netMinHelpfulKey, c.netMinHelpfulRatioKey]]
+    counts[[c.noteIdKey, c.netMinHelpfulKey, c.netMinHelpfulRatioKey, c.minNotHelpfulSignCountKey]]
   )
 
   # Downcast types from 64=>32
@@ -458,6 +476,9 @@ def get_note_counts_by_rater_sign(raterModelOutput, ratings):
   noteCountsByRaterSign[c.netMinHelpfulKey] = noteCountsByRaterSign[c.netMinHelpfulKey].astype(
     np.int32
   )
+  noteCountsByRaterSign[c.minNotHelpfulSignCountKey] = noteCountsByRaterSign[
+    c.minNotHelpfulSignCountKey
+  ].astype(np.int32)
   noteCountsByRaterSign[c.netMinHelpfulRatioKey] = noteCountsByRaterSign[
     c.netMinHelpfulRatioKey
   ].astype(np.float32)
@@ -478,6 +499,7 @@ def get_note_counts_by_rater_sign(raterModelOutput, ratings):
     [
       c.noteIdKey,
       c.minSignCountKey,
+      c.minNotHelpfulSignCountKey,
       c.negFactorMeanHelpfulNumKey,
       c.posFactorMeanHelpfulNumKey,
       c.netMinHelpfulKey,
@@ -596,6 +618,7 @@ def compute_scored_notes(
   # If False, FilterLargeFactor applies to all non-CRNH notes (not only CRH).
   largeFactorRequiresCrh: bool = True,
   crnhMinSignCount: int = 0,
+  crnhMinNotHelpfulSignCount: Optional[int] = None,
 ) -> pd.DataFrame:
   """
   Merges note status history, ratings, and model output. It annotes the data frame with
@@ -631,6 +654,9 @@ def compute_scored_notes(
       crnhMinSignCount: Minimum number of ratings from raters on each side of the factor spectrum
         (minSignCount) required for GeneralCRNH, UcbCRNH and NmCRNH to assign CRNH.  RatioCRNH
         already imposes its own minimum.  0 disables the requirement.
+      crnhMinNotHelpfulSignCount: If set, replaces crnhMinSignCount (and RatioCRNH's minimum
+        ratings per side): GeneralCRNH, UcbCRNH, NmCRNH and RatioCRNH instead require this many
+        NOT_HELPFUL ratings from raters on each side of the factor spectrum.
   Returns:
       pd.DataFrame: scoredNotes The scored notes
   """
@@ -650,6 +676,9 @@ def compute_scored_notes(
     on=c.noteIdKey,
   )
   noteStats[[c.minSignCountKey]] = noteStats[[c.minSignCountKey]].fillna(0).astype(np.int32)
+  noteStats[[c.minNotHelpfulSignCountKey]] = (
+    noteStats[[c.minNotHelpfulSignCountKey]].fillna(0).astype(np.int32)
+  )
   noteStats[[c.netMinHelpfulKey]] = noteStats[[c.netMinHelpfulKey]].fillna(0).astype(np.int32)
   noteStats[[c.netMinHelpfulRatioKey]] = (
     noteStats[[c.netMinHelpfulRatioKey]].fillna(0.0).astype(np.float32)
@@ -699,6 +728,8 @@ def compute_scored_notes(
   )
 
   def has_crnh_min_sign_count(noteStats: pd.DataFrame) -> pd.Series:
+    if crnhMinNotHelpfulSignCount is not None:
+      return noteStats[c.minNotHelpfulSignCountKey] >= crnhMinNotHelpfulSignCount
     return noteStats[c.minSignCountKey] >= crnhMinSignCount
 
   rules = [
@@ -733,7 +764,14 @@ def compute_scored_notes(
       {RuleID.INITIAL_NMR},
       c.currentlyRatedNotHelpful,
       lambda noteStats: is_crnh_ratio_function(
-        noteStats, minRatingsNeeded, do=finalRound and enableRatioCrnh
+        noteStats,
+        minRatingsNeeded,
+        do=finalRound and enableRatioCrnh,
+        **(
+          {"minNotHelpfulSignCount": crnhMinNotHelpfulSignCount}
+          if crnhMinNotHelpfulSignCount is not None
+          else {}
+        ),
       ),
       onlyApplyToNotesThatSayTweetIsMisleading=False,
     ),
@@ -743,6 +781,7 @@ def compute_scored_notes(
       c.currentlyRatedNotHelpful,
       crnhThresholdNMIntercept,
       minSignCount=crnhMinSignCount,
+      minNotHelpfulSignCount=crnhMinNotHelpfulSignCount,
     ),
   ]
   if finalRound:
@@ -901,6 +940,7 @@ def compute_scored_notes(
   scoredNotes = scoredNotes.drop(
     columns=[
       c.minSignCountKey,
+      c.minNotHelpfulSignCountKey,
       c.negFactorMeanHelpfulNumKey,
       c.posFactorMeanHelpfulNumKey,
       c.netMinHelpfulKey,

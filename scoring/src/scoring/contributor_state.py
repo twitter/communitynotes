@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from . import constants as c, explanation_tags
 from .helpfulness_scores import author_helpfulness
@@ -166,7 +167,7 @@ def _get_rated_after_decision(
   return ratedAfterDecision
 
 
-def _get_visible_rating_counts(
+def get_visible_rating_counts(
   scoredNotes: pd.DataFrame, ratings: pd.DataFrame, noteStatusHistory: pd.DataFrame
 ) -> pd.DataFrame:
   """
@@ -189,14 +190,21 @@ def _get_visible_rating_counts(
     c.unsuccessfulRatingNotHelpfulCount,
     c.unsuccessfulRatingTotal,
   ]
-  validRatings = get_valid_ratings(ratings, noteStatusHistory, scoredNotes)
-  ratingCounts = validRatings.groupby(c.raterParticipantIdKey).sum()[ratingCountRows]
-
   ratingsWithScores = get_ratings_with_scores(ratings, noteStatusHistory, scoredNotes)
+  validRatings = get_valid_ratings(
+    ratings, noteStatusHistory, scoredNotes, ratingsWithScores=ratingsWithScores
+  )
+  ratingCounts = (
+    validRatings[[c.raterParticipantIdKey] + ratingCountRows].groupby(c.raterParticipantIdKey).sum()
+  )
+  del validRatings
 
-  historyCounts = ratingsWithScores.groupby(c.raterParticipantIdKey).sum()[
-    [c.awaitingMoreRatingsBoolKey]
-  ]
+  historyCounts = (
+    ratingsWithScores[[c.raterParticipantIdKey, c.awaitingMoreRatingsBoolKey]]
+    .groupby(c.raterParticipantIdKey)
+    .sum()
+  )
+  del ratingsWithScores
   historyCounts[c.ratingsAwaitingMoreRatings] = historyCounts[c.awaitingMoreRatingsBoolKey]
   ratedAfterDecision = _get_rated_after_decision(ratings, noteStatusHistory)
   historyCounts = historyCounts.merge(ratedAfterDecision, on=c.raterParticipantIdKey, how="left")
@@ -208,22 +216,6 @@ def _get_visible_rating_counts(
   for rowName in ratingCountRows:
     ratingCounts[rowName] = ratingCounts[rowName].fillna(0)
   return ratingCounts
-
-
-def _sum_first_n(n):
-  """
-  A helper function that sums the first n values in a series.
-
-  Args:
-      n (int): The number of values to sum
-  Returns:
-      function: The function
-  """
-
-  def _sum(x):
-    return x.iloc[:n].sum()
-
-  return _sum
 
 
 class DictCopyMissing(dict):
@@ -277,17 +269,18 @@ def _get_visible_note_counts(
       scoredNotes[c.createdAtMillisKey] > scoredNotes[c.timestampOfLastEarnOut]
     ].copy()
 
+  countCols = [
+    c.currentlyRatedHelpfulBoolKey,
+    c.currentlyRatedNotHelpfulBoolKey,
+    c.awaitingMoreRatingsBoolKey,
+    c.numRatingsKey,
+  ]
   groupAuthorCounts = (
     aggNotes.sort_values(sort_by, ascending=False, key=key_function)
     .groupby(c.noteAuthorParticipantIdKey)
-    .agg(
-      {
-        c.currentlyRatedHelpfulBoolKey: _sum_first_n(lastNNotes),
-        c.currentlyRatedNotHelpfulBoolKey: _sum_first_n(lastNNotes),
-        c.awaitingMoreRatingsBoolKey: _sum_first_n(lastNNotes),
-        c.numRatingsKey: _sum_first_n(lastNNotes),
-      }
-    )
+    .head(lastNNotes)[[c.noteAuthorParticipantIdKey] + countCols]
+    .groupby(c.noteAuthorParticipantIdKey)
+    .sum()
     if lastNNotes > 0
     else aggNotes.groupby(c.noteAuthorParticipantIdKey).sum(numeric_only=True)
   )
@@ -407,16 +400,13 @@ def calculate_ri_to_earn_in(contributorScoresWithEnrollment: pd.DataFrame) -> pd
     == c.enrollmentStateToThrift[c.earnedOutNoAcknowledge]
   )
 
-  def _safe_val(v, default=0):
-    return default if pd.isna(v) else v
+  nonNegativeRatingImpact = contributorScoresWithEnrollment[c.ratingImpact].fillna(0).clip(lower=0)
+  priorEarnOuts = (contributorScoresWithEnrollment[c.numberOfTimesEarnedOutKey].fillna(0) - 1).clip(
+    lower=0
+  )
 
-  contributorScoresWithEnrollment.loc[
-    earnedOutUsers, c.successfulRatingNeededToEarnIn
-  ] = contributorScoresWithEnrollment.apply(
-    lambda row: c.ratingImpactForEarnIn
-    + max([_safe_val(row[c.ratingImpact]), 0])
-    + (c.ratingImpactForEarnIn * max(_safe_val(row[c.numberOfTimesEarnedOutKey]) - 1, 0)),
-    axis=1,
+  contributorScoresWithEnrollment.loc[earnedOutUsers, c.successfulRatingNeededToEarnIn] = (
+    c.ratingImpactForEarnIn + nonNegativeRatingImpact + c.ratingImpactForEarnIn * priorEarnOuts
   ).loc[earnedOutUsers]
 
   # for top writers, overwrite the score required to earn in with non-escalating version
@@ -424,10 +414,7 @@ def calculate_ri_to_earn_in(contributorScoresWithEnrollment: pd.DataFrame) -> pd
 
   contributorScoresWithEnrollment.loc[
     (earnedOutUsers) & (topWriters), c.successfulRatingNeededToEarnIn
-  ] = contributorScoresWithEnrollment.apply(
-    lambda row: c.ratingImpactForEarnIn + max([_safe_val(row[c.ratingImpact]), 0]),
-    axis=1,
-  ).loc[(earnedOutUsers) & (topWriters)]
+  ] = (c.ratingImpactForEarnIn + nonNegativeRatingImpact).loc[(earnedOutUsers) & (topWriters)]
 
   contributorScoresWithEnrollment.loc[
     earnedOutUsers, c.enrollmentState
@@ -442,6 +429,7 @@ def get_contributor_state(
   noteStatusHistory: pd.DataFrame,
   userEnrollment: pd.DataFrame,
   log: bool = True,
+  visibleRatingCounts: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
   """
   Given scored notes, ratings, note status history, the current user enrollment state, this
@@ -454,6 +442,8 @@ def get_contributor_state(
       noteStatusHistory (pd.DataFrame): history of note statuses
       userEnrollment (pd.DataFrame): User enrollment for BW participants.
       log (bool): Should we log
+      visibleRatingCounts (pd.DataFrame, optional): precomputed get_visible_rating_counts output
+        for the same scoredNotes, ratings and noteStatusHistory.
   Returns:
       pd.DataFrame: contributorScoresWithEnrollment The contributor scores with enrollments
   """
@@ -483,6 +473,7 @@ def get_contributor_state(
       lastNNotes=c.maxHistoryEarnOut,
       countNMRNotesLast=True,
       sinceLastEarnOut=True,
+      visibleRatingCounts=visibleRatingCounts,
     )
     contributorScores = contributorScores.fillna(
       {
@@ -630,6 +621,7 @@ def get_contributor_scores(
   countNMRNotesLast: bool = False,
   sinceLastEarnOut: bool = False,
   log: bool = True,
+  visibleRatingCounts: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
   """
   Given the outputs of the MF model, this function aggregates stats over notes and ratings. The
@@ -643,10 +635,14 @@ def get_contributor_scores(
       countNMRNotesLast (bool): count NMR notes last. Useful when you want to calculate over a limited set of CRH + CRNH notes
       sinceLastEarnOut: only count notes since last Earn Out event
       log (bool): Should we log?
+      visibleRatingCounts (pd.DataFrame, optional): precomputed get_visible_rating_counts output
+        for the same scoredNotes, ratings and statusHistory. The rating counts are independent of
+        lastNNotes / countNMRNotesLast / sinceLastEarnOut, so callers can share one computation.
   Returns:
       pd.DataFrame: contributorScores - rating + note aggregates per contributor.
   """
-  visibleRatingCounts = _get_visible_rating_counts(scoredNotes, ratings, statusHistory)
+  if visibleRatingCounts is None:
+    visibleRatingCounts = get_visible_rating_counts(scoredNotes, ratings, statusHistory)
   visibleNoteCounts = _get_visible_note_counts(
     scoredNotes, lastNNotes, countNMRNotesLast, sinceLastEarnOut
   )
