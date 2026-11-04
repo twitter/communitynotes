@@ -405,13 +405,18 @@ def _run_final_phase(args, dataLoader=None):
     dataLoader,
     extraFrames=[(prescoringRaterModelOutput, c.raterParticipantIdKey)],
   )
+  # Hand ratings over without keeping a reference here, so the unfiltered frame is freed once
+  # scoring derives its own filtered copy instead of living for the whole phase.
+  ratingsHandoff = [ratings]
+  del ratings
 
   previousScoredNotes, previousAuxiliaryNoteInfo = _load_previous_outputs(args)
 
   scoredNotes, newStatus, auxNoteInfo, _ = run_final_note_scoring(
     args,
     notes=notes,
-    ratings=ratings,
+    ratings=None,
+    ratingsHandoff=ratingsHandoff,
     noteStatusHistory=statusHistory,
     userEnrollment=userEnrollment,
     seed=args.seed,
@@ -432,6 +437,8 @@ def _run_final_phase(args, dataLoader=None):
     previousRatingCutoffTimestampMillis=getattr(args, "previous_rating_cutoff_millis", None),
     empiricalTotals=empiricalTotals,
     maxWorkers=args.maxWorkers,
+    # LocalDataLoader.get_data() already ran preprocess_data.
+    inputsPreprocessed=True,
   )
 
   # Restore public participant IDs before writing final outputs and contributor intermediates.

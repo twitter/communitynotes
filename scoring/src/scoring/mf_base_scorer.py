@@ -210,6 +210,7 @@ class MFBaseScorer(Scorer):
     populationSampledRatingPerNoteLossRatio: Optional[float] = 10.0,
     useGlobalIntercept: bool = True,
     crnhMinSignCount: int = 3,
+    crnhMinNotHelpfulSignCount: Optional[int] = c.defaultCrnhMinNotHelpfulSignCount,
   ):
     """Configure MatrixFactorizationScorer object.
 
@@ -252,6 +253,8 @@ class MFBaseScorer(Scorer):
       crnhMinSignCount: minimum ratings from raters on each side of the factor spectrum required
         for CRNH in final scoring (applied to GeneralCRNH, UcbCRNH and NmCRNH; RatioCRNH already
         requires it).  Prescoring rounds are unaffected, mirroring RatioCRNH.
+      crnhMinNotHelpfulSignCount: if set, replaces crnhMinSignCount (and RatioCRNH's minimum
+        ratings per side) in final scoring with this many NOT_HELPFUL ratings per side.
     """
     super().__init__(
       includedTopics=includedTopics,
@@ -296,6 +299,7 @@ class MFBaseScorer(Scorer):
     self._minMinorityNetHelpfulRatio = minMinorityNetHelpfulRatio
     self._populationSampledRatingPerNoteLossRatio = populationSampledRatingPerNoteLossRatio
     self._crnhMinSignCount = crnhMinSignCount
+    self._crnhMinNotHelpfulSignCount = crnhMinNotHelpfulSignCount
     mfArgs = dict(
       [
         pair
@@ -1146,6 +1150,9 @@ class MFBaseScorer(Scorer):
       )
       if self._saveIntermediateState:
         self.finalRoundRatings = finalRoundRatings
+    # Unused from here on; release it before MF, pseudoraters and diligence each build their own
+    # copies of finalRoundRatings.
+    del ratingsForTraining
 
     assert (
       prescoringMetaScorerOutput.finalRoundNumNotes is not None
@@ -1287,6 +1294,7 @@ class MFBaseScorer(Scorer):
         crhThresholdNoHighVol=crhThresholdNoHighVol,
         crhThresholdNoCorrelated=crhThresholdNoCorrelated,
         crnhMinSignCount=self._crnhMinSignCount,
+        crnhMinNotHelpfulSignCount=self._crnhMinNotHelpfulSignCount,
       )
       logger.info(f"sn cols: {scoredNotes.columns}")
 

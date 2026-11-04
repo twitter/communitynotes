@@ -197,6 +197,7 @@ def apply_post_selection_similarity(notes, ratings, postSelectionSimilarityValue
   Filters out ratings after the first on each note from raters who have high post selection similarity,
   or filters all if the note is authored by a user with the same post selection similarity value.
   """
+  inputColumns = ratings.columns.tolist()
   # Summarize input
   logger.info(f"Total ratings prior to applying post selection similarity: {len(ratings)}")
   logger.info(
@@ -217,41 +218,38 @@ def apply_post_selection_similarity(notes, ratings, postSelectionSimilarityValue
     f"correlatedRater set on {ratings[c.correlatedRaterKey].sum()} ratings from {len(correlatedRaters)} unique raters"
   )
   # Trim correlated raters out of PSS dataframe and remove drop ratings flagged by NPMI/MinSim
-  postSelectionSimilarityValues = (
+  raterGroups = (
     postSelectionSimilarityValues[[c.raterParticipantIdKey, c.postSelectionValueKey]]
     .dropna()
     .drop_duplicates()
+    .rename(columns={c.postSelectionValueKey: c.pssRaterGroupKey})
+  )
+  authorGroups = raterGroups.rename(
+    columns={c.raterParticipantIdKey: c.pssNoteAuthorKey, c.pssRaterGroupKey: c.pssAuthorGroupKey}
+  )
+  noteAuthors = notes[[c.noteIdKey, c.noteAuthorParticipantIdKey]].rename(
+    columns={c.noteAuthorParticipantIdKey: c.pssNoteAuthorKey}
   )
   ratingsWithPostSelectionSimilarity = (
-    ratings.merge(
-      postSelectionSimilarityValues,
-      on=c.raterParticipantIdKey,
-      how="left",
-    )
-    .merge(notes[[c.noteIdKey, c.noteAuthorParticipantIdKey]], on=c.noteIdKey, how="left")
-    .merge(
-      postSelectionSimilarityValues,
-      left_on=c.noteAuthorParticipantIdKey,
-      right_on=c.raterParticipantIdKey,
-      how="left",
-      suffixes=("", "_note_author"),
-    )
+    ratings.merge(raterGroups, on=c.raterParticipantIdKey, how="left")
+    .merge(noteAuthors, on=c.noteIdKey, how="left")
+    .merge(authorGroups, on=c.pssNoteAuthorKey, how="left")
   )
   ratingsWithNoPostSelectionSimilarityValue = ratingsWithPostSelectionSimilarity[
-    pd.isna(ratingsWithPostSelectionSimilarity[c.postSelectionValueKey])
+    pd.isna(ratingsWithPostSelectionSimilarity[c.pssRaterGroupKey])
   ]
   ratingsWithPostSelectionSimilarityValue = ratingsWithPostSelectionSimilarity[
-    (~pd.isna(ratingsWithPostSelectionSimilarity[c.postSelectionValueKey]))
+    (~pd.isna(ratingsWithPostSelectionSimilarity[c.pssRaterGroupKey]))
     & (
-      ratingsWithPostSelectionSimilarity[c.postSelectionValueKey]
-      != ratingsWithPostSelectionSimilarity[c.postSelectionValueKey + "_note_author"]
+      ratingsWithPostSelectionSimilarity[c.pssRaterGroupKey]
+      != ratingsWithPostSelectionSimilarity[c.pssAuthorGroupKey]
     )
   ]
   ratingsWithPostSelectionSimilarityValue.sort_values(
     by=[c.noteIdKey, c.createdAtMillisKey], ascending=True, inplace=True
   )
   ratingsWithPostSelectionSimilarityValue.drop_duplicates(
-    subset=[c.noteIdKey, c.postSelectionValueKey], keep="first", inplace=True
+    subset=[c.noteIdKey, c.pssRaterGroupKey], keep="first", inplace=True
   )
 
   if len(notes) < c.minNumNotesForProdData:
@@ -260,9 +258,9 @@ def apply_post_selection_similarity(notes, ratings, postSelectionSimilarityValue
   ratings = pd.concat(
     [ratingsWithPostSelectionSimilarityValue, ratingsWithNoPostSelectionSimilarityValue], axis=0
   )
+  outputColumns = list(dict.fromkeys(inputColumns + [c.correlatedRaterKey]))
   ratings.drop(
-    columns={c.noteAuthorParticipantIdKey, c.raterParticipantIdKey + "_note_author"},
-    errors="ignore",
+    columns=[col for col in ratings.columns if col not in set(outputColumns)],
     inplace=True,
   )
   logger.info(f"Total ratings after to applying post selection similarity: {len(ratings)}")

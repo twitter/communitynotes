@@ -57,20 +57,20 @@ class QuasiCliqueDetection:
   ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Return counts of how many times raters rate notes in the same way, and all ratings for raters who do so >5 times."""
     # Identify ratings that are in scope
-    logger.info("initial rating length:", len(ratings))
+    logger.info(f"initial rating length: {len(ratings)}")
     ratings = ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]]
     ratings = ratings.merge(
       notes[[c.noteIdKey, c.tweetIdKey, c.classificationKey, c.createdAtMillisKey]].rename(
         columns={c.createdAtMillisKey: "noteMillis"}
       )
     )
-    logger.info("ratings after merges:", len(ratings))
+    logger.info(f"ratings after merges: {len(ratings)}")
     ratings = ratings[ratings["noteMillis"] > (ratings["noteMillis"].max() - cutoff)]
-    logger.info("recent ratings:", len(ratings))
+    logger.info(f"recent ratings: {len(ratings)}")
     ratings = ratings[ratings[c.tweetIdKey] != "-1"]
-    logger.info("ratings on non-deleted tweets:", len(ratings))
+    logger.info(f"ratings on non-deleted tweets: {len(ratings)}")
     ratings = ratings[ratings[c.classificationKey] == c.notesSaysTweetIsMisleadingKey]
-    logger.info("ratings on misleading posts:", len(ratings))
+    logger.info(f"ratings on misleading posts: {len(ratings)}")
     # Identify pairs
     ratings = ratings[[c.tweetIdKey, c.noteIdKey, c.helpfulNumKey, c.raterParticipantIdKey]]
     noteCollisions = (

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from io import StringIO
 import logging
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from . import constants as c, note_status_history
 from .pandas_utils import get_df_info
@@ -194,15 +194,44 @@ def tsv_parser(
   Returns:
     pd.DataFrame containing parsed data
   """
+  newlineIdx = rawTSV.find("\n")
+  firstLine = rawTSV if newlineIdx == -1 else rawTSV[:newlineIdx]
+  return _parse_tsv(
+    StringIO(rawTSV),
+    firstLine,
+    mapping,
+    columns,
+    header,
+    useCols=useCols,
+    chunkSize=chunkSize,
+    convertNAToNone=convertNAToNone,
+  )
+
+
+def _parse_tsv(
+  source: Union[str, StringIO],
+  firstLine: str,
+  mapping: Dict[str, object],
+  columns: List[str],
+  header: bool,
+  useCols: Optional[List[str]] = None,
+  chunkSize: Optional[int] = None,
+  convertNAToNone: bool = True,
+) -> pd.DataFrame:
+  """Parse TSV data from a file path or in-memory buffer; see tsv_parser for argument details.
+
+  Passing a path lets pandas stream the file instead of holding the whole decoded text in
+  memory, which matters for multi-GB inputs: a str plus its StringIO copy costs up to 8 bytes
+  per character when the text contains non-ASCII characters.
+  """
   try:
-    firstLine = rawTSV.split("\n")[0]
     num_fields = len(firstLine.split("\t"))
     if num_fields != len(columns):
       raise ValueError(f"Expected {len(columns)} columns, but got {num_fields}")
 
     if useCols and chunkSize:
       textParser = pd.read_csv(
-        StringIO(rawTSV),
+        source,
         sep="\t",
         names=columns,
         dtype=mapping,
@@ -214,7 +243,7 @@ def tsv_parser(
       data = pd.concat(textParser, ignore_index=True)
     else:
       data = pd.read_csv(
-        StringIO(rawTSV),
+        source,
         sep="\t",
         names=columns,
         dtype=mapping,
@@ -256,15 +285,17 @@ def tsv_reader_single(
   parser=tsv_parser,
   convertNAToNone=True,
 ):
-  """Read a single TSV file."""
+  """Read a single TSV file, streaming it from disk rather than loading the raw text."""
   with open(path, "r", encoding="utf-8") as handle:
-    return tsv_parser(
-      handle.read(),
-      mapping,
-      columns,
-      header,
-      convertNAToNone=convertNAToNone,
-    )
+    firstLine = handle.readline()
+  return _parse_tsv(
+    path,
+    firstLine,
+    mapping,
+    columns,
+    header,
+    convertNAToNone=convertNAToNone,
+  )
 
 
 def tsv_reader(
