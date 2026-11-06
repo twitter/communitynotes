@@ -1,86 +1,83 @@
+import json
 import os
 
 import dotenv
 import requests
 
 
-def _make_request(payload: dict):
+def _make_request(payload: dict) -> str:
     """
+    Call the xAI Responses API and return the output text.
     Currently extremely simple and includes no retry logic.
     """
-    chat_completions_url = "https://api.x.ai/v1/chat/completions"
+    responses_url = "https://api.x.ai/v1/responses"
     headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}",
-}
-    response = requests.post(chat_completions_url, headers=headers, json=payload)
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}",
+    }
+    response = requests.post(responses_url, headers=headers, json=payload, timeout=300)
     if response.status_code != 200:
         raise Exception(f"Error making request: {response.status_code} {response.text}")
-    return response.json()["choices"][0]["message"]["content"]
+    data = response.json()
+    if data.get("output_text"):
+        return data["output_text"]
+    return "".join(
+        block.get("text", "")
+        for item in data.get("output", [])
+        if item.get("type") == "message"
+        for block in item.get("content", [])
+        if block.get("type") == "output_text"
+    )
 
 
-def get_grok_response(prompt: str, temperature: float = 0.8, model: str = "grok-3-latest"):
-    payload = {
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a highly intelligent AI assistant.",
-            },
-            {"role": "user", "content": prompt},
-        ],
-        "model": model,
-        "temperature": temperature,
-    }
-    return _make_request(payload)
-
-
-def grok_describe_image(image_url: str, temperature: float = 0.01, model: str = "grok-2-vision-latest"):
+def get_grok_search_json_response(
+    prompt: str,
+    schema: dict,
+    model: str = "grok-4.3",
+) -> dict:
     """
-    Currently just describe image on its own. There are many possible
-    improvements to consider making, e.g. passing in the post text or
-    other context and describing the image and post text together.
+    One call that lets Grok search the web and X, and answer with JSON
+    matching `schema`.
     """
     payload = {
-        "messages": [
+        "model": model,
+        "input": [{"role": "user", "content": prompt}],
+        "tools": [
+            {"type": "web_search", "enable_image_understanding": True},
             {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": image_url,
-                            "detail": "high",
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": "What's in this image?",
-                    },
-                ],
+                "type": "x_search",
+                "enable_image_understanding": True,
+                "enable_video_understanding": True,
             },
         ],
-        "model": model,
-        "temperature": temperature,
-    }
-    return _make_request(payload)
-
-
-def get_grok_live_search_response(prompt: str, temperature: float = 0.8, model= "grok-3-latest"):
-    payload = {
-        "messages": [{"role": "user", "content": prompt}],
-        "search_parameters": {
-            "mode": "on",
+        "text": {
+            "format": {"type": "json_schema", "name": "note", "schema": schema, "strict": True}
         },
-        "model": model,
-        "temperature": temperature,
+        "store": False,
     }
-    return _make_request(payload)
+    return json.loads(_make_request(payload))
 
 
 if __name__ == "__main__":
     dotenv.load_dotenv()
     print(
-        get_grok_live_search_response(
-            "Provide me a digest of world news in the last 2 hours. Please respond with links to each source next to the claims that the source supports."
+        get_grok_search_json_response(
+            "Provide me a digest of world news in the last 2 hours, with a link to a source for each item.",
+            {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {"summary": {"type": "string"}, "url": {"type": "string"}},
+                            "required": ["summary", "url"],
+                            "additionalProperties": False,
+                        },
+                    }
+                },
+                "required": ["items"],
+                "additionalProperties": False,
+            },
         )
     )

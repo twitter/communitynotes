@@ -3,7 +3,13 @@ from typing import Dict, List
 
 from cnapi.xurl_util import run_xurl
 
-from data_models import Media, Post, PostWithContext
+from data_models import (
+    Media,
+    NoteRequestSuggestion,
+    Post,
+    PostWithContext,
+    SuggestedSourceLink,
+)
 
 
 def _fetch_posts_eligible_for_notes(
@@ -22,7 +28,7 @@ def _fetch_posts_eligible_for_notes(
         "/2/notes/search/posts_eligible_for_notes"
         f"?test_mode={'true' if test_mode else 'false'}"
         f"&max_results={max_results}"
-        "&tweet.fields=author_id,created_at,referenced_tweets,media_metadata,note_tweet"
+        "&tweet.fields=author_id,created_at,referenced_tweets,media_metadata,note_tweet,note_request_suggestions,suggested_source_links_with_counts"
         "&expansions=attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys"
         "&media.fields=alt_text,duration_ms,height,media_key,preview_image_url,public_metrics,type,url,width,variants"
     )
@@ -108,6 +114,12 @@ def _parse_posts_eligible_response(resp: Dict) -> List[PostWithContext]:
             post=post,
             quoted_post=quoted_post,
             in_reply_to_post=in_reply_to_post,
+            note_request_suggestions=[
+                NoteRequestSuggestion(**s) for s in item.get("note_request_suggestions", [])
+            ],
+            suggested_source_links=[
+                SuggestedSourceLink(**s) for s in item.get("suggested_source_links_with_counts", [])
+            ],
         )
         posts.append(post_with_context)
 

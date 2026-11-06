@@ -1,17 +1,49 @@
 import argparse
+import os
+import shutil
+import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
 from cnapi.get_api_eligible_posts import get_posts_eligible_for_notes
 from cnapi.submit_note import submit_note
-from data_models import NoteResult, Post, PostWithContext
+from data_models import NoteResult, PostWithContext
 import dotenv
 from note_writer.write_note import research_post_and_write_note
+
+GUIDE_URL = "https://communitynotes.x.com/guide/en/api/overview"
+
+
+def xurl_error_details(exc: Exception) -> str:
+    """xurl prints the X API's error response to stdout; surface it instead of a bare exit code."""
+    if isinstance(exc, subprocess.CalledProcessError):
+        return ((exc.stdout or "") + (exc.stderr or "")).strip() or str(exc)
+    return str(exc)
+
+
+def check_xurl_installed() -> None:
+    if shutil.which("xurl") is None:
+        sys.exit(
+            "xurl is not installed, or its folder is not on your PATH. "
+            f"See step A.1 of the AI Note Writer guide: {GUIDE_URL}"
+        )
+
+
+def _check_setup() -> None:
+    """Fail early, with a clear message, on the most common setup problems."""
+    if not os.getenv("XAI_API_KEY"):
+        sys.exit(
+            "XAI_API_KEY is not set. Copy .env.example to .env and fill in your xAI API key "
+            f"(step A.2 of the AI Note Writer guide: {GUIDE_URL})."
+        )
+    check_xurl_installed()
 
 
 def _worker(
     post_with_context: PostWithContext,
     dry_run: bool = False,
+    test_mode: bool = True,
 ):
     """
     Fetch and try to write and submit a note for one post.
@@ -22,7 +54,7 @@ def _worker(
     log_strings: List[str] = ["-" * 20, f"Post: {post_with_context.post.post_id}", "-" * 20]
     if note_result.context_description is not None:
         log_strings.append(
-            f"\n*POST TEXT, IMAGE SUMMARIES, AND ANY QUOTED OR REPLIED-TO POST:*\n{note_result.context_description}\n"
+            f"\n*POST TEXT, ANY QUOTED OR REPLIED-TO POST, AND NOTE REQUEST SUGGESTIONS:*\n{note_result.context_description}\n"
         )
     if note_result.error is not None:
         log_strings.append(f"\n*ERROR:* {note_result.error}")
@@ -38,13 +70,14 @@ def _worker(
         try:
             submit_note(
                 note=note_result.note,
-                test_mode=True,
+                test_mode=test_mode,
                 verbose_if_failed=False,
             )
             log_strings.append("\n*SUCCESSFULLY SUBMITTED NOTE*\n")
-        except Exception:
+        except Exception as e:
             log_strings.append(
-                "\n*ERROR SUBMITTING NOTE*: likely we already wrote a note on this post; moving on.\n"
+                "\n*ERROR SUBMITTING NOTE* (if it says a note already exists, we already wrote a note "
+                f"on this post; moving on):\n{xurl_error_details(e)}\n"
             )
     print("".join(log_strings) + "\n")
 
@@ -53,14 +86,27 @@ def main(
     num_posts: int = 10,
     dry_run: bool = False,
     concurrency: int = 1,
+    test_mode: bool = True,
 ):
     """
     Get up to `num_posts` recent posts eligible for notes and write notes for them.
     If `dry_run` is True, do not submit notes to the API, just print them to the console.
+    If `test_mode` is True, fetch test-mode posts and submit notes in test mode.
     """
 
-    print(f"Getting up to {num_posts} recent posts eligible for notes")
-    eligible_posts: List[PostWithContext] = get_posts_eligible_for_notes(max_results=num_posts)
+    print(f"Getting up to {num_posts} recent posts eligible for notes (test_mode={test_mode})")
+    try:
+        eligible_posts: List[PostWithContext] = get_posts_eligible_for_notes(
+            max_results=num_posts, test_mode=test_mode
+        )
+    except subprocess.CalledProcessError as e:
+        sys.exit(
+            "Could not fetch posts eligible for notes. The X API said:\n"
+            f"{xurl_error_details(e)}\n\n"
+            "Check that xurl is logged in (`xurl auth status`), that your account is enrolled as an "
+            "AI Note Writer, and that your app has Read and write permissions "
+            f"(steps 2.1, 2.2 and A.1 of the AI Note Writer guide: {GUIDE_URL})."
+        )
     print(f"Found {len(eligible_posts)} recent posts eligible for notes")
     print(
         f"  Eligible Post IDs: {', '.join([str(post_with_context.post.post_id) for post_with_context in eligible_posts])}\n"
@@ -72,13 +118,13 @@ def main(
     if concurrency > 1:
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
             futures = [
-                executor.submit(_worker, post, dry_run) for post in eligible_posts
+                executor.submit(_worker, post, dry_run, test_mode) for post in eligible_posts
             ]
             for future in futures:
                 future.result()
     else:
         for post in eligible_posts:
-            _worker(post, dry_run)
+            _worker(post, dry_run, test_mode)
     print("Done.")
 
 
@@ -100,8 +146,10 @@ if __name__ == "__main__":
         help="Number of concurrent tasks to run",
     )
     args = parser.parse_args()
+    _check_setup()
     main(
         num_posts=args.num_posts,
         dry_run=args.dry_run,
         concurrency=args.concurrency,
+        test_mode=os.getenv("TEST_MODE", "true").strip().lower() != "false",
     )
