@@ -17,22 +17,176 @@ X’s open-source [Community Writer](./community-writer.md) uses this same publi
 
 ## Signing up
 
-You’ll need an X account that’s signed up for both the X API (free tier or higher) and AI Note Writer API.
-1. **Create an X account (or use an existing one) that meets the following requirements:**
-    * Must not already be signed up as a Community Notes contributor 
-    * Must have a verified phone number from a trusted carrier
-      * Phone number can be associated with only one AI Note Writer.
-      * To support development, phone number can be associated with a maximum of one other regular Community Notes contributor account.
-    * Must have a verified email address
-      * This may be used to share or gather feedback with AI Note Writer developers.
-2. **Sign up for the [X API](https://console.x.com) and agree to the X Developer Policy.** This must be done before step 3.
-    * Enable both read and write access by going to your app’s settings, then under User authentication settings, click “Set up”. Select both “Read and write” app permissions, then fill out the other required fields (Type of App: Bot, App info: callback URL may be anything e.g. http://localhost:8080, and website URL could be http://x.com).
-3. **Sign up for the [AI Note Writer API](https://x.com/i/flow/cn-api-signup)**
-4. **Go to your app page, make sure your app connects to “Community Notes”.**
+Setup has four parts. You only need to finish the first two to be signed up as an AI Note Writer.
 
-Once your account is signed up for both APIs, you can [start building](#build)
+1. Create an X account for your AI Note Writer.
+2. Sign up for the X API, enroll as an AI Note Writer, and generate your X keys.
+3. (Optional) Get an xAI API key for the language model.
+4. (Optional) Fork the [Template API Note Writer](https://github.com/twitter/communitynotes/tree/main/template-api-note-writer), run it, and submit your first test notes.
 
-Please note that you may process X Community Notes API data solely for the purpose of Community Notes AI note writing, but may not use the X API or X Content to fine-tune or train a foundation or frontier model. By signing-up you agree to our [Developer Policy and agreements](https://developer.x.com/en/developer-terms).
+### Part 1. Get the X account for your note writer
+
+Your AI Note Writer acts through an X account. The account must never have been a Community Notes contributor.
+
+1. Create a new account at [x.com](https://x.com), or use an existing account as long as it's never been a Community Notes contributor.
+2. Add and verify an email address in the account settings.
+  * This may be used to share or gather feedback with AI Note Writer developers.
+3. Add and verify a phone number from a trusted carrier in the account settings.
+  * Phone number cannot be associated with any other AI note writer
+  * To support development, phone number can be associated with a maximum of one other regular Community Notes contributor account.
+
+Stay logged in to this account in your browser. Part 2 uses it.
+
+Check: The account settings show both the email address and the phone number as verified.
+
+### Part 2. Sign up for the X API and the AI Note Writer API
+
+#### 2.1 Create an X developer app
+
+You must do this before enrolling as an AI Note Writer in step 2.2.
+
+1. Go to the [X Developer Console](https://console.x.com) and sign in with your writer account.
+2. Accept the Developer Agreement and Policy, and fill in the short profile about how you will use the API.
+3. Click "Apps" on the left sidebar under "Access". You will see an app whose name ends with your X account name. Click on it, then click "Settings" next to the app name.
+4. Select "Read and write" under "App permissions". Select "Web App, Automated App or Bot" under "Type of App". For "App Info", the callback URL may be anything, e.g. <http://localhost:8080>, and the website URL could be <http://x.com>.
+5. Save changes. If the console then shows you an OAuth 2.0 Client ID and Client Secret, you won't need them; the writer uses the OAuth 1.0 keys from step 2.2.
+
+#### 2.2 Enroll as an AI Note Writer and generate your keys
+
+1. **Sign up for the [AI Note Writer API](https://x.com/i/flow/cn-api-signup).**
+   - If your account meets all the listed criteria but you get an error, please retry again at least one hour later. If the error does not resolve, please [open a GitHub Issue](https://github.com/twitter/communitynotes/issues) to request assistance.
+2. Go back to your app page in the Developer Console ("Apps" on the left sidebar under "Access") and check that the app is connected to **Community Notes** in "Project Access - Manage" (click "Connect" if it's not already connected).
+3. Under "Keys & Tokens", find "Consumer Key" under OAuth 1.0 Keys. Click "Generate"/"Regenerate" (whichever appears) -> "Yes, regenerate", and store both values.
+4. Under "Keys & Tokens", find "Access Token" under OAuth 1.0 Keys. Click "Generate"/"Regenerate" (whichever appears) -> "Yes, regenerate", and store both values.
+
+| Value in the Developer Console | Name to store it under |
+| --- | --- |
+| Consumer Key | `X_API_KEY` |
+| Consumer Key Secret | `X_API_KEY_SECRET` |
+| Access Token | `X_ACCESS_TOKEN` |
+| Access Token Secret | `X_ACCESS_TOKEN_SECRET` |
+
+Generate the access token only after you have set "Read and write" in step 2.1. If you lose a key, regenerate it; the old one stops working. Never commit these keys to GitHub or share them in public.
+
+Your account is now signed up as an AI Note Writer. Please note that you may process X Community Notes API data solely for the purpose of Community Notes AI note writing, but may not use the X API or X Content to fine-tune or train a foundation or frontier model. By signing up you agree to our [Developer Policy and agreements](https://developer.x.com/en/developer-terms).
+
+### (Optional) Part 3. Get an xAI API key
+
+The Template API Note Writer uses Grok through the xAI API. You have full flexibility to switch to another model provider or use multiple model providers.
+
+1. Sign in at [console.x.ai](https://console.x.ai).
+2. Create an API key and save it as `XAI_API_KEY`.
+
+You are solely responsible for any costs you incur calling any APIs.
+
+### (Optional) Part 4. Fork the Template API Note Writer and run it
+
+The [Template API Note Writer](https://github.com/twitter/communitynotes/tree/main/template-api-note-writer) is an open-source client that calls the AI Note Writer API and writes rudimentary notes. It provides a "hello, world" level starting point from which you can develop and improve. You can change any part of it, or start from scratch without it.
+
+The template is deliberately simple. It makes one Grok call per post: Grok searches the web and X (including images and video), decides whether the post needs a note, and writes the note and its misleading tags if it does. The prompt also includes any explanations and source links from people who requested a note on the post. The rest of the code fetches posts, submits notes, and shows you how the evaluator scored them.
+
+#### 4.1 Fork and clone
+
+1. Open the [communitynotes repo](https://github.com/twitter/communitynotes) and click **Fork**. The template lives in its `template-api-note-writer` folder.
+2. Clone your fork and move into the template folder.
+
+```bash
+git clone https://github.com/YOUR_GITHUB_USERNAME/communitynotes.git
+cd communitynotes/template-api-note-writer
+```
+
+A fork of a public repo is public. Your keys stay private because they live only on your computer (Option A) or in your repo's Actions secrets (Option B), and the repo's `.gitignore` keeps `.env` out of commits.
+
+#### 4.2 Choose how to run your writer
+
+You can run the writer wherever you find most convenient. These docs will walk you through two options: how to run it on your own computer (Option A) or on GitHub's servers with GitHub Actions (Option B). You only need one of them, but it's also fine to try both.
+
+|  | Option A. Your computer | Option B. GitHub Actions |
+| --- | --- | --- |
+| Setup | Install xurl and uv, put your xAI key in `.env` | Add five secrets to your GitHub repo |
+| Changing the writer | Edit and just rerun | Commit and push, then run the workflow |
+| Scheduled runs | Only while your computer is on | Run on GitHub's servers |
+| Checking scores | `check_scores.py` (step A.5) | Not included |
+
+Option A provides the most flexibility, while Option B is simpler to get quickly up and running your note writer on a schedule.
+
+**Warning**: running the writer really runs your code, which may incur API costs with any external API providers you call. By default, each run processes 10 posts with one xAI API call per post.
+
+#### Option A. Run on your computer
+
+**A.1 Install xurl and log in.** The writer talks to the X API through [xurl](https://github.com/xdevplatform/xurl), X's command line tool. Install it with any one of these commands.
+
+```bash
+brew install --cask xdevplatform/tap/xurl      # macOS with Homebrew
+npm install -g @xdevplatform/xurl              # any OS with Node.js
+curl -fsSL https://raw.githubusercontent.com/xdevplatform/xurl/main/install.sh | bash   # no sudo, installs to ~/.local/bin
+```
+
+If you used the `curl` command and your terminal then says `xurl: command not found`, the folder it installed to is not on your PATH yet. Add it and open a new terminal.
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc    # use ~/.bashrc if your shell is bash
+```
+
+Log in with the four values from step 2.2, then check the login.
+
+```bash
+xurl auth oauth1 --consumer-key X_API_KEY --consumer-secret X_API_KEY_SECRET \
+  --access-token X_ACCESS_TOKEN --token-secret X_ACCESS_TOKEN_SECRET
+xurl auth status    # should show "OAuth1: Configured"
+```
+
+**A.2 Install the writer.** Install [uv](https://docs.astral.sh/uv/), the Python package manager the template uses. It installs Python 3.12 for you if needed. Then, from the `template-api-note-writer` folder, install the dependencies and create your `.env` file.
+
+```bash
+uv sync
+cp .env.example .env
+```
+
+Open `.env` in a text editor and paste your xAI key from Part 3 after `XAI_API_KEY=`. Leave `TEST_MODE=true`.
+
+**A.3 Do a dry run.** A dry run fetches real posts and writes draft notes, but does not submit them. Use it to confirm everything is connected.
+
+```bash
+uv run src/main.py --num-posts 5 --dry-run
+```
+
+**A.4 Submit test notes.** When the dry run works, run the writer without `--dry-run`. Add `--concurrency 4` to process four posts at a time.
+
+```bash
+uv run src/main.py --num-posts 10
+```
+
+Each submitted note prints **SUCCESSFULLY SUBMITTED NOTE**. Your writer is in test mode (`TEST_MODE=true`), so these notes are scored by the evaluator but not shown on X.
+
+**A.5 Check your scores.**
+
+```bash
+uv run src/check_scores.py                  # readable report of your 50 most recent test notes
+uv run src/check_scores.py --max-notes 200  # more notes
+uv run src/check_scores.py --json           # raw data
+```
+
+The report lists each test note with its score on each evaluator, then a summary count. Admission is based on your 50 most recent test notes (see "Earning admission" below). Scores can take a while to appear after you submit, so check back if a note shows no results yet.
+
+#### Option B. Run on GitHub Actions
+
+Your fork includes a GitHub Actions workflow, `.github/workflows/community_note_writer.yaml`, that runs the writer on GitHub's servers. It does the same thing as step A.4, but it can also run on a schedule while your computer is off. You do not need to install anything from Option A.
+
+1. **Add your keys as repository secrets.** In your fork on GitHub, open **Settings > Secrets and variables > Actions**. On the **Secrets** tab, click **New repository secret** and add these five, with the names spelled exactly as shown.
+   - `X_API_KEY`
+   - `X_API_KEY_SECRET`
+   - `X_ACCESS_TOKEN`
+   - `X_ACCESS_TOKEN_SECRET`
+   - `XAI_API_KEY`
+2. **Turn on Actions for your fork.** Open the **Actions** tab and click the button to enable them. You can disable the other workflow in the repo, "Deploy static redirect html files to Pages"; the writer does not need it.
+3. **Run it once by hand.** Open **Actions > Template API Note Writer > Run workflow**. Each run processes 10 posts and submits test notes.
+4. **Read the output.** Click the run, then the **regular\_run** job, then the **Run bot** step. The output is the same as in step A.4.
+5. **(Optional) Run on a schedule.** In `.github/workflows/community_note_writer.yaml`, remove the `#` in front of the two `schedule` lines, then commit and push. The example runs every 15 minutes, so adjust the `cron` line to a schedule you can afford.
+
+The workflow runs in test mode. After your writer is admitted, add `TEST_MODE: false` to the `env` of the **Run bot** step in the workflow file.
+
+If you call API providers other than xAI, add each new key as a repository secret and to the `env` of the **Run bot** step in the workflow file.
 
 ## Join the Note Writer API Developer Community
 
@@ -77,7 +231,7 @@ You’ll get an email once your AI Note Writer has met the admission criteria.
 
 ## Contributing
 
-Your AI Note Writer can keep using the same API calls to get candidate posts and write notes. Once you drop the ?test_mode parameter from those calls, the proposed notes will be shown to other contributors, will be rated, can earn statuses (like Helpful or Not Helpful), and can show broadly on X (if Helpful). 
+Your AI Note Writer can keep using the same API calls to get candidate posts and write notes. Once you drop the ?test_mode parameter from those calls, the proposed notes will be shown to other contributors, will be rated, can earn statuses (like Helpful or Not Helpful), and can show broadly on X (if Helpful). In the Template API Note Writer, do this by setting `TEST_MODE=false` in `.env`, or by adding `TEST_MODE: false` to the `env` of the **Run bot** step in the workflow file if you run on GitHub Actions.
 
 You can see statuses and rating feedback on notes in the response to `notes_written`.
 
@@ -119,33 +273,11 @@ Writing limit
 
 We will require that AI Note Writers write notes regularly enough to maintain access to the API. This helps ensure that clients with API access are making helpful contributions.
 
-## Build
+## Improve your writer
 
-The easiest way to get started is forking [Template API Note Writer](https://github.com/twitter/communitynotes/tree/main/template-api-note-writer). The Template Contributor is an open-source client that calls the AI Note Writer API and writes rudimentary notes. It uses GitHub actions and Grok, providing a “hello, world” level starting point from which you can develop and improve. You can of course change any element of the Template Contributor, or start from scratch without it.
+The Template API Note Writer is deliberately simple, with one Grok call per post and a single prompt in `src/note_writer/write_note.py`. You can use different LLMs or design different note writing prompts, strategies, and pipelines.
 
-1. Fork the [Template API Note Writer](https://github.com/twitter/communitynotes/tree/main/template-api-note-writer).
-2. Generate X API Keys and add them to Github
-   * Note: Store these keys in a safe place, and never share them publicly. Never check them into github with a commit (but you may safely store them in your private repo’s “Actions secrets and variables”, described below)
-   * Go to your project’s keys and tokens from [https://developer.x.com/en/portal/dashboard](https://developer.x.com/en/portal/dashboard), under your project app, click the key icon).
-   * Under “Consumer Keys”, click “regenerate” -> “Yes, regenerate”.
-     * Store the first one, “API Key”, with the name: `X_API_KEY`
-     * Store the second one: “API Key Secret”, with the name: `X_API_KEY_SECRET`
-   * Under “Authentication Tokens”, next to “Access Token and Secret” (for your user), click “Generate”:
-     * Store the first one, “Access Token”, with the name: `X_ACCESS_TOKEN`
-     * Store the second one, “Access Token Secret”, with the name: `X_ACCESS_TOKEN_SECRET`
-   * Save your API Keys for Github actions: In another tab, open your bot’s Github repo, and navigate to: Settings => Security/Secrets and Variables => Actions. For each of the secrets above, save it by clicking “New repository secret”, then pasting in the name and secret itself and then clicking “Add Secret”.
-3. Set up API keys for other APIs you will query in the process of creating notes. The template bot by default calls the XAI API, but you may edit this code to call other API providers as desired. Warning: you are solely responsible for any costs you incur calling any APIs.
-  * If you’d like to use the XAI API, follow these steps to set up:
-    * Go to [https://x.ai/api](https://x.ai/api) and follow the signup flow for API access
-    * Once your account is created, follow the instructions to create an API Key
-      * Store it with the name: `XAI_API_KEY`
-      * In Github, as you did with X keys above, add this key as a “New repository secret” with the name `XAI_API_KEY`
-    * Continue with the XAI Getting Started steps all the way through to sending your first request to the XAI API as instructed there.
-  * If you are adding any new API keys beyond the defaults (XAI), then for each API key, in addition to saving it in the Github actions secrets and variables as we did above, make sure it is included in env in the [workflow yaml file](https://github.com/twitter/communitynotes/blob/master/.github/workflows/community_note_writer.yaml#L48). 
-4. Run the bot workflow
-  * WARNING: running this bot will really run your code, which may incur API costs with any external API providers you are calling. You are responsible for any such costs. By default, the template code processes 10 posts each run, making a few XAI API calls per post.
-  * Run the test workflow once by clicking “Actions” then “Automated Community Note Writer”, then “Run workflow”->”Run workflow”
-  * In order to schedule the workflow as a cronjob that runs on an automated schedule, uncomment the cron schedule on [lines 8-9 in the workflow yaml file](https://github.com/twitter/communitynotes/blob/master/.github/workflows/community_note_writer.yaml#L8).
+The API also offers features the template does not use yet. For example, `POST /2/evaluate_note` returns the ClaimOpinion score for a note, and `DELETE /2/notes/{id}` deletes a note. See the FAQs below for more.
 
 ## API Guide / FAQs
 
@@ -166,7 +298,7 @@ Please see the API spec for this endpoint at [X Developer API guide: Evaluate a 
 Example request to retrieve the last 10 eligible posts, in test mode, and requesting all the same fields the [Template API Note Writer](https://github.com/twitter/communitynotes/tree/main/template-api-note-writer) uses:
 ```
 curl --request GET \
-  --url https://api.twitter.com/2/notes/search/posts_eligible_for_notes?test_mode=true&max_results=10&tweet.fields=author_id,created_at,referenced_tweets,media_metadata,suggested_source_links_with_counts&expansions=attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys&media.fields=alt_text,duration_ms,height,media_key,preview_image_url,public_metrics,type,url,width,variants \
+  --url https://api.twitter.com/2/notes/search/posts_eligible_for_notes?test_mode=true&max_results=10&tweet.fields=author_id,created_at,referenced_tweets,media_metadata,note_tweet,note_request_suggestions,suggested_source_links_with_counts&expansions=attachments.media_keys,referenced_tweets.id,referenced_tweets.id.attachments.media_keys&media.fields=alt_text,duration_ms,height,media_key,preview_image_url,public_metrics,type,url,width,variants \
   --header 'Authorization: Bearer <token>'
 ```
 The output will have:

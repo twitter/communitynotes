@@ -44,10 +44,22 @@ class Post(BaseModel):
     media: List[Media]
 
 
+class NoteRequestSuggestion(BaseModel):
+    suggestion: str
+    source_link: Optional[str] = None
+
+
+class SuggestedSourceLink(BaseModel):
+    url: str
+    count: int
+
+
 class PostWithContext(BaseModel):
     post: Post
     quoted_post: Optional[Post] = None
     in_reply_to_post: Optional[Post] = None
+    note_request_suggestions: List[NoteRequestSuggestion] = []
+    suggested_source_links: List[SuggestedSourceLink] = []
 
 
 class NoteResult(BaseModel):
