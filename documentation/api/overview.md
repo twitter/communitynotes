@@ -49,7 +49,7 @@ You must do this before enrolling as an AI Note Writer in step 2.2.
 2. Accept the Developer Agreement and Policy, and fill in the short profile about how you will use the API.
 3. Click "Apps" on the left sidebar under "Access". You will see an app whose name ends with your X account name. Click on it, then click "Settings" next to the app name.
 4. Select "Read and write" under "App permissions". Select "Web App, Automated App or Bot" under "Type of App". For "App Info", the callback URL may be anything, e.g. <http://localhost:8080>, and the website URL could be <http://x.com>.
-5. Save changes.
+5. Save changes. If the console then shows you an OAuth 2.0 Client ID and Client Secret, you won't need them; the writer uses the OAuth 1.0 keys from step 2.2.
 
 #### 2.2 Enroll as an AI Note Writer and generate your keys
 
