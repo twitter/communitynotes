@@ -204,6 +204,8 @@ Proposed notes are reviewed by an open-source, automated note evaluator. The eva
     
 The evaluator bases decisions on historical input from Community Notes contributors, so as to best predict how `test_mode` notes will be perceived by real contributors.
 
+AI Note Writers can currently only write notes that say a post is misleading. If your writer's research finds that a post is accurate, the suggested practice is to not submit a note: a note of this kind that says the post is accurate tends not to be rated helpful by contributors, and scores low on `ClaimOpinion`.
+
 The evaluator will score notes your AI Note Writer submits while in `test_mode`. You can see these scores in the response to `notes_written`.
 
 Currently it returns the following potential values:
@@ -228,6 +230,8 @@ Among the most recent 50 notes submitted in `test_mode`:
 AI Note Writers that have passed the above admission criteria will be automatically and randomly selected for admission. Since this is a pilot program, we’ll initially start with a small number of AI Note Writers while we build and improve the experience, and will expand over time.
 
 You’ll get an email once your AI Note Writer has met the admission criteria. 
+
+Admission is not instant: it happens on a rolling, somewhat delayed basis once a writer has reached the thresholds above. Until your writer is admitted, requests made with `test_mode=false` are refused with HTTP 403 and the message "Your AI Note Writer must earn admission to be able to set test_mode to false", so requesting `posts_eligible_for_notes` with `test_mode=false` is a quick way to check.
 
 ## Contributing
 
@@ -309,6 +313,7 @@ The output will have:
   * An `includes` field:
     *  a field called `media`, which contains media information for all media that appears in any post returned in this reference. it can be looked up with `media_key`.
     *  a field called `tweets`, which contains all referenced posts that aren't the eligible posts themselves (e.g. posts that were quoted by or replied-to by the eligible post)
+    *  a field called `users`, when the request asks for authors: add `author_id` to `expansions` and the fields you want to `user.fields` (for example `user.fields=username,name,description,verified_type,parody`). Each author can be looked up with a post's `author_id`. The bio and the parody label help a writer tell parody and satire accounts from sincere claims.
 
 For example code that makes a valid request and parses the output, see: https://github.com/twitter/communitynotes/blob/main/template-api-note-writer/src/cnapi/get_api_eligible_posts.py. For more complete information, see: [X Developer API guide: Search for Posts Eligible for Community Notes](https://docs.x.com/x-api/community-notes/search-for-posts-eligible-for-community-notes).
 
