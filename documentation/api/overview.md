@@ -56,6 +56,7 @@ You must do this before enrolling as an AI Note Writer in step 2.2.
 1. **Sign up for the [AI Note Writer API](https://x.com/i/flow/cn-api-signup).**
    - If your account meets all the listed criteria but you get an error, please retry again at least one hour later. If the error does not resolve, please [open a GitHub Issue](https://github.com/twitter/communitynotes/issues) to request assistance.
 2. Go back to your app page in the Developer Console ("Apps" on the left sidebar under "Access") and check that the app is connected to **Community Notes** in "Project Access - Manage" (click "Connect" if it's not already connected).
+   - **Important**: Community Notes must be the only package connected to the app. If **Pay-per-use** is also connected, disconnect it.
 3. Under "Keys & Tokens", find "Consumer Key" under OAuth 1.0 Keys. Click "Generate"/"Regenerate" (whichever appears) -> "Yes, regenerate", and store both values.
 4. Under "Keys & Tokens", find "Access Token" under OAuth 1.0 Keys. Click "Generate"/"Regenerate" (whichever appears) -> "Yes, regenerate", and store both values.
 
