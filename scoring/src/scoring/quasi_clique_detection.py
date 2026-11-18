@@ -4,6 +4,7 @@ from typing import Set, Tuple
 
 # Project libraries
 from . import constants as c
+from .post_selection_similarity import is_excluded_note_author
 
 # 3rd-party libraries
 import pandas as pd
@@ -59,12 +60,13 @@ class QuasiCliqueDetection:
     # Identify ratings that are in scope
     logger.info(f"initial rating length: {len(ratings)}")
     ratings = ratings[[c.noteIdKey, c.raterParticipantIdKey, c.helpfulNumKey]]
+    notes = notes[~is_excluded_note_author(notes[c.noteAuthorParticipantIdKey])]
     ratings = ratings.merge(
       notes[[c.noteIdKey, c.tweetIdKey, c.classificationKey, c.createdAtMillisKey]].rename(
         columns={c.createdAtMillisKey: "noteMillis"}
       )
     )
-    logger.info(f"ratings after merges: {len(ratings)}")
+    logger.info(f"ratings after merges (excluding automated authors' notes): {len(ratings)}")
     ratings = ratings[ratings["noteMillis"] > (ratings["noteMillis"].max() - cutoff)]
     logger.info(f"recent ratings: {len(ratings)}")
     ratings = ratings[ratings[c.tweetIdKey] != "-1"]

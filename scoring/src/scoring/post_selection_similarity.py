@@ -167,6 +167,9 @@ class PostSelectionSimilarity:
       ].copy()
       suspectPairsDF.append(tmp)
     suspectPairsDF = pd.concat(suspectPairsDF)
+    suspectPairsDF = suspectPairsDF[
+      ~is_excluded_note_author(suspectPairsDF[c.noteAuthorParticipantIdKey])
+    ]
     suspectPairs = []
     for author, rater in suspectPairsDF[
       [c.noteAuthorParticipantIdKey, c.raterParticipantIdKey]
@@ -190,6 +193,11 @@ class PostSelectionSimilarity:
       cliquesDfList, columns=[c.raterParticipantIdKey, c.postSelectionValueKey]
     )
     return cliquesDf
+
+
+def is_excluded_note_author(authorIds: pd.Series) -> pd.Series:
+  """Whether each author id (int or str) is excluded from co-rating algorithms."""
+  return authorIds.astype(str).isin(c.noteAuthorIdsExcludedFromCoRatingAlgorithms)
 
 
 def apply_post_selection_similarity(notes, ratings, postSelectionSimilarityValues):

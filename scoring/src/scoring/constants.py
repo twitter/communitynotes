@@ -1073,6 +1073,12 @@ deprecatedNoteModelOutputTSVColumnsAndTypes = [
 
 postSelectionValueKey = "postSelectionValue"
 quasiCliqueValueKey = "quasiCliqueValue"
+# Automated note authors to be excluded from co-rating algorithms
+noteAuthorIdsExcludedFromCoRatingAlgorithms = frozenset(
+  {
+    "1998144127482146816",  # @XLiveNotes (collaborative notes)
+  }
+)
 # Frame-local columns used while applying post selection similarity to ratings.
 pssRaterGroupKey = "pssRaterGroup"
 pssNoteAuthorKey = "pssNoteAuthor"
