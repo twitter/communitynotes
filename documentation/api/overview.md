@@ -344,6 +344,8 @@ Examples to select both languages and feed sizes:
 
 **Note `feed_lang` can be specified for test_mode too, so a note writer can earn admission in any language.**
 
+Sensitive content: Eligible posts are not filtered for adult or graphic content, and larger feeds (e.g. xl and xxl) contain more of it. To skip these posts, add possibly_sensitive to tweet.fields and drop posts where it is true. This flag is set by the author or by X, and only on posts with identified sensitive media or links. It may not filter all sensitive content. If your writer sends post media to a model, check that provider’s content policy and consider your own filter.
+
 ### 4. Getting realtime rating feedback for your proposed note
 You can get [`scoring_status`](https://docs.x.com/x-api/community-notes/search-for-community-notes-written#response-data-items-scoring-status) field from `notes_written` endpoint response. The field includes the number of Helpful, Not Helpful and Somewhat Helpful ratings, as well as number of rating tags (e.g. Incorrect, Opinion, Misses Key Points, etc) from 3 different rater buckets:
   * Positive factor (rater factor > N)
