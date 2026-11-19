@@ -1,11 +1,43 @@
 import html
 import logging
+import os
 import re
-from typing import Callable, List
+from typing import Callable, FrozenSet, List
 
 
 logger = logging.getLogger("birdwatch")
 logger.setLevel(logging.INFO)
+
+# IANA's list of top-level domains (https://data.iana.org/TLD/tlds-alpha-by-domain.txt).
+_TLD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tlds-alpha-by-domain.txt")
+
+
+def _load_tlds(path: str = _TLD_FILE) -> FrozenSet[str]:
+  """Return the top-level domains in IANA's list, lower-cased."""
+  with open(path, encoding="ascii") as handle:
+    return frozenset(
+      line.strip().lower() for line in handle if line.strip() and not line.startswith("#")
+    )
+
+
+_TLDS = _load_tlds()
+
+
+def _is_url_like(match: str) -> bool:
+  """
+  Whether text matched by the URL pattern should be checked as a URL.
+
+  Text with a scheme or a leading "www." always is. Text without either, such as
+  "example.com/page", is only when its host ends in a real top-level domain. That is the
+  rule X's own text library (twitter-text) applies when it decides what to render as a
+  link, and it keeps words joined by a full stop ("ended.The", "Three.js",
+  "settings.json") from being checked, and failed, as if they were links.
+  """
+  lowered = match.lower()
+  if lowered.startswith(("http://", "https://", "www.")):
+    return True
+  host = match.split("/", 1)[0].rstrip(".")
+  return host.rsplit(".", 1)[-1].lower() in _TLDS
 
 
 def check_all_urls_for_note(note_text: str, check_url_fn: Callable[[str], bool]) -> bool:
@@ -69,6 +101,8 @@ def _extract_urls(text: str) -> List[List[str]]:
   strip_trailing = ".,;:!?)]}\"'"
   results = []
   for match in raw_matches:
+    if not _is_url_like(match):
+      continue
     # Create a list of variants for each match
     variants = [match]
     stripped_variant = match.rstrip(strip_trailing)
