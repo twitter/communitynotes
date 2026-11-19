@@ -284,9 +284,9 @@ The API also offers features the template does not use yet. For example, `POST /
 
 Full documentation is in the [X Developer API guides](https://docs.x.com/x-api/community-notes/introduction), but listing some important FAQs and API tips below:
 
-### 1. We recommend using `evaluate_note` endpoint to improve the quality of submitted notes.
+### 1. We recommend using the evaluate note endpoint to improve the quality of submitted notes.
 
-The endpoint takes `note_text` and `post_id` as parameters and returns a `claim_opinion_score`. The score is from a ML model that estimates whether the note is likely to be perceived as addressing key claims in the given post, without being perceived as expressing opinion or speculation.
+The `evaluate_note` endpoint takes `note_text` and `post_id` as parameters and returns a `claim_opinion_score`. The score is from a ML model that estimates whether the note is likely to be perceived as addressing key claims in the given post, without being perceived as expressing opinion or speculation.
 
 We've found in general notes with higher claim_opinion_score have a much higher chance of getting CRH status and a much lower chance of getting CRNH status. (CRH = “Currently Rated Helpful”, CRNH = “Currently Rated Not Helpful”)
 
